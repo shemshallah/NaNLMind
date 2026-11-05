@@ -72,7 +72,26 @@ Merge rules:
 - idempotent replay returns the prior result;
 - a stale base or reused key with a different body returns 409.
 
-## 3. Koyeb deployment
+## 3. Live deployment
+
+```text
+service:  training-merge-v2
+app:      deeprepo
+instance: nano
+URL:      https://deeprepo-qtcl-9c8fea15.apps.mistral.run
+health:   /healthz -> 200
+merge:    /v1/training/merge -> 200
+```
+
+`NANLM_MERGE_TOKEN` is stored as a Koyeb secret, not as a plaintext value in
+the repository. `DEEPREPO_PAT` is not used.
+
+Koyeb rejected the `free` instance type; the service is running on `nano`.
+This instance has no persistent volume, so `/data/training_merge.json` is
+ephemeral and resets if the instance is replaced. Attach a volume before using
+it for durable state.
+
+## 4. Koyeb deployment
 
 1. Create a Koyeb service from this repository using
    `deploy/training_merge/Dockerfile`.
@@ -87,7 +106,7 @@ for durable training merge, or accept ephemeral state for a demo.
 
 `deploy/training_merge/koyeb.yaml` is the illustrative service definition.
 
-## 4. Security
+## 5. Security
 
 - `DEEPREPO_PAT` is never used by this service.
 - The merge token is separate from the GitHub runner PAT and the Android intake
@@ -97,7 +116,7 @@ for durable training merge, or accept ephemeral state for a demo.
 - The service logs method/path/status, not authorization headers or bodies.
 - State contains head/route metadata, not raw corpus text.
 
-## 5. Test
+## 6. Test
 
 ```sh
 make merge-test
@@ -112,7 +131,7 @@ The test covers:
 - wrong-token rejection;
 - health endpoint.
 
-## 6. Relationship to the 2 GiB map
+## 7. Relationship to the 2 GiB map
 
 The merged state is a **manifest**, not the 2 GiB register. The bootstrap runner
 loads the manifest into its 2 GiB map and head arena. Android and peer runners
@@ -122,7 +141,7 @@ The 8 MiB universe sync uses nanclock only when that universe is merging. The
 merge service is the meeting point; the state stays on the runner and the edge
 node.
 
-## 7. Next
+## 8. Next
 
 - Add a bootstrap-side manifest puller/applier.
 - Add per-node scoped token records and revocation.

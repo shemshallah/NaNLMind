@@ -8,6 +8,16 @@ vectors, strengths, routes, a base generation, and a nanclock tick. Koyeb merges
 the small deltas and returns a generation + digest. The bootstrap ring applies
 the returned manifest to its map.
 
+## Live service
+
+```text
+https://deeprepo-qtcl-9c8fea15.apps.mistral.run
+```
+
+Service `training-merge-v2` is running on the `nano` instance type. Koyeb
+rejected `free`. No persistent volume is attached, so merged JSON state is
+ephemeral until one is added. `NANLM_MERGE_TOKEN` is a Koyeb secret.
+
 ## Deploy
 
 1. Build from this repository with Dockerfile

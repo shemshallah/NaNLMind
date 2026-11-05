@@ -45,6 +45,11 @@ The Android client uses `NANLM_DEVICE_TOKEN` from the environment and
 permissions in [docs/18_HEAD_RING.md](docs/18_HEAD_RING.md). It is not available
 to user-facing endpoints, APKs, or community clients.
 
+Koyeb environment variables must use Koyeb secret references, not plaintext
+values. A deployment-definition read can expose plaintext env values; if a
+plaintext runner PAT was ever used there, rotate it and re-create the service
+with a secret reference.
+
 ## Build hygiene
 
 - `.nanlmind/` is an external source clone and is gitignored.
