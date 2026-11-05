@@ -24,6 +24,7 @@ BoolMatrix bool_multiply(const BoolMatrix& a, const BoolMatrix& b) {
 
 BoolMatrix bool_closure(BoolMatrix a) {
     // Reflexive-transitive closure via Warshall.
+    for (std::uint32_t i = 0; i < 256; ++i) a[i].set(i);
     for (std::uint32_t k = 0; k < 256; ++k) {
         for (std::uint32_t i = 0; i < 256; ++i) {
             if (a[i].test(k)) a[i] |= a[k];

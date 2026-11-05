@@ -311,6 +311,12 @@ pages they use. The Android constructor is guarded invalid, and the dense map
 test is skipped on Android; only the x86 runner ring maps the 2 GiB region.
 `test_overbootstrap_map` passes on the runner path.
 
+### Semiring inheritance 20k
+
+Boolean reflexive-transitive closure over 256 kinds matches 2,000/2,000 queries
+on the 20k entity split in ~1 ms. Fixed a missing diagonal in closure. This is
+the symbolic inheritance layer; sparse exceptions remain residuals.
+
 ### Nested-exception degree
 
 A degree-limited ANF learner shows exact recovery only at **degree =

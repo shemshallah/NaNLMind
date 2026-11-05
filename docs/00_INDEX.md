@@ -60,6 +60,7 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 54 | [54_HYPERVECTOR_SCALE.md](54_HYPERVECTOR_SCALE.md) | Does the hypervector store hold 20k facts, and when does it fail? |
 | 55 | [55_SUPERPOSITION_TODO.md](55_SUPERPOSITION_TODO.md) | What is the deferred superposition/phase design, and why is it not implemented? |
 | 56 | [56_DEGREE_EXCEPTIONS.md](56_DEGREE_EXCEPTIONS.md) | Why does each nested exception level add one polynomial degree? |
+| 57 | [57_SEMIRING_INHERITANCE.md](57_SEMIRING_INHERITANCE.md) | Can semiring closure handle 20k inheritance queries? |
 
 The short version:
 
