@@ -199,9 +199,13 @@ First byte-level result on `data/alice_excerpt.txt` (30 KB, 80/20):
 | topology bigram | 29.97% | 3.895 |
 | host bigram | 29.97% | 3.895 |
 | order-0 | 16.18% | 4.681 |
+| slot-1 / host bigram | 29.97% | 3.895 |
+| slot-2 (context 2 + backoff) | 41.06% | 4.023 |
 
-The topology matches the host bigram exactly, and the bigram beats order-0 by
-0.786 bits/byte. That is a real baseline result; the next control is a plain RNN.
+The topology matches the host bigram exactly. Bigram beats order-0 by 0.786
+bits/byte. Context-2 improves top-1 to 41.06% but is still worse in BPC (4.023)
+because 30 KB is too sparse for a 65,536-context table even with backoff. The
+next baseline is a stronger smoothing method or more data, then a plain RNN.
 
 `make universe-check` runs the single-universe gate:
 
