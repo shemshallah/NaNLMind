@@ -6,6 +6,7 @@
 #include "nanlm/router.hpp"
 #include "nanlm/ntf.hpp"
 #include "nanlm/byte_model.hpp"
+#include "nanlm/handoff.hpp"
 #include "nanlm/schedule.hpp"
 #include "nanlm/universe.hpp"
 
@@ -391,6 +392,101 @@ int cmd_growth() {
     return r.ok ? 0 : 1;
 }
 
+int cmd_snapshot(int argc, char** argv) {
+    const char* out = "state/chart.nmc";
+    for (int i = 2; i + 1 < argc; ++i) {
+        if (std::strcmp(argv[i], "--out") == 0) out = argv[i + 1];
+    }
+    Universe u(0x4E614E4C4D000001ull);
+    const auto bytes = u.serialize();
+    std::ofstream f(out, std::ios::binary);
+    if (!f) { std::cerr << "cannot write " << out << "\n"; return 1; }
+    f.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+    std::cout << "snapshot " << out << " bytes=" << bytes.size()
+              << " digest=" << hex(u.digest()) << "\n";
+    return 0;
+}
+
+int cmd_headshift(int argc, char** argv) {
+    int slot = 1;
+    std::uint64_t epoch = 0;
+    int runners = 6;
+    std::string snapshot = "state/chart.nmc";
+    std::string out = "state/chart.nmc";
+    std::string json = "state/packets.json";
+    for (int i = 2; i + 1 < argc; ++i) {
+        const std::string key = argv[i];
+        const std::string val = argv[i + 1];
+        if (key == "--slot") slot = std::stoi(val);
+        else if (key == "--epoch") epoch = std::stoull(val);
+        else if (key == "--runners") runners = std::stoi(val);
+        else if (key == "--snapshot") snapshot = val;
+        else if (key == "--out") out = val;
+        else if (key == "--json") json = val;
+    }
+    if (slot < 1 || slot > runners) { std::cerr << "slot out of range\n"; return 2; }
+    std::unique_ptr<Universe> u;
+    std::ifstream in(snapshot, std::ios::binary);
+    if (in) {
+        std::vector<std::uint8_t> bytes((std::istreambuf_iterator<char>(in)),
+                                        std::istreambuf_iterator<char>());
+        u = Universe::from_bytes(bytes.data(), bytes.size());
+    }
+    if (!u) u = std::make_unique<Universe>(0x4E614E4C4D000001ull);
+
+    HeadArray heads(*u, PageId::root());
+    HeadMap map(static_cast<std::uint8_t>(runners));
+    if (!map.valid()) { std::cerr << "invalid head map\n"; return 3; }
+    std::vector<HeadPacket> packets;
+    for (std::uint8_t head : map.heads_for(static_cast<std::uint8_t>(slot - 1))) {
+        HeadView h = heads.at(head);
+        HeadPacket p;
+        p.head = head;
+        p.epoch = epoch;
+        p.phase = h.record().phase;
+        p.transform_phase = h.transform_phase();
+        p.self_error = h.self_error();
+        p.scratch_used = h.scratch_used();
+        p.state_hash = Universe::cell_checksum(h.cell());
+        auto local = h.scratch().local();
+        for (int i = 0; i < 32; ++i) p.output[i] = local[i];
+        packets.push_back(p);
+        h.advance_transform_phase();
+        h.phase_step(static_cast<std::uint32_t>(epoch + head));
+    }
+
+    std::ofstream js(json);
+    if (!js) { std::cerr << "cannot write " << json << "\n"; return 4; }
+    js << "[\n";
+    for (std::size_t i = 0; i < packets.size(); ++i) {
+        const auto& p = packets[i];
+        js << " {\"head\":" << static_cast<unsigned>(p.head)
+           << ",\"epoch\":" << p.epoch
+           << ",\"phase\":" << p.phase
+           << ",\"transform_phase\":" << static_cast<unsigned>(p.transform_phase)
+           << ",\"self_error\":" << p.self_error
+           << ",\"scratch_used\":" << p.scratch_used
+           << ",\"state_hash\":" << p.state_hash
+           << ",\"output\":[";
+        for (int k = 0; k < 32; ++k) {
+            if (k) js << ',';
+            js << static_cast<unsigned>(p.output[k]);
+        }
+        js << "]}";
+        if (i + 1 < packets.size()) js << ',';
+        js << "\n";
+    }
+    js << "]\n";
+
+    const auto bytes = u->serialize();
+    std::ofstream of(out, std::ios::binary);
+    if (!of) { std::cerr << "cannot write " << out << "\n"; return 5; }
+    of.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+    std::cout << "headshift slot=" << slot << " epoch=" << epoch
+              << " heads=" << packets.size() << " digest=" << hex(u->digest()) << "\n";
+    return 0;
+}
+
 int cmd_byte(int argc, char** argv) {
     const char* path = argc > 2 ? argv[2] : "data/alice_excerpt.txt";
     std::ifstream f(path, std::ios::binary);
@@ -571,6 +667,8 @@ void usage() {
               << "  router      meta-router: universes as heads, routes as pairs\n"
               << "  ntf         NaN Translation Fabric address/route demo\n"
               << "  byte [path] single-universe byte bigram train/eval\n"
+              << "  snapshot    write state/chart.nmc\n"
+              << "  headshift   real HeadView packets for one slot\n"
               << "  growth      child-chart growth and scratch consolidation\n"
               << "  scale       print the hierarchical scaling table\n"
               << "  resonance   run the 256-head resonance wave\n"
@@ -594,6 +692,8 @@ int main(int argc, char** argv) {
     if (cmd == "router") return cmd_router();
     if (cmd == "ntf") return cmd_ntf();
     if (cmd == "byte") return cmd_byte(argc, argv);
+    if (cmd == "snapshot") return cmd_snapshot(argc, argv);
+    if (cmd == "headshift") return cmd_headshift(argc, argv);
     if (cmd == "growth") return cmd_growth();
     if (cmd == "scale") return cmd_scale();
     if (cmd == "resonance") return cmd_resonance();

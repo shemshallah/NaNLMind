@@ -197,6 +197,31 @@ def finalize_round(env, epoch):
     return True, record
 
 
+def core_packets(args):
+    if os.environ.get("NANLM_USE_CORE", "0") not in ("1", "true", "yes"):
+        return None
+    core = Path(os.environ.get("NANLM_CORE", "core"))
+    exe = core / "build" / "nanlm-universal"
+    if not exe.exists():
+        return None
+    state = local_path()
+    snapshot = state / "chart.nmc"
+    packets = state / f"packets_{args.epoch}_{args.slot}.json"
+    cmd = [str(exe), "headshift", "--slot", str(args.slot + 1),
+           "--epoch", str(args.epoch), "--runners", str(RUNNERS),
+           "--snapshot", str(snapshot), "--out", str(snapshot),
+           "--json", str(packets)]
+    proc = subprocess.run(cmd, text=True, capture_output=True)
+    if proc.returncode != 0:
+        print(f"core headshift failed: {proc.stderr.strip()}", file=sys.stderr)
+        return None
+    try:
+        return json.loads(packets.read_text())
+    except Exception as exc:
+        print(f"core packets unreadable: {exc}", file=sys.stderr)
+        return None
+
+
 def op_headshift(args):
     env = connect_tiers(writer=True)
     gate = reg_get(env, "nanlm/gate") if env is not None else None
@@ -219,7 +244,9 @@ def op_headshift(args):
 
     mapping = head_map()
     heads = mapping[str(args.slot)]
-    packets = [packet(args.slot, args.epoch, h) for h in heads]
+    packets = core_packets(args)
+    if packets is None:
+        packets = [packet(args.slot, args.epoch, h) for h in heads]
     reg_put(env, f"nanlm/head/{args.epoch}/{args.slot}", packets)
     local_path().joinpath(f"head_{args.epoch}_{args.slot}.json").write_text(
         json.dumps(packets, indent=1))

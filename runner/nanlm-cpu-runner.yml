@@ -41,6 +41,7 @@ env:
   DEEPREPO_RAM_BACKEND: github
   DEEPREPO_VRAM_BACKEND: github
   NANLM_CORE: core
+  NANLM_USE_CORE: "1"
   NANLM_LOCAL_STATE: ${{ github.workspace }}/state
 
 jobs:
@@ -72,7 +73,7 @@ jobs:
         run: pip install -r engine/requirements-core.txt
 
       - name: Build NaNLMind core
-        if: ${{ inputs.op == 'selftest' || inputs.op == 'prewarm' }}
+        if: ${{ inputs.op == 'selftest' || inputs.op == 'prewarm' || inputs.op == 'headshift' }}
         run: make -C core -j2
 
       - name: Execute head shift

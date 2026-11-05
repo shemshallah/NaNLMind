@@ -140,10 +140,15 @@ make universe-check
 ./build/nanlm-universal phase
 ./build/nanlm-universal router
 ./build/nanlm-universal ntf
+./build/nanlm-universal snapshot --out state/chart.nmc
+./build/nanlm-universal headshift --slot 1 --epoch 0 --runners 6 \
+  --snapshot state/chart.nmc --out state/chart.nmc --json state/packets.json
 ```
 
 The ring can run the same universe through `nanlm-cpu-1..6`, but the training
-gate is local first.
+gate is local first. `headshift` now emits real `HeadView` packets from the
+serialized chart and evolves a local snapshot. Cross-job persistence needs the
+`nanlm-vram` snapshot adapter, which is next.
 
 ---
 

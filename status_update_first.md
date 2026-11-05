@@ -215,6 +215,10 @@ prediction. Bigram beats order-0 by 0.786 bits/byte. Context-2 improves top-1 to
 because 30 KB is too sparse for a 65,536-context table even with backoff. The
 next baseline is a stronger smoothing method or more data, then a plain RNN.
 
+`snapshot` / `headshift` now produce real `HeadView` packets from a serialized
+chart and evolve a local snapshot. Cross-job snapshot persistence to
+`nanlm-vram` is the next adapter.
+
 `make universe-check` runs the single-universe gate:
 
 - Boolean learning;

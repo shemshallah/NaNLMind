@@ -36,5 +36,11 @@ jobs:
         run: ./build/nanlm-universal router
       - name: NTF
         run: ./build/nanlm-universal ntf
+      - name: Snapshot/headshift smoke
+        run: |
+          mkdir -p state
+          ./build/nanlm-universal snapshot --out state/chart.nmc
+          ./build/nanlm-universal headshift --slot 1 --epoch 0 --runners 6             --snapshot state/chart.nmc --out state/chart.nmc --json state/packets.json
+          test -s state/packets.json
       - name: Growth
         run: ./build/nanlm-universal growth
