@@ -107,6 +107,7 @@ make
 ./build/nanlm-universal byte
 ./build/nanlm-universal kn
 ./build/nanlm-universal ctx2
+./build/nanlm-universal bootstrap
 ./build/nanlm-universal growth
 make test
 make legacy
@@ -154,6 +155,7 @@ baseline — a plain RNN matching the 256-head topology — is in
 | `docs/15_PHASE_SCHEDULING.md` | transform-phase orbits, global-scratch sync, bit-reversed wake slots |
 | `docs/16_GROWTH_CONSOLIDATION.md` | child-chart growth and atomic scratch consolidation |
 | `docs/17_TRAINING_HEADS.md` | integer head learning, sequence memory, RNN baseline |
+| `docs/27_ANDROID_BOOTSTRAP.md` | on-device byte bootstrap, memory profile, Gutenberg scale, curriculum |
 | `docs/18_HEAD_RING.md` | six-runner handoff, preload, map-back, workflows |
 | `docs/19_LEGACY_TESTS.md` | R18T language tests and R21–R23 logic regressions |
 | `docs/20_META_ROUTER.md` | universes as heads, routes as pairs, qNaN/sNaN BE/LE portals |

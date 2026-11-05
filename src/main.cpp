@@ -12,6 +12,7 @@
 #include "nanlm/schedule.hpp"
 #include "nanlm/universe.hpp"
 
+#include <cctype>
 #include <cstdio>
 #include <cstring>
 #include <cmath>
@@ -489,6 +490,69 @@ int cmd_headshift(int argc, char** argv) {
     return 0;
 }
 
+int cmd_bootstrap(int argc, char** argv) {
+    const char* path = argc > 2 ? argv[2] : "data/alice_full.txt";
+    int epochs = argc > 3 ? std::stoi(argv[3]) : 1;
+    int chunks = argc > 4 ? std::stoi(argv[4]) : 8;
+    if (epochs < 1) epochs = 1;
+    if (chunks < 1) chunks = 1;
+    std::ifstream f(path, std::ios::binary);
+    if (!f) { std::cerr << "cannot open " << path << "\n"; return 1; }
+    std::vector<std::uint8_t> data((std::istreambuf_iterator<char>(f)),
+                                   std::istreambuf_iterator<char>());
+    if (data.size() < 1000) { std::cerr << "corpus too small\n"; return 1; }
+    const std::size_t split = (data.size() * 4) / 5;
+    std::vector<std::uint8_t> train(data.begin(), data.begin() + split);
+    std::vector<std::uint8_t> test(data.begin() + split, data.end());
+    Context2Model model;
+    const std::size_t chunk = (train.size() + static_cast<std::size_t>(chunks) - 1) /
+                              static_cast<std::size_t>(chunks);
+    std::cout << "bootstrap corpus=" << path << " train=" << train.size()
+              << " test=" << test.size() << " epochs=" << epochs
+              << " chunks=" << chunks << "\n";
+    std::size_t seen = 0;
+    for (int epoch = 1; epoch <= epochs; ++epoch) {
+        for (std::size_t begin = 0; begin < train.size(); begin += chunk) {
+            const std::size_t end = std::min(train.size(), begin + chunk);
+            // Count each trigram exactly once per pass, in stream order.
+            for (std::size_t i = std::max<std::size_t>(2, begin); i < end; ++i) {
+                model.observe(train[i - 2], train[i - 1], train[i]);
+            }
+            seen += end - std::max<std::size_t>(2, begin);
+            const Context2Eval eval = model.evaluate(test, 2, test.size());
+            std::size_t word_start_total = 0;
+            std::size_t word_start_correct = 0;
+            std::size_t alpha_total = 0;
+            std::size_t alpha_correct = 0;
+            for (std::size_t i = 2; i < test.size(); ++i) {
+                const std::uint8_t a = test[i - 2];
+                const std::uint8_t b = test[i - 1];
+                const std::uint8_t c = test[i];
+                const bool predicted = model.predict(a, b) == c;
+                if (std::isalpha(static_cast<unsigned char>(c))) {
+                    ++alpha_total;
+                    if (predicted) ++alpha_correct;
+                    if (std::isspace(static_cast<unsigned char>(b))) {
+                        ++word_start_total;
+                        if (predicted) ++word_start_correct;
+                    }
+                }
+            }
+            const double ws = word_start_total
+                ? static_cast<double>(word_start_correct) / word_start_total : 0.0;
+            const double alpha = alpha_total
+                ? static_cast<double>(alpha_correct) / alpha_total : 0.0;
+            std::cout << "epoch=" << epoch << " chunk_end=" << end
+                      << " bytes_seen=" << seen << " slabs=" << model.slabs()
+                      << " bpc=" << eval.bits_per_byte
+                      << " top1=" << eval.accuracy
+                      << " alpha_top1=" << alpha
+                      << " word_start_top1=" << ws << "\n";
+        }
+    }
+    return 0;
+}
+
 int cmd_ctx2(int argc, char** argv) {
     const char* path = argc > 2 ? argv[2] : "data/alice_full.txt";
     std::ifstream f(path, std::ios::binary);
@@ -709,6 +773,7 @@ void usage() {
               << "  byte [path] single-universe byte bigram train/eval\n"
               << "  kn [path] [order] Kneser-Ney byte baseline\n"
               << "  ctx2 [path] context-2 child-chart layout\n"
+              << "  bootstrap [path] [epochs] streaming byte bootstrap\n"
               << "  snapshot    write state/chart.nmc\n"
               << "  headshift   real HeadView packets for one slot\n"
               << "  growth      child-chart growth and scratch consolidation\n"
@@ -736,6 +801,7 @@ int main(int argc, char** argv) {
     if (cmd == "byte") return cmd_byte(argc, argv);
     if (cmd == "kn") return cmd_kn(argc, argv);
     if (cmd == "ctx2") return cmd_ctx2(argc, argv);
+    if (cmd == "bootstrap") return cmd_bootstrap(argc, argv);
     if (cmd == "snapshot") return cmd_snapshot(argc, argv);
     if (cmd == "headshift") return cmd_headshift(argc, argv);
     if (cmd == "growth") return cmd_growth();

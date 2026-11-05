@@ -137,7 +137,8 @@ Dense child-universe cost is 8 MiB each: 79 charts = 632 MiB on Alice full,
 109 = 872 MiB on Moby Dick. That fits a runner with paging, but it is why the
 next step is sparse child pages or a compact count slab behind the pager, not
 256 dense universes. The topology mapping is real; the dense allocation is the
-remaining engineering cost.
+remaining engineering cost. For the on-device byte loop and Gutenberg data
+scale, see [27_ANDROID_BOOTSTRAP.md](27_ANDROID_BOOTSTRAP.md).
 
 Run:
 

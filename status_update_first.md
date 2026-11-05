@@ -222,6 +222,40 @@ child-universe layout now exists: one child per first byte, with directed
 pair-cell counts, and it reaches 3.281/3.067 BPC. It still trails KN-2. The
 remaining issue is sparse child-page allocation, not the topology mapping.
 
+### Android byte bootstrap
+
+The same C++ binary builds and runs on Termux aarch64. The streaming loop is
+deterministic, needs no PyTorch, and reports BPC and word-start top-1 after each
+chunk:
+
+```sh
+make bootstrap
+./build/nanlm-universal bootstrap data/moby.txt 1 8
+```
+
+Alice full, 80/20, first chunk to last:
+
+| bytes seen | BPC | top-1 | word-start top-1 |
+|---:|---:|---:|---:|
+| 15,117 | 4.288 | 41.33% | 18.40% |
+| 120,950 | 3.281 | 45.12% | 20.35% |
+
+Moby Dick:
+
+| bytes seen | BPC | top-1 | word-start top-1 |
+|---:|---:|---:|---:|
+| 123,463 | 3.570 | 37.92% | 16.52% |
+| 987,714 | 3.067 | 38.98% | 17.91% |
+
+The BPC drop is sequential exposure to new bytes. Repeating the same corpus
+after saturation lowers BPC only through count scaling; argmax and word-start
+do not change. That is not new learning. A PyTorch transformer control hung on
+this Android/Termux CPU and is excluded from the on-device path.
+
+Data scale: the 2024 English Gutenberg plaintext archive is **7.8 GB / 57,049
+files**; Gutenberg has nearly 78,000 items overall. Use a 100-500 MB subset for
+the first on-device curriculum; do not put 7.8 GB in GitHub.
+
 `snapshot` / `headshift` now produce real `HeadView` packets from a serialized
 chart and evolve a local snapshot. Cross-job snapshot persistence to
 `nanlm-vram` is the next adapter.
