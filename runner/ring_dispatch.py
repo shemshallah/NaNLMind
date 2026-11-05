@@ -18,25 +18,43 @@ RUNNERS = 6
 ORDER = [0, 3, 1, 4, 2, 5]
 
 
-def gh(*args, check=True, capture=True):
+def gh(*args, check=True, capture=True, retries=5):
     cmd = ["gh", *args]
     env = dict(os.environ)
     env.setdefault("GH_TOKEN", os.environ.get("DEEPREPO_PAT", ""))
-    return subprocess.run(cmd, check=check, text=True,
-                          capture_output=capture, env=env)
+    last = None
+    for attempt in range(retries):
+        try:
+            return subprocess.run(cmd, check=check, text=True,
+                                  capture_output=capture, env=env)
+        except subprocess.CalledProcessError as exc:
+            last = exc
+            time.sleep(min(20, 2 * (attempt + 1)))
+    if check:
+        raise last
+    return last
 
 
 def latest_run(repo):
-    out = gh("run", "list", "-R", repo, "--workflow", "runner.yml",
-             "--limit", "1", "--json", "databaseId,status,conclusion,createdAt")
-    data = json.loads(out.stdout or "[]")
+    try:
+        out = gh("run", "list", "-R", repo, "--workflow", "runner.yml",
+                 "--limit", "1", "--json", "databaseId,status,conclusion,createdAt",
+                 check=False)
+    except Exception:
+        return None
+    if out is None or not getattr(out, "stdout", ""):
+        return None
+    try:
+        data = json.loads(out.stdout or "[]")
+    except Exception:
+        return None
     return data[0] if data else None
 
 
-def dispatch(repo, op, slot, epoch, minutes):
+def dispatch(repo, op, slot, epoch, minutes, epochs=10):
     gh("workflow", "run", "runner.yml", "-R", repo,
        "-f", f"op={op}", "-f", f"slot={slot + 1}", "-f", f"epoch={epoch}",
-       "-f", f"minutes={minutes}")
+       "-f", f"minutes={minutes}", "-f", f"epochs={epochs}")
 
 
 def await_run(repo, base_id, timeout=5400, poll=15):
@@ -60,6 +78,9 @@ def main():
     ap.add_argument("--minutes", type=int, default=20)
     ap.add_argument("--slots", type=int, default=RUNNERS)
     ap.add_argument("--timeout", type=int, default=5400)
+    ap.add_argument("--epochs", type=int, default=10)
+    ap.add_argument("--persistent", action="store_true",
+                    help="one loop job processes many epochs in one workspace")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--parallel", dest="parallel", action="store_true", default=False,
                     help="experimental: six writers at once (unsafe for the single reporam journal)")
@@ -80,6 +101,23 @@ def main():
 
     def repo_for(slot):
         return f"{args.owner}/nanlm-cpu-{slot + 1}"
+
+    if args.persistent:
+        slot = args.epoch % max(1, slots)
+        repo = repo_for(slot)
+        base = latest_run(repo) if not args.dry_run else None
+        base_id = base.get("databaseId") if base else None
+        print(f"epoch {args.epoch}: persistent loop on {repo}", flush=True)
+        if not args.dry_run:
+            dispatch(repo, "loop", slot, args.epoch, args.minutes, args.epochs)
+            run = await_run(repo, base_id, timeout=args.timeout)
+            ok = bool(run and run.get("conclusion") == "success")
+            summary["slots"].append({"slot": slot, "repo": repo, "run": run, "ok": ok})
+            summary["epochs"] = args.epochs
+            summary["next_epoch"] = args.epoch + args.epochs
+            summary["ok"] = ok
+        print(json.dumps(summary, indent=1))
+        return 0 if summary["ok"] else 1
 
     if args.parallel:
         # Two-phase prepare: all slots preload/publish their packets, then a

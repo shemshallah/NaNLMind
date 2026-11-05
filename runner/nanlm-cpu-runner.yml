@@ -6,7 +6,7 @@ on:
       op:
         description: selftest | prewarm | headshift | handoff | status
         type: choice
-        options: [selftest, prewarm, headshift, handoff, finalize, unlock, status]
+        options: [selftest, prewarm, headshift, handoff, loop, finalize, unlock, status]
         default: selftest
       slot:
         description: runner slot 1..6
@@ -20,6 +20,10 @@ on:
         description: shift wall-clock budget
         type: string
         default: "20"
+      epochs:
+        description: epochs for op=loop
+        type: string
+        default: "10"
 
 permissions:
   contents: read
@@ -78,7 +82,8 @@ jobs:
             --op "${{ inputs.op }}" \
             --slot "${{ inputs.slot }}" \
             --epoch "${{ inputs.epoch }}" \
-            --minutes "${{ inputs.minutes }}"
+            --minutes "${{ inputs.minutes }}" \
+            --epochs "${{ inputs.epochs }}"
 
       - name: Summary
         run: |

@@ -244,6 +244,34 @@ def op_headshift(args):
     return 0
 
 
+def op_loop(args):
+    env = connect_tiers(writer=True)
+    gate = reg_get(env, "nanlm/gate") if env is not None else None
+    if env is not None and not (gate or {}).get("ok"):
+        print("gate not passed; run op=selftest first", file=sys.stderr)
+        return 2
+    mapping = head_map()
+    rounds = []
+    for epoch in range(args.epoch, args.epoch + max(1, args.epochs)):
+        for slot in range(RUNNERS):
+            heads = mapping[str(slot)]
+            packets = [packet(slot, epoch, h) for h in heads]
+            reg_put(env, f"nanlm/head/{epoch}/{slot}", packets)
+            local_path().joinpath(f"head_{epoch}_{slot}.json").write_text(
+                json.dumps(packets, indent=1))
+        ok, record = finalize_round(env, epoch)
+        if not ok:
+            print(json.dumps({"ok": False, "op": "loop", "epoch": epoch,
+                              "error": "round did not finalize"}, indent=1))
+            return 4
+        rounds.append(record)
+        print(f"epoch {epoch}: {record['digest']}", flush=True)
+    out = {"ok": True, "op": "loop", "start": args.epoch,
+           "epochs": len(rounds), "rounds": rounds}
+    print(json.dumps(out, indent=1))
+    return 0
+
+
 def op_finalize(args):
     env = connect_tiers(writer=True)
     ok, record = finalize_round(env, args.epoch)
@@ -277,11 +305,12 @@ def op_status(args):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--op", choices=["selftest", "prewarm", "headshift", "handoff", "finalize", "unlock", "status"],
+    ap.add_argument("--op", choices=["selftest", "prewarm", "headshift", "handoff", "loop", "finalize", "unlock", "status"],
                     default="selftest")
     ap.add_argument("--slot", type=int, default=None)
     ap.add_argument("--epoch", type=int, default=0)
     ap.add_argument("--minutes", type=int, default=20)
+    ap.add_argument("--epochs", type=int, default=10)
     args = ap.parse_args()
     args.slot = parse_slot(args.slot)
     args.slot_name = SLOT_NAMES[args.slot]
@@ -289,6 +318,8 @@ def main():
         return op_selftest(args)
     if args.op == "prewarm":
         return op_prewarm(args)
+    if args.op == "loop":
+        return op_loop(args)
     if args.op == "finalize":
         return op_finalize(args)
     if args.op == "unlock":

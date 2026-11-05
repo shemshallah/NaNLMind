@@ -12,6 +12,10 @@ on:
         description: per-slot wall-clock budget
         type: string
         default: "20"
+      epochs:
+        description: epochs per persistent loop job
+        type: string
+        default: "10"
       loop:
         description: dispatch the next epoch when this one completes
         type: boolean
@@ -92,13 +96,16 @@ jobs:
             --owner "${{ github.repository_owner }}" \
             --epoch "${{ inputs.epoch }}" \
             --minutes "${{ inputs.minutes }}" \
+            --epochs "${{ inputs.epochs }}" \
+            --persistent \
             --slots 6
 
       - name: Continue to next epoch
         if: ${{ inputs.loop && success() }}
         run: |
-          next=$(( ${{ inputs.epoch }} + 1 ))
+          next=$(( ${{ inputs.epoch }} + ${{ inputs.epochs }} ))
           gh variable set NANLM_EPOCH --body "$next" -R "${{ github.repository }}" || true
           gh workflow run ring.yml -R "${{ github.repository }}" \
-            -f epoch="$next" -f minutes="${{ inputs.minutes }}" -f loop=true
+            -f epoch="$next" -f minutes="${{ inputs.minutes }}" \
+            -f epochs="${{ inputs.epochs }}" -f loop=true
           echo "next epoch $next dispatched"
