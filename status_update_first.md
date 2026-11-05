@@ -311,6 +311,15 @@ pages they use. The Android constructor is guarded invalid, and the dense map
 test is skipped on Android; only the x86 runner ring maps the 2 GiB region.
 `test_overbootstrap_map` passes on the runner path.
 
+### Koyeb training merge
+
+Training deltas can merge without macrocluster storage. `runner/training_merge.py`
+is a scoped HTTP service (`/v1/training/merge`) that merges head vectors,
+strengths, routes, base generations, and nanclock ticks with idempotency and
+stale-base rejection. The bootstrap runner keeps the 2 GiB map; Koyeb holds only
+the small merge state. `make merge-test` passes. Deploy files are under
+`deploy/training_merge/`; `DEEPREPO_PAT` is never used.
+
 ### Bootstrap head store
 
 `HeadStore` writes all 256 Hopfield head vectors through the runner map into the

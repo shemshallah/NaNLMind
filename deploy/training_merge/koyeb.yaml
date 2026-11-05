@@ -1,0 +1,17 @@
+# Illustrative Koyeb service definition. Use a persistent volume for /data.
+name: nanlm-training-merge
+type: web
+ports:
+  - port: 8080
+    protocol: http
+build:
+  docker:
+    dockerfile: deploy/training_merge/Dockerfile
+env:
+  - key: NANLM_MERGE_ROOT
+    value: /data
+  - key: NANLM_MERGE_TOKEN
+    secret: true
+volumes:
+  - mount_path: /data
+    size_gb: 2

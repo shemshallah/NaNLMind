@@ -39,6 +39,7 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 33 | [33_BOOTSTRAP_ROUTER.md](33_BOOTSTRAP_ROUTER.md) | How does the bootstrap router work with a bootstrap-only 2 GiB map and 8 MiB Android peers? |
 | 34 | [34_HOPFIELD_LEARNING.md](34_HOPFIELD_LEARNING.md) | Can the sparse Hopfield layer learn and replay a token sequence? |
 | 35 | [35_BOOTSTRAP_HEAD_STORE.md](35_BOOTSTRAP_HEAD_STORE.md) | How do trained head vectors reach the 2 GiB overbootstrap head arena? |
+| 36 | [36_TRAINING_MERGE.md](36_TRAINING_MERGE.md) | How does Koyeb merge training deltas without holding the 2 GiB map? |
 
 The short version:
 
