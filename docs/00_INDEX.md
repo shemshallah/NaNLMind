@@ -51,6 +51,7 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 45 | [45_WORD_VECTOR_GATE.md](45_WORD_VECTOR_GATE.md) | Can the word-vector layer beat unigram or bigram? |
 | 46 | [46_LOGIC_SCALE_BASELINE.md](46_LOGIC_SCALE_BASELINE.md) | How large is the symbolic logic baseline, and what does it prove? |
 | 47 | [47_BOOLEAN_HEADS_CURRICULUM.md](47_BOOLEAN_HEADS_CURRICULUM.md) | Do all 256 heads learn their own Boolean mappings and bit manipulation? |
+| 48 | [48_HEAD_GATES.md](48_HEAD_GATES.md) | Can learned Boolean heads evaluate relation masks and exceptions? |
 
 The short version:
 

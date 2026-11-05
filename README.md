@@ -201,6 +201,7 @@ baseline — a plain RNN matching the 256-head topology — is in
 | `docs/45_WORD_VECTOR_GATE.md` | binned word-vector expert vs word bigram |
 | `docs/46_LOGIC_SCALE_BASELINE.md` | 20k-entity symbolic logic baseline and universal triple corpus |
 | `docs/47_BOOLEAN_HEADS_CURRICULUM.md` | all 256 heads learn individual Boolean functions and bit manipulation |
+| `docs/48_HEAD_GATES.md` | learned Boolean heads applied as 32-lane relation gates |
 | `docs/18_HEAD_RING.md` | six-runner handoff, preload, map-back, workflows |
 | `docs/19_LEGACY_TESTS.md` | R18T language tests and R21–R23 logic regressions |
 | `docs/20_META_ROUTER.md` | universes as heads, routes as pairs, qNaN/sNaN BE/LE portals |

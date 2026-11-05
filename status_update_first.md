@@ -311,6 +311,14 @@ pages they use. The Android constructor is guarded invalid, and the dense map
 test is skipped on Android; only the x86 runner ring maps the 2 GiB region.
 `test_overbootstrap_map` passes on the runner path.
 
+### Learned Boolean relation gates
+
+`HeadGate` applies a learned 16-function head to 32-bit relation masks. All 16
+functions are learned and checked; the `A AND NOT B` gate computes the penguin
+exception mask (`0x05`) and an alternate assignment (`0xD0`). Self-modify/restore
+and head-array verification pass. This connects Boolean heads to relation
+evaluation without a host Boolean shortcut.
+
 ### 256-head Boolean curriculum
 
 All 256 self-modifying heads learned their individual 16-function target:
