@@ -280,6 +280,17 @@ byte model learned the rules. The byte model remains at 0.5.
 `./build/nanlm-universal words` prints the vocabulary/association count and a
 few answers. The layer is documented in `docs/31_WORD_MEMORY.md`.
 
+### Hard logic warmup
+
+A nested-exception corpus (`emperor -> penguin -> bird`, `penguin cannot fly`,
+`penguin can swim`) was trained bytewise for ten passes with balanced answers.
+Hard BPC improves from **4.966 to 2.810** and top-1 stays **0.773**. The raw
+byte probe still collapses same-entity pairs (`emperor fly` and `emperor swim`
+get the same local answer), so the aggregate 1 yes / 3 no / 6 uncertain was an
+artifact, not a result. The system answer is now routed through `WordMemory`,
+which follows the kind chain and answers all ten hard cases correctly. More byte
+passes sharpen probabilities; they do not create entity binding.
+
 ### Behavior gates and the fixed challenge
 
 Archived behavior gates run as reproducible targets:

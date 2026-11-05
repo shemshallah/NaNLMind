@@ -187,14 +187,44 @@ std::optional<std::string> WordMemory::cannot_of(const std::string& entity) cons
     return lookup(WordRelation::Cannot, {entity, "cannot"});
 }
 
+std::optional<bool> WordMemory::answer(const std::string& entity,
+                                      const std::string& ability) const {
+    // Follow the kind chain (entity -> kind -> superkind...) and let the
+    // nearest/any explicit exception win. This handles nested exceptions such
+    // as emperor -> penguin -> bird with "penguin cannot fly".
+    std::vector<std::string> chain;
+    std::string current = entity;
+    for (int depth = 0; depth < 8; ++depth) {
+        const auto kind = kind_of(current);
+        if (!kind) break;
+        bool seen = false;
+        for (const auto& c : chain) if (c == *kind) { seen = true; break; }
+        if (seen) break;
+        chain.push_back(*kind);
+        current = *kind;
+    }
+
+    bool can = false;
+    bool known = false;
+    for (const auto& node : chain) {
+        if (cannot_of(node) && *cannot_of(node) == ability) return false;
+        if (can_of(node) && *can_of(node) == ability) {
+            can = true;
+            known = true;
+        }
+    }
+    if (cannot_of(entity) && *cannot_of(entity) == ability) return false;
+    if (can_of(entity) && *can_of(entity) == ability) {
+        can = true;
+        known = true;
+    }
+    if (!known) return std::nullopt;
+    return can;
+}
+
 bool WordMemory::answer_yes(const std::string& entity,
                             const std::string& ability) const {
-    const auto kind = kind_of(entity);
-    if (!kind) return false;
-    const auto can = can_of(*kind);
-    if (!can || *can != ability) return false;
-    const auto cannot = cannot_of(entity);
-    return !(cannot && *cannot == ability);
+    return answer(entity, ability).value_or(false);
 }
 
 } // namespace nanlm

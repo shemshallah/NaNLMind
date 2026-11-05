@@ -35,6 +35,7 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 29 | [29_REPEATABILITY.md](29_REPEATABILITY.md) | Is the alternating clock nondeterminism or a designed period-2 orbit? |
 | 30 | [30_VECTOR_BINS.md](30_VECTOR_BINS.md) | How do points address vector bins and macro associations? |
 | 31 | [31_WORD_MEMORY.md](31_WORD_MEMORY.md) | What does the word layer over bins answer, and what does it prove? |
+| 32 | [32_HARD_LOGIC_WARMUP.md](32_HARD_LOGIC_WARMUP.md) | What happens after ten bytewise passes on nested-exception relations? |
 
 The short version:
 

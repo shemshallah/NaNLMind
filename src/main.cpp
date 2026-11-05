@@ -580,6 +580,94 @@ int cmd_words() {
     return 0;
 }
 
+int cmd_warmup(int argc, char** argv) {
+    int passes = argc > 2 ? std::stoi(argv[2]) : 10;
+    if (passes < 1) passes = 1;
+    const std::string relation_text =
+        "robin is a bird. sparrow is a bird. eagle is a bird. "
+        "penguin is a bird. penguin cannot fly. penguin can swim. "
+        "ostrich is a bird. ostrich cannot fly. ostrich can run. "
+        "emperor is a penguin. king is a penguin. "
+        "bird can fly. fish can swim. fish cannot fly. salmon is a fish. "
+        "can robin fly? answer robin yes. "
+        "can sparrow fly? answer sparrow yes. "
+        "can penguin fly? answer penguin no. "
+        "can penguin swim? answer penguin yes. "
+        "can penguin run? answer penguin no. "
+        "can ostrich fly? answer ostrich no. "
+        "can ostrich run? answer ostrich yes. "
+        "can salmon swim? answer salmon yes. "
+        "can salmon fly? answer salmon no. "
+        "can salmon walk? answer salmon no. ";
+    const std::string hard_text =
+        "can emperor fly? answer emperor no. "
+        "can emperor swim? answer emperor yes. "
+        "can king fly? answer king no. "
+        "can king swim? answer king yes. "
+        "can penguin fly? answer penguin no. "
+        "can penguin swim? answer penguin yes. "
+        "can ostrich run? answer ostrich yes. "
+        "can ostrich fly? answer ostrich no. "
+        "can sparrow fly? answer sparrow yes. "
+        "can salmon fly? answer salmon no. ";
+
+    struct Case { const char* entity; const char* ability; bool yes; };
+    const Case cases[] = {
+        {"emperor", "fly", false},
+        {"emperor", "swim", true},
+        {"king", "fly", false},
+        {"king", "swim", true},
+        {"penguin", "fly", false},
+        {"penguin", "swim", true},
+        {"ostrich", "run", true},
+        {"ostrich", "fly", false},
+        {"sparrow", "fly", true},
+        {"salmon", "fly", false},
+    };
+
+    BinStore logic_store;
+    WordMemory logic(logic_store);
+    if (!logic.build(relation_text)) {
+        std::cerr << "word memory build failed\n";
+        return 1;
+    }
+    Context2Model model;
+    const std::vector<std::uint8_t> warm(relation_text.begin(), relation_text.end());
+    const std::vector<std::uint8_t> hard(hard_text.begin(), hard_text.end());
+    model.train(warm);
+    std::cout << "warmup passes=" << passes << " corpus=" << warm.size()
+              << " hard_queries=" << (sizeof(cases) / sizeof(cases[0]))
+              << " (system answers via word memory; byte BPC is diagnostic)\n";
+    for (int pass = 1; pass <= passes; ++pass) {
+        if (pass > 1) {
+            for (std::size_t i = 2; i < warm.size(); ++i) {
+                model.observe(warm[i - 2], warm[i - 1], warm[i]);
+            }
+        }
+        const Context2Eval eval = model.evaluate(hard, 2, hard.size());
+        std::size_t correct = 0;
+        for (const Case& c : cases) {
+            const auto routed = logic.answer(c.entity, c.ability);
+            const int system = routed ? (*routed ? 1 : 0) : -1;
+            if (system == (c.yes ? 1 : 0)) ++correct;
+            if (pass == passes) {
+                std::cout << "  " << c.entity << " " << c.ability
+                          << " expected=" << (c.yes ? "yes" : "no")
+                          << " system="
+                          << (system == 1 ? "yes" : system == 0 ? "no" : "unknown")
+                          << "\n";
+            }
+        }
+        std::cout << "pass=" << pass << " bytes_seen="
+                  << warm.size() * static_cast<std::size_t>(pass)
+                  << " hard_bpc=" << eval.bits_per_byte
+                  << " hard_top1=" << eval.accuracy
+                  << " word_accuracy=" << static_cast<double>(correct) /
+                         (sizeof(cases) / sizeof(cases[0])) << "\n";
+    }
+    return 0;
+}
+
 int cmd_vectors() {
     BinStore store;
     const BinId keys = store.create(8, 2);
@@ -830,6 +918,7 @@ void usage() {
               << "  ctx2 [path] context-2 child-chart layout\n"
               << "  vectors      addressable vector bins and macro recall\n"
               << "  words        word layer over vector bins\n"
+              << "  warmup [n]   bytewise relation warmup and hard query probe\n"
               << "  bootstrap [path] [epochs] streaming byte bootstrap\n"
               << "  snapshot    write state/chart.nmc\n"
               << "  headshift   real HeadView packets for one slot\n"
@@ -860,6 +949,7 @@ int main(int argc, char** argv) {
     if (cmd == "ctx2") return cmd_ctx2(argc, argv);
     if (cmd == "vectors") return cmd_vectors();
     if (cmd == "words") return cmd_words();
+    if (cmd == "warmup") return cmd_warmup(argc, argv);
     if (cmd == "bootstrap") return cmd_bootstrap(argc, argv);
     if (cmd == "snapshot") return cmd_snapshot(argc, argv);
     if (cmd == "headshift") return cmd_headshift(argc, argv);

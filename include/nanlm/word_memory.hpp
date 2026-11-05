@@ -31,6 +31,9 @@ public:
 
     bool build(const std::string& corpus);
     bool answer_yes(const std::string& entity, const std::string& ability) const;
+    // Definite answer only when the entity/kind chain has a usable can/cannot
+    // relation; nullopt means the word memory does not know.
+    std::optional<bool> answer(const std::string& entity, const std::string& ability) const;
 
     std::size_t vocab() const { return token_names_.size(); }
     std::uint16_t vector_dim() const { return vector_dim_; }
