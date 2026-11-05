@@ -17,6 +17,7 @@
 #include "nanlm/hypergraph.hpp"
 #include "nanlm/head.hpp"
 #include "nanlm/ledger.hpp"
+#include "nanlm/journal_forest.hpp"
 #include "nanlm/pager.hpp"
 #include "nanlm/temporal.hpp"
 #include "nanlm/universe.hpp"
@@ -55,6 +56,10 @@ public:
     const Hypergraph& hypergraph() const { return hypergraph_; }
     BidirectionalMemory& temporal() { return temporal_; }
     const BidirectionalMemory& temporal() const { return temporal_; }
+    JournalForest& journals() { return journals_; }
+    const JournalForest& journals() const { return journals_; }
+    JournalRecord commit_shard(std::uint32_t shard, std::uint64_t epoch, std::uint8_t kind,
+                               Hash256 subject, Hash256 payload, Hash256 causal_parent = {});
     Ledger& ledger() { return ledger_; }
     const Ledger& ledger() const { return ledger_; }
     TemporalClock& clock() { return clock_; }
@@ -89,6 +94,8 @@ public:
     // One identity for the whole object: chart hashes + hypergraph + temporal
     // memory + ledger head.
     Hash256 global_digest() const;
+    std::vector<std::uint8_t> serialize() const;
+    static std::unique_ptr<GlobalTopology> from_bytes(const std::uint8_t*, std::size_t);
 
     // Explicit committed event. The caller supplies the before/after state
     // hashes; the global ledger is the single history.
@@ -100,6 +107,7 @@ private:
     Hypergraph hypergraph_;
     BidirectionalMemory temporal_;
     Ledger ledger_;
+    JournalForest journals_;
     TemporalClock clock_;
     AtomicClock atomic_;
     ManifestStore manifests_;

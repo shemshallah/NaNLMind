@@ -15,6 +15,8 @@
 
 #include <array>
 #include <cstdint>
+#include <functional>
+#include <utility>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -76,6 +78,7 @@ struct MappingRecord {
     CryptoSuite suite = CryptoSuite::Ed25519;
     std::array<std::uint8_t, 64> signature{};
 
+    Hash256 signing_digest() const;
     Hash256 digest() const;
     bool signature_present() const { return signature[0] != 0; }
 };
@@ -89,6 +92,8 @@ struct RouteResultNTF {
 
 class TranslationFabric {
 public:
+    using SignatureVerifier = std::function<bool(const MappingRecord&, const Hash256&)>;
+    void set_signature_verifier(SignatureVerifier verifier) { verifier_ = std::move(verifier); }
     bool publish(const MappingRecord& record, std::uint64_t now, std::string* error = nullptr);
     RouteResultNTF resolve(std::uint16_t universe, std::uint64_t now,
                            std::uint64_t min_generation = 0) const;
@@ -97,6 +102,7 @@ public:
     std::size_t size() const { return mappings_.size(); }
 
 private:
+    SignatureVerifier verifier_;
     std::unordered_map<std::uint16_t, MappingRecord> mappings_;
 };
 

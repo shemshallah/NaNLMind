@@ -1,6 +1,7 @@
 #include "nanlm/turing_machine.hpp"
 
 #include <algorithm>
+#include <cstring>
 
 namespace nanlm {
 namespace {
@@ -28,7 +29,7 @@ void TuringTape::write(std::int64_t position, std::uint8_t symbol) {
     const auto [page, offset] = split_position(position);
     auto& ptr = pages_[page];
     if (!ptr) ptr = std::make_unique<Universe>(0x544D5047u + static_cast<std::uint64_t>(page));
-    ptr->address_reg(static_cast<std::uint16_t>(offset)).meta = symbol;
+    ptr->set_address_meta(static_cast<std::uint16_t>(offset), symbol);
 }
 
 std::string TuringTape::slice(std::int64_t begin, std::int64_t end) const {
@@ -40,30 +41,36 @@ std::string TuringTape::slice(std::int64_t begin, std::int64_t end) const {
     return out;
 }
 
-void TuringMachine::load(const std::vector<TmTransition>& transitions) {
+bool TuringMachine::load(const std::vector<TmTransition>& transitions) {
     for (const auto& t : transitions) {
-        if (t.from >= kMaxStates || t.read >= kAlphabet) continue;
-        const std::uint64_t move = static_cast<std::uint64_t>(t.move + 1);
-        universe_->address_reg(static_cast<std::uint16_t>(
-            kTableBase + t.from * 8u + t.read)).meta =
-            static_cast<std::uint64_t>(t.write) |
-            (static_cast<std::uint64_t>(t.to) << 8) |
-            (move << 16) |
-            (1ull << 20) |
-            (t.halt ? (1ull << 21) : 0ull);
+        if (t.from >= kMaxStates || t.read >= kAlphabet || t.write >= kAlphabet ||
+            t.to >= kMaxStates || t.move < -1 || t.move > 1) return false;
     }
-    universe_->address_reg(kControlBase + kHaltSlot).meta = 0;
-    universe_->address_reg(kControlBase + kStateSlot).meta = 0;
+    for (std::uint16_t i = 0; i < kMaxStates * 8u; ++i)
+        universe_->set_address_meta(static_cast<std::uint16_t>(kTableBase + i), 0);
+    for (const auto& t : transitions) {
+        const std::uint64_t move = static_cast<std::uint64_t>(t.move + 1);
+        const auto addr = static_cast<std::uint16_t>(kTableBase + t.from * 8u + t.read);
+        const std::uint64_t encoded = static_cast<std::uint64_t>(t.write) |
+            (static_cast<std::uint64_t>(t.to) << 8) | (move << 16) |
+            (1ull << 20) | (t.halt ? (1ull << 21) : 0ull);
+        universe_->set_address_meta(addr, encoded);
+    }
+    universe_->set_address_meta(kControlBase + kHaltSlot, 0);
+    universe_->set_address_meta(kControlBase + kStateSlot, 0);
+    universe_->set_address_meta(kControlBase + kHeadSlot, 0);
+    return true;
 }
 
 void TuringMachine::set_tape(const std::string& tape, std::int64_t head) {
+    tape_.clear();
     for (std::int64_t i = 0; i < static_cast<std::int64_t>(tape.size()); ++i) {
         const char c = tape[static_cast<std::size_t>(i)];
         tape_.write(i, c == '0' ? 0 : c == '1' ? 1 : 2);
     }
-    universe_->address_reg(kControlBase + kHeadSlot).meta = static_cast<std::uint64_t>(head);
-    universe_->address_reg(kControlBase + kStateSlot).meta = 0;
-    universe_->address_reg(kControlBase + kHaltSlot).meta = 0;
+    universe_->set_address_meta(kControlBase + kHeadSlot, static_cast<std::uint64_t>(head));
+    universe_->set_address_meta(kControlBase + kStateSlot, 0);
+    universe_->set_address_meta(kControlBase + kHaltSlot, 0);
 }
 
 bool TuringMachine::halted() const {
@@ -87,21 +94,24 @@ bool TuringMachine::step() {
     const std::uint8_t s = state();
     const std::int64_t h = head();
     const std::uint8_t read = tape_.read(h);
+    if (s >= kMaxStates || read >= kAlphabet) {
+        universe_->set_address_meta(kControlBase + kHaltSlot, 1);
+        return false;
+    }
     const std::uint64_t raw =
         universe_->address_reg(static_cast<std::uint16_t>(kTableBase + s * 8u + read)).meta;
     if ((raw & (1ull << 20)) == 0) {
-        universe_->address_reg(kControlBase + kHaltSlot).meta = 1;
+        universe_->set_address_meta(kControlBase + kHaltSlot, 1);
         return false;
     }
     const std::uint8_t write = static_cast<std::uint8_t>(raw & 0xFFu);
     const std::uint8_t to = static_cast<std::uint8_t>((raw >> 8) & 0xFFu);
-    const std::int8_t move = static_cast<std::int8_t>(((raw >> 16) & 0x3u) - 1);
+    const std::int8_t move = static_cast<std::int8_t>(static_cast<int>((raw >> 16) & 0x3u) - 1);
     tape_.write(h, write);
-    universe_->address_reg(kControlBase + kStateSlot).meta = to;
-    universe_->address_reg(kControlBase + kHeadSlot).meta =
-        static_cast<std::uint64_t>(h + move);
+    universe_->set_address_meta(kControlBase + kStateSlot, to);
+    universe_->set_address_meta(kControlBase + kHeadSlot, static_cast<std::uint64_t>(h + move));
     if ((raw & (1ull << 21)) != 0) {
-        universe_->address_reg(kControlBase + kHaltSlot).meta = 1;
+        universe_->set_address_meta(kControlBase + kHaltSlot, 1);
         return false;
     }
     return true;
@@ -113,4 +123,29 @@ std::size_t TuringMachine::run(std::size_t max_steps) {
     return n;
 }
 
+std::vector<std::uint8_t> TuringTape::serialize() const {
+    std::vector<std::uint8_t> out{'N','L','M','T','A','P','E','1'};
+    auto put=[&](std::uint64_t v,unsigned n){for(unsigned i=0;i<n;++i)out.push_back(static_cast<std::uint8_t>(v>>(8*i)));};
+    std::vector<std::int64_t> keys;keys.reserve(pages_.size());
+    for(const auto& kv:pages_)keys.push_back(kv.first);
+    std::sort(keys.begin(),keys.end());put(keys.size(),4);
+    for(auto key:keys){const auto bytes=pages_.at(key)->serialize();put(static_cast<std::uint64_t>(key),8);put(bytes.size(),8);out.insert(out.end(),bytes.begin(),bytes.end());}
+    return out;
+}
+bool TuringTape::restore(const std::uint8_t* data,std::size_t len) {
+    if(!data||len<12||std::memcmp(data,"NLMTAPE1",8)!=0)return false;
+    std::size_t p=8;
+    auto get=[&](unsigned n,std::uint64_t&v){if(p>len||len-p<n)return false;v=0;for(unsigned i=0;i<n;++i)v|=static_cast<std::uint64_t>(data[p++])<<(8*i);return true;};
+    std::uint64_t count=0;if(!get(4,count)||count>(len-p)/16)return false;
+    std::unordered_map<std::int64_t,std::unique_ptr<Universe>> restored;
+    for(std::uint64_t i=0;i<count;++i){std::uint64_t key=0,size=0;if(!get(8,key)||!get(8,size)||size>len-p)return false;
+        auto page=Universe::from_bytes(data+p,static_cast<std::size_t>(size));if(!page)return false;
+        std::string error;if(!page->verify(&error))return false;
+        const auto canonical=page->serialize();if(canonical.size()!=size||std::memcmp(canonical.data(),data+p,static_cast<std::size_t>(size))!=0)return false;
+        p+=static_cast<std::size_t>(size);const auto signed_key=static_cast<std::int64_t>(key);
+        if(!restored.emplace(signed_key,std::move(page)).second)return false;}
+    if(p!=len)return false;pages_=std::move(restored);return true;
+}
+
 } // namespace nanlm
+

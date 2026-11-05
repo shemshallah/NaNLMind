@@ -61,6 +61,8 @@ public:
     diffuse(const std::unordered_map<Ref, std::int32_t, RefHash>& energy) const;
 
     Hash256 digest() const;
+    std::vector<std::uint8_t> serialize() const;
+    static Hypergraph from_bytes(const std::uint8_t* data, std::size_t len);
 
 private:
     std::unordered_map<std::uint32_t, Hyperedge> edges_;

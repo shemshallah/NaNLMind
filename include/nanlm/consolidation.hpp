@@ -40,6 +40,7 @@ struct Manifest {
 class ManifestStore {
 public:
     void reset(const PageId& root_page, const Hash256& root_hash);
+    bool restore(const Manifest& manifest);
     Manifest snapshot() const;
     bool publish(Manifest next, std::uint64_t expected_generation);
     std::uint64_t generation() const;

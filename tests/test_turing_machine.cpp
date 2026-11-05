@@ -1,31 +1,19 @@
 #include "nanlm/turing_machine.hpp"
 #include "test_util.hpp"
-
 using namespace nanlm;
-
 int main() {
-    Universe u(0x544D4143);
-    TuringMachine tm(u);
-    // Binary increment: rightmost bit starts at head=3.
-    // q0,1 -> write 0, left, q0
-    // q0,0 -> write 1, stay, HALT
-    // q0,blank -> write 1, stay, HALT
-    tm.load({
-        {0, 1, 0, -1, 0, false},
-        {0, 0, 1, 0, 0, true},
-        {0, 2, 1, 0, 0, true},
-    });
-    tm.set_tape("1011", 3);
-    tm.run(100);
-    CHECK(tm.halted());
-    CHECK_EQ(tm.tape(0, 4), std::string("1100"));
-    CHECK(tm.tape_pages() >= 1u);
-
-    // 111 + 1 = 1000 (the head writes the carry into a new blank cell).
-    tm.set_tape("111", 2);
-    tm.run(100);
-    CHECK(tm.halted());
-    CHECK_EQ(tm.tape(-1, 3), std::string("1000"));
-
-    return test_done("general Turing machine: binary increment");
+    Universe u(0x544D4143); TuringMachine tm(u);
+    const std::vector<TmTransition> program{{0,1,0,-1,0,false},{0,0,1,0,0,true},{0,2,1,0,0,true}};
+    CHECK(tm.load(program)); tm.set_tape("1011",3); CHECK(tm.step());
+    CHECK(u.verify());
+    const auto tape=tm.serialize_tape(); const auto chart=u.serialize();
+    auto restored_chart=Universe::from_bytes(chart.data(),chart.size()); CHECK(restored_chart!=nullptr);
+    CHECK(restored_chart->verify());
+    TuringMachine resumed(*restored_chart);
+    CHECK(resumed.restore_tape(tape.data(),tape.size())); resumed.run(100);
+    CHECK(resumed.halted()); CHECK_EQ(resumed.tape(0,4),std::string("1100"));
+    CHECK(tm.load(program)); tm.set_tape("111",2); tm.run(100);
+    CHECK(tm.halted()); CHECK_EQ(tm.tape(-1,3),std::string("1000"));
+    auto bad=tape; bad.pop_back(); CHECK(!resumed.restore_tape(bad.data(),bad.size()));
+    return test_done("Turing machine tape persistence");
 }

@@ -90,5 +90,12 @@ int main() {
     CHECK(!hg.remove(id));
     CHECK_EQ(hg.incident(a).size(), 0u);
 
+    const auto wire = hg.serialize();
+    auto restored = Hypergraph::from_bytes(wire.data(), wire.size());
+    CHECK_EQ(restored.size(), hg.size());
+    CHECK(restored.digest() == hg.digest());
+    auto truncated = wire; truncated.pop_back();
+    CHECK_EQ(Hypergraph::from_bytes(truncated.data(), truncated.size()).size(), 0u);
+
     return test_done("palindromic temporal hypergraph");
 }

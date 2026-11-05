@@ -48,6 +48,7 @@ private:
     Hash256 genesis_{};
     Hash256 head_{};
     std::vector<Event> events_;
+    bool valid_encoding_ = true;
 };
 
 struct Delta {

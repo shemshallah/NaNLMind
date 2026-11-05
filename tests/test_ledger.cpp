@@ -32,9 +32,15 @@ int main() {
     // Tamper with one byte of one event.
     auto tampered = bytes;
     const std::size_t event_offset = 8 + 32 + 32 + 8;
-    tampered[event_offset + 20 * sizeof(Event) + 3] ^= 0x01u;
+    tampered[event_offset + 20 * 154 + 3] ^= 0x01u;
     Ledger broken = Ledger::from_bytes(tampered.data(), tampered.size());
     CHECK(!broken.verify(&err));
+
+    CHECK_EQ(bytes.size(), 8u + 32u + 32u + 8u + 64u * 154u);
+    auto truncated = bytes; truncated.pop_back();
+    CHECK(!Ledger::from_bytes(truncated.data(), truncated.size()).verify(&err));
+    auto trailing = bytes; trailing.push_back(0);
+    CHECK(!Ledger::from_bytes(trailing.data(), trailing.size()).verify(&err));
 
     // A bad magic is rejected.
     auto bad = bytes;

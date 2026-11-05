@@ -68,5 +68,12 @@ int main() {
     CHECK(!m.forward(a, out, 1));
     CHECK(m.forward(a, out, 4));
 
+    const auto wire = m.serialize();
+    auto restored = BidirectionalMemory::from_bytes(wire.data(), wire.size());
+    CHECK_EQ(restored.size(), m.size());
+    CHECK(restored.digest() == m.digest());
+    auto truncated = wire; truncated.pop_back();
+    CHECK_EQ(BidirectionalMemory::from_bytes(truncated.data(), truncated.size()).size(), 0u);
+
     return test_done("bidirectional temporal memory");
 }

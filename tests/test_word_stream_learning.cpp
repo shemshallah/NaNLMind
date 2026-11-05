@@ -1,4 +1,5 @@
 #include "test_util.hpp"
+#include <cstdint>
 
 #include <cctype>
 #include <fstream>

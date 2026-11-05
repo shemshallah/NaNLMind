@@ -47,6 +47,8 @@ public:
 
     std::size_t size() const { return links_.size(); }
     Hash256 digest() const;
+    std::vector<std::uint8_t> serialize() const;
+    static BidirectionalMemory from_bytes(const std::uint8_t* data, std::size_t len);
 
 private:
     std::unordered_map<std::uint32_t, TemporalLink> links_;

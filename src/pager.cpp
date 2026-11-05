@@ -183,6 +183,11 @@ void PageTable::mark_dirty(Entry& entry, std::uint16_t cell) {
     const std::uint32_t idx = entry.page->index_of_addr(cell);
     if (idx >= kCanonicalCount) return;
     entry.dirty_cells[idx >> 6] |= bit_mask(static_cast<std::uint16_t>(idx));
+    auto& c = entry.page->at_addr(cell);
+    auto& d = entry.page->descriptor_at_addr(cell);
+    d.checksum = Universe::cell_checksum(c);
+    d.generation = c.generation;
+    d.epoch = c.epoch;
     entry.page->mark_address_dirty(cell);
     entry.dirty = true;
 }

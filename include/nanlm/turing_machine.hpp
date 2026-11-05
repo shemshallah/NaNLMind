@@ -27,6 +27,9 @@ public:
     std::uint8_t read(std::int64_t position) const;
     void write(std::int64_t position, std::uint8_t symbol);
     std::size_t pages() const { return pages_.size(); }
+    void clear() { pages_.clear(); }
+    std::vector<std::uint8_t> serialize() const;
+    bool restore(const std::uint8_t* data, std::size_t len);
     std::string slice(std::int64_t begin, std::int64_t end) const;
 
 private:
@@ -43,7 +46,9 @@ public:
 
     explicit TuringMachine(Universe& universe) : universe_(&universe) {}
 
-    void load(const std::vector<TmTransition>& transitions);
+    bool load(const std::vector<TmTransition>& transitions);
+    std::vector<std::uint8_t> serialize_tape() const { return tape_.serialize(); }
+    bool restore_tape(const std::uint8_t* data, std::size_t len) { return tape_.restore(data, len); }
     void set_tape(const std::string& tape, std::int64_t head);
     bool step();
     std::size_t run(std::size_t max_steps = 1000000);
