@@ -38,6 +38,7 @@ int main() {
     CHECK(!words.kind_of("zorp").has_value());
     CHECK(words.kind_of("emperor").has_value());
     if (words.kind_of("emperor")) CHECK_EQ(*words.kind_of("emperor"), std::string("penguin"));
+    CHECK(!words.answer_yes("cassowary", "fly")); // exception beats bird inheritance
     CHECK(!words.answer_yes("emperor", "fly"));
     CHECK(words.answer_yes("emperor", "swim"));
     CHECK(!words.answer_yes("king", "fly"));

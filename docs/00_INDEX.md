@@ -52,6 +52,9 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 46 | [46_LOGIC_SCALE_BASELINE.md](46_LOGIC_SCALE_BASELINE.md) | How large is the symbolic logic baseline, and what does it prove? |
 | 47 | [47_BOOLEAN_HEADS_CURRICULUM.md](47_BOOLEAN_HEADS_CURRICULUM.md) | Do all 256 heads learn their own Boolean mappings and bit manipulation? |
 | 48 | [48_HEAD_GATES.md](48_HEAD_GATES.md) | Can learned Boolean heads evaluate relation masks and exceptions? |
+| 49 | [49_BOOLEAN_SPECTRUM.md](49_BOOLEAN_SPECTRUM.md) | What are ANF, Walsh, symmetry classes and the four-NaN transforms? |
+| 50 | [50_LIFT_AND_SCALE.md](50_LIFT_AND_SCALE.md) | Which lift, hypervector and scale-stack forms should we build? |
+| 51 | [51_HYPERVECTOR_TRIPLES.md](51_HYPERVECTOR_TRIPLES.md) | Can XOR hypervectors store and recall merged triples? |
 
 The short version:
 

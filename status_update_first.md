@@ -311,6 +311,21 @@ pages they use. The Android constructor is guarded invalid, and the dense map
 test is skipped on Android; only the x86 runner ring maps the 2 GiB region.
 `test_overbootstrap_map` passes on the runner path.
 
+### Hypervector triple store
+
+A 4096-bit XOR hypervector store binds subject/relation/object, bundles with
+integer counters, merges by addition, and cleans up by Hamming distance.
+Penguin/eagle/bird facts recall after merge. This is the distributed relation
+representation; no floats.
+
+### Boolean spectrum and lift design
+
+The four-NaN transform chain is fixed (Klein-four, every phase self-inverse) and
+passes 65,536×4 checks. ANF/Walsh/symmetry transforms and the 256×256
+symmetric/antisymmetric transpose split pass. The lift decision is recorded:
+embed/restrict as stored truth, sketches upward, outer products for relations,
+NTT optional. Cassowary is now an explicit word/logic exception.
+
 ### Learned Boolean relation gates
 
 `HeadGate` applies a learned 16-function head to 32-bit relation masks. All 16
