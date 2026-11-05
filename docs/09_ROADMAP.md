@@ -9,7 +9,7 @@ then train it. Do not invert the order.
 
 **Deliverables**
 
-- all 27 archives extracted under `NaNLM_statespace/archive/`;
+- all 28 archives extracted under `NaNLM_statespace/archive/`;
 - SHA-256 manifest;
 - Round 2–23 discovery audit with demonstrated / host-driven / open status;
 - clean C++20 core for address algebra, NaN16 Boolean functions, the 8 MiB

@@ -4,15 +4,18 @@ DEPFLAGS := -MMD -MP
 LDFLAGS ?=
 BUILD := build
 
-LIB_SRC := src/sha256.cpp src/universe.cpp src/pager.cpp src/resonance.cpp src/ledger.cpp src/ring.cpp src/hypergraph.cpp src/temporal.cpp src/global.cpp src/head.cpp src/clock.cpp src/consolidation.cpp src/schedule.cpp
+LIB_SRC := src/sha256.cpp src/universe.cpp src/pager.cpp src/resonance.cpp src/ledger.cpp src/ring.cpp src/hypergraph.cpp src/temporal.cpp src/global.cpp src/head.cpp src/clock.cpp src/consolidation.cpp src/schedule.cpp src/handoff.cpp
 LIB_OBJ := $(patsubst src/%.cpp,$(BUILD)/%.o,$(LIB_SRC))
 LIB := $(BUILD)/libnanlm.a
 CLI := $(BUILD)/nanlm-universal
 
-TEST_SRC := tests/test_address.cpp tests/test_nan16.cpp tests/test_universe.cpp tests/test_pager.cpp tests/test_resonance.cpp tests/test_ledger.cpp tests/test_scale.cpp tests/test_hypergraph.cpp tests/test_temporal.cpp tests/test_global.cpp tests/test_heads.cpp tests/test_clock.cpp tests/test_phase.cpp tests/test_growth.cpp tests/test_consolidation.cpp
+TEST_SRC := tests/test_address.cpp tests/test_nan16.cpp tests/test_universe.cpp tests/test_pager.cpp tests/test_resonance.cpp tests/test_ledger.cpp tests/test_scale.cpp tests/test_hypergraph.cpp tests/test_temporal.cpp tests/test_global.cpp tests/test_heads.cpp tests/test_clock.cpp tests/test_phase.cpp tests/test_growth.cpp tests/test_consolidation.cpp tests/test_handoff.cpp tests/test_training.cpp tests/test_r18t_sequence.cpp
 TEST_BIN := $(patsubst tests/%.cpp,$(BUILD)/%,$(TEST_SRC))
 
-.PHONY: all test clean verify
+.PHONY: all test clean verify legacy
+
+LEGACY_R23 := NaNLM_statespace/archive/NaN16_Palindromic_Temporal_Computer_Round23/R23
+LEGACY_BIN := $(BUILD)/test_legacy_logic
 
 all: $(CLI)
 
@@ -36,6 +39,12 @@ test: $(CLI) $(TEST_BIN)
 	@echo "== CLI verify"; ./$(CLI) verify
 	@echo "== CLI genesis"; ./$(CLI) genesis
 	@echo "== CLI scale"; ./$(CLI) scale
+
+$(LEGACY_BIN): tests/test_legacy_logic.cpp $(LEGACY_R23)/src/topology.cpp | $(BUILD)
+	$(CXX) $(CXXFLAGS) -I$(LEGACY_R23)/include tests/test_legacy_logic.cpp $(LEGACY_R23)/src/topology.cpp -o $@
+
+legacy: $(LEGACY_BIN)
+	./$(LEGACY_BIN)
 
 verify: $(CLI)
 	./$(CLI) verify

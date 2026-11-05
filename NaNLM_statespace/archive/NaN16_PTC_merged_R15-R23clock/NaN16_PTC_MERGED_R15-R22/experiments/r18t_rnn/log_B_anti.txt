@@ -1,0 +1,8 @@
+B anti iter 25 bytes_seen 12800 train 5.647 heldout 5.558 1s
+B anti iter 50 bytes_seen 25600 train 3.704 heldout 3.946 2s
+B anti iter 100 bytes_seen 51200 train 3.501 heldout 3.475 3s
+B anti iter 200 bytes_seen 102400 train 3.142 heldout 3.234 5s
+B anti iter 400 bytes_seen 204800 train 3.223 heldout 3.141 10s
+B anti iter 800 bytes_seen 409600 train 2.889 heldout 2.994 18s
+B anti iter 1600 bytes_seen 819200 train 2.378 heldout 2.732 34s
+B anti iter 3200 bytes_seen 1638400 train 1.826 heldout 2.441 66s

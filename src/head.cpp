@@ -184,6 +184,70 @@ bool HeadView::self_modify_boolean(std::uint16_t patch) {
     return set_boolean_mask(static_cast<std::uint16_t>(cell().ops ^ patch));
 }
 
+namespace {
+constexpr std::size_t kScoreOffset = 16; // within work()
+constexpr std::size_t kScoreBytes = 32;
+
+std::int16_t read_score(const HeadScratch& scratch, std::uint8_t op) {
+    const std::uint8_t* w = scratch.work() + kScoreOffset;
+    const std::uint16_t raw = static_cast<std::uint16_t>(w[op * 2]) |
+                              (static_cast<std::uint16_t>(w[op * 2 + 1]) << 8);
+    return static_cast<std::int16_t>(raw);
+}
+
+void write_score(HeadScratch& scratch, std::uint8_t op, std::int16_t score) {
+    std::uint8_t* w = scratch.work() + kScoreOffset;
+    const auto raw = static_cast<std::uint16_t>(score);
+    w[op * 2] = static_cast<std::uint8_t>(raw & 0xFFu);
+    w[op * 2 + 1] = static_cast<std::uint8_t>((raw >> 8) & 0xFFu);
+}
+} // namespace
+
+void HeadView::reset_boolean_learner() {
+    std::uint8_t* w = scratch().work() + kScoreOffset;
+    for (std::size_t i = 0; i < kScoreBytes; ++i) w[i] = 0;
+}
+
+void HeadView::train_boolean(std::uint32_t a, std::uint32_t b, bool target) {
+    const std::uint32_t av = a & 1u;
+    const std::uint32_t bv = b & 1u;
+    const std::uint32_t index = 2u * av + bv;
+    std::uint16_t mask = 0;
+    std::uint8_t best = 0;
+    std::int16_t best_score = -32768;
+    for (std::uint8_t op = 0; op < 16; ++op) {
+        const bool pred = ((op >> index) & 1u) != 0;
+        std::int16_t score = read_score(scratch(), op);
+        if (pred == target) {
+            if (score < 32767) ++score;
+        } else {
+            if (score > -32768) --score;
+        }
+        write_score(scratch(), op, score);
+        if (score > 0) mask = static_cast<std::uint16_t>(mask | (1u << op));
+        if (score > best_score) {
+            best_score = score;
+            best = op;
+        }
+    }
+    // Winner-take-all: the head selects the best-scoring function. The full
+    // score table remains in scratch for inspection and later ensembles.
+    (void)mask;
+    set_boolean_mask(static_cast<std::uint16_t>(1u << best));
+}
+
+std::int16_t HeadView::boolean_score(std::uint8_t op) const {
+    return read_score(scratch(), static_cast<std::uint8_t>(op & 15u));
+}
+
+std::uint16_t HeadView::learned_mask() const {
+    std::uint16_t mask = 0;
+    for (std::uint8_t op = 0; op < 16; ++op) {
+        if (boolean_score(op) > 0) mask = static_cast<std::uint16_t>(mask | (1u << op));
+    }
+    return mask;
+}
+
 std::uint32_t HeadView::eval_boolean_from_scratch() {
     const std::uint8_t* l = scratch().local();
     const std::uint32_t a = static_cast<std::uint32_t>(l[0]) |

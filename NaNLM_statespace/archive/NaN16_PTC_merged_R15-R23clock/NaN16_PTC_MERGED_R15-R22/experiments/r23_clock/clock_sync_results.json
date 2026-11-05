@@ -1,0 +1,26 @@
+{
+ "free": {
+  "before": 0.282,
+  "during_drop": 0.29,
+  "late": 0.286,
+  "recovered": "0/10",
+  "median_recover_ticks": null,
+  "epoch_spread_mean": 121.3
+ },
+ "local": {
+  "before": 0.704,
+  "during_drop": 0.932,
+  "late": 0.975,
+  "recovered": "9/10",
+  "median_recover_ticks": 1.0,
+  "epoch_spread_mean": 317.7
+ },
+ "scratch": {
+  "before": 0.964,
+  "during_drop": 0.963,
+  "late": 0.963,
+  "recovered": "10/10",
+  "median_recover_ticks": 10.5,
+  "epoch_spread_mean": 0.4
+ }
+}

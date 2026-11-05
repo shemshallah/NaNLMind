@@ -1,0 +1,90 @@
+name: NaNLMind head runner
+# Dispatched by NaNLMind/ring.yml. One bounded head shift per run.
+on:
+  workflow_dispatch:
+    inputs:
+      op:
+        description: selftest | prewarm | headshift | handoff | status
+        type: choice
+        options: [selftest, prewarm, headshift, handoff, status]
+        default: selftest
+      slot:
+        description: runner slot 1..6
+        type: string
+        default: "1"
+      epoch:
+        description: logical epoch
+        type: string
+        default: "0"
+      minutes:
+        description: shift wall-clock budget
+        type: string
+        default: "20"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nanlm-head-${{ inputs.slot }}
+  cancel-in-progress: false
+
+env:
+  GH_TOKEN: ${{ secrets.DEEPREPO_PAT }}
+  DEEPREPO_PAT: ${{ secrets.DEEPREPO_PAT }}
+  DEEPREPO_MAIN: ${{ vars.NANLM_MAIN || format('{0}/NaNLMind', github.repository_owner) }}
+  DEEPREPO_RAM: ${{ vars.NANLM_RAM || format('{0}/nanlm-ram', github.repository_owner) }}
+  DEEPREPO_VRAM: ${{ vars.NANLM_VRAM || format('{0}/nanlm-vram', github.repository_owner) }}
+  DEEPREPO_RAM_BACKEND: github
+  DEEPREPO_VRAM_BACKEND: github
+  NANLM_CORE: core
+  NANLM_LOCAL_STATE: ${{ github.workspace }}/state
+
+jobs:
+  runner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout NaNLMind core
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.NANLM_MAIN || format('{0}/NaNLMind', github.repository_owner) }}
+          token: ${{ secrets.DEEPREPO_PAT || github.token }}
+          path: core
+
+      - name: Checkout deeprepo engine (tiers, meters, gates)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ format('{0}/deeprepo', github.repository_owner) }}
+          token: ${{ secrets.DEEPREPO_PAT || github.token }}
+          path: engine
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: engine/requirements-core.txt
+
+      - name: Install engine Python deps
+        run: pip install -r engine/requirements-core.txt
+
+      - name: Build NaNLMind core
+        run: make -C core -j2
+
+      - name: Execute head shift
+        run: |
+          set -euo pipefail
+          PYTHONPATH=engine:core python3 core/runner/nanlm_worker.py \
+            --op "${{ inputs.op }}" \
+            --slot "${{ inputs.slot }}" \
+            --epoch "${{ inputs.epoch }}" \
+            --minutes "${{ inputs.minutes }}"
+
+      - name: Summary
+        run: |
+          {
+            echo "## NaNLMind slot ${{ inputs.slot }}"
+            echo "op=${{ inputs.op }} epoch=${{ inputs.epoch }}"
+            echo '```json'
+            cat state/*.json 2>/dev/null | tail -80 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,8 @@
+A sym iter 25 bytes_seen 12800 train 5.288 heldout 5.104 1s
+A sym iter 50 bytes_seen 25600 train 5.005 heldout 4.971 1s
+A sym iter 100 bytes_seen 51200 train 4.724 heldout 4.723 2s
+A sym iter 200 bytes_seen 102400 train 3.947 heldout 4.265 4s
+A sym iter 400 bytes_seen 204800 train 3.845 heldout 3.974 8s
+A sym iter 800 bytes_seen 409600 train 3.547 heldout 3.85 16s
+A sym iter 1600 bytes_seen 819200 train 3.211 heldout 3.708 31s
+A sym iter 3200 bytes_seen 1638400 train 2.913 heldout 3.486 63s

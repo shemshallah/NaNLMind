@@ -2,7 +2,7 @@
 
 ## 1. What was extracted
 
-All 27 ZIP archives were extracted into one directory per archive:
+All 28 ZIP archives were extracted into one directory per archive:
 
 ```text
 NaNLM_statespace/
@@ -51,6 +51,7 @@ Per-archive directories avoid collisions between:
 | `...Round23.zip` | `d6a2fc0dda93da9cbc97ff671a1a2da50c3c27e4916451298dd7bad7bcc936a6` |
 | `distributedmind.zip` | `fe05b7f112383de52f530a51c7c6527566caf2ccda81153885c11b9b4c72031f` |
 | `nanclock.zip` | `b0347e4809b24c2aa1449dbf05348954691d793da33a30263f054387614d52ed` |
+| `NaN16_PTC_merged_R15-R23clock.zip` | `debcce32e6820ff5c6ad65573801a91e0b830558c2e22dd3112a05b593e8c002` |
 
 The full machine-readable list is `NaNLM_statespace/ARCHIVE_SHA256.txt`.
 
@@ -71,6 +72,7 @@ The full machine-readable list is `NaNLM_statespace/ARCHIVE_SHA256.txt`.
   R23 includes all tests R4–R23 and the `RuleVmCycle`/Kripke/modal code.
 - **No Round 1 archive.** Round 2 contains `BRAINSTORM_1.md` and
   `BRAINSTORM_2.md`; it is the earliest snapshot and the origin of the design.
+- **`NaN16_PTC_merged_R15-R23clock.zip`** is the newest merged snapshot: R15–R22 plus the clock-sync experiment (`experiments/r23_clock/clock_sync.py`, `docs/CLOCK_SYNC.md`) and the R18T RNN/transposition experiments.
 - **`nanclock.zip` is a companion**, not a round. It is the temporal oscillator
   integrated as the logical clock in `include/nanlm/clock.hpp`.
 

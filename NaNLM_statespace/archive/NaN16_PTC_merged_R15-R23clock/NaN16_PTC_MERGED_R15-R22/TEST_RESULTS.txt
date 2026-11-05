@@ -1,0 +1,44 @@
+=== Round 22: HARDER logic puzzles ===
+
+── 1. "We are both knaves" ──
+  models=1 A=knave B=knight
+  PASS: A knave, B knight (unique)
+
+── 2. Three islanders ──
+  unique models=1 A=0 B=1
+  PASS: unique consistent assignment
+
+── 3. Einstein subset (3 houses) ──
+  models=4 brit@2 dogs@0 green@0
+  PASS: constraint set satisfiable
+  PASS: houses assigned
+  PASS: green left of white
+
+── 4. Fork in the road ──
+  PASS: YES answer ⇒ do not take that path
+
+── 5. Exactly one knight ──
+  models=1 A=1 B=0
+  PASS: exactly one knight unique model
+
+── 6. Grid inequalities ──
+  solutions=1 values=1 4 3 2
+  PASS: at least one grid solution
+  PASS: A < B
+  PASS: C > D
+  PASS: B ≠ 3
+
+── 7. Nested speech ──
+  models=2 A=1 B=0
+  PASS: nested "B says I am knave" consistent
+
+── Hard puzzle suite ──
+  7/7
+  PASS: ALL HARD PUZZLES GREEN
+
+── R21 formal regression ──
+  PASS: R21 formal still green
+
+========================================
+Round 22: 14 passed, 0 failed
+========================================

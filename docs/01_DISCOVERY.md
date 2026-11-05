@@ -16,7 +16,7 @@ smoothing them away.
 
 ## 0. Provenance and method
 
-The source material is 27 ZIP archives:
+The source material is 28 ZIP archives:
 
 - `NaN16_Palindromic_Temporal_Computer_Round2..Round23` (no Round 1 archive);
 - `NaN16_Palindromic_Temporal_Computer_Round5-1` (duplicate of Round 5);
@@ -24,7 +24,9 @@ The source material is 27 ZIP archives:
 - `NaN16_PTC_merged_R15-R17` and `NaN16_PTC_merged_R15-R18`;
 - `distributedmind.zip` (= Round 15 plus the R14 binary and the continuity
   header);
-- `nanclock.zip` (the independent NaN Temporal Oscillator v2).
+- `nanclock.zip` (the independent NaN Temporal Oscillator v2);
+- `NaN16_PTC_merged_R15-R23clock.zip` (newest merged R15–R22 + clock-sync +
+  R18T RNN experiments).
 
 All archives were extracted under
 `NaNLM_statespace/archive/<archive-stem>/`, one directory per archive, so

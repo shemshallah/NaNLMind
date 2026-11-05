@@ -1,12 +1,12 @@
-# NaNLM Universal
+# NaNLMind
 
 **One global topology. Many coordinate regions. No federation of little minds.**
 
-NaNLM Universal is a research repository for a single, address-derived computational state space built from NaN16 words. The 16-bit address space is treated as a 256 x 256 matrix. Bit reversal is transposition. Every unordered pair of the 256 palindromic addresses is one canonical cell with two temporal rails. The 256 palindromic addresses themselves are the heads — all of them, none reserved.
+NaNLMind is a research repository for a single, address-derived computational state space built from NaN16 words. The 16-bit address space is treated as a 256 x 256 matrix. Bit reversal is transposition. Every unordered pair of the 256 palindromic addresses is one canonical cell with two temporal rails. The 256 palindromic addresses themselves are the heads — all of them, none reserved.
 
 This repository contains:
 
-- the extracted provenance of 27 archives (Rounds 2–23, merged R15–R17/R18, `distributedmind`, and `nanclock`);
+- the extracted provenance of 28 archives (Rounds 2–23, merged R15–R17/R18/R23clock, `distributedmind`, and `nanclock`);
 - a clean C++20 core for the address algebra, NaN16 Boolean functions, the 8 MiB full-address register-file chart, bit/byte/KB paging, hyperedges, bidirectional temporal memory, resonance, and one global ledger;
 - the specifications for rebuilding `reporam` and `repovram` as the memory tiers of this one object;
 - a staged plan for a single-chart brain on GitHub, then a 5-replica deployment, then remote tiers and GPU training.
@@ -104,11 +104,29 @@ make
 ./build/nanlm-universal phase
 ./build/nanlm-universal growth
 make test
+make legacy
 ```
 
 `verify` is exhaustive over the 65,536 addresses and the 32,640 pairs. It checks the transposition theorem, all 16 Boolean functions, the mirror law, the 8 MiB full-address register file, bit addressing, copy-on-write, the ledger, the hypergraph, the temporal split, and one-global-topology identity.
 
 ---
+
+## Two live rings
+
+| ring | repos | tiers | role |
+|---|---|---|---|
+| Qwen demo | `deeprepo-cpu-1..5` | `reporam`, `repovram` | existing 24/7 model demo |
+| NaNLMind heads | `nanlm-cpu-1..6` | `nanlm-ram`, `nanlm-vram` | 256-head handoff ring |
+
+One secret, `DEEPREPO_PAT`, is used everywhere. `NaNLMind/ring.yml` dispatches
+one slot at a time, checks the rate limit, and self-redispatches the next
+logical epoch; `keeper.yml` restarts only when no ring run is active. The head
+protocol is in [docs/18_HEAD_RING.md](docs/18_HEAD_RING.md).
+
+Training is integer score learning in the head scratchpad, with temporal links
+for sequence order and an optional teacher for distillation. The honest R18T
+baseline — a plain RNN matching the 256-head topology — is in
+[docs/17_TRAINING_HEADS.md](docs/17_TRAINING_HEADS.md).
 
 ## Repository map
 
@@ -130,6 +148,9 @@ make test
 | `docs/14_TEMPORAL_CLOCK.md` | nanclock logical time for distributed synchronization |
 | `docs/15_PHASE_SCHEDULING.md` | transform-phase orbits, global-scratch sync, bit-reversed wake slots |
 | `docs/16_GROWTH_CONSOLIDATION.md` | child-chart growth and atomic scratch consolidation |
+| `docs/17_TRAINING_HEADS.md` | integer head learning, sequence memory, RNN baseline |
+| `docs/18_HEAD_RING.md` | six-runner handoff, preload, map-back, workflows |
+| `docs/19_LEGACY_TESTS.md` | R18T language tests and R21–R23 logic regressions |
 | `NaNLM_statespace/` | all original archives + extracted snapshots + SHA-256 manifest |
 
 ---

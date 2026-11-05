@@ -1,0 +1,38 @@
+name: nanlm keeper
+# 24/7 guard: restart the head ring only when no ring run is active.
+on:
+  schedule:
+    - cron: "*/20 * * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: nanlm-keeper
+  cancel-in-progress: false
+
+env:
+  GH_TOKEN: ${{ secrets.DEEPREPO_PAT }}
+  DEEPREPO_PAT: ${{ secrets.DEEPREPO_PAT }}
+
+jobs:
+  keeper:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Is a ring run active?
+        id: busy
+        run: |
+          n=$(gh run list -R "${{ github.repository }}" --workflow ring.yml \
+              --status in_progress --limit 1 --json databaseId | python -c 'import json,sys; print(len(json.load(sys.stdin)))')
+          echo "active=$n" >> "$GITHUB_OUTPUT"
+
+      - name: Resume ring
+        if: ${{ steps.busy.outputs.active == '0' }}
+        run: |
+          epoch=$(gh variable get NANLM_EPOCH -R "${{ github.repository }}" 2>/dev/null || echo 0)
+          gh workflow run ring.yml -R "${{ github.repository }}" \
+            -f epoch="$epoch" -f minutes=20 -f loop=true
+          echo "ring resumed at epoch $epoch"

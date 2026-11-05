@@ -50,6 +50,42 @@ The prototype's own README is explicit: it does not claim that an ordinary
 finite CPU can decide arbitrary nontermination. The LOOP branch is a primitive
 future result in the prototype. The project should preserve that honesty.
 
+### 1.1 The V4 clock-sync experiment
+
+The newest merged archive (`NaN16_PTC_merged_R15-R23clock.zip`) contains
+`experiments/r23_clock/clock_sync.py` and `docs/CLOCK_SYNC.md`. The experiment:
+
+- 256 heads, 4-phase oscillator `x -> Sx -> RSx -> Rx -> x`;
+- 3% rate drift per head;
+- 30% of heads dropped for 403 ticks, then rejoin with a stale phase and epoch;
+- 10 seeds, 1600 ticks;
+- three modes: free-running, local plurality over 8 Hamming-1 neighbours, and
+  global community scratch (phase + epoch, read probability 0.25/tick).
+
+Results:
+
+| mode | order before drop | during drop | late | rejoin recovered | median recovery | epoch spread |
+|---|---:|---:|---:|---:|---:|---:|
+| free-running | 0.282 | 0.290 | 0.286 | 0/10 | — | 121.3 |
+| local plurality | 0.704 | 0.932 | 0.975 | 9/10 | 1 tick | 317.7 |
+| global scratch | **0.964** | **0.963** | **0.963** | **10/10** | **10.5 ticks** | **0.4** |
+
+Reading: local voting reaches good phase agreement but heads disagree on the
+epoch count (spread 318), so it is not a usable clock. The scratch carries a
+shared epoch and keeps spread under 1. Scratch phase order is capped near 0.96
+by drift between reads. The earlier static test (no drift) was local-only 1/10,
+scratch 10/10 in ~7 ticks.
+
+The archive's `CLOCK_SYNC.md` states 64,800 / 720 / 16 orbit sizes. An
+independent exhaustive check of the stated `B` and `R` transforms gives
+**65,040 / 480 / 16**; the 720 figure appears to double-count a 240-address
+family. The head split (240 half-rate, 16 static) is correct. The scheduling
+result is exact: bit-reversed slots give max gap 32 for 8 alive, 16 for 16,
+8 for 32; linear gives 249, 241, 225.
+
+Caveats preserved from the archive: simulation, not real runners; one drift
+level and one drop pattern; wall-clock needs a real time source in the log.
+
 ---
 
 ## 2. What we use it for
@@ -113,7 +149,7 @@ from a single integer**.
 
 ## 4. Distributed protocol
 
-Five replicas (`deeprepo-cpu-1..5`) host regions of one object. They do not
+Six head runners (`nanlm-cpu-1..6`) host regions of one object. They do not
 share a physical clock. The logical protocol is:
 
 ```text

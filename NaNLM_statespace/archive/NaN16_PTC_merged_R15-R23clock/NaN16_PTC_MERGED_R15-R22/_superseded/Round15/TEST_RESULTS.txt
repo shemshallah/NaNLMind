@@ -1,0 +1,86 @@
+g++ -std=c++20 -O2 -Wall -Wextra -Wpedantic -Iinclude src/topology.cpp tests/test_round15.cpp -o test_round15
+./test_round15
+=== Round 15: Continuity of State ===
+
+--- SHA-256 ---
+  PASS: SHA256("abc")
+  PASS: SHA256("")
+  PASS: SHA256(448-bit msg, 2-block)
+
+--- Topology is a symmetric 256x256 matrix ---
+  PASS: reverse16(addr(a,b)) == addr(b,a) for all 65536 pairs
+  PASS: bit-palindromic fixed points == the 256 diagonal cells
+  canonical cells=32896  mirror pairs=32640  C(256,2)=32640
+  PASS: 32,640 mirror pairs == C(256,2) (identity, not coincidence)
+  PASS: arbitrary ASYMMETRIC 256x256 matrix round-trips through 32,896 cells (S+ = W[a][b], S- = W[b][a])
+
+--- Blind spots in R14's state_hash() ---
+  PASS: old state_hash collides when S+ and S- rails are swapped
+  PASS: full_digest distinguishes them
+  PASS: two minds that answer differently have IDENTICAL old state_hash (cog_kb_ not hashed)
+  PASS: full_digest distinguishes them
+
+--- Hash-chained ledger ---
+  3000 transitions in 586 ms (195.2 us/transition incl. SHA-256 chain + 6 checkpoints)
+  CHAIN_HEAD=badd8d9667678c93e809d6ddb7ed9b9a01076c1ec7712d37dd5c7c650dbfa9c2
+  STATE_DIGEST=a9319e2f4255d4105e58acaf3567d84afeda4e2936d39b02cd6faa5aa7ffe68a
+  PASS: replay from genesis on a fresh Topology reproduces every delta, checkpoint and link
+  PASS: replayed final state digest == live final state digest
+  PASS: different transition function (mode) => different genesis => rejected
+  PASS: derived caches (norm2, total_wins) equal their recomputation
+
+--- Tamper evidence ---
+  flip 1 bit of event 1234 -> first_bad=1234 (delta mismatch (event or state diverged))
+  PASS: event edit located at exactly the edited index
+  PASS: delta edit located at exactly the edited index
+  PASS: chain-link edit located at exactly the edited index
+  PASS: a fully recomputed forgery is internally consistent...
+  PASS: ...but is caught against the pinned chain head (identity = head)
+
+--- Substrate migration (checkpoint -> new Topology -> continue) ---
+  PASS: restored state digest == source state digest
+  PASS: run continued on the new substrate lands on the SAME chain head
+  PASS: ...and the same final state digest
+  PASS: a single corrupted checkpoint byte is visible in the digest
+
+--- Branches as transactions ---
+  PASS: workspace state diverges from main
+  PASS: main untouched while the branch runs
+  PASS: abort: appended as ONE history entry
+  PASS: abort: main state unchanged (counterfactual discarded)
+  PASS: abort: log records the digest of the discarded counterfactual == workspace digest
+  PASS: history with an abort still replays (counterfactual re-derived & verified)
+  PASS: commit: main becomes exactly the workspace result
+  PASS: history with a commit replays
+  PASS: stale workspace cannot commit (must rebase) -- no permanent competing minds
+  PASS: second writer holding a stale head cannot append (no fork of history)
+
+--- R14 knowledge events on the same chain ---
+  PASS: knowledge assertions replay deterministically
+  PASS: penguin cannot fly (exception) on replayed machine
+  PASS: history contains who-asserted-what in order (4 entries, chain advances)
+
+--- R15: do 256 identical heads specialize? (6 task types, max MI = 2.58 bits) ---
+  heads start IDENTICAL (all-zero matrix). tie-break = hash of causal history. every run is chain-verified.
+  task overlap = 0.0
+  condition                       MI    null   purity  heads
+  WTA, no inhibition            1.73    0.01     0.66      5 
+  lateral inhibition            2.58    0.27     1.00     99 
+  frozen (no learning)          0.72    0.71     0.40    256 
+  random routing (learns)       0.71    0.71     0.40    255 
+  task overlap = 0.5
+  condition                       MI    null   purity  heads
+  WTA, no inhibition            0.00    0.00     0.18      1 
+  lateral inhibition            2.58    0.26     1.00     98 
+  frozen (no learning)          0.75    0.72     0.41    256 
+  random routing (learns)       0.72    0.71     0.40    255 
+  PASS: inhibition specializes far above WTA [easy]
+  PASS: inhibition specializes far above its shuffled null [easy]
+  PASS: random routing is indistinguishable from null [easy]
+  PASS: inhibition specializes far above WTA [hard]
+  PASS: inhibition specializes far above its shuffled null [hard]
+  PASS: random routing is indistinguishable from null [hard]
+
+========================================
+Round 15: 43 passed, 0 failed
+========================================

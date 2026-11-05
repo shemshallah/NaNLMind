@@ -272,9 +272,9 @@ int cmd_scale() {
                   << u128_to_string(p.fixed) << "  "
                   << human_bytes(p.dense_bytes) << "\n";
     }
-    std::cout << "\n5 replica hosts, 7 GiB each (placement of the one object):\n";
+    std::cout << "\n6 head-runner slots, 7 GiB each (placement of the one object):\n";
     for (int d = 1; d <= 4; ++d) {
-        const RingPlan r = ring_plan(d, 5);
+        const RingPlan r = ring_plan(d, 6);
         std::cout << "  depth " << d << ": " << u128_to_string(r.total_universes)
                   << " universes, dense " << human_bytes(r.total_bytes)
                   << ", per node " << human_bytes(r.per_node_bytes)

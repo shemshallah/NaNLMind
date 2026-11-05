@@ -1,0 +1,8 @@
+A full iter 25 bytes_seen 12800 train 5.123 heldout 4.978 1s
+A full iter 50 bytes_seen 25600 train 4.459 heldout 4.56 1s
+A full iter 100 bytes_seen 51200 train 4.036 heldout 4.142 2s
+A full iter 200 bytes_seen 102400 train 3.321 heldout 3.894 4s
+A full iter 400 bytes_seen 204800 train 2.983 heldout 3.727 8s
+A full iter 800 bytes_seen 409600 train 2.513 heldout 3.64 16s
+A full iter 1600 bytes_seen 819200 train 1.861 heldout 3.83 31s
+A full iter 3200 bytes_seen 1638400 train 1.439 heldout 4.083 62s

@@ -5,7 +5,7 @@ archives and their extracted snapshots.
 
 ```
 NaNLM_statespace/
-  *.zip                  original archives (27 files)
+  *.zip                  original archives (28 files)
   ARCHIVE_SHA256.txt     SHA-256 manifest
   archive/
     <archive-stem>/      one extracted tree per archive
@@ -20,6 +20,7 @@ names never overwrite each other:
 - `merged_R15-R17` and `merged_R15-R18` are merged snapshots;
 - there is no Round 1 archive; Round 2 contains `BRAINSTORM_1.md` and
   `BRAINSTORM_2.md`;
+- `NaN16_PTC_merged_R15-R23clock.zip` is the newest merged snapshot (R15–R22 + clock-sync + R18T RNN experiments);
 - `nanclock.zip` is the independent temporal oscillator (64 cells, LE/PAST and
   BE/FUTURE boundaries, period-2 HALT/LOOP orbit).
 

@@ -16,6 +16,8 @@ jobs:
         run: make -j2
       - name: Test suite
         run: make test
+      - name: Legacy logic suite
+        run: make legacy
       - name: Verify CLI
         run: ./build/nanlm-universal verify
       - name: Genesis

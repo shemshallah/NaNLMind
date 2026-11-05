@@ -143,6 +143,13 @@ public:
     bool self_modify_boolean(std::uint16_t patch);
     std::uint32_t eval_boolean_from_scratch();
 
+    // Integer score learning over the 16 Boolean functions. Scores live in
+    // scratch.work()[16..47] as 16 little-endian int16 values. No gradients.
+    void reset_boolean_learner();
+    void train_boolean(std::uint32_t a, std::uint32_t b, bool target);
+    std::int16_t boolean_score(std::uint8_t op) const;
+    std::uint16_t learned_mask() const;
+
     HeadHistory& history();
     const HeadHistory& history() const;
 

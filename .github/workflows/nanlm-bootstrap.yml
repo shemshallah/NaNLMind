@@ -1,0 +1,52 @@
+name: nanlm bootstrap tiers
+# Create the nanlm-ram / nanlm-vram releases and bin-0 superblocks.
+# Run once after creating the two tier repos and adding DEEPREPO_PAT to them.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GH_TOKEN: ${{ secrets.DEEPREPO_PAT }}
+  DEEPREPO_RAM: ${{ vars.NANLM_RAM || format('{0}/nanlm-ram', github.repository_owner) }}
+  DEEPREPO_VRAM: ${{ vars.NANLM_VRAM || format('{0}/nanlm-vram', github.repository_owner) }}
+  DEEPREPO_RAM_BACKEND: github
+  DEEPREPO_VRAM_BACKEND: github
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout deeprepo engine
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ format('{0}/deeprepo', github.repository_owner) }}
+          token: ${{ secrets.DEEPREPO_PAT || github.token }}
+          path: engine
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: engine/requirements-core.txt
+
+      - run: pip install -r engine/requirements-core.txt
+
+      - name: Bootstrap nanlm tiers
+        working-directory: engine
+        run: |
+          [ -n "$GH_TOKEN" ] || { echo "::error::Missing DEEPREPO_PAT"; exit 1; }
+          PYTHONPATH=. python -m deepcore bootstrap --kv-pages 1024 --reg-pages 256 | tee bootstrap.json
+
+      - name: Summary
+        run: |
+          {
+            echo "## NaNLMind tiers"
+            echo "RAM: $DEEPREPO_RAM"
+            echo "VRAM: $DEEPREPO_VRAM"
+            echo '```json'
+            cat engine/bootstrap.json 2>/dev/null || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

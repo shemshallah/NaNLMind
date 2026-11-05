@@ -10,3 +10,5 @@ __pycache__/
 tiers/
 temporal_nan
 test_r14
+state/
+runner/__pycache__/
