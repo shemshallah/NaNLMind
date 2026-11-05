@@ -24,6 +24,24 @@ std::vector<std::string> tokenize(const std::string& text) {
     return out;
 }
 
+std::uint32_t fnv1a(const std::string& text) {
+    std::uint32_t h = 2166136261u;
+    for (unsigned char c : text) {
+        h ^= c;
+        h *= 16777619u;
+    }
+    return h;
+}
+
+void add_cooc(std::vector<std::int32_t>& v, const std::string& token,
+              std::size_t base, std::size_t dim, std::int32_t weight) {
+    if (dim <= base) return;
+    const std::uint32_t h = fnv1a(token);
+    const std::size_t index = base + h % (dim - base);
+    const std::int32_t sign = (h & 0x80000000u) ? -1 : 1;
+    v[index] += sign * weight;
+}
+
 std::vector<std::vector<std::string>> sentences(const std::string& text) {
     std::vector<std::vector<std::string>> out;
     std::string current;
@@ -61,12 +79,34 @@ bool WordMemory::build(const std::string& corpus) {
     if (token_names_.empty() || token_names_.size() > 65535u) return false;
 
     const auto n = static_cast<std::uint16_t>(token_names_.size());
-    tokens_bin_ = store_->create(n, n);
+    if (n >= 65535u) return false;
+    vector_dim_ = static_cast<std::uint16_t>(std::max<std::size_t>(64, n + 32));
+    tokens_bin_ = store_->create(vector_dim_, n);
     if (tokens_bin_ == kInvalidBin) return false;
+
+    // One unique anchor coordinate per token keeps exact identity; the tail
+    // coordinates hold small co-occurrence/random-index contributions from a
+    // two-word window. Same token => same anchor; neighbours => distributed
+    // context.
     for (std::uint16_t i = 0; i < n; ++i) {
-        std::vector<std::int16_t> one_hot(n, 0);
-        one_hot[i] = 1;
-        if (!store_->write(tokens_bin_, i, one_hot)) return false;
+        std::vector<std::int32_t> v(vector_dim_, 0);
+        v[i] += 4096;
+        for (const auto& tokens : lines) {
+            for (std::size_t p = 0; p < tokens.size(); ++p) {
+                if (tokens[p] != token_names_[i]) continue;
+                for (std::size_t d = 1; d <= 2; ++d) {
+                    if (p >= d) add_cooc(v, tokens[p - d], n, vector_dim_, 1);
+                    if (p + d < tokens.size()) add_cooc(v, tokens[p + d], n, vector_dim_, 1);
+                }
+            }
+        }
+        std::vector<std::int16_t> out(vector_dim_, 0);
+        for (std::size_t k = 0; k < vector_dim_; ++k) {
+            if (v[k] > 32767) v[k] = 32767;
+            if (v[k] < -32768) v[k] = -32768;
+            out[k] = static_cast<std::int16_t>(v[k]);
+        }
+        if (!store_->write(tokens_bin_, i, out)) return false;
     }
 
     for (const auto& t : lines) {
@@ -106,17 +146,27 @@ bool WordMemory::add_relation(WordRelation relation,
 
 std::optional<std::string> WordMemory::lookup(
     WordRelation relation, const std::vector<std::string>& query) const {
-    std::vector<std::int16_t> q(token_names_.size(), 0);
+    std::vector<std::int32_t> q32(vector_dim_, 0);
     for (const auto& token : query) {
         const auto slot = slot_for(token);
         if (!slot) return std::nullopt;
-        q[*slot] = 1;
+        std::vector<std::int16_t> v;
+        if (!store_->read(tokens_bin_, *slot, v)) return std::nullopt;
+        for (std::size_t i = 0; i < vector_dim_ && i < v.size(); ++i) {
+            q32[i] += v[i];
+        }
+    }
+    std::vector<std::int16_t> q(vector_dim_, 0);
+    for (std::size_t i = 0; i < vector_dim_; ++i) {
+        if (q32[i] > 32767) q32[i] = 32767;
+        if (q32[i] < -32768) q32[i] = -32768;
+        q[i] = static_cast<std::int16_t>(q32[i]);
     }
     const auto hits = memory_.recall(q, 32);
     for (const auto& hit : hits) {
         const AssocEntry* entry = memory_.get(hit.id);
         if (!entry || entry->label != static_cast<std::uint64_t>(relation)) continue;
-        if (hit.score < static_cast<std::int64_t>(entry->keys.size())) continue;
+        if (hit.score < static_cast<std::int64_t>(entry->keys.size()) * 12000000) continue;
         if (entry->values.empty()) continue;
         const auto slot = entry->values.front().slot;
         if (slot >= token_names_.size()) continue;

@@ -270,10 +270,10 @@ prints the mapping and a recall.
 
 ### Word memory over bins
 
-`WordMemory` maps tokens to one-hot vectors in a `BinStore`, stores
-`is a` / `can` / `cannot` facts as macro associations, and traverses
+`WordMemory` maps tokens to co-occurrence-augmented vectors in a `BinStore`,
+stores `is a` / `can` / `cannot` facts as macro associations, and traverses
 entity → kind → ability with an exception check. It answers the fixed
-fish/bird challenge **8/8**. The relation extraction is explicit host code; the
+fish/bird challenge **8/8**. The relation extraction is still explicit host code; the
 word layer proves the bins can carry word-level relational memory, not that the
 byte model learned the rules. The byte model remains at 0.5.
 

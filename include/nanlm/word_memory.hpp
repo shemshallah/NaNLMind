@@ -33,6 +33,7 @@ public:
     bool answer_yes(const std::string& entity, const std::string& ability) const;
 
     std::size_t vocab() const { return token_names_.size(); }
+    std::uint16_t vector_dim() const { return vector_dim_; }
     std::size_t associations() const { return memory_.size(); }
     std::uint32_t bin_id() const { return tokens_bin_; }
 
@@ -49,6 +50,7 @@ private:
 
     BinStore* store_;
     BinId tokens_bin_ = kInvalidBin;
+    std::uint16_t vector_dim_ = 0;
     std::vector<std::string> token_names_;
     std::unordered_map<std::string, std::uint16_t> token_slots_;
     AssocMemory memory_;

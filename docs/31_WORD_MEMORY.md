@@ -3,8 +3,8 @@
 ## 1. What this layer does
 
 `WordMemory` is the first word-level layer. It tokenizes a small corpus, maps
-each token to a one-hot vector in a `BinStore`, and stores facts as macro
-associations:
+each token to a co-occurrence-augmented vector in a `BinStore`, and stores facts
+as macro associations:
 
 ```text
 sparrow is a bird   -> key {sparrow, is, a}  -> value {bird}
@@ -18,8 +18,15 @@ A query traverses:
 entity -> kind -> can/ability -> exception check -> yes/no
 ```
 
-The vector bins and `AssocMemory` are the same storage/recall layer documented
-in [30_VECTOR_BINS.md](30_VECTOR_BINS.md).
+The token vector has two parts:
+
+- a unique anchor coordinate (`4096`) so the same token remains addressable;
+- a 32+ coordinate tail containing small signed random-index contributions from
+  tokens within a two-word window.
+
+That keeps exact token identity while adding co-occurrence context. The vector
+dimension is `max(64, vocab + 32)`. The bins and `AssocMemory` are the same
+storage/recall layer documented in [30_VECTOR_BINS.md](30_VECTOR_BINS.md).
 
 ## 2. Result on the fixed challenge
 
@@ -50,8 +57,9 @@ words vocab=22 associations=21 token_bin=1
 ## 3. What is honest about it
 
 This is **structured retrieval**, not a transformer suddenly learning logic.
-The relation patterns (`is a`, `can`, `cannot`) are explicit host extraction
-rules. The layer proves three useful things:
+The token vectors are co-occurrence-augmented, but the relation patterns
+(`is a`, `can`, `cannot`) are still explicit host extraction rules. That is the
+next thing to replace. The layer proves three useful things:
 
 1. A point/bin bank can hold word-level vectors.
 2. Macro associations can retrieve kind/ability values.
@@ -77,7 +85,7 @@ need to own the chart.
 
 ## 5. Next extensions
 
-- Replace one-hot tokens with co-occurrence/hebbian vectors in the same bins.
+- ~~Replace one-hot tokens with co-occurrence/hebbian vectors in the same bins.~~
 - Learn the relation extractor from byte text instead of explicit patterns.
 - Use multi-token macro keys for clauses and sentences.
 - Add a training/update path for association weights instead of fixed Q16.16.

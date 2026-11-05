@@ -20,7 +20,11 @@ int main() {
     WordMemory words(store);
     CHECK(words.build(corpus));
     CHECK(words.vocab() > 0);
+    CHECK(words.vector_dim() >= 64);
     CHECK(words.bin_id() != kInvalidBin);
+    const BinHeader* vh = store.header(words.bin_id());
+    CHECK(vh != nullptr);
+    if (vh) CHECK_EQ(vh->dim, words.vector_dim());
     CHECK(words.associations() >= 20);
 
     CHECK(words.kind_of("sparrow").has_value());
