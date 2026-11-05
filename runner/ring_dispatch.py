@@ -61,7 +61,8 @@ def main():
     ap.add_argument("--slots", type=int, default=RUNNERS)
     ap.add_argument("--timeout", type=int, default=5400)
     ap.add_argument("--dry-run", action="store_true")
-    ap.add_argument("--parallel", dest="parallel", action="store_true", default=True)
+    ap.add_argument("--parallel", dest="parallel", action="store_true", default=False,
+                    help="experimental: six writers at once (unsafe for the single reporam journal)")
     ap.add_argument("--sequential", dest="parallel", action="store_false")
     args = ap.parse_args()
 

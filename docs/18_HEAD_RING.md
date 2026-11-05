@@ -86,6 +86,10 @@ epoch E, phase 1:
 - `record_handoff()` appends one ledger event.
 
 A runner never starts the next epoch before the previous round is complete.
+The ring is **sequential by default**: one slot writes its packet set, releases
+its per-slot lease, and the next slot is dispatched. Six concurrent writers
+would corrupt the single `reporam` journal; `--parallel` is an experiment, not
+the default.
 
 ---
 
