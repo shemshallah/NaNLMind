@@ -29,8 +29,16 @@ jobs:
               --status in_progress --limit 1 --json databaseId | python -c 'import json,sys; print(len(json.load(sys.stdin)))')
           echo "active=$n" >> "$GITHUB_OUTPUT"
 
+      - name: Rate-limit check
+        id: rate
+        run: |
+          remaining=$(gh api rate_limit --jq '.resources.core.remaining' 2>/dev/null || echo 0)
+          case "$remaining" in (*[!0-9]*|"") remaining=0 ;; esac
+          echo "remaining=$remaining" >> "$GITHUB_OUTPUT"
+          echo "core remaining: $remaining"
+
       - name: Resume ring
-        if: ${{ steps.busy.outputs.active == '0' }}
+        if: ${{ steps.busy.outputs.active == '0' && steps.rate.outputs.remaining >= 100 }}
         run: |
           epoch=$(gh variable get NANLM_EPOCH -R "${{ github.repository }}" 2>/dev/null || echo 0)
           gh workflow run ring.yml -R "${{ github.repository }}" \

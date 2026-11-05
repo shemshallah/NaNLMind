@@ -29,6 +29,7 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 23 | [23_NAN_TRANSLATION_FABRIC.md](23_NAN_TRANSLATION_FABRIC.md) | How do physical, universe, and semantic addresses translate? |
 | 24 | [24_ONE_UNIVERSE_TRAINING.md](24_ONE_UNIVERSE_TRAINING.md) | How does one universe train and pass its gates? |
 | 25 | [25_GLOBAL_META_BRAINSTORM.md](25_GLOBAL_META_BRAINSTORM.md) | What is the 256×256×256 global meta, and why not build it yet? |
+| 26 | [26_RATE_LIMITS.md](26_RATE_LIMITS.md) | How does the 24/7 ring stay inside GitHub API limits? |
 
 The short version:
 

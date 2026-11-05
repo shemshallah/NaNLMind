@@ -260,6 +260,13 @@ storage/addressing and bidirectional memory, not a measured learning advantage.
 
 ---
 
+## 9.1 Rate-limit guard
+
+A 403 during development polling was contained: `/rate_limit` preflight (<200),
+keeper resume (<100), 30s polling, 60s backoff on 403, persistent 10-epoch jobs,
+and separate concurrency groups. No state was corrupted. See
+`docs/26_RATE_LIMITS.md`.
+
 ## 10. Next
 
 1. Load real chart/head/scratch state from `nanlm-vram` in the ring worker.

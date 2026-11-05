@@ -18,7 +18,7 @@ RUNNERS = 6
 ORDER = [0, 3, 1, 4, 2, 5]
 
 
-def gh(*args, check=True, capture=True, retries=5):
+def gh(*args, check=True, capture=True, retries=4):
     cmd = ["gh", *args]
     env = dict(os.environ)
     env.setdefault("GH_TOKEN", os.environ.get("DEEPREPO_PAT", ""))
@@ -29,7 +29,11 @@ def gh(*args, check=True, capture=True, retries=5):
                                   capture_output=capture, env=env)
         except subprocess.CalledProcessError as exc:
             last = exc
-            time.sleep(min(20, 2 * (attempt + 1)))
+            text = ((exc.stderr or "") + (exc.stdout or "") + repr(exc)).lower()
+            if "rate limit" in text or "403" in text:
+                time.sleep(60)
+            else:
+                time.sleep(min(30, 3 * (attempt + 1)))
     if check:
         raise last
     return last
@@ -57,7 +61,7 @@ def dispatch(repo, op, slot, epoch, minutes, epochs=10):
        "-f", f"minutes={minutes}", "-f", f"epochs={epochs}")
 
 
-def await_run(repo, base_id, timeout=5400, poll=15):
+def await_run(repo, base_id, timeout=5400, poll=30):
     start = time.time()
     while time.time() - start < timeout:
         time.sleep(poll)
@@ -78,6 +82,7 @@ def main():
     ap.add_argument("--minutes", type=int, default=20)
     ap.add_argument("--slots", type=int, default=RUNNERS)
     ap.add_argument("--timeout", type=int, default=5400)
+    ap.add_argument("--poll", type=int, default=30)
     ap.add_argument("--epochs", type=int, default=10)
     ap.add_argument("--persistent", action="store_true",
                     help="one loop job processes many epochs in one workspace")
@@ -110,7 +115,7 @@ def main():
         print(f"epoch {args.epoch}: persistent loop on {repo}", flush=True)
         if not args.dry_run:
             dispatch(repo, "loop", slot, args.epoch, args.minutes, args.epochs)
-            run = await_run(repo, base_id, timeout=args.timeout)
+            run = await_run(repo, base_id, timeout=args.timeout, poll=args.poll)
             ok = bool(run and run.get("conclusion") == "success")
             summary["slots"].append({"slot": slot, "repo": repo, "run": run, "ok": ok})
             summary["epochs"] = args.epochs
@@ -135,7 +140,7 @@ def main():
             if args.dry_run:
                 summary["slots"].append({"slot": slot, "repo": repo, "dry_run": True})
                 continue
-            run = await_run(repo, bases[slot], timeout=args.timeout)
+            run = await_run(repo, bases[slot], timeout=args.timeout, poll=args.poll)
             ok = bool(run and run.get("conclusion") == "success")
             summary["slots"].append({"slot": slot, "repo": repo, "run": run, "ok": ok})
             if not ok:
@@ -151,7 +156,7 @@ def main():
                 summary["slots"].append({"slot": slot, "repo": repo, "dry_run": True})
                 continue
             dispatch(repo, "headshift", slot, args.epoch, args.minutes)
-            run = await_run(repo, base_id, timeout=args.timeout)
+            run = await_run(repo, base_id, timeout=args.timeout, poll=args.poll)
             ok = bool(run and run.get("conclusion") == "success")
             summary["slots"].append({"slot": slot, "repo": repo, "run": run, "ok": ok})
             if not ok:
@@ -165,7 +170,7 @@ def main():
         base_id = base.get("databaseId") if base else None
         print(f"epoch {args.epoch}: finalize round on {repo}", flush=True)
         dispatch(repo, "finalize", 0, args.epoch, args.minutes)
-        run = await_run(repo, base_id, timeout=args.timeout)
+        run = await_run(repo, base_id, timeout=args.timeout, poll=args.poll)
         ok = bool(run and run.get("conclusion") == "success")
         summary["finalize"] = {"repo": repo, "run": run, "ok": ok}
         if not ok:
