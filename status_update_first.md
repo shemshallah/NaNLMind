@@ -212,7 +212,8 @@ The topology matches the host bigram exactly, and the bigram beats order-0 by
 - handoff;
 - growth;
 - inverse frames;
-- contemplation.
+- contemplation;
+- dropped-slot recovery using the reverse frame.
 
 The global meta waits until these pass on a real byte-level task.
 
