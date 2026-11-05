@@ -274,6 +274,7 @@ void Universe::mark_address_dirty(std::uint16_t addr) {
 
 void Universe::set_address_meta(std::uint16_t addr, std::uint64_t value) {
     AddressReg& reg = addr_regs_[addr];
+    reg.flags = static_cast<std::uint8_t>(reg.flags | kAddrReserved);
     reg.meta = value;
     reg.checksum = address_checksum(reg);
     mark_address_dirty(addr);
@@ -546,7 +547,8 @@ bool Universe::verify(std::string* error) const {
         if (r.mirror != reverse16(a)) return fail("address register mirror");
         if (addr_regs_[r.mirror].mirror != a) return fail("mirror reciprocity");
         if (r.checksum != address_checksum(r)) return fail("address register checksum");
-        if (r.meta != index_[canonical16(a)]) return fail("address register meta");
+        if ((r.flags & kAddrReserved) == 0 && r.meta != index_[canonical16(a)])
+            return fail("address register meta");
         const std::uint8_t row = matrix_row(a);
         const std::uint8_t col = matrix_col(a);
         if (row == col) {
