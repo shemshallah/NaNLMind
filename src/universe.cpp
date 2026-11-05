@@ -272,6 +272,13 @@ void Universe::mark_address_dirty(std::uint16_t addr) {
     addr_dirty_[addr >> 6] |= (1ull << (addr & 63u));
 }
 
+void Universe::set_address_meta(std::uint16_t addr, std::uint64_t value) {
+    AddressReg& reg = addr_regs_[addr];
+    reg.meta = value;
+    reg.checksum = address_checksum(reg);
+    mark_address_dirty(addr);
+}
+
 void Universe::clear_address_dirty() { addr_dirty_.fill(0); }
 
 std::size_t Universe::address_dirty_count() const {

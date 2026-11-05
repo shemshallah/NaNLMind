@@ -36,6 +36,14 @@ void ManifestStore::reset(const PageId& root_page, const Hash256& root_hash) {
     current_.pages = {root_page};
 }
 
+bool ManifestStore::restore(const Manifest& manifest) {
+    if (manifest.pages.empty() || manifest.page.depth > 4) return false;
+    for (const PageId& page : manifest.pages) if (page.depth > 4) return false;
+    std::lock_guard<std::mutex> lock(mutex_);
+    current_ = manifest;
+    return true;
+}
+
 Manifest ManifestStore::snapshot() const {
     std::lock_guard<std::mutex> lock(mutex_);
     return current_;

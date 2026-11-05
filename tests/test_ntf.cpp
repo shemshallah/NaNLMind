@@ -22,6 +22,17 @@ int main() {
         }
     }
 
+    const auto hex_address = UniverseAddress::parse("nan://U-10/R-10/H-0x00AF/T-2");
+    CHECK(hex_address.has_value());
+    if (hex_address) {
+        CHECK_EQ(hex_address->universe, 16u);
+        CHECK_EQ(hex_address->region, 10u);
+        CHECK_EQ(hex_address->head, 0x00AFu);
+        const auto roundtrip = UniverseAddress::parse(hex_address->to_string());
+        CHECK(roundtrip.has_value());
+        if (roundtrip) CHECK_EQ(roundtrip->universe, 16u);
+    }
+
     NodeId owner = NodeId::from_hex(
         "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff");
     CHECK(owner.valid);
@@ -43,6 +54,10 @@ int main() {
 
     TranslationFabric fabric;
     std::string err;
+    CHECK(!fabric.publish(m, 100, &err));
+    fabric.set_signature_verifier([](const MappingRecord& record, const Hash256&) {
+        return record.signature[0] == 1;
+    });
     CHECK(fabric.publish(m, 100, &err));
     const auto r = fabric.resolve(7, 200, 108);
     CHECK(r.ok);
@@ -76,6 +91,9 @@ int main() {
 
     // Temporal handoff validation.
     TranslationFabric f2;
+    f2.set_signature_verifier([](const MappingRecord& record, const Hash256&) {
+        return record.signature[0] == 1;
+    });
     CHECK(f2.publish(m, 100));
     TemporalHandoff h;
     h.source.universe = 3;

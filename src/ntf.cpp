@@ -9,11 +9,11 @@
 namespace nanlm {
 namespace {
 
-std::optional<std::uint64_t> parse_number(std::string_view s) {
+std::optional<std::uint64_t> parse_number(std::string_view s, int base = 0) {
     if (s.empty()) return std::nullopt;
     std::string tmp(s);
     char* end = nullptr;
-    const unsigned long long v = std::strtoull(tmp.c_str(), &end, 0);
+    const unsigned long long v = std::strtoull(tmp.c_str(), &end, base);
     if (!end || *end != '\0') return std::nullopt;
     return static_cast<std::uint64_t>(v);
 }
@@ -77,8 +77,8 @@ std::string PhysicalLocator::to_string() const {
 std::string UniverseAddress::to_string() const {
     std::ostringstream os;
     os << "nan://U-" << std::hex << std::uppercase << universe
-       << "/R-" << static_cast<unsigned>(region)
-       << "/H-0x" << head
+       << "/R-" << std::dec << static_cast<unsigned>(region)
+       << "/H-0x" << std::hex << head
        << "/T-" << std::dec << generation;
     if (!object.empty()) os << '/' << object;
     return os.str();
@@ -93,11 +93,11 @@ std::optional<UniverseAddress> UniverseAddress::parse(std::string_view text) {
     for (std::size_t i = 0; i < 4; ++i) {
         const std::string& p = parts[i];
         if (p.rfind("U-", 0) == 0) {
-            auto v = parse_number(p.substr(2));
+            auto v = parse_number(p.substr(2), 16);
             if (!v || *v > 0xFFFF) return std::nullopt;
             a.universe = static_cast<std::uint16_t>(*v);
         } else if (p.rfind("R-", 0) == 0) {
-            auto v = parse_number(p.substr(2));
+            auto v = parse_number(p.substr(2), 10);
             if (!v || *v > 0xFF) return std::nullopt;
             a.region = static_cast<std::uint8_t>(*v);
         } else if (p.rfind("H-", 0) == 0) {
@@ -121,31 +121,20 @@ std::optional<UniverseAddress> UniverseAddress::parse(std::string_view text) {
     return a;
 }
 
+Hash256 MappingRecord::signing_digest() const {
+    // Versioned canonical little-endian representation; signature excluded.
+    Sha256 h; const char tag[8]={'N','L','M','N','T','F','0','2'}; h.update(tag,8);
+    auto u16=[&](std::uint16_t v){std::uint8_t b[2]={static_cast<std::uint8_t>(v),static_cast<std::uint8_t>(v>>8)};h.update(b,2);};
+    auto u32=[&](std::uint32_t v){std::uint8_t b[4];for(int i=0;i<4;++i)b[i]=static_cast<std::uint8_t>(v>>(8*i));h.update(b,4);};
+    auto u64=[&](std::uint64_t v){std::uint8_t b[8];for(int i=0;i<8;++i)b[i]=static_cast<std::uint8_t>(v>>(8*i));h.update(b,8);};
+    auto str=[&](const std::string&v){u32(static_cast<std::uint32_t>(v.size()));if(!v.empty())h.update(v.data(),v.size());};
+    u16(universe);u64(mapping_version);u64(generation);h.update(topology_root.data(),32);h.update(owner.bytes.data(),32);
+    u32(static_cast<std::uint32_t>(providers.size()));for(const auto&x:providers)h.update(x.bytes.data(),32);
+    u32(static_cast<std::uint32_t>(locators.size()));for(const auto&x:locators){str(x.scheme);str(x.host);u16(x.port);str(x.path);}
+    u64(expiry_unix);u32(capabilities);const auto cs=static_cast<std::uint8_t>(suite);h.update(&cs,1);return h.final();
+}
 Hash256 MappingRecord::digest() const {
-    Sha256 h;
-    const char tag[8] = {'N', 'L', 'M', 'N', 'T', 'F', '0', '1'};
-    h.update(tag, sizeof(tag));
-    h.update(&universe, sizeof(universe));
-    h.update(&mapping_version, sizeof(mapping_version));
-    h.update(&generation, sizeof(generation));
-    h.update(topology_root.data(), topology_root.size());
-    h.update(owner.bytes.data(), owner.bytes.size());
-    const auto providers_n = static_cast<std::uint32_t>(providers.size());
-    h.update(&providers_n, sizeof(providers_n));
-    for (const NodeId& p : providers) h.update(p.bytes.data(), p.bytes.size());
-    const auto locators_n = static_cast<std::uint32_t>(locators.size());
-    h.update(&locators_n, sizeof(locators_n));
-    for (const PhysicalLocator& l : locators) {
-        h.update(l.scheme.data(), l.scheme.size());
-        h.update(l.host.data(), l.host.size());
-        h.update(&l.port, sizeof(l.port));
-        h.update(l.path.data(), l.path.size());
-    }
-    h.update(&expiry_unix, sizeof(expiry_unix));
-    h.update(&capabilities, sizeof(capabilities));
-    h.update(&suite, sizeof(suite));
-    h.update(signature.data(), signature.size());
-    return h.final();
+    Sha256 h;const auto d=signing_digest();h.update(d.data(),d.size());h.update(signature.data(),signature.size());return h.final();
 }
 
 bool TranslationFabric::publish(const MappingRecord& record, std::uint64_t now,
@@ -156,6 +145,8 @@ bool TranslationFabric::publish(const MappingRecord& record, std::uint64_t now,
     };
     if (record.locators.empty()) return fail("mapping has no locators");
     if (!record.signature_present()) return fail("mapping is unsigned");
+    if (!verifier_) return fail("no cryptographic signature verifier configured");
+    if (!verifier_(record, record.signing_digest())) return fail("mapping signature verification failed");
     if (record.expiry_unix <= now) return fail("mapping already expired");
     auto it = mappings_.find(record.universe);
     if (it != mappings_.end()) {
@@ -176,8 +167,9 @@ RouteResultNTF TranslationFabric::resolve(std::uint16_t universe, std::uint64_t 
         r.error = "universe not registered";
         return r;
     }
-    if (!it->second.signature_present()) {
-        r.error = "mapping is unsigned";
+    if (!it->second.signature_present() || !verifier_ ||
+        !verifier_(it->second, it->second.signing_digest())) {
+        r.error = "mapping signature invalid or verifier unavailable";
         return r;
     }
     if (it->second.expiry_unix <= now) {

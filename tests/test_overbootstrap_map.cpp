@@ -1,8 +1,10 @@
 #include "nanlm/overbootstrap.hpp"
+#include "nanlm/bootstrap_layers.hpp"
 #include "test_util.hpp"
 
 #include <array>
 #include <cstdint>
+#include <vector>
 
 using namespace nanlm;
 

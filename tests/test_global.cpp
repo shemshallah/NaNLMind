@@ -91,6 +91,10 @@ int main() {
     CHECK_EQ(g.ledger().size(), 3u); // two chart events + one explicit event
     CHECK(g.ledger().verify());
     CHECK(!(before_event == g.global_digest()));
+    Hash256 subject = make_hash(9), payload = make_hash(10);
+    const auto shard_event = g.commit_shard(7, 3, 9, subject, payload);
+    CHECK_EQ(g.journals().size(), 1u);
+    CHECK(g.journals().verify());
 
     // Deterministic replay of the same construction yields one identity.
     GlobalTopology g2(0x1234);
@@ -101,7 +105,23 @@ int main() {
     g2.hypergraph().add(e);
     g2.temporal().link(Ref::from_bit(root_bit), Ref::from_bit(child_bit), 1, kTemporalBranch);
     g2.commit(1, 3, 0, make_hash(1), make_hash(2));
+    g2.commit_shard(7, 3, 9, subject, payload);
     CHECK(g.global_digest() == g2.global_digest());
+
+    const auto snapshot = g.serialize();
+    auto restored = GlobalTopology::from_bytes(snapshot.data(), snapshot.size());
+    CHECK(restored != nullptr);
+    if (restored) {
+        CHECK(restored->global_digest() == g.global_digest());
+        CHECK_EQ(restored->chart_count(), g.chart_count());
+        CHECK_EQ(restored->hypergraph().size(), g.hypergraph().size());
+        CHECK_EQ(restored->temporal().size(), g.temporal().size());
+        CHECK(restored->ledger().verify());
+        CHECK(restored->journals().verify());
+        CHECK_EQ(restored->journals().size(), 1u);
+    }
+    auto truncated = snapshot; truncated.pop_back();
+    CHECK(GlobalTopology::from_bytes(truncated.data(), truncated.size()) == nullptr);
 
     // Cell access through the one object.
     CHECK(g.cell(PageId::root(), matrix_addr(0, 1)) != nullptr);

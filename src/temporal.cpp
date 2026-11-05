@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <set>
+#include <cstring>
 
 namespace nanlm {
 
@@ -151,6 +152,29 @@ Hash256 BidirectionalMemory::digest() const {
         }
     }
     return h.final();
+}
+
+
+namespace {
+void tp(std::vector<std::uint8_t>&o,std::uint64_t v,unsigned n){for(unsigned i=0;i<n;++i)o.push_back(static_cast<std::uint8_t>(v>>(8*i)));}
+bool tg(const std::uint8_t*d,std::size_t n,std::size_t&p,unsigned b,std::uint64_t&v){if(p>n||n-p<b)return false;v=0;for(unsigned i=0;i<b;++i)v|=static_cast<std::uint64_t>(d[p++])<<(8*i);return true;}
+void tref(std::vector<std::uint8_t>&o,const Ref&r){o.push_back(static_cast<std::uint8_t>(r.kind));o.push_back(r.flags);tp(o,r.offset,8);o.push_back(r.page.depth);for(auto x:r.page.path)o.push_back(x);}
+bool rtref(const std::uint8_t*d,std::size_t n,std::size_t&p,Ref&r){if(p>n||n-p<15)return false;r.kind=static_cast<Ref::Kind>(d[p++]);r.flags=d[p++];if(static_cast<unsigned>(r.kind)>static_cast<unsigned>(Ref::Kind::SuperPage))return false;std::uint64_t v=0;if(!tg(d,n,p,8,v))return false;r.offset=v;r.page.depth=d[p++];for(auto&x:r.page.path)x=d[p++];return r.page.depth<=4;}
+}
+std::vector<std::uint8_t> BidirectionalMemory::serialize() const {
+ std::vector<std::uint8_t>o{'N','L','M','T','M','E','M','2'};tp(o,next_id_,4);const auto all=links();tp(o,all.size(),4);
+ for(const auto&l:all){tp(o,l.id,4);tref(o,l.past);tref(o,l.future);tp(o,l.epoch,8);tp(o,l.flags,2);tp(o,l.weight,4);}return o;
+}
+BidirectionalMemory BidirectionalMemory::from_bytes(const std::uint8_t*d,std::size_t n){
+ BidirectionalMemory bad;if(!d||n<16||std::memcmp(d,"NLMTMEM2",8)!=0)return bad;std::size_t p=8;std::uint64_t v=0;
+ if(!tg(d,n,p,4,v))return bad;const auto next=static_cast<std::uint32_t>(v);
+ if(!tg(d,n,p,4,v)||v>(n-p)/48)return bad;const auto count=static_cast<std::size_t>(v);BidirectionalMemory out;
+ for(std::size_t i=0;i<count;++i){TemporalLink l;if(!tg(d,n,p,4,v))return bad;l.id=static_cast<std::uint32_t>(v);
+  if(!rtref(d,n,p,l.past)||!rtref(d,n,p,l.future)||l.past==l.future)return bad;
+  if(!tg(d,n,p,8,l.epoch)||!tg(d,n,p,2,v))return bad;l.flags=static_cast<std::uint16_t>(v);
+  if(!tg(d,n,p,4,v))return bad;l.weight=static_cast<std::uint32_t>(v);
+  if(!l.id||out.links_.count(l.id))return bad;out.forward_index_[l.past].push_back(l.id);out.backward_index_[l.future].push_back(l.id);out.links_.emplace(l.id,l);}
+ if(p!=n||!next)return bad;for(const auto&kv:out.links_)if(kv.first>=next)return bad;out.next_id_=next;return out;
 }
 
 } // namespace nanlm

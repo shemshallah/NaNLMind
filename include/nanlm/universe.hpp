@@ -225,6 +225,7 @@ public:
     const AddressReg& address_reg(std::uint16_t addr) const;
     bool address_dirty(std::uint16_t addr) const;
     void mark_address_dirty(std::uint16_t addr);
+    void set_address_meta(std::uint16_t addr, std::uint64_t value);
     void clear_address_dirty();
     std::size_t address_dirty_count() const;
     bool set_capability(std::uint16_t addr, std::uint8_t caps);

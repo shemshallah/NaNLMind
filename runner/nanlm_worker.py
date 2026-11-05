@@ -206,6 +206,11 @@ def core_packets(args):
         return None
     state = local_path()
     snapshot = state / "chart.nmc"
+    if not snapshot.exists():
+        init = run_core(["snapshot", "--out", str(snapshot)], check=False)
+        if init.returncode != 0:
+            print(f"core snapshot initialization failed: {init.stderr.strip()}", file=sys.stderr)
+            return None
     packets = state / f"packets_{args.epoch}_{args.slot}.json"
     cmd = [str(exe), "headshift", "--slot", str(args.slot + 1),
            "--epoch", str(args.epoch), "--runners", str(RUNNERS),
@@ -272,6 +277,10 @@ def op_headshift(args):
 
 
 def op_loop(args):
+    """Persistent C++ loop: every slot mutates the same chart snapshot."""
+    if os.environ.get("NANLM_USE_CORE", "0").lower() not in ("1", "true", "yes"):
+        print("persistent loop requires NANLM_USE_CORE=1; refusing simulated packets", file=sys.stderr)
+        return 5
     env = connect_tiers(writer=True)
     gate = reg_get(env, "nanlm/gate") if env is not None else None
     if env is not None and not (gate or {}).get("ok"):
@@ -281,16 +290,26 @@ def op_loop(args):
     rounds = []
     deadline = time.monotonic() + max(1, args.minutes) * 60
     partial = False
+    original_slot = args.slot
     for epoch in range(args.epoch, args.epoch + max(1, args.epochs)):
         if time.monotonic() >= deadline:
             partial = True
             break
         for slot in range(RUNNERS):
-            heads = mapping[str(slot)]
-            packets = [packet(slot, epoch, h) for h in heads]
+            args.slot = slot
+            packets = core_packets(args)
+            if packets is None:
+                args.slot = original_slot
+                print("C++ core headshift failed; refusing synthetic state", file=sys.stderr)
+                return 4
+            expected = mapping[str(slot)]
+            if sorted(p.get("head") for p in packets) != expected or any(p.get("epoch") != epoch for p in packets):
+                args.slot = original_slot
+                print("C++ core returned an invalid head shard", file=sys.stderr)
+                return 4
             reg_put(env, f"nanlm/head/{epoch}/{slot}", packets)
-            local_path().joinpath(f"head_{epoch}_{slot}.json").write_text(
-                json.dumps(packets, indent=1))
+            local_path().joinpath(f"head_{epoch}_{slot}.json").write_text(json.dumps(packets, indent=1))
+        args.slot = original_slot
         ok, record = finalize_round(env, epoch)
         if not ok:
             print(json.dumps({"ok": False, "op": "loop", "epoch": epoch,
@@ -298,10 +317,11 @@ def op_loop(args):
             return 4
         rounds.append(record)
         print(f"epoch {epoch}: {record['digest']}", flush=True)
-    out = {"ok": True, "op": "loop", "start": args.epoch,
-           "epochs": len(rounds), "partial": partial,
-           "next_epoch": args.epoch + len(rounds), "rounds": rounds}
-    print(json.dumps(out, indent=1))
+    args.slot = original_slot
+    print(json.dumps({"ok": True, "op": "loop", "start": args.epoch,
+                      "epochs": len(rounds), "partial": partial,
+                      "next_epoch": args.epoch + len(rounds), "rounds": rounds,
+                      "execution": "cpp-core", "slots": RUNNERS}, indent=1))
     return 0
 
 

@@ -28,7 +28,7 @@ void TuringTape::write(std::int64_t position, std::uint8_t symbol) {
     const auto [page, offset] = split_position(position);
     auto& ptr = pages_[page];
     if (!ptr) ptr = std::make_unique<Universe>(0x544D5047u + static_cast<std::uint64_t>(page));
-    ptr->address_reg(static_cast<std::uint16_t>(offset)).meta = symbol;
+    ptr->set_address_meta(static_cast<std::uint16_t>(offset), symbol);
 }
 
 std::string TuringTape::slice(std::int64_t begin, std::int64_t end) const {
@@ -44,16 +44,14 @@ void TuringMachine::load(const std::vector<TmTransition>& transitions) {
     for (const auto& t : transitions) {
         if (t.from >= kMaxStates || t.read >= kAlphabet) continue;
         const std::uint64_t move = static_cast<std::uint64_t>(t.move + 1);
-        universe_->address_reg(static_cast<std::uint16_t>(
-            kTableBase + t.from * 8u + t.read)).meta =
-            static_cast<std::uint64_t>(t.write) |
-            (static_cast<std::uint64_t>(t.to) << 8) |
-            (move << 16) |
-            (1ull << 20) |
-            (t.halt ? (1ull << 21) : 0ull);
+        const auto addr = static_cast<std::uint16_t>(kTableBase + t.from * 8u + t.read);
+        const std::uint64_t encoded = static_cast<std::uint64_t>(t.write) |
+            (static_cast<std::uint64_t>(t.to) << 8) | (move << 16) |
+            (1ull << 20) | (t.halt ? (1ull << 21) : 0ull);
+        universe_->set_address_meta(addr, encoded);
     }
-    universe_->address_reg(kControlBase + kHaltSlot).meta = 0;
-    universe_->address_reg(kControlBase + kStateSlot).meta = 0;
+    universe_->set_address_meta(kControlBase + kHaltSlot, 0);
+    universe_->set_address_meta(kControlBase + kStateSlot, 0);
 }
 
 void TuringMachine::set_tape(const std::string& tape, std::int64_t head) {
@@ -61,9 +59,9 @@ void TuringMachine::set_tape(const std::string& tape, std::int64_t head) {
         const char c = tape[static_cast<std::size_t>(i)];
         tape_.write(i, c == '0' ? 0 : c == '1' ? 1 : 2);
     }
-    universe_->address_reg(kControlBase + kHeadSlot).meta = static_cast<std::uint64_t>(head);
-    universe_->address_reg(kControlBase + kStateSlot).meta = 0;
-    universe_->address_reg(kControlBase + kHaltSlot).meta = 0;
+    universe_->set_address_meta(kControlBase + kHeadSlot, static_cast<std::uint64_t>(head));
+    universe_->set_address_meta(kControlBase + kStateSlot, 0);
+    universe_->set_address_meta(kControlBase + kHaltSlot, 0);
 }
 
 bool TuringMachine::halted() const {
@@ -90,18 +88,17 @@ bool TuringMachine::step() {
     const std::uint64_t raw =
         universe_->address_reg(static_cast<std::uint16_t>(kTableBase + s * 8u + read)).meta;
     if ((raw & (1ull << 20)) == 0) {
-        universe_->address_reg(kControlBase + kHaltSlot).meta = 1;
+        universe_->set_address_meta(kControlBase + kHaltSlot, 1);
         return false;
     }
     const std::uint8_t write = static_cast<std::uint8_t>(raw & 0xFFu);
     const std::uint8_t to = static_cast<std::uint8_t>((raw >> 8) & 0xFFu);
     const std::int8_t move = static_cast<std::int8_t>(((raw >> 16) & 0x3u) - 1);
     tape_.write(h, write);
-    universe_->address_reg(kControlBase + kStateSlot).meta = to;
-    universe_->address_reg(kControlBase + kHeadSlot).meta =
-        static_cast<std::uint64_t>(h + move);
+    universe_->set_address_meta(kControlBase + kStateSlot, to);
+    universe_->set_address_meta(kControlBase + kHeadSlot, static_cast<std::uint64_t>(h + move));
     if ((raw & (1ull << 21)) != 0) {
-        universe_->address_reg(kControlBase + kHaltSlot).meta = 1;
+        universe_->set_address_meta(kControlBase + kHaltSlot, 1);
         return false;
     }
     return true;
