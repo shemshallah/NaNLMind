@@ -270,8 +270,10 @@ Archived behavior gates run as reproducible targets:
 These are host-symbolic rules, not byte-learned behavior. The fixed challenge in
 `tests/test_logic_challenge.cpp` uses fish swimming and birds flying with true
 facts, balanced yes/no labels, and ten shuffled fact orders. The current order-2 byte model gets **0.500**; the symbolic baseline gets
-**1.000**. It answers yes to all eight cases across all ten orders, so the failure is
-structural and deterministic, not a flaky test. `make challenge` is intentionally not in
+**1.000**. After balancing the training answers to exactly four yes/four no and removing
+the yes-on-tie rule, it gives 1 yes, 3 no, and 4 uncertain across all ten
+orders. The yes attractor is gone; the remaining failure is the missing entity
+binding, not a label prior. `make challenge` is intentionally not in
 `make test`.
 
 Ten process launches of `verify`, `phase`, `clock`, and the challenge produced

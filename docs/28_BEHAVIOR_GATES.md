@@ -66,26 +66,28 @@ Result on the current structure:
 
 | case | expected | model | p(yes) | p(no) |
 |---|---|---|---|---|
-| sparrow fly | yes | yes | 0.01556 | 0.01040 |
-| magpie fly | yes | yes | 0.01519 | 0.01003 |
-| trout swim | yes | yes | 0.01451 | 0.00981 |
-| cod swim | yes | yes | 0.01533 | 0.01027 |
-| ostrich fly | no | **yes** | 0.01470 | 0.01027 |
-| kiwi fly | no | **yes** | 0.01490 | 0.01032 |
-| emu fly | no | **yes** | 0.01533 | 0.01027 |
-| cassowary fly | no | **yes** | 0.01533 | 0.01027 |
+| sparrow fly | yes | uncertain | 0.0129762 | 0.0129762 |
+| magpie fly | yes | yes | 0.0127530 | 0.0124681 |
+| trout swim | yes | uncertain | 0.0121571 | 0.0121571 |
+| cod swim | yes | uncertain | 0.0128009 | 0.0128009 |
+| ostrich fly | no | no | 0.0123100 | 0.0126583 |
+| kiwi fly | no | no | 0.0124681 | 0.0127530 |
+| emu fly | no | no | 0.0124681 | 0.0127530 |
+| cassowary fly | no | uncertain | 0.0128009 | 0.0128009 |
 
 ```text
 model accuracy = 0.500
 symbolic accuracy = 1.000
 threshold = 0.875
+yes=1/8  no=3/8  uncertain=4/8
+order_independent=yes
 FAIL challenge
 ```
 
-The model answers **yes** for every held-out query. The labels are balanced and
-true, and a simple host-symbolic baseline gets 8/8. The failure is real: an
-order-2 byte model cannot bind the entity to its fact or the exception, and the
-answer position has almost no entity-specific evidence.
+The yes attractor is gone. The model now abstains when the local counts are
+tied. The remaining failure is the real one: an order-2 byte model cannot bind
+the entity to its fact or exception, and the answer position has almost no
+entity-specific evidence.
 
 An earlier version used fish exceptions such as “carp cannot swim.” That was
 factually wrong; carp can swim. The challenge now uses true fish and bird facts.

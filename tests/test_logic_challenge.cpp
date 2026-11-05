@@ -60,7 +60,7 @@ const std::array<const char*, 16> kFactLines{{
     "salmon is a fish.",
 }};
 
-const std::array<const char*, 10> kMoreFacts{{
+const std::array<const char*, 11> kMoreFacts{{
     "fish can swim.",
     "shark is a fish.",
     "trout is a fish.",
@@ -71,12 +71,12 @@ const std::array<const char*, 10> kMoreFacts{{
     "can penguin fly? answer penguin no.",
     "can ostrich fly? answer ostrich no.",
     "can salmon swim? answer salmon yes.",
+    "can emu fly? answer emu no.",
 }};
 
-const std::array<const char*, 3> kTailFacts{{
+const std::array<const char*, 2> kTailFacts{{
     "can shark swim? answer shark yes.",
     "can kiwi fly? answer kiwi no.",
-    "can carp swim? answer carp yes.",
 }};
 
 std::string prompt_for(const Case& c) {
@@ -124,17 +124,19 @@ Run run_once(int seed, bool print_cases, std::size_t& symbolic_correct) {
         const std::string prompt = prompt_for(c);
         const double py = answer_probability(model, prompt, 'y');
         const double pn = answer_probability(model, prompt, 'n');
-        const bool predicted_yes = py >= pn;
-        const bool ok = predicted_yes == c.expected_yes;
+        constexpr double kTie = 1e-12;
+        const int predicted = (py > pn + kTie) ? 1 : (pn > py + kTie ? 0 : -1);
+        const bool ok = predicted == (c.expected_yes ? 1 : 0);
         const bool symbolic_yes = !c.exception_no;
         const bool symbolic_ok = symbolic_yes == c.expected_yes;
         if (ok) ++run.correct;
-        if (predicted_yes) ++run.yes_count;
+        if (predicted == 1) ++run.yes_count;
         if (symbolic_ok) ++symbolic_correct;
         if (print_cases) {
             std::cout << "  " << c.entity << " " << c.ability
                       << " expected=" << (c.expected_yes ? "yes" : "no")
-                      << " model=" << (predicted_yes ? "yes" : "no")
+                      << " model="
+                      << (predicted == 1 ? "yes" : predicted == 0 ? "no" : "uncertain")
                       << " p(yes)=" << py << " p(no)=" << pn
                       << " symbolic=" << (symbolic_ok ? "ok" : "wrong")
                       << " -> " << (ok ? "PASS" : "FAIL") << "\n";

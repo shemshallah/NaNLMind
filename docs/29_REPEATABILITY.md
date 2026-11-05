@@ -51,8 +51,9 @@ pair count.
 
 The challenge is also deterministic. It now covers fish swimming and birds
 flying with true facts, balanced four yes/four no labels, and ten shuffled fact
-orders. Every seed gives accuracy 0.5 and eight yes answers out of eight. The
-symbolic baseline is 1.0. That is a stable failure, not a flaky test. An earlier
+orders. Every seed gives accuracy 0.5, with 1 yes, 3 no, and 4 uncertain
+answers. The symbolic baseline is 1.0. The yes attractor is gone; the remaining
+failure is the missing entity binding, not a label prior. An earlier
 fish variant incorrectly said “carp cannot swim,” which is false and has been
 removed.
 
