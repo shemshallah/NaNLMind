@@ -5,11 +5,15 @@
 #include "nanlm/ring.hpp"
 #include "nanlm/router.hpp"
 #include "nanlm/ntf.hpp"
+#include "nanlm/byte_model.hpp"
 #include "nanlm/schedule.hpp"
 #include "nanlm/universe.hpp"
 
 #include <cstdio>
 #include <cstring>
+#include <cmath>
+#include <fstream>
+#include <iterator>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -387,6 +391,32 @@ int cmd_growth() {
     return r.ok ? 0 : 1;
 }
 
+int cmd_byte(int argc, char** argv) {
+    const char* path = argc > 2 ? argv[2] : "data/alice_excerpt.txt";
+    std::ifstream f(path, std::ios::binary);
+    if (!f) { std::cerr << "cannot open " << path << "\n"; return 1; }
+    std::vector<std::uint8_t> data((std::istreambuf_iterator<char>(f)),
+                                   std::istreambuf_iterator<char>());
+    if (data.size() < 100) { std::cerr << "corpus too small\n"; return 1; }
+    const std::size_t split = (data.size() * 4) / 5;
+    std::vector<std::uint8_t> train(data.begin(), data.begin() + split);
+    std::vector<std::uint8_t> test(data.begin() + split, data.end());
+    Universe u(0x4E614E4C4D000001ull);
+    ByteModel model(u);
+    model.train(train);
+    const ByteEval eval = model.evaluate(test, 1, test.size());
+    const ByteEval ref = ByteModel::reference(train, test);
+    std::cout << "NaNLMind — single-universe byte bigram\n\n";
+    std::cout << "corpus " << path << " bytes=" << data.size()
+              << " train=" << train.size() << " test=" << test.size() << "\n";
+    std::cout << "topology  acc=" << eval.accuracy << " bpc=" << eval.bits_per_byte << "\n";
+    std::cout << "reference acc=" << ref.accuracy << " bpc=" << ref.bits_per_byte << "\n";
+    std::cout << "match=" << ((eval.correct == ref.correct &&
+                               std::abs(eval.bits_per_byte - ref.bits_per_byte) < 1e-9) ? "yes" : "no")
+              << " cells=" << u.canonical_count() << "\n";
+    return (eval.correct == ref.correct) ? 0 : 2;
+}
+
 int cmd_ntf() {
     std::cout << "NaNLMind — NaN Translation Fabric\n\n";
     const auto a = UniverseAddress::parse("nan://U-07/R-03/H-0x0180/T-108/model/a");
@@ -538,6 +568,7 @@ void usage() {
               << "  phase       transform-phase orbits and wake-slot scheduling\n"
               << "  router      meta-router: universes as heads, routes as pairs\n"
               << "  ntf         NaN Translation Fabric address/route demo\n"
+              << "  byte [path] single-universe byte bigram train/eval\n"
               << "  growth      child-chart growth and scratch consolidation\n"
               << "  scale       print the hierarchical scaling table\n"
               << "  resonance   run the 256-head resonance wave\n"
@@ -560,6 +591,7 @@ int main(int argc, char** argv) {
     if (cmd == "phase") return cmd_phase();
     if (cmd == "router") return cmd_router();
     if (cmd == "ntf") return cmd_ntf();
+    if (cmd == "byte") return cmd_byte(argc, argv);
     if (cmd == "growth") return cmd_growth();
     if (cmd == "scale") return cmd_scale();
     if (cmd == "resonance") return cmd_resonance();

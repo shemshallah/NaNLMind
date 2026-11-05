@@ -192,9 +192,20 @@ still available as the explicit handoff proof.
 chart. `tests/test_universe_task.cpp` learns XOR, AND, and OR on separate heads
 at 4/4, and replays a four-head sequence forward and backward.
 
+First byte-level result on `data/alice_excerpt.txt` (30 KB, 80/20):
+
+| model | top-1 | bits/byte |
+|---|---:|---:|
+| topology bigram | 29.97% | 3.895 |
+| host bigram | 29.97% | 3.895 |
+
+The topology matches the host bigram exactly. That is a correctness gate, not a
+win.
+
 `make universe-check` runs the single-universe gate:
 
 - Boolean learning;
+- byte-level bigram equivalence;
 - 256-head structure;
 - sequence order;
 - handoff;
@@ -252,7 +263,7 @@ storage/addressing and bidirectional memory, not a measured learning advantage.
 ## 10. Next
 
 1. Load real chart/head/scratch state from `nanlm-vram` in the ring worker.
-2. Run a held-out byte-level task with bigram and plain-RNN baselines.
+2. Add order-0, slot-memory, and plain-RNN controls to the byte task.
 3. Connect the NTF mapping record to the signed registry and peer discovery.
 4. Two-universe communication demo with the NTF and temporal handoff.
 5. Dropped-slot recovery using reverse rails and contemplation frames.

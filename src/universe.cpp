@@ -330,6 +330,14 @@ std::uint32_t Universe::cell_checksum(const NanCell& cell) {
     return fnv1a(&cell, sizeof(cell));
 }
 
+void Universe::refresh_checksums() {
+    for (std::uint32_t idx = 0; idx < kCanonicalCount; ++idx) {
+        desc_[idx].checksum = cell_checksum(cells_[idx]);
+        desc_[idx].generation = cells_[idx].generation;
+        desc_[idx].epoch = cells_[idx].epoch;
+    }
+}
+
 Hash256 Universe::digest() const {
     Sha256 h;
     const std::uint64_t g = genome_;

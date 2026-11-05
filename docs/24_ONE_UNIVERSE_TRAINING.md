@@ -81,7 +81,26 @@ evaluates all three at 4/4, and replays a four-head sequence both ways.
 
 ---
 
-## 5. Baselines and honest results
+## 5. First byte-level result (2026-11-05)
+
+Corpus: `data/alice_excerpt.txt`, 30,000 bytes, 80/20 split.
+
+| model | top-1 | bits/byte |
+|---|---:|---:|
+| topology bigram | 29.97% | 3.895 |
+| host bigram reference | 29.97% | 3.895 |
+
+The topology **matches** the independent host bigram exactly: same correct
+count and same BPC. This is a correctness gate, not a quality win. The next
+comparison is order-0, a count slot memory, and a plain RNN control.
+
+Run:
+
+```sh
+./build/nanlm-universal byte data/alice_excerpt.txt
+```
+
+## 6. Baselines and honest results
 
 - Boolean score learning is exact for the 16-function space; it is not a
   gradient method.
@@ -104,7 +123,7 @@ a tautology.
 
 ---
 
-## 6. Commands
+## 7. Commands
 
 ```sh
 make universe-check
@@ -120,7 +139,7 @@ gate is local first.
 
 ---
 
-## 7. Exit criteria for the single universe
+## 8. Exit criteria for the single universe
 
 1. All `make universe-check` tests pass.
 2. A held-out byte task beats the bigram baseline.

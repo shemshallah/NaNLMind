@@ -267,6 +267,10 @@ public:
     // Deterministic per-cell checksum (FNV-1a over the 64-byte cell).
     static std::uint32_t cell_checksum(const NanCell& cell);
 
+    // Recompute all descriptor checksums after host-side model training that
+    // edits cells directly.
+    void refresh_checksums();
+
 private:
     void build_index();
     void build_genesis(std::uint64_t genome);
