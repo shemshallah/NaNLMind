@@ -44,6 +44,7 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 38 | [38_LAYERED_LEARNING.md](38_LAYERED_LEARNING.md) | How does every layer learn from the layer below, up to the global mesh? |
 | 39 | [39_BIT_BYTE_GATE.md](39_BIT_BYTE_GATE.md) | What happens when the mesh learns bit and byte transitions? |
 | 40 | [40_BYTE_STREAM_GATE.md](40_BYTE_STREAM_GATE.md) | Does the mesh beat order-0 on real Alice byte transitions? |
+| 41 | [41_RELATION_FIRST_CURRICULUM.md](41_RELATION_FIRST_CURRICULUM.md) | Why relations and penguin logic come before scaled bytes/words |
 
 The short version:
 

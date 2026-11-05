@@ -311,6 +311,14 @@ pages they use. The Android constructor is guarded invalid, and the dense map
 test is skipped on Android; only the x86 runner ring maps the 2 GiB region.
 `test_overbootstrap_map` passes on the runner path.
 
+### Relation-first curriculum
+
+The relation-first gate is green: 8/8 relation-qualified Hopfield associations,
+80 overbootstrap traces, and the word/logic layer correctly handles the
+penguin exception and nested `emperor -> penguin -> bird` chain. `make
+curriculum` runs relation → word/logic → bit/byte. The real Alice byte challenge
+is still separate and still failing.
+
 ### Real byte-stream gate
 
 The two-rate mesh was trained on consecutive Alice bytes. Held-out top-1 is
