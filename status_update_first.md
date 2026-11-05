@@ -159,6 +159,12 @@ systems) is design-only. The arithmetic envelope is 4.29B systems, 1.1T Head
 instances, 32 PiB dense at the extreme; the regional reading is one universe per
 supercluster = 65,536 universes, 16.7M Heads, 512 GiB dense.
 
+Earth-scale check (`experiments/earth_scale.py`): assuming 23.5B devices and
+100% participation, the hierarchy needs ~1,401 IoT spaces, ~5.5 global meshes,
+and ~0.02 superclusters. All GPUs fit in ~0.23 of one global mesh. A supercluster
+is ~46× Earth's assumed device count; the supercluster layer is beyond current
+need.
+
 ## 6. Live ring
 
 - `nanlm-cpu-1..6` — disposable head runners
@@ -202,8 +208,10 @@ First byte-level result on `data/alice_excerpt.txt` (30 KB, 80/20):
 | slot-1 / host bigram | 29.97% | 3.895 |
 | slot-2 (context 2 + backoff) | 41.06% | 4.023 |
 
-The topology matches the host bigram exactly. Bigram beats order-0 by 0.786
-bits/byte. Context-2 improves top-1 to 41.06% but is still worse in BPC (4.023)
+The topology matches the host bigram exactly. That is storage fidelity, not a
+shared-array trick: snapshot/restore preserves it, a different training corpus
+changes predictions, and a direct pair-cell count mutation changes the
+prediction. Bigram beats order-0 by 0.786 bits/byte. Context-2 improves top-1 to 41.06% but is still worse in BPC (4.023)
 because 30 KB is too sparse for a 65,536-context table even with backoff. The
 next baseline is a stronger smoothing method or more data, then a plain RNN.
 

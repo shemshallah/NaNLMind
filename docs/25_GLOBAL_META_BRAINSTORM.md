@@ -20,6 +20,88 @@ clusters, not a new geometry.
 
 ---
 
+## 1.1 The 256-ary Earth hierarchy
+
+An alternative, deployment-first reading:
+
+```text
+unit            1 computational unit (ARM core, phone, GPU, storage point)
+cluster         256 units
+macrocluster    256 clusters        = 65,536 units
+IoT space       256 macroclusters    = 16,777,216 units
+global mesh     256 IoT spaces       = 4,294,967,296 units
+supercluster    256 global meshes    = 1.1 trillion units
+planetary mesh  256 superclusters    = 281 trillion units
+interplanetary  256 planetary meshes
+```
+
+The 255/3 groupings can be deployment roles (e.g., 255 active + 1 spare, or
+three administrative macroclusters), not address widths. The address width stays
+256-ary, which keeps every level a 256×256 chart.
+
+### Device estimates are assumptions, not a census
+
+Public estimates vary widely. For scale planning, use parameters:
+
+| class | planning assumption |
+|---|---:|
+| ARM-based active devices | 20 billion |
+| x86 PCs/servers | 2 billion |
+| RISC-V active devices | 0.5 billion |
+| GPUs (mobile + discrete + farms) | 1 billion |
+| total | 23.5 billion |
+
+Run `python3 experiments/earth_scale.py --contribution 0.01` to reproduce the
+arithmetic; the numbers are planning assumptions, not a census.
+
+At **1% contribution**:
+
+```text
+235,000,000 units
+    918,000 clusters
+      3,586 macroclusters
+         14 IoT spaces
+          1 global mesh
+```
+
+At **0.1%** it is ~1.4 IoT spaces. At **100%** it is ~1,401 IoT spaces,
+~5.47 global meshes, and ~0.021 superclusters. One global mesh holds 4.29B
+units, about 18% of the 23.5B assumption. One supercluster holds 1.1T units,
+about 46× the assumed Earth device count.
+
+So the correct statement is:
+
+- all GPUs (~1B) fit in ~0.23 of one global mesh;
+- all x86 + RISC-V + GPUs (~3.5B) fit in ~0.8 of one global mesh;
+- all 23.5B assumed devices need ~5.5 global meshes, still far below one
+  supercluster;
+- a supercluster is bigger than Earth needs today.
+
+That is the strong version of “we can address every GPU on earth”: the address
+space is not the bottleneck. Participation, identity, authorization, and
+bandwidth are.
+
+### Mesh membership classes
+
+A global mesh can contain multiple kinds of member:
+
+- human/personal (phones, wearables, home devices);
+- corporate fleets;
+- industrial/robotic cells;
+- research and GPU farms;
+- storage/archive providers;
+- public/community mesh.
+
+Each class gets its own IoT subspace and capability policy. They agree on NTF
+and NCR protocols; they do not need identical hardware.
+
+### Above Earth
+
+A planetary mesh can sit above a global mesh, and an interplanetary layer above
+that. The addressing works; the hard parts are latency, causal handoff, and
+store-and-forward. The NTF temporal generation is the right place to carry that
+context.
+
 ## 2. Two scaling readings
 
 ### Dense: every system runs its own 256-head training universe

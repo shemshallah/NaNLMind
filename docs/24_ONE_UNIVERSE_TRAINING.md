@@ -93,8 +93,11 @@ Corpus: `data/alice_excerpt.txt`, 30,000 bytes, 80/20 split.
 | slot1 / host bigram | 29.97% | 3.895 |
 | slot2 (context 2 + backoff) | **41.06%** | 4.023 |
 
-The topology **matches** the independent host bigram exactly. Bigram beats
-order-0 by 0.786 bits/byte. The context-2 slot memory improves top-1 to 41.06%
+The topology **matches** the independent host bigram exactly. That is not
+suspicious; it is the storage-fidelity gate. The test now proves it three ways:
+snapshot/restore preserves the result; training on a different corpus changes
+predictions; writing a count directly into a pair cell changes the prediction.
+Bigram beats order-0 by 0.786 bits/byte. The context-2 slot memory improves top-1 to 41.06%
 but its BPC is still worse (4.023 vs 3.895) even with a bigram backoff, because
 30 KB is too sparse for a 65,536-context table. The next baseline is a stronger
 smoothing method (Kneser-Ney) or more data, followed by a plain RNN control.
