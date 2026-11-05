@@ -50,6 +50,31 @@ private:
     std::uint64_t samples_ = 0;
 };
 
+// Simple order-1 count expert used as a routing alternative to Hopfield.
+class ByteBigram {
+public:
+    void train(const std::vector<std::uint8_t>& data, std::size_t begin, std::size_t end);
+    std::uint8_t predict(std::uint8_t previous) const;
+    Hash256 digest() const;
+
+private:
+    std::array<std::array<std::uint32_t, 256>, 256> counts_{};
+};
+
+// Overbootstrap chooses among lower-level experts from evidence, not from a
+// hard-coded preference.
+class ExpertRouter {
+public:
+    void observe(std::uint8_t expert, bool correct);
+    std::uint8_t choose() const;
+    std::uint64_t total(std::uint8_t expert) const;
+    Hash256 digest() const;
+
+private:
+    std::array<std::uint64_t, 2> success_{};
+    std::array<std::uint64_t, 2> total_{};
+};
+
 class BootstrapMesh {
 public:
     BootstrapMesh(HopfieldConfig config, std::uint8_t top_k_active = 8)

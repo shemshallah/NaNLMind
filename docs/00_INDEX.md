@@ -45,6 +45,9 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 39 | [39_BIT_BYTE_GATE.md](39_BIT_BYTE_GATE.md) | What happens when the mesh learns bit and byte transitions? |
 | 40 | [40_BYTE_STREAM_GATE.md](40_BYTE_STREAM_GATE.md) | Does the mesh beat order-0 on real Alice byte transitions? |
 | 41 | [41_RELATION_FIRST_CURRICULUM.md](41_RELATION_FIRST_CURRICULUM.md) | Why relations and penguin logic come before scaled bytes/words |
+| 42 | [42_BYTE_EXPERT_ROUTER.md](42_BYTE_EXPERT_ROUTER.md) | How does overbootstrap choose between Hopfield and bigram byte experts? |
+| 43 | [43_BYTE_ROUTER_REPEATS.md](43_BYTE_ROUTER_REPEATS.md) | Does repeating the same byte corpus improve the routed result? |
+| 44 | [44_WORD_STREAM_GATE.md](44_WORD_STREAM_GATE.md) | How strong is a simple word-level baseline on Alice? |
 
 The short version:
 

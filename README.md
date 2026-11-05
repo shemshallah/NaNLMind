@@ -124,6 +124,8 @@ make
 ./build/nanlm-universal vectors
 ./build/nanlm-universal words
 ./build/nanlm-universal warmup 10
+make byte-router
+make byte-router-repeats
 ./build/nanlm-universal bootstrap
 ./build/nanlm-universal growth
 make test
@@ -193,6 +195,9 @@ baseline — a plain RNN matching the 256-head topology — is in
 | `docs/39_BIT_BYTE_GATE.md` | bit/byte two-rate learning gate and the unresolved byte transition |
 | `docs/40_BYTE_STREAM_GATE.md` | real Alice byte-stream challenge; current failure vs order-0 |
 | `docs/41_RELATION_FIRST_CURRICULUM.md` | relation-first penguin gate, word/logic checks, curriculum order |
+| `docs/42_BYTE_EXPERT_ROUTER.md` | overbootstrap chooses between Hopfield and bigram byte experts |
+| `docs/43_BYTE_ROUTER_REPEATS.md` | ten-pass byte measurement: repetition does not improve top-1 |
+| `docs/44_WORD_STREAM_GATE.md` | word unigram/bigram baseline and the weak word signal |
 | `docs/18_HEAD_RING.md` | six-runner handoff, preload, map-back, workflows |
 | `docs/19_LEGACY_TESTS.md` | R18T language tests and R21–R23 logic regressions |
 | `docs/20_META_ROUTER.md` | universes as heads, routes as pairs, qNaN/sNaN BE/LE portals |

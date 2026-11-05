@@ -86,6 +86,59 @@ Hash256 HyperparameterLearner::digest() const {
     return h.final();
 }
 
+void ByteBigram::train(const std::vector<std::uint8_t>& data, std::size_t begin,
+                       std::size_t end) {
+    for (std::size_t i = begin + 1; i < end && i < data.size(); ++i) {
+        ++counts_[data[i - 1]][data[i]];
+    }
+}
+
+std::uint8_t ByteBigram::predict(std::uint8_t previous) const {
+    std::uint8_t best = 0;
+    std::uint32_t best_count = 0;
+    for (std::uint32_t b = 0; b < 256; ++b) {
+        if (counts_[previous][b] > best_count) {
+            best_count = counts_[previous][b];
+            best = static_cast<std::uint8_t>(b);
+        }
+    }
+    return best;
+}
+
+Hash256 ByteBigram::digest() const {
+    Sha256 h;
+    const char tag[8] = {'N', 'L', 'B', 'I', 'G', 'R', '1', ' '};
+    h.update(tag, sizeof(tag));
+    h.update(counts_.data(), counts_.size() * sizeof(counts_[0]));
+    return h.final();
+}
+
+void ExpertRouter::observe(std::uint8_t expert, bool correct) {
+    if (expert > 1) return;
+    ++total_[expert];
+    if (correct) ++success_[expert];
+}
+
+std::uint8_t ExpertRouter::choose() const {
+    const double a = total_[0] ? static_cast<double>(success_[0]) / total_[0] : 0.0;
+    const double b = total_[1] ? static_cast<double>(success_[1]) / total_[1] : 0.0;
+    if (b > a) return 1;
+    return 0;
+}
+
+std::uint64_t ExpertRouter::total(std::uint8_t expert) const {
+    return expert < 2 ? total_[expert] : 0;
+}
+
+Hash256 ExpertRouter::digest() const {
+    Sha256 h;
+    const char tag[8] = {'N', 'L', 'E', 'X', 'P', 'R', 'T', '1'};
+    h.update(tag, sizeof(tag));
+    h.update(success_.data(), success_.size() * sizeof(std::uint64_t));
+    h.update(total_.data(), total_.size() * sizeof(std::uint64_t));
+    return h.final();
+}
+
 bool BootstrapMesh::step(const HopfieldRouter::Vector& query, std::uint32_t target) {
     const HopfieldPrediction pred = bootstrap_.predict(query);
     BootstrapTrace trace;

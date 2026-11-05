@@ -311,6 +311,25 @@ pages they use. The Android constructor is guarded invalid, and the dense map
 test is skipped on Android; only the x86 runner ring maps the 2 GiB region.
 `test_overbootstrap_map` passes on the runner path.
 
+### Word-stream baseline
+
+Alice excerpt: 5,607 words, 960 vocabulary, 1,121 test words. Unigram top-1 is
+6.42%; word bigram is 8.12%. Bigram context helps by 1.70 points but remains
+weak. The word layer needs vectors/associations next.
+
+### Ten-pass byte repeat
+
+Ten incremental passes: Hopfield drifts from 17.00% to 16.02%, bigram stays
+29.22%, and overbootstrap keeps choosing bigram. Repetition over the same corpus
+does not improve held-out byte top-1; new data/context is required.
+
+### Byte expert router
+
+Overbootstrap now chooses between Hopfield and order-1 count experts from
+validation evidence. On Alice excerpt the router selected bigram and reached
+**29.22%** held-out top-1, above order-0 (16.18%) and pure Hopfield (14.12%).
+This is cross-layer routing, not a Hopfield victory.
+
 ### Relation-first curriculum
 
 The relation-first gate is green: 8/8 relation-qualified Hopfield associations,
