@@ -26,10 +26,12 @@ public:
 
 private:
     std::array<std::int32_t, kHyperBits> counters_{};
+    std::int64_t count_ = 0;
 };
 
 class HyperTripleStore {
 public:
+    void register_item(const std::string& item);
     void add(const std::string& subject, const std::string& relation,
              const std::string& object);
     std::string query(const std::string& subject, const std::string& relation) const;

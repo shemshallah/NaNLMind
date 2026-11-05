@@ -45,18 +45,24 @@ unsigned hyper_hamming(const Hyper& a, const Hyper& b) {
 }
 
 void HyperBundle::add(const Hyper& h, std::int32_t weight) {
+    if (weight <= 0) return;
+    count_ += weight;
     for (unsigned i = 0; i < kHyperBits; ++i) {
         if (bit_of(h, i)) counters_[i] += weight;
     }
 }
 
 void HyperBundle::merge(const HyperBundle& other) {
+    count_ += other.count_;
     for (std::size_t i = 0; i < counters_.size(); ++i) counters_[i] += other.counters_[i];
 }
 
 Hyper HyperBundle::threshold() const {
     Hyper h{};
-    for (unsigned i = 0; i < kHyperBits; ++i) set_bit(h, i, counters_[i] > 0);
+    if (count_ == 0) return h;
+    for (unsigned i = 0; i < kHyperBits; ++i) {
+        set_bit(h, i, static_cast<std::int64_t>(counters_[i]) * 2 > count_);
+    }
     return h;
 }
 
@@ -68,6 +74,10 @@ Hyper HyperTripleStore::code(const std::string& item) const {
     const Hyper h = hyper_from_hash(seed);
     codes_[item] = h;
     return h;
+}
+
+void HyperTripleStore::register_item(const std::string& item) {
+    (void)code(item);
 }
 
 void HyperTripleStore::add(const std::string& subject, const std::string& relation,

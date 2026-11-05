@@ -311,6 +311,13 @@ pages they use. The Android constructor is guarded invalid, and the dense map
 test is skipped on Android; only the x86 runner ring maps the 2 GiB region.
 `test_overbootstrap_map` passes on the runner path.
 
+### Hypervector 20k scale
+
+A global 4096-bit bundle recalls **0%** of the 20k split. With 1,024
+subject-hash shards it recalls **100%** of direct `entity isa kind` queries. The
+key fixes were majority thresholding and a per-shard cleanup codebook. This is
+the capacity boundary made explicit.
+
 ### Deterministic layers
 
 Reversible XOR coupling round-trips through seven layers; Boolean semiring
