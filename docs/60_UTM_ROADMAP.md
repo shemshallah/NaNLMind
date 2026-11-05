@@ -75,7 +75,28 @@ Counters are limb lists in chart cells; program/state/IP/HALT are fixed cells.
 - Binary increment and unary increment run on the same instance.
 - Not yet atlas/ledger-linked or formally complete.
 
-### U7 — optional UTM program in ROM
+### U7 — proof harness (partial)
+
+- Versioned description grammar.
+- 20 randomized machines cross-checked step-by-step.
+- Ledger-linked tape checkpoint.
+- Self-encoded universal description and atlas registration remain.
+
+### U8 — tape ledger checkpoint (partial)
+
+- Tape root over sorted page hashes.
+- Sharded-journal commit and verified restore.
+- Tape pages can allocate through an attached atlas.
+- Ledger-owned page maps remain.
+
+### U9 — explicit finite-control proof
+
+- Compile the fixed interpreter loop into an explicit finite transition table.
+- Prove the encoded description grammar covers arbitrary TM sizes.
+- Produce a self-encoded universal description.
+- Prove trace equivalence, not only randomized checks.
+
+### U10 — optional UTM program in ROM
 
 - one fixed program runs multiple machine descriptions;
 - input tape elsewhere in chart/atlas.

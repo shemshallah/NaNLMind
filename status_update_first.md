@@ -324,6 +324,22 @@ Dense 256-kind closure (8 KiB) plus a 2.5 KiB, 2,858-bit entity exception
 residual matches 2,000/2,000 queries in about 1 ms. No 20k×256 entity matrix is
 materialized. Peer residuals merge by OR in either order.
 
+### Tape page ledger link
+
+Tape pages now have a sorted page-root digest and a checkpoint manager that
+commits the root through the sharded journal and verifies restore into a fresh
+UTM. Tapes can allocate new pages through an attached `Atlas`. The journal does
+not yet own the page map, and the formal finite-control/self-encoding proof is
+still open (doc 69).
+
+### UTM proof harness
+
+`TmDescription` has a versioned, checksummed grammar. 20 randomized 4-state,
+3-symbol TMs were cross-checked step-by-step against the table-driven TM with
+matching state/head/halt/tape. A tape checkpoint hashes into the ledger and
+restores into a fresh UTM. This is a checked proof harness; the self-encoded
+universal description and atlas page registration remain.
+
 ### Universal TM runtime
 
 One fixed `UniversalTuringMachine::step()` now interprets machine descriptions

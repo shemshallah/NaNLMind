@@ -70,6 +70,9 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 64 | [64_LIMB_ATLAS_ORBIT.md](64_LIMB_ATLAS_ORBIT.md) | Do multi-limb counters, atlas pages, and the 2CM orbit agree? |
 | 65 | [65_TURING_MACHINE.md](65_TURING_MACHINE.md) | Is the Turing machine runtime real, and what is still missing for UTM? |
 | 66 | [66_UNIVERSAL_TM_RUNTIME.md](66_UNIVERSAL_TM_RUNTIME.md) | Can one fixed step interpret multiple encoded TMs from chart tape? |
+| 67 | [67_UTM_PROOF_HARNESS.md](67_UTM_PROOF_HARNESS.md) | What is checked so far toward a UTM proof? |
+| 68 | [68_TAPE_LEDGER_LINK.md](68_TAPE_LEDGER_LINK.md) | How are tape pages checkpointed and committed? |
+| 69 | [69_UTM_PROOF_OBLIGATIONS.md](69_UTM_PROOF_OBLIGATIONS.md) | What is still missing before a formal UTM proof? |
 
 The short version:
 

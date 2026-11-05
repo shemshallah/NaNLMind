@@ -27,12 +27,55 @@ std::uint8_t TuringTape::read(std::int64_t position) const {
 
 void TuringTape::write(std::int64_t position, std::uint8_t symbol) {
     const auto [page, offset] = split_position(position);
-    auto& ptr = pages_[page];
-    if (!ptr) {
-        ptr = std::make_unique<Universe>(0x544D5047u + static_cast<std::uint64_t>(page));
+    Universe* ptr = nullptr;
+    const auto it = pages_.find(page);
+    if (it != pages_.end()) {
+        ptr = it->second;
+    } else {
+        if (atlas_ != nullptr) {
+            ptr = &atlas_->page(atlas_->allocate_page());
+        } else {
+            auto owned = std::make_unique<Universe>(
+                0x544D5047u + static_cast<std::uint64_t>(page));
+            ptr = owned.get();
+            owned_pages_.push_back(std::move(owned));
+        }
         for (std::uint16_t i = 0; i < 0x1000u; ++i) ptr->set_address_meta(i, 2);
+        pages_[page] = ptr;
     }
     ptr->set_address_meta(static_cast<std::uint16_t>(offset), symbol);
+}
+
+std::vector<std::int64_t> TuringTape::page_keys() const {
+    std::vector<std::int64_t> out;
+    out.reserve(pages_.size());
+    for (const auto& kv : pages_) out.push_back(kv.first);
+    std::sort(out.begin(), out.end());
+    return out;
+}
+
+std::vector<Hash256> TuringTape::page_hashes() const {
+    std::vector<Hash256> out;
+    for (std::int64_t key : page_keys()) {
+        const auto it = pages_.find(key);
+        out.push_back(it == pages_.end() ? Hash256{} : it->second->digest());
+    }
+    return out;
+}
+
+Hash256 TuringTape::digest() const {
+    Sha256 h;
+    const char tag[8] = {'N', 'L', 'T', 'A', 'P', 'E', '0', '2'};
+    h.update(tag, sizeof(tag));
+    const auto keys = page_keys();
+    const std::uint64_t n = keys.size();
+    h.update(&n, sizeof(n));
+    for (std::int64_t key : keys) {
+        h.update(&key, sizeof(key));
+        const auto hash = pages_.at(key)->digest();
+        h.update(hash.data(), hash.size());
+    }
+    return h.final();
 }
 
 std::string TuringTape::slice(std::int64_t begin, std::int64_t end) const {
@@ -140,14 +183,20 @@ bool TuringTape::restore(const std::uint8_t* data,std::size_t len) {
     std::size_t p=8;
     auto get=[&](unsigned n,std::uint64_t&v){if(p>len||len-p<n)return false;v=0;for(unsigned i=0;i<n;++i)v|=static_cast<std::uint64_t>(data[p++])<<(8*i);return true;};
     std::uint64_t count=0;if(!get(4,count)||count>(len-p)/16)return false;
-    std::unordered_map<std::int64_t,std::unique_ptr<Universe>> restored;
+    std::unordered_map<std::int64_t, Universe*> restored;
+    std::vector<std::unique_ptr<Universe>> restored_owned;
     for(std::uint64_t i=0;i<count;++i){std::uint64_t key=0,size=0;if(!get(8,key)||!get(8,size)||size>len-p)return false;
         auto page=Universe::from_bytes(data+p,static_cast<std::size_t>(size));if(!page)return false;
         std::string error;if(!page->verify(&error))return false;
         const auto canonical=page->serialize();if(canonical.size()!=size||std::memcmp(canonical.data(),data+p,static_cast<std::size_t>(size))!=0)return false;
         p+=static_cast<std::size_t>(size);const auto signed_key=static_cast<std::int64_t>(key);
-        if(!restored.emplace(signed_key,std::move(page)).second)return false;}
-    if(p!=len)return false;pages_=std::move(restored);return true;
+        Universe* raw=page.get();
+        restored_owned.push_back(std::move(page));
+        if(!restored.emplace(signed_key,raw).second)return false;}
+    if(p!=len)return false;
+    pages_=std::move(restored);
+    owned_pages_=std::move(restored_owned);
+    return true;
 }
 
 } // namespace nanlm

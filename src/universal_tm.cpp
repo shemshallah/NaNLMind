@@ -39,6 +39,21 @@ bool UniversalTuringMachine::load_machine(
     return true;
 }
 
+bool UniversalTuringMachine::load_description(
+    const TmDescription& description, const std::string& initial_tape,
+    std::int64_t head) {
+    if (!description.valid()) return false;
+    return load_machine(description.transitions, initial_tape, head);
+}
+
+bool UniversalTuringMachine::load_encoded_description(
+    const std::uint8_t* data, std::size_t len, const std::string& initial_tape,
+    std::int64_t head) {
+    const auto description = TmDescription::decode(data, len);
+    if (!description) return false;
+    return load_description(*description, initial_tape, head);
+}
+
 std::uint8_t UniversalTuringMachine::description_count() const {
     return tape_.read(kDescriptionBase);
 }

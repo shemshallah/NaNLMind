@@ -3,6 +3,7 @@
 #pragma once
 
 #include "nanlm/universe.hpp"
+#include "nanlm/limb_counter.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -27,14 +28,19 @@ public:
     std::uint8_t read(std::int64_t position) const;
     void write(std::int64_t position, std::uint8_t symbol);
     std::size_t pages() const { return pages_.size(); }
-    void clear() { pages_.clear(); }
+    void clear() { pages_.clear(); owned_pages_.clear(); }
+    void attach_atlas(Atlas& atlas) { atlas_ = &atlas; }
     std::vector<std::uint8_t> serialize() const;
     bool restore(const std::uint8_t* data, std::size_t len);
     std::string slice(std::int64_t begin, std::int64_t end) const;
+    std::vector<std::int64_t> page_keys() const;
+    std::vector<Hash256> page_hashes() const;
+    Hash256 digest() const;
 
 private:
-    Universe& page_for(std::int64_t position) const;
-    std::unordered_map<std::int64_t, std::unique_ptr<Universe>> pages_;
+    std::unordered_map<std::int64_t, Universe*> pages_;
+    std::vector<std::unique_ptr<Universe>> owned_pages_;
+    Atlas* atlas_ = nullptr;
 };
 
 class TuringMachine {

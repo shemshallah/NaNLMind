@@ -3,6 +3,7 @@
 #pragma once
 
 #include "nanlm/turing_machine.hpp"
+#include "nanlm/tm_description.hpp"
 
 #include <cstdint>
 #include <string>
@@ -20,6 +21,10 @@ public:
 
     bool load_machine(const std::vector<TmTransition>& transitions,
                       const std::string& initial_tape, std::int64_t head);
+    bool load_description(const TmDescription& description,
+                          const std::string& initial_tape, std::int64_t head);
+    bool load_encoded_description(const std::uint8_t* data, std::size_t len,
+                                  const std::string& initial_tape, std::int64_t head);
     bool step();
     std::size_t run(std::size_t max_steps = 1000000);
     bool halted() const;
@@ -27,6 +32,10 @@ public:
     std::int64_t head() const;
     std::string tape(std::int64_t begin, std::int64_t end) const;
     std::size_t tape_pages() const { return tape_.pages(); }
+    const TuringTape& tape_store() const { return tape_; }
+    TuringTape& tape_store() { return tape_; }
+    std::vector<std::uint8_t> serialize_tape() const { return tape_.serialize(); }
+    bool restore_tape(const std::uint8_t* data, std::size_t len) { return tape_.restore(data, len); }
 
 private:
     std::uint8_t description_count() const;
