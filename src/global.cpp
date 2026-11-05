@@ -187,6 +187,7 @@ bool rpage(const std::uint8_t*d,std::size_t n,std::size_t&p,PageId&id){if(p>n||n
 std::vector<std::uint8_t> GlobalTopology::serialize() const {
  std::vector<std::uint8_t>o{'N','L','M','G','L','O','B','3'};const auto ids=pages_.pages();gp(o,ids.size(),4);
  for(const auto&id:ids){const auto*e=pages_.entry(id);if(!e||!e->page)return {};gpage(o,id);auto b=e->page->serialize();gp(o,b.size(),8);o.insert(o.end(),b.begin(),b.end());}
+ const Hash256 snapshot_root=pages_.root_hash();o.insert(o.end(),snapshot_root.begin(),snapshot_root.end());
  auto blob=[&](const std::vector<std::uint8_t>&b){gp(o,b.size(),8);o.insert(o.end(),b.begin(),b.end());};
  blob(hypergraph_.serialize());blob(temporal_.serialize());blob(ledger_.serialize());blob(journals_.serialize());
  gp(o,clock_.tick(),8);const auto&a=atomic_.anchor();gp(o,a.wall_ns,8);gp(o,a.uncertainty_ns,8);gp(o,a.captured_at_ns,8);gp(o,a.source_mask,4);o.push_back(a.valid?1:0);
