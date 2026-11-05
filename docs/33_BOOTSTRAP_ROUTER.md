@@ -441,6 +441,26 @@ content-hashed and generation-pinned.
 
 ---
 
+## 11.1 Implemented so far
+
+- `include/nanlm/bootstrap_router.hpp`
+- `src/bootstrap_router.cpp`
+- `tests/test_bootstrap_router.cpp`
+
+The prototype implements:
+
+- point-1 and point-256 non-head control routers;
+- the 256-entry `LayerRef` route table;
+- sparse top-k head activation;
+- the 2,040-pair scan bound;
+- weighted pair-slot voting;
+- Hebbian strength/key updates and weakest-slot eviction.
+
+It does **not** allocate or load the 2 GiB map. The map loader and peer route
+diff are still design/next-step work.
+
+---
+
 ## 12. Eliminations
 
 | option | decision | reason |

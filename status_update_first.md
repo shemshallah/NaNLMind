@@ -292,6 +292,15 @@ only**, has no 2 GiB map, and will live in the separate `NaNLMind_android`
 repository. There is no `NaNLM_128_bootstrap` repo; the 2 GiB map is a release
 artifact in `NaNLMind`. See `docs/33_BOOTSTRAP_ROUTER.md`.
 
+### Point-1/Hopfield prototype
+
+The first router/learner prototype is implemented and tested:
+`PointRouter` is a non-head control portal at point 1 (alternate 256), with a
+256-entry `LayerRef` table. `HopfieldRouter` does sparse top-k head activation,
+the 2,040-pair scan bound, weighted voting, Hebbian strength/key updates, and
+weakest-slot eviction. It does not allocate the 2 GiB map. `test_bootstrap_router`
+passes.
+
 ### Hard logic warmup
 
 A nested-exception corpus (`emperor -> penguin -> bird`, `penguin cannot fly`,
