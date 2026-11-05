@@ -35,20 +35,20 @@ evidence of emergent reasoning.
 `tests/test_logic_challenge.cpp` is a falsification probe for the current byte
 structure. It is deliberately **not** in `make test`.
 
-Training stream:
+Training stream (all facts are true):
 
-- facts: entities are birds or fish; birds can fly; fish can swim;
-- exceptions: penguin, ostrich, kiwi cannot fly; eel, carp cannot swim;
-- answered questions for `robin`, `eagle`, `penguin`, `salmon`, `shark`.
+- birds can fly;
+- exceptions: penguin, ostrich, kiwi, emu, cassowary cannot fly;
+- answered questions for `robin`, `eagle`, `penguin`.
 
-Held-out questions use entities that appear in the facts but never in an
-answered question:
+Held-out questions use birds that appear in the facts but never in an answered
+question:
 
 ```text
-sparrow -> yes    ostrich -> no
-trout   -> yes    eel     -> no
-magpie  -> yes    kiwi    -> no
-cod     -> yes    carp    -> no
+sparrow -> yes     ostrich -> no
+magpie  -> yes     kiwi    -> no
+falcon  -> yes     emu     -> no
+swallow -> yes     cassowary -> no
 ```
 
 The prompt ends with the entity immediately before the answer, so the model can
@@ -64,14 +64,14 @@ Result on the current structure:
 
 | case | expected | model | p(yes) | p(no) |
 |---|---|---|---|---|
-| sparrow fly | yes | yes | 0.01377 | 0.00555 |
-| ostrich fly | no | **yes** | 0.01339 | 0.00549 |
-| trout swim | yes | yes | 0.01288 | 0.00540 |
-| eel swim | no | **yes** | 0.01358 | 0.00552 |
-| magpie fly | yes | yes | 0.01350 | 0.00546 |
-| kiwi fly | no | **yes** | 0.01358 | 0.00552 |
-| cod swim | yes | yes | 0.01358 | 0.00552 |
-| carp swim | no | **yes** | 0.01358 | 0.00552 |
+| sparrow fly | yes | yes | 0.00876 | 0.00589 |
+| ostrich fly | no | **yes** | 0.00876 | 0.00589 |
+| magpie fly | yes | yes | 0.00886 | 0.00581 |
+| kiwi fly | no | **yes** | 0.00876 | 0.00589 |
+| falcon fly | yes | yes | 0.00867 | 0.00626 |
+| emu fly | no | **yes** | 0.00876 | 0.00589 |
+| cassowary fly | no | **yes** | 0.00876 | 0.00589 |
+| swallow fly | yes | yes | 0.00876 | 0.00589 |
 
 ```text
 model accuracy = 0.500
@@ -80,10 +80,13 @@ threshold = 0.875
 FAIL challenge
 ```
 
-The model answers **yes** for every held-out query. The logic labels are
-balanced, and a simple host-symbolic baseline gets 8/8. The failure is real:
-an order-2 byte model cannot bind the entity to its fact or the exception, and
-the answer position has almost no entity-specific evidence.
+The model answers **yes** for every held-out query. The labels are balanced and
+true, and a simple host-symbolic baseline gets 8/8. The failure is real: an
+order-2 byte model cannot bind the entity to its fact or the exception, and the
+answer position has almost no entity-specific evidence.
+
+An earlier version used fish exceptions such as “carp cannot swim.” That was
+factually wrong; carp can swim. The challenge now uses only true bird facts.
 
 This is the point of the challenge. It gives the next architecture step a
 concrete thing to beat instead of another suite that is green by construction.

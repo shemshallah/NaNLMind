@@ -1,9 +1,9 @@
 // Compositional inheritance challenge for the current byte structure.
 //
-// The training stream contains the facts and a few answered questions. The test
-// entities appear in the facts but never in an answered question. A rule system
-// can answer them by inheritance/exception; the order-2 byte model has to answer
-// from local counts.
+// The training stream contains true bird facts and a few answered questions.
+// The test entities appear in the facts but never in an answered question. A
+// rule system can answer them by inheritance/exception; the order-2 byte model
+// has to answer from local counts.
 //
 // This test is deliberately not in `make test`: it is allowed to fail. It is a
 // falsification probe, not a gate that should be made green by weakening it.
@@ -22,25 +22,23 @@ namespace {
 
 struct Case {
     const char* entity;
-    const char* verb;
     bool expected_yes;
     bool exception_no;
 };
 
 const std::array<Case, 8> kCases{{
-    {"sparrow", "fly", true, false},
-    {"ostrich", "fly", false, true},
-    {"trout", "swim", true, false},
-    {"eel", "swim", false, true},
-    {"magpie", "fly", true, false},
-    {"kiwi", "fly", false, true},
-    {"cod", "swim", true, false},
-    {"carp", "swim", false, true},
+    {"sparrow", true, false},
+    {"ostrich", false, true},
+    {"magpie", true, false},
+    {"kiwi", false, true},
+    {"falcon", true, false},
+    {"emu", false, true},
+    {"cassowary", false, true},
+    {"swallow", true, false},
 }};
 
 std::string prompt_for(const Case& c) {
-    return std::string("can ") + c.entity + " " + c.verb + "? answer " +
-           c.entity + " ";
+    return std::string("can ") + c.entity + " fly? answer " + c.entity + " ";
 }
 
 double answer_probability(const Context2Model& model, const std::string& prompt,
@@ -59,33 +57,28 @@ int main() {
         "penguin is a bird. "
         "penguin cannot fly. "
         "bird can fly. "
-        "salmon is a fish. "
-        "shark is a fish. "
-        "fish can swim. "
         "sparrow is a bird. "
         "ostrich is a bird. "
         "ostrich cannot fly. "
-        "trout is a fish. "
-        "eel is a fish. "
-        "eel cannot swim. "
         "magpie is a bird. "
         "kiwi is a bird. "
         "kiwi cannot fly. "
-        "cod is a fish. "
-        "carp is a fish. "
-        "carp cannot swim. "
+        "falcon is a bird. "
+        "emu is a bird. "
+        "emu cannot fly. "
+        "cassowary is a bird. "
+        "cassowary cannot fly. "
+        "swallow is a bird. "
         "can robin fly? answer robin yes. "
         "can eagle fly? answer eagle yes. "
-        "can penguin fly? answer penguin no. "
-        "can salmon swim? answer salmon yes. "
-        "can shark swim? answer shark yes. ";
+        "can penguin fly? answer penguin no. ";
 
     Context2Model model;
     model.train(std::vector<std::uint8_t>(train.begin(), train.end()));
 
     std::size_t correct = 0;
     std::size_t symbolic_correct = 0;
-    std::cout << "compositional inheritance challenge\n";
+    std::cout << "compositional inheritance challenge (true bird facts)\n";
     for (const Case& c : kCases) {
         const std::string prompt = prompt_for(c);
         const double py = answer_probability(model, prompt, 'y');
@@ -96,7 +89,7 @@ int main() {
         const bool symbolic_ok = symbolic_yes == c.expected_yes;
         if (ok) ++correct;
         if (symbolic_ok) ++symbolic_correct;
-        std::cout << "  " << c.entity << " " << c.verb
+        std::cout << "  " << c.entity
                   << " expected=" << (c.expected_yes ? "yes" : "no")
                   << " model=" << (predicted_yes ? "yes" : "no")
                   << " p(yes)=" << py << " p(no)=" << pn
