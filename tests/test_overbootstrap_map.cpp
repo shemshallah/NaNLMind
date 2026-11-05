@@ -133,7 +133,7 @@ int main() {
     CHECK(heads.read_slots(1, map, stored));
     CHECK(!stored.empty());
     if (!stored.empty()) CHECK_EQ(stored.front().used, 1u);
-    CHECK_EQ(map.resident_pages(), 3u); // page 0, head arena, peer page
+    CHECK_EQ(map.resident_pages(), 5u); // page 0, head arena, peer, and two layer payload pages
 
     return test_done("dense 2 GiB overbootstrap and 8 MiB runner mapping");
 #endif
