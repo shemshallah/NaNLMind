@@ -12,7 +12,7 @@ CLI := $(BUILD)/nanlm-universal
 TEST_SRC := tests/test_address.cpp tests/test_nan16.cpp tests/test_universe.cpp tests/test_pager.cpp tests/test_resonance.cpp tests/test_ledger.cpp tests/test_scale.cpp tests/test_hypergraph.cpp tests/test_temporal.cpp tests/test_global.cpp tests/test_heads.cpp tests/test_clock.cpp tests/test_phase.cpp tests/test_growth.cpp tests/test_consolidation.cpp tests/test_handoff.cpp tests/test_training.cpp tests/test_r18t_sequence.cpp tests/test_router.cpp tests/test_inverse.cpp tests/test_frame_sync.cpp tests/test_meta_index.cpp tests/test_contemplation.cpp tests/test_atomic.cpp tests/test_ntf.cpp tests/test_ncr.cpp tests/test_universe_task.cpp tests/test_supercluster.cpp tests/test_byte_model.cpp tests/test_recovery.cpp tests/test_slot_model.cpp tests/test_kneser_ney.cpp tests/test_context2.cpp tests/test_context2_topology.cpp tests/test_vector_store.cpp tests/test_word_memory.cpp tests/test_bootstrap_router.cpp tests/test_bootstrap_layers.cpp tests/test_hopfield_learning.cpp tests/test_overbootstrap_map.cpp tests/test_learning_mesh.cpp tests/test_hyperparameter.cpp tests/test_bit_byte_learning.cpp
 TEST_BIN := $(patsubst tests/%.cpp,$(BUILD)/%,$(TEST_SRC))
 
-.PHONY: all test clean verify legacy universe-check bootstrap penguin logic behavior challenge warmup merge-test
+.PHONY: all test clean verify legacy universe-check bootstrap penguin logic behavior challenge warmup merge-test byte-mesh
 
 LEGACY_R23 := NaNLM_statespace/archive/NaN16_Palindromic_Temporal_Computer_Round23/R23
 LEGACY_BIN := $(BUILD)/test_legacy_logic
@@ -84,6 +84,9 @@ warmup: $(CLI)
 
 merge-test:
 	PYTHONPATH=runner python3 -m unittest discover -s tests -p 'test_training_merge.py' -v
+
+byte-mesh: $(BUILD)/test_byte_stream_learning
+	./$(BUILD)/test_byte_stream_learning
 
 verify: $(CLI)
 	./$(CLI) verify

@@ -311,6 +311,13 @@ pages they use. The Android constructor is guarded invalid, and the dense map
 test is skipped on Android; only the x86 runner ring maps the 2 GiB region.
 `test_overbootstrap_map` passes on the runner path.
 
+### Real byte-stream gate
+
+The two-rate mesh was trained on consecutive Alice bytes. Held-out top-1 is
+**14.12%**, below the **16.18%** order-0 baseline. The test keeps its 18%
+threshold and is a non-CI challenge target (`make byte-mesh`). This is an honest
+failure; Hopfield slot voting is not yet a substitute for a context count model.
+
 ### Bit/byte learning gate
 
 The two-rate mesh now learns a 2-token bit cycle (2/2) and a 256-token byte
