@@ -200,6 +200,9 @@ std::unique_ptr<GlobalTopology> GlobalTopology::from_bytes(const std::uint8_t*d,
  for(std::uint64_t i=0;i<count;++i){PageId id;std::uint64_t sz=0;if(!rpage(d,n,p,id)||!gg(d,n,p,8,sz)||sz>n-p)return nullptr;
   auto u=Universe::from_bytes(d+p,static_cast<std::size_t>(sz));if(!u)return nullptr;std::string page_error;if(!u->verify(&page_error))return nullptr;const auto canonical=u->serialize();if(canonical.size()!=sz||std::memcmp(canonical.data(),d+p,static_cast<std::size_t>(sz))!=0)return nullptr;p+=static_cast<std::size_t>(sz);
   if(!out->pages_.map(id,std::shared_ptr<Universe>(std::move(u))))return nullptr;loaded.push_back(id);}
+ if(p>n||n-p<32)return nullptr;
+ Hash256 snapshot_root{};std::memcpy(snapshot_root.data(),d+p,32);p+=32;
+ if(!(snapshot_root==out->pages_.root_hash()))return nullptr;
  auto read_blob=[&](std::vector<std::uint8_t>&b){std::uint64_t sz=0;if(!gg(d,n,p,8,sz)||sz>n-p)return false;b.assign(d+p,d+p+static_cast<std::size_t>(sz));p+=static_cast<std::size_t>(sz);return true;};
  std::vector<std::uint8_t>hy,tm,lg,jf;if(!read_blob(hy)||!read_blob(tm)||!read_blob(lg)||!read_blob(jf))return nullptr;
  out->hypergraph_=Hypergraph::from_bytes(hy.data(),hy.size());out->temporal_=BidirectionalMemory::from_bytes(tm.data(),tm.size());
@@ -215,7 +218,7 @@ std::unique_ptr<GlobalTopology> GlobalTopology::from_bytes(const std::uint8_t*d,
  for(std::uint64_t i=0;i<v;++i){PageId id;if(!rpage(d,n,p,id))return nullptr;m.pages.push_back(id);}
  if(p!=n||m.pages.size()!=loaded.size()||out->pages_.size()!=loaded.size()||!out->pages_.contains(PageId::root())||!out->pages_.contains(m.page))return nullptr;
  for(const auto&id:m.pages)if(!out->pages_.contains(id))return nullptr;
- if(!(m.root==out->pages_.root_hash())||!out->manifests_.restore(m))return nullptr;
+ if(!out->manifests_.restore(m))return nullptr;
  return out;
 }
 

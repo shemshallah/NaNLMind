@@ -123,8 +123,6 @@ std::size_t TuringMachine::run(std::size_t max_steps) {
     return n;
 }
 
-} // namespace nanlm
-
 std::vector<std::uint8_t> TuringTape::serialize() const {
     std::vector<std::uint8_t> out{'N','L','M','T','A','P','E','1'};
     auto put=[&](std::uint64_t v,unsigned n){for(unsigned i=0;i<n;++i)out.push_back(static_cast<std::uint8_t>(v>>(8*i)));};
@@ -148,4 +146,6 @@ bool TuringTape::restore(const std::uint8_t* data,std::size_t len) {
         if(!restored.emplace(signed_key,std::move(page)).second)return false;}
     if(p!=len)return false;pages_=std::move(restored);return true;
 }
+
+} // namespace nanlm
 
