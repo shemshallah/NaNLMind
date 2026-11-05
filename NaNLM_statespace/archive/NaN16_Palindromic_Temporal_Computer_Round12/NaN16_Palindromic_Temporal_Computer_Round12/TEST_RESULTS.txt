@@ -1,0 +1,38 @@
+=== Round 12: Program-in-State VM (NaN16 Computer) ===
+Program, IP, regs, flags in topology. One RuleVmCycle. Host seeds & steps only.
+
+--- Research-brief programs ---
+  prog1 XOR+ADD4 => out=14 cycles=6 halt=1
+  PASS: brief prog1: (13^7)+4 = 14
+  prog2 ADD/SUB/XOR => out=19 cycles=9
+  PASS: brief prog2: ((13+7)-3)^2 = 19
+
+--- VM suite (>=10 programs, branches, dual region) ---
+  programs=14 passed=14 dual=1 long=1
+  PASS: at least 10 distinct programs
+  PASS: all suite programs halt with expected OUT
+  PASS: two independent VMs concurrent (XOR=10, ADD=20)
+  PASS: long/branchy programs ok
+
+--- Branching / loops ---
+  count_to_1 => 1 cycles=10 OK
+  PASS: count loop
+  count_to_3 => 3 cycles=18 OK
+  PASS: count loop
+  count_to_7 => 7 cycles=34 OK
+  PASS: count loop
+  count_to_10 => 10 cycles=46 OK
+  PASS: count loop
+
+--- Determinism ---
+  PASS: run vs step-loop identical
+
+--- Immutable rule map ---
+  PASS: all machine cells remain RuleVmCycle
+
+--- Regression ---
+  PASS: R11 ADD still works
+
+========================================
+Round 12: 13 passed, 0 failed
+========================================

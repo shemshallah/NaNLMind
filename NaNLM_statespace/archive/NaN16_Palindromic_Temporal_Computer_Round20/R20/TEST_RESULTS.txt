@@ -1,0 +1,47 @@
+=== Round 20: EXTREME cognitive battery ===
+
+┌─ Diamond inheritance (conflicting paths) ─────────
+│  B can fly: YES
+│  C can fly: blocked (expect NO)
+│  D (child of both) conflict handled: YES
+  PASS: diamond: B yes, C no, D contested/blocked
+
+┌─ ISA cycle termination ───────────────────────────
+│  terminates: YES  steps=3
+  PASS: cyclic ISA does not hang
+
+┌─ Knowledge revision (assert → retract → relearn) ─
+│  before: YES  after retract: GONE  relearn: YES
+  PASS: revision cycle
+
+┌─ Exception ladder (10 levels) ────────────────────
+│  correct 10/10
+  PASS: every level blocked by exception path
+
+┌─ Concurrent assert/query consistency ─────────────
+│  consistent 389/389 queries
+  PASS: interleaved assert+query always consistent
+
+┌─ Cross-domain isolation (animals vs vehicles) ────
+│  eagle flies: Y  car has wheels: Y  no leak: Y
+  PASS: domains isolated; no wheel leakage to birds
+
+┌─ Specificity (exception overrides default) ───────
+│  before exception inherits: YES  after: specific wins: YES
+  PASS: specificity order
+
+┌─ Stress path (10 hops, 3 exceptions) ─────────────
+│  hops=10 final blocked by nearer exception: YES
+  PASS: nearest exception wins on long path
+
+┌─ Extreme suite ───────────────────────────────────
+│  8/8 passed
+  PASS: EXTREME COGNITION BATTERY GREEN
+
+┌─ R19 hard regression ─────────────────────────────
+│  8/8
+  PASS: R19 hard suite still green
+
+========================================
+Round 20: 10 passed, 0 failed
+========================================

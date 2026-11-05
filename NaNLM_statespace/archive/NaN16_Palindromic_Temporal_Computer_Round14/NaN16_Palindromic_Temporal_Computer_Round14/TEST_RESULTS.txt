@@ -1,0 +1,43 @@
+=== Round 14: NaN16 Cognitive Architecture ===
+
+--- Associative memory / knowledge graph ---
+  PASS: 6 triples stored in topology
+  PASS: associate(bird, HAS) → wings
+  PASS: associate(eagle, HAS) inherits wings
+
+--- Core questions ---
+  Can penguins fly? yes=0 found=1 exc=1 contrad=0
+  PASS: penguins cannot fly (exception wins)
+  PASS: eagles can fly
+  Unknown-as-penguin fly? yes=0 found=1 exc=1
+  PASS: unknown penguin-class → cannot fly
+
+--- Dual inference (general vs exception) ---
+  general_yes=1 dual_yes=0 disagreed=1
+  PASS: general and exception paths disagree
+  PASS: dual resolution: cannot fly
+
+--- Counterfactual reasoning ---
+  PASS: counterfactual restores original state
+
+--- Continual learning ---
+  PASS: before feedback: eagle cannot fly (wrong)
+  after learn: yes=1 improved=1
+  PASS: feedback corrects eagle→can fly
+
+--- Distributed cognition ---
+  PASS: portal carries exception; page1 answers correctly
+
+--- Cognitive suite ---
+  9/9  penguin=1 eagle=1 unknown=1 dual=1 cf=1 learn=1 dist=1
+  PASS: all suite tests pass
+  PASS: core bird graph
+  PASS: dual + CF + learn
+  PASS: distributed
+
+--- R13 regression ---
+  PASS: R13 2CM mul still works
+
+========================================
+Round 14: 17 passed, 0 failed
+========================================

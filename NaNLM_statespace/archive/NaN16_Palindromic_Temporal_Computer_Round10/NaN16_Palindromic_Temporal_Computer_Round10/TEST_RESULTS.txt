@@ -1,0 +1,59 @@
+NaN16 PTC Round 10 — ABSOLUTE CHECKPOINT SUITE
+
+=== 1. Host-independence (local gates + pure adder) ===
+  PASS: local XOR/AND all inputs (host-blind)
+  PASS: pure local adder 22+11=33
+  PASS: pure local 16-bit adder
+
+=== 2. Mirror independence & cooperation ===
+  PASS: S+ touch isolates S-
+  PASS: S- touch isolates S+
+  dual coop: arith=1 minus_intact=1 recover=1
+  PASS: dual cooperation: arith + intact S- + recover
+  PASS: bulk dual 256 cells clean
+
+=== 3. Reversible gates (NOT/CNOT/Toffoli/Fredkin) ===
+  NOT=1 CNOT=1 Toffoli=1 Fredkin=1 (passed 4/4)
+  PASS: NOT is involution on 256 trials
+  PASS: CNOT is involution on 256 trials
+  PASS: Toffoli is involution on 256 trials
+  PASS: Fredkin is involution on 256 trials
+
+=== 4. Fixed rule map, programs = initial state ===
+  prog0(3+5)=8 prog1(20+22)=42
+  PASS: same engine, different initial state → different correct results
+  PASS: 3+5=8 and 20+22=42
+
+=== 5. Asynchronous / schedule matrix ===
+  sync=33 rev=33 scramble=33 expect_ok=1 match_sync_rev=1
+  PASS: sync schedule yields correct sum
+  PASS: reverse activation order matches sync (causal closure)
+  PASS: disjoint regions order-independent under event-driven
+
+=== 6. Self-check / fault recovery ===
+  faults=8 recoveries=8 detected=1 recovered=1
+  PASS: faults detected via shadow/verify
+  PASS: all injected faults recovered
+
+=== 7. Topology scale (exact) ===
+  PASS: 256 fixed points
+  PASS: address table sized to 65536
+
+=== 8. Regression battery ===
+  PASS: R6 signal adder
+  PASS: R9 pure adder
+  PASS: R4 dual geometric adders
+  PASS: Rule 110 still runs
+
+=== 9. Mirror Machine Challenge (subset) ===
+  arith=1 gates=1 reverse=1 schedule=1 fault=1 => all=1
+  PASS: challenge: arithmetic
+  PASS: challenge: gates
+  PASS: challenge: reverse recovery
+  PASS: challenge: schedule equivalence
+  PASS: challenge: fault recovery
+  PASS: MIRROR MACHINE CHALLENGE (subset) PASSED
+
+========================================
+Round 10 TOTAL: 30 passed, 0 failed
+========================================

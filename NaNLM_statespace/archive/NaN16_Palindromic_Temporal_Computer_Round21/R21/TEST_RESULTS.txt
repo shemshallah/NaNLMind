@@ -1,0 +1,42 @@
+=== Round 21: Formal logic + puzzles ===
+
+── Syllogism (Barbara) ──
+  Socrates is man, men are mortal ⊢ Socrates mortal
+  PASS: Barbara syllogism
+
+── Modus ponens ──
+  PASS: P→Q, P ⊢ Q
+
+── Modus tollens ──
+  PASS: P→Q, ¬Q ⊢ ¬P
+
+── Hypothetical syllogism ──
+  PASS: P→Q, Q→R, P ⊢ R
+
+── Contradiction contained ──
+  PASS: P∧¬P detected; does not explode to arbitrary Q
+
+── Proof chain (12 implications) ──
+  derived=1 steps=12
+  PASS: P0→…→P12 forward chain
+
+── Disjunctive syllogism ──
+  PASS: ¬P, (¬P→Q) ⊢ Q
+
+── Puzzle: three boxes (all labels wrong) ──
+  gold_box=2 solved=1
+  PASS: gold is in box 2
+
+── Puzzle: social asymmetry ──
+  PASS: knows-edge asymmetric (no false symmetry)
+
+── Formal suite ──
+  9/9  barbara=1 mp=1 mt=1 hs=1 contra=1 boxes=1 chain=1 ds=1
+  PASS: FORMAL SUITE GREEN
+
+── R20 extreme regression ──
+  PASS: R20 extreme still green
+
+========================================
+Round 21: 11 passed, 0 failed
+========================================

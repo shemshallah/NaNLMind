@@ -1,0 +1,36 @@
+=== Round 11: Initial-State Programmability Challenge ===
+ONE rule (RuleOpDispatch). Host never selects algorithm at runtime.
+
+--- Showcase: 13 ? 7 under fixed rule map ---
+  ADD  13+7  => 20 (ok=1) expect 20
+  XOR  13^7  => 10 (ok=1) expect 10
+  CMP  13?7  => 1 (ok=1) expect +1
+  SUB  13-7  => 6 (ok=1) expect 6
+  PASS: ADD 13+7=20
+  PASS: XOR 13^7=10
+  PASS: CMP 13>7
+  PASS: SUB 13-7=6
+  PASS: all fields still RuleOpDispatch (never swapped)
+
+--- Full programmability battery ---
+  cases 21/21  ADD=1 SUB=1 XOR=1 AND=1 CMP=1 multi=1
+  PASS: all battery cases pass
+  PASS: ADD family
+  PASS: SUB family
+  PASS: XOR family
+  PASS: AND family
+  PASS: CMP family
+  PASS: four simultaneous regions, four ops, one rule
+  PASS: schedule/add path ok
+  PASS: add under dual-capable field
+
+--- Stress: many random-ish inputs, fixed rule ---
+  stress 60/60
+  PASS: stress battery all ops × 12 input pairs
+
+--- Regression: R10 challenge still green ---
+  PASS: R10 mirror machine challenge subset
+
+========================================
+Round 11: 16 passed, 0 failed
+========================================

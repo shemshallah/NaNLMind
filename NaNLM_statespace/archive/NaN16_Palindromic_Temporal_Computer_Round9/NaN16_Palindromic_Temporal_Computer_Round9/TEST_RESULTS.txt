@@ -1,0 +1,27 @@
+=== Round 9: host-blind local-rule logic machine ===
+
+--- Local gates ---
+  0 XOR 0 = 0 (ok=1)  0 AND 0 = 0 (ok=1)
+  0 XOR 1 = 1 (ok=1)  0 AND 1 = 0 (ok=1)
+  1 XOR 0 = 1 (ok=1)  1 AND 0 = 0 (ok=1)
+  1 XOR 1 = 0 (ok=1)  1 AND 1 = 1 (ok=1)
+  PASS: all XOR/AND local gate cases
+
+--- Pure local-rule adder (host-blind) ---
+  0+0 (4-bit) => 0 expect 0 steps=4 ok=1
+  1+1 (4-bit) => 2 expect 2 steps=4 ok=1
+  7+1 (4-bit) => 8 expect 8 steps=4 ok=1
+  22+11 (8-bit) => 33 expect 33 steps=8 ok=1
+  170+85 (8-bit) => 255 expect 255 steps=8 ok=1
+  4660+237 (16-bit) => 4897 expect 4897 steps=16 ok=1
+  65535+1 (16-bit) => 0 expect 0 steps=16 ok=1
+  PASS: all pure local adder cases
+
+--- Two independent pure local adders ---
+  22+11=33 ok=1  100+27=127 ok=1
+  PASS: two pure local adders both correct
+
+--- Dual complementary still available ---
+  PASS: complementary recovery still works
+
+Round 9: 4 passed, 0 failed

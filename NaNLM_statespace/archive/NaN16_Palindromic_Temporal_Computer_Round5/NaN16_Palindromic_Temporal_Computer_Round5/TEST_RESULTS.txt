@@ -1,0 +1,82 @@
+
+=== 1. Topology + fixed points ===
+  PASS: 256 bit-palindromic fixed points
+  PASS: 0x8001 is fixed
+  PASS: 0x1234 is not fixed
+  fixed-point count = 256
+
+=== 2. Rule 90 Sierpinski (no PC) ===
+  PASS: Rule 90 produces Sierpinski-like pattern
+  t0: 00000000000000001000000000000000
+  t8: 00000000100000000000000010000000
+
+=== 3. Rule 110 embedding (universality path) ===
+  PASS: Rule 110 matches reference for 30 steps
+  final snapshot: 00000000000000000000000000000000...
+
+=== 4. Arithmetic scaling — adder family ===
+  0 + 0 (4-bit) => got 0 expect 0 OK
+  1 + 1 (4-bit) => got 2 expect 2 OK
+  7 + 1 (4-bit) => got 8 expect 8 OK
+  22 + 11 (8-bit) => got 33 expect 33 OK
+  255 + 1 (8-bit) => got 0 expect 0 OK
+  170 + 85 (8-bit) => got 255 expect 255 OK
+  4660 + 237 (16-bit) => got 4897 expect 4897 OK
+  65535 + 1 (16-bit) => got 0 expect 0 OK
+  PASS: all adder cases match
+  8/8 adder cases passed
+
+=== 5. Subtraction (borrow wave) ===
+  5 - 3 (4-bit) => got 2 expect 2 OK
+  8 - 1 (4-bit) => got 7 expect 7 OK
+  22 - 11 (8-bit) => got 11 expect 11 OK
+  256 - 1 (16-bit) => got 255 expect 255 OK
+  PASS: all subtractor cases match
+
+=== 6. Comparison wave (MSB-first) ===
+  cmp(5,3) => 1 expect 1 OK
+  cmp(3,5) => -1 expect -1 OK
+  cmp(7,7) => 0 expect 0 OK
+  cmp(100,50) => 1 expect 1 OK
+  cmp(50,100) => -1 expect -1 OK
+  cmp(43981,43981) => 0 expect 0 OK
+  PASS: all compare cases match
+
+=== 7. Dual simultaneous arithmetic fields (mirror orientation) ===
+  field A: 22+11 => 33 (ok=1)
+  field B: 100+23 => 123 (ok=1)
+  steps=16
+  PASS: dual field A correct
+  PASS: dual field B correct
+  PASS: two independent additions in one topology
+
+=== 8. Reversibility audit ===
+  Rule classification:
+    [ 0] Identity          FULL  — generation only
+    [ 1] XorNeighbors      COND  — needs frozen neighborhood
+    [ 2] Majority          IRREV  — loses minority info
+    [ 3] Rule90            FULL  — linear XOR is involutive over GF(2) with care
+    [ 4] ReversibleXOR     FULL  — involution under frozen neighbors
+    [ 5] SignalPropagate   HIST  — decay discards signal magnitude
+    [ 6] Consensus         IRREV  — majority
+    [ 7] AddWave           HIST  — carry overwrites; log for reverse
+    [ 8] Rule110           IRREV  — known irreversible CA
+    [ 9] SubWave           HIST  — borrow overwrites
+    [10] CompareWave       IRREV  — decision collapses order info
+  PASS: ReversibleXOR is local involution under frozen mask
+
+=== 9. Fixed-point observation network ===
+  PASS: fixed-point neighborhood shows activity
+  active near fixed points (r=1): 9
+  PASS: fixed-point set intact after activity
+
+=== 10. Temporal hash / cycle detection probe ===
+  cycle_detected=1 period=1 hashes_collected=6
+  PASS: finite topology eventually cycles or hit step limit
+
+=== 11. Signal chemistry sketch (annihilation) ===
+  PASS: signals decay to zero (annihilation/expiry)
+
+========================================
+Round 4 results: 16 passed, 0 failed
+========================================

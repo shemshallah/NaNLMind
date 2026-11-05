@@ -1,0 +1,29 @@
+=== Round 8: local dual rules, dual-rail add, order independence ===
+
+--- Local dual couple / cross ---
+  couple: hash abdbbcd6d69b2025 → 5d227ce128b9168b changed=1
+  PASS: dual couple evolves state
+  cross:  hash abdbbcd6d69b2025 → 5d227ce128b9168b both_sides=1
+  PASS: dual cross changes both S+ and S-
+
+--- NAND chain (pair-to-pair logic) ---
+  nand hash t=1: fffe  t=4: 6
+  PASS: nand chain runs to completion
+  PASS: nand chain is deterministic
+
+--- Dual-rail signal add ---
+  22+11 => 33 arith=1 shadow=1 steps=8
+  7+1 => 8 arith=1 shadow=1 steps=4
+  255+1 => 0 arith=1 shadow=1 steps=8
+  100+27 => 127 arith=1 shadow=1 steps=8
+  PASS: dual-rail add: arithmetic + shadow validation
+
+--- Order independence (disjoint regions) ---
+  hash_order_A=2a0535926721fd25 hash_order_B=2a0535926721fd25 events 161/161 indep=1
+  PASS: disjoint regions: final hash independent of A-first vs B-first order
+
+--- Regression ---
+  PASS: dual isolation still holds
+  PASS: signal adder regression
+
+Round 8: 8 passed, 0 failed

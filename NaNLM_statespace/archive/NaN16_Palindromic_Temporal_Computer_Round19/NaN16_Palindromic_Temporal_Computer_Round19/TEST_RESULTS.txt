@@ -1,0 +1,55 @@
+=== Round 19: Harder cognitive stress tests ===
+
+--- Deep ISA chains ---
+  max_depth=8 mid_exc=1 leaf_exc=1
+  depth 1: OK
+  depth 2: OK
+  depth 3: OK
+  depth 4: OK
+  depth 5: OK
+  depth 6: OK
+  depth 7: OK
+  depth 8: OK
+  PASS: ISA inheritance depth ≥ 6
+  PASS: ISA inheritance depth 8
+  PASS: mid-chain exception blocks inheritance
+  PASS: leaf exception blocks inheritance
+
+--- Nested exceptions ---
+  PASS: emperor→penguin→¬fly
+  PASS: individual→species¬fly
+  PASS: eagle inherits bird CAN fly
+  PASS: nested exception suite
+
+--- Assert order invariance ---
+  probes=20 mismatches=0
+  PASS: forward vs reverse assert order → identical answers
+
+--- Learning under conflict ---
+  proposals=100 contested=1 no_false_yes=1
+  PASS: 50 rounds of CAN vs CANNOT stay contested
+
+--- Mega context (2000 facts) ---
+  facts=2000 acc=1.0000 ms/query=0.0000
+  PASS: 2000 facts, ≥99% probe accuracy
+  PASS: query latency under 50ms (local)
+
+--- Resonance interference ---
+  E_mid=0.0973 E_quiet=0.1669 both=1
+  PASS: both sources retain energy
+  PASS: mid lattice receives wave energy
+
+--- Head committee ---
+  PASS: 7 yes + 4 no → contested, not false consensus
+  PASS: unanimous yes → consensus yes
+
+--- Hard cognition suite ---
+  8/8 chain_depth=8 mega_acc=1.000
+  PASS: hard suite all green
+
+--- R18 regression ---
+  PASS: R18 deep cognition still green
+
+========================================
+Round 19: 18 passed, 0 failed
+========================================

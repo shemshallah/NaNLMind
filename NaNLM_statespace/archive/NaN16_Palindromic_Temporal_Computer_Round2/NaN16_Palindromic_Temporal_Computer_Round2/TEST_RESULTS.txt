@@ -1,0 +1,16 @@
+PASS: exhaustive 16-bit transform identities
+PASS: bit/byte fixed-point and pair counts
+PASS: combined four-transform orbit partition
+PASS: temporal shared-pair forward/reverse restoration
+PASS: palindromic fixed-point cell
+
+Orbit enumeration:
+address_count=65536
+bit_reverse_fixed_points=256
+bit_reverse_pairs=32640
+byte_swap_fixed_points=256
+byte_swap_pairs=32640
+combined_orbits_size_1=16
+combined_orbits_size_2=360
+combined_orbits_size_4=16200
+combined_orbit_count=16576

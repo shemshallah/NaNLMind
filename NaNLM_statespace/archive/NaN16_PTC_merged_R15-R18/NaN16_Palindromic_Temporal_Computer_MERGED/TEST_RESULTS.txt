@@ -1,0 +1,44 @@
+=== Round 17: Continuity under disruption ===
+Differentiation → Unity → Continuity
+
+--- Interrupted commit ---
+  PASS: uncommitted event not applied after restart
+
+--- Replay ---
+  PASS: replay reconstructs same collective hash
+
+--- Duplicate delivery ---
+  PASS: second apply is no-op; fact count unchanged
+
+--- Delayed delivery / causal attribution ---
+  PASS: challenge retains parent event id
+
+--- Head reconstruction ---
+  PASS: identity + recoverable associations restored from snapshot
+
+--- Page migration ---
+  PASS: tier1→tier2 copy preserves hash and head identity
+
+--- Collective recovery ---
+  PASS: restart restores coherent contested state
+
+--- Disappearing head (star experiment) ---
+  id=1 claims=1 prov=1 nodup=1 nopartial=1 hash=1 => all=1
+  PASS: logical head identities survive restart
+  PASS: both claims survive (contested)
+  PASS: challenge parent provenance survives
+  PASS: no duplicated committed events
+  PASS: uncommitted transition discarded
+  PASS: canonical hash matches pre-crash committed state
+  PASS: DISAPPEARING HEAD EXPERIMENT PASSED
+
+--- Continuity suite ---
+  8/8
+  PASS: continuity suite all green
+
+--- R16 regression ---
+  PASS: R16 unity suite still green
+
+========================================
+Round 17: 16 passed, 0 failed
+========================================

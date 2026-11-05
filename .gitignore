@@ -1,0 +1,12 @@
+build/
+*.o
+*.a
+*.d
+test_round*
+.DS_Store
+__pycache__/
+*.pyc
+.env
+tiers/
+temporal_nan
+test_r14

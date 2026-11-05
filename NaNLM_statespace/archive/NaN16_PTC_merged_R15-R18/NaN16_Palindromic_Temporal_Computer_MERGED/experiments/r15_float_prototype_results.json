@@ -1,0 +1,82 @@
+{
+ "identical_noinhib|overlap=0.0": {
+  "MI_bits": 1.0288513161373627,
+  "MI_null": 0.0019424822524756566,
+  "max_possible_bits": 2.584962500721156,
+  "purity": 0.40144444444444444,
+  "heads_used": 2.6666666666666665,
+  "cross_run_sim": 0.9620513288973729
+ },
+ "noise|overlap=0.0": {
+  "MI_bits": 1.0288513161373627,
+  "MI_null": 0.001901341743252299,
+  "max_possible_bits": 2.584962500721156,
+  "purity": 0.40144444444444444,
+  "heads_used": 2.6666666666666665,
+  "cross_run_sim": 0.9620513288973729
+ },
+ "inhibition|overlap=0.0": {
+  "MI_bits": 2.583464404673562,
+  "MI_null": 0.31168744442401936,
+  "max_possible_bits": 2.584962500721156,
+  "purity": 0.9999444444444444,
+  "heads_used": 231.16666666666666,
+  "cross_run_sim": 0.9525497078977215
+ },
+ "random_fixed|overlap=0.0": {
+  "MI_bits": 0.3631014859944599,
+  "MI_null": 0.359339874604442,
+  "max_possible_bits": 2.584962500721156,
+  "purity": 0.32983333333333337,
+  "heads_used": 256.0,
+  "cross_run_sim": 0.9122145802035074
+ },
+ "frozen|overlap=0.0": {
+  "MI_bits": 0.3612447045147169,
+  "MI_null": 0.35593201218916565,
+  "max_possible_bits": 2.584962500721156,
+  "purity": 0.32827777777777783,
+  "heads_used": 256.0,
+  "cross_run_sim": 0.9112798442159598
+ },
+ "identical_noinhib|overlap=0.6": {
+  "MI_bits": 0.00014728609167825825,
+  "MI_null": 0.00014343566833315845,
+  "max_possible_bits": 2.584962500721156,
+  "purity": 0.17683333333333331,
+  "heads_used": 1.1666666666666667,
+  "cross_run_sim": 0.0
+ },
+ "noise|overlap=0.6": {
+  "MI_bits": 0.001033982108485379,
+  "MI_null": 0.00023577431549701418,
+  "max_possible_bits": 2.584962500721156,
+  "purity": 0.17716666666666667,
+  "heads_used": 1.1666666666666667,
+  "cross_run_sim": 0.0
+ },
+ "inhibition|overlap=0.6": {
+  "MI_bits": 2.5762102006229703,
+  "MI_null": 0.30174526930515627,
+  "max_possible_bits": 2.584962500721156,
+  "purity": 0.9982777777777777,
+  "heads_used": 226.16666666666666,
+  "cross_run_sim": 0.9783171124811304
+ },
+ "random_fixed|overlap=0.6": {
+  "MI_bits": 0.3631014859944599,
+  "MI_null": 0.359339874604442,
+  "max_possible_bits": 2.584962500721156,
+  "purity": 0.32983333333333337,
+  "heads_used": 256.0,
+  "cross_run_sim": 0.9122145802035074
+ },
+ "frozen|overlap=0.6": {
+  "MI_bits": 0.3612447045147169,
+  "MI_null": 0.35593201218916565,
+  "max_possible_bits": 2.584962500721156,
+  "purity": 0.32827777777777783,
+  "heads_used": 256.0,
+  "cross_run_sim": 0.9112798442159598
+ }
+}

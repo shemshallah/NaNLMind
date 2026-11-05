@@ -1,0 +1,26 @@
+=== Round 6: signal-carried adder + event-driven ===
+  0+0 (4-bit) => 0 expect 0 steps=4 hops=4 OK
+  1+1 (4-bit) => 2 expect 2 steps=4 hops=4 OK
+  PASS: step count near bit-width
+  7+1 (4-bit) => 8 expect 8 steps=4 hops=4 OK
+  PASS: step count near bit-width
+  22+11 (8-bit) => 33 expect 33 steps=8 hops=8 OK
+  PASS: step count near bit-width
+  255+1 (8-bit) => 0 expect 0 steps=8 hops=8 OK
+  PASS: step count near bit-width
+  170+85 (8-bit) => 255 expect 255 steps=8 hops=8 OK
+  PASS: step count near bit-width
+  4660+237 (16-bit) => 4897 expect 4897 steps=16 hops=16 OK
+  PASS: step count near bit-width
+  65535+1 (16-bit) => 0 expect 0 steps=16 hops=16 OK
+  PASS: step count near bit-width
+  PASS: all signal-carried adder cases
+  8/8 signal-add cases
+  PASS: event-driven signal eventually quiet
+  PASS: event-driven performed work
+  event-driven: steps=4 total_fired=140 final_dirty=0
+  PASS: initial state alone selects different sums
+  PASS: 3+4=7 and 10+5=15
+  PASS: dual geometric adder regression
+
+Round 6: 13 passed, 0 failed

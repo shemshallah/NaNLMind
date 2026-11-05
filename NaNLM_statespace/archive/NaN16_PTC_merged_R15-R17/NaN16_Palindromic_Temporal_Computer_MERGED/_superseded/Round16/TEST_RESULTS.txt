@@ -1,0 +1,47 @@
+=== Round 16: Unity under differentiation ===
+Head identity ≠ physical location · Head plurality ≠ state plurality
+
+--- Shared-fact propagation ---
+  PASS: fact from head 3 available to collective query
+
+--- Conflicting conclusions ---
+  preserved=1 contested=1 third_sees=1 intact=1
+  PASS: both opposing facts retained
+  PASS: conflict marked contested
+  PASS: third head sees disagreement, not false yes
+  PASS: shared state not overwritten
+
+--- Cross-head attribution ---
+  PASS: origin head and event id preserved
+
+--- Specialization stability ---
+  entropy 0.258 → 0.260 same_dominants=8 stable=1
+  PASS: specialization stable across distribution shift
+
+--- Specialization transfer ---
+  old 80→80 new=5 retained=1 acquired=1
+  PASS: prior specialty score not erased
+  PASS: new competency acquired
+
+--- Head failure ---
+  PASS: victim local state cleared
+  PASS: logical identity (id + fixed_addr) unchanged
+  PASS: other heads unaffected
+  PASS: collective facts survive head reset
+
+--- Physical relocation ---
+  PASS: logical identity independent of physical page cell
+
+--- Schedule consistency ---
+  PASS: forward and reverse propose order → same content hash
+
+--- Unity suite ---
+  7/7 shared=1 conflict=1 stab=1 xfer=1 fail=1 reloc=1 sched=1
+  PASS: unity suite all green
+
+--- R15 regression ---
+  PASS: R15 heads suite still green
+
+========================================
+Round 16: 17 passed, 0 failed
+========================================

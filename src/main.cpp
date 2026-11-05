@@ -1,0 +1,451 @@
+#include "nanlm/global.hpp"
+#include "nanlm/ledger.hpp"
+#include "nanlm/pager.hpp"
+#include "nanlm/resonance.hpp"
+#include "nanlm/ring.hpp"
+#include "nanlm/universe.hpp"
+
+#include <cstdio>
+#include <cstring>
+#include <iostream>
+#include <memory>
+#include <string>
+
+namespace {
+
+using namespace nanlm;
+
+int failures = 0;
+
+void check(bool ok, const std::string& name) {
+    std::cout << (ok ? "PASS  " : "FAIL  ") << name << "\n";
+    if (!ok) ++failures;
+}
+
+int cmd_verify() {
+    std::cout << "NaNLM Universal — core verification\n\n";
+
+    check(kAddressCount == 65536, "65,536 addresses");
+    check(kFixedPointCount == 256, "256 palindromic fixed points");
+    check(kMirrorPairCount == 32640, "32,640 mirror pairs");
+    check(kCanonicalCount == 32896, "32,896 canonical cells");
+    check(kMirrorPairCount == (kFixedPointCount * (kFixedPointCount - 1)) / 2,
+          "32,640 == C(256,2)");
+
+    bool pair_ok = true;
+    for (std::uint32_t p = 0; p < kMirrorPairCount; ++p) {
+        const auto [a, b] = pair_heads(p);
+        if (a >= b || pair_index(a, b) != p) pair_ok = false;
+    }
+    check(pair_ok, "pair index round-trips over all 32,640 pairs");
+
+    bool transpose_ok = true;
+    std::uint32_t fixed = 0;
+    for (std::uint32_t i = 0; i < kAddressCount; ++i) {
+        const auto a = static_cast<std::uint16_t>(i);
+        const auto r = matrix_row(a);
+        const auto c = matrix_col(a);
+        if (reverse16(a) != matrix_addr(c, r)) transpose_ok = false;
+        if (is_palindrome16(a)) ++fixed;
+        if (reverse16(reverse16(a)) != a) transpose_ok = false;
+    }
+    check(transpose_ok, "reverse16 is matrix transposition for all 65,536 addresses");
+    check(fixed == 256, "exactly 256 addresses are palindromic");
+
+    bool bool_ok = true;
+    for (std::uint8_t n = 0; n < 16; ++n) {
+        const std::uint32_t a = 0xCCCCCCCCu;
+        const std::uint32_t b = 0xAAAAAAAAu;
+        const std::uint32_t expect = static_cast<std::uint32_t>(n) * 0x11111111u;
+        if (NanWord::eval_bool(n, a, b) != expect) bool_ok = false;
+        for (int lane = 0; lane < 32; ++lane) {
+            const std::uint32_t av = (a >> lane) & 1u;
+            const std::uint32_t bv = (b >> lane) & 1u;
+            const std::uint32_t bit = (NanWord::eval_bool(n, a, b) >> lane) & 1u;
+            if (bit != ((n >> (2u * av + bv)) & 1u)) bool_ok = false;
+        }
+    }
+    check(bool_ok, "all 16 Boolean functions match their truth tables");
+    check(NanWord::eval_bool(6, 0xCCCCCCCCu, 0xAAAAAAAAu) == 0x66666666u,
+          "lane identity: XOR(0xCCCCCCCC, 0xAAAAAAAA) == 0x66666666");
+
+    bool mirror_law = true;
+    for (std::uint8_t n = 0; n < 16; ++n) {
+        const std::uint32_t a = 0xCCCCCCCCu;
+        const std::uint32_t b = 0xAAAAAAAAu;
+        if (NanWord::eval_bool(rot2(n), a, b) != NanWord::eval_bool(n, ~a, b)) {
+            mirror_law = false;
+        }
+    }
+    check(mirror_law, "mirror law: BOOL.rot2(n)(a,b) == BOOL.n(~a,b)");
+
+    const NanWord w = NanWord::make(NanType::SignalPositive, NanType::QuietNegative, 0xDEADBEEFu);
+    check(w.valid(), "NaN16 word with legal heads is valid");
+    check(w.far_head() == 0x7FF1 && w.near_head() == 0xFFF8, "far/near heads round-trip");
+    check(w.payload() == 0xDEADBEEFu, "payload round-trips");
+    check(w.bswap().bswap().raw == w.raw, "BSWAPM is an involution");
+    check(w.bswap().opcode() == rot2(w.opcode()), "BSWAPM rotates the class nibble");
+
+    Universe u1(0x0123456789ABCDEFull);
+    Universe u2(0x0123456789ABCDEFull);
+    std::string err;
+    check(u1.verify(&err), "universe structural verification " + err);
+    check(u1.digest() == u2.digest(), "genesis is deterministic");
+    check(u1.at(0, 0).is_head() && u1.at(255, 255).is_head(),
+          "all 256 diagonal cells are heads");
+    check(u1.at(0, 1).is_pair() && u1.at(1, 0).is_pair(),
+          "off-diagonal cells are pair cells");
+    check(u1.descriptor_pair(pair_index(0, 1)).head_a == 0 &&
+              u1.descriptor_pair(pair_index(0, 1)).head_b == 1,
+          "pair descriptor links the two heads");
+    check(u1.adjacent(0, 1) && u1.adjacent(1, 0), "adjacency bitmap is symmetric");
+    check(!u1.adjacent(0, 0), "diagonal is not an edge");
+
+    // Bit-level paging and copy-on-write.
+    PageTable table;
+    auto root = std::make_shared<Universe>(0);
+    check(table.map(PageId::root(), root), "map root universe");
+    const BitAddress bit{PageId::root(), matrix_addr(0, 1), 0, 5};
+    check(table.write_bit(bit, true), "write one bit");
+    bool value = false;
+    check(table.read_bit(bit, value) && value, "read the same bit");
+    check(table.dirty_cell_count(PageId::root()) == 1, "dirty cell tracked");
+
+    const PageId alias = PageId::child(PageId::root(), 42);
+    check(table.map(alias, root), "map a child alias to the same page");
+    const BitAddress abit{alias, matrix_addr(0, 1), 0, 5};
+    check(table.write_bit(abit, false), "write through alias (COW)");
+    bool root_value = true;
+    bool alias_value = true;
+    check(table.read_bit(bit, root_value) && root_value, "root keeps the old bit");
+    check(table.read_bit(abit, alias_value) && !alias_value, "alias has the new bit");
+    check(table.entry(PageId::root())->page != table.entry(alias)->page,
+          "COW cloned the page");
+    const Hash256 root_before = table.root_hash();
+    check(table.write_bit(bit, false), "write root again");
+    check(!(table.root_hash() == root_before), "root hash changes after a write");
+
+    // Ledger chain and tamper detection.
+    Ledger ledger;
+    for (int i = 0; i < 100; ++i) {
+        Hash256 before{};
+        Hash256 after{};
+        before[0] = static_cast<std::uint8_t>(i);
+        after[0] = static_cast<std::uint8_t>(i + 1);
+        ledger.append(1, 1, static_cast<std::uint64_t>(i), before, after);
+    }
+    check(ledger.verify(&err), "100-event ledger verifies");
+    Ledger copy = Ledger::from_bytes(ledger.serialize().data(), ledger.serialize().size());
+    check(copy.verify(&err), "ledger serializes and restores");
+    check(ledger.head() == copy.head(), "restored ledger has the same head");
+    Ledger tampered = ledger;
+    tampered = Ledger::from_bytes(ledger.serialize().data(), ledger.serialize().size());
+    // Re-serialize with one event byte flipped.
+    auto bytes = ledger.serialize();
+    const std::size_t event_offset = 8 + 32 + 32 + 8;
+    bytes[event_offset + 50 * sizeof(Event) + 7] ^= 0x01u;
+    Ledger broken = Ledger::from_bytes(bytes.data(), bytes.size());
+    check(!broken.verify(&err), "tampered ledger is rejected");
+
+    // Resonance.
+    ResonanceLattice r;
+    check(r.coupling(0, 1) == r.coupling(1, 0), "resonance coupling is symmetric");
+    const int steps = r.propagate(0, 255, 19661, 500);
+    check(steps > 0, "wave reaches the opposite corner in " + std::to_string(steps) + " steps");
+    check(r.coherence() >= 0 && r.coherence() <= 65536, "coherence is in range");
+    ResonanceLattice r2;
+    ResonanceLattice r3;
+    check(r2.digest() == r3.digest(), "resonance is deterministic");
+
+    // One global topology: charts are coordinate regions, not separate minds.
+    GlobalTopology g(0x1234);
+    check(g.chart_count() == 1, "initial brain is exactly one chart");
+    const PageId child = g.add_chart(PageId::root(), 7);
+    check(g.has_chart(child) && g.chart_count() == 2, "a chart is added to the same object");
+    const BitAddress root_bit{PageId::root(), matrix_addr(0, 1), 0, 0};
+    const BitAddress child_bit{child, matrix_addr(1, 2), 0, 0};
+    Hyperedge cross;
+    cross.label = 1;
+    cross.members = {Ref::from_bit(root_bit), Ref::from_bit(child_bit)};
+    check(g.hypergraph().add(cross) != 0, "cross-space hyperedge is a field of the one object");
+    check(g.temporal().link(Ref::from_bit(root_bit), Ref::from_bit(child_bit), 1) != 0,
+          "temporal link is a field of the one object");
+    check(g.ledger().verify(), "one global ledger verifies");
+    GlobalTopology g2(0x1234);
+    g2.add_chart(PageId::root(), 7);
+    g2.hypergraph().add(cross);
+    g2.temporal().link(Ref::from_bit(root_bit), Ref::from_bit(child_bit), 1);
+    check(g.global_digest() == g2.global_digest(), "global identity is deterministic");
+    const BitAddress mirrored = GlobalTopology::mirror(root_bit);
+    check(mirrored.cell == reverse16(root_bit.cell), "global mirror is the chart-local involution");
+
+    HeadArray heads = g.root_heads();
+    check(heads.verify(), "256-head palindromic layer verifies");
+    check(heads.digest() == g2.root_heads().digest(), "head layer is deterministic");
+    HeadRunner runner(heads, PageId::root(), &g.temporal());
+    HeadToken token;
+    token.payload = 9;
+    token.epoch = 100;
+    const RunnerResult handoff = runner.run(0, token);
+    check(handoff.ok && handoff.next == 1, "runner follows the first topology edge");
+    check(handoff.out.epoch == 101, "runner preserves and advances the epoch");
+    check(heads.history(0).size() == 1, "head history records the handoff");
+
+    TemporalClock c;
+    check(c.tick() == 0 && c.future() == ClockState::Halt, "clock genesis is HALT");
+    c.step();
+    check(c.past_rewrite() == ClockState::Loop && c.contradiction(),
+          "clock produces the +qNaN -> LOOP contradiction");
+    c.step();
+    check(c.past_rewrite() == ClockState::Halt, "clock produces the -sNaN -> HALT rewrite");
+    c.step();
+    std::uint64_t cycle_start = 0, cycle_length = 0;
+    check(c.cycle(cycle_start, cycle_length) && cycle_length == 2,
+          "clock enters the period-2 temporal orbit");
+    check(g.clock().tick() == 0, "global clock is a field of the one object");
+    const Hash256 before_clock = g.global_digest();
+    g.clock().step();
+    check(!(g.global_digest() == before_clock), "clock is included in the global digest");
+
+    std::cout << "\n" << (failures == 0 ? "ALL CHECKS PASSED" : "FAILURES: " + std::to_string(failures))
+              << "\n";
+    return failures == 0 ? 0 : 1;
+}
+
+void print_word(const char* label, const NanWord& w) {
+    std::cout << label << " raw=0x" << std::hex << w.raw << std::dec
+              << " op=" << static_cast<unsigned>(w.opcode()) << " ("
+              << bool_op_name(w.opcode()) << ")"
+              << " payload=0x" << std::hex << w.payload() << std::dec << "\n";
+}
+
+int cmd_genesis() {
+    Universe u(0x4E614E4C4D000001ull);
+    std::string err;
+    if (!u.verify(&err)) {
+        std::cerr << "genesis verification failed: " << err << "\n";
+        return 1;
+    }
+    std::cout << "NaNLM Universal — genesis register file\n\n";
+    std::cout << "digest        " << hex(u.digest()) << "\n";
+    std::cout << "cells         " << u.canonical_count() << " ("
+              << kFixedPointCount << " heads + " << kMirrorPairCount << " pairs)\n";
+    std::cout << "page bytes    " << kPageBytes << " (8 MiB)\n";
+    std::cout << "address regs  " << kAddressCount << " x " << sizeof(AddressReg)
+              << " B (every address, both mirrors)\n";
+    std::cout << "cell bytes    " << sizeof(NanCell) << "\n";
+    std::cout << "descriptor    " << sizeof(Descriptor) << " bytes\n\n";
+
+    const auto& h0 = u.head(0);
+    std::cout << "head 0        fixed=0x" << std::hex << h0.fixed_addr << std::dec
+              << " edges=" << h0.edge_count << " phase=" << h0.phase
+              << " energy=" << h0.energy << "\n";
+    print_word("  s+", u.head_cell(0).s_plus());
+    print_word("  s-", u.head_cell(0).s_minus());
+    print_word("  q+", u.head_cell(0).q_plus());
+    print_word("  q-", u.head_cell(0).q_minus());
+
+    const auto p = pair_index(0, 1);
+    const auto& d = u.descriptor_pair(p);
+    std::cout << "\npair (0,1)    index=" << d.pair << " canon=0x" << std::hex << d.canonical
+              << " mirror=0x" << d.mirror << std::dec << " rule=" << unsigned(d.rule) << "\n";
+    const auto& c = u.pair_cell(0, 1);
+    print_word("  s+", c.s_plus());
+    print_word("  s-", c.s_minus());
+    print_word("  q+", c.q_plus());
+    print_word("  q-", c.q_minus());
+    std::cout << "  ops=0x" << std::hex << c.ops << std::dec << "\n";
+    return 0;
+}
+
+int cmd_scale() {
+    std::cout << "NaNLM Universal — scaling (one 8 MiB coordinate region per chart)\n\n";
+    std::cout << "One global topology; a chart is a local coordinate region, not a mind.\n\n";
+    std::cout << "depth  universes        addresses        canonical        pairs            fixed            dense\n";
+    for (int d = 0; d <= 8; ++d) {
+        const ScalePlan p = scale_plan(d);
+        std::cout << d << "      " << u128_to_string(p.universes) << "  "
+                  << u128_to_string(p.addresses) << "  "
+                  << u128_to_string(p.canonical) << "  "
+                  << u128_to_string(p.pairs) << "  "
+                  << u128_to_string(p.fixed) << "  "
+                  << human_bytes(p.dense_bytes) << "\n";
+    }
+    std::cout << "\n5 replica hosts, 7 GiB each (placement of the one object):\n";
+    for (int d = 1; d <= 4; ++d) {
+        const RingPlan r = ring_plan(d, 5);
+        std::cout << "  depth " << d << ": " << u128_to_string(r.total_universes)
+                  << " universes, dense " << human_bytes(r.total_bytes)
+                  << ", per node " << human_bytes(r.per_node_bytes)
+                  << (r.all_fit ? " (fits)" : " (needs remote tiers)") << "\n";
+    }
+    return 0;
+}
+
+int cmd_resonance() {
+    ResonanceLattice r;
+    const int steps = r.propagate(0, 255, 19661, 500);
+    std::cout << "NaNLM Universal — resonance\n\n";
+    std::cout << "wave 0 -> 255: " << (steps < 0 ? "not reached" : std::to_string(steps) + " steps")
+              << "\n";
+    std::cout << "coherence: " << r.coherence() << " / 65536\n";
+    std::cout << "digest: " << hex(r.digest()) << "\n";
+    for (int i : {0, 1, 15, 16, 128, 240, 255}) {
+        std::cout << "  head " << i << " energy=" << r.energy(i)
+                  << " phase=" << r.node(i).phase << "\n";
+    }
+    return steps < 0 ? 1 : 0;
+}
+
+int cmd_bits() {
+    PageTable table;
+    auto root = std::make_shared<Universe>(0);
+    table.map(PageId::root(), root);
+    const auto addr = matrix_addr(3, 7);
+    const BitAddress b{PageId::root(), addr, 0, 13};
+    table.write_bit(b, true);
+    bool v = false;
+    table.read_bit(b, v);
+    std::cout << "root bit " << static_cast<int>(v) << " dirty cells "
+              << table.dirty_cell_count(PageId::root()) << "\n";
+
+    const PageId child = PageId::child(PageId::root(), 3);
+    table.map(child, table.resolve(PageId::root()));
+    table.write_bit({child, addr, 0, 13}, false);
+    bool rv = true, cv = true;
+    table.read_bit(b, rv);
+    table.read_bit({child, addr, 0, 13}, cv);
+    std::cout << "after COW: root=" << rv << " child=" << cv
+              << " root_hash=" << hex(table.root_hash()) << "\n";
+    std::cout << "encoded bit address: 0x" << std::hex << b.encode() << std::dec << "\n";
+    return (rv && !cv) ? 0 : 1;
+}
+
+int cmd_global() {
+    GlobalTopology g(0x4E614E4C4D000001ull);
+    const PageId child = g.add_chart(PageId::root(), 7);
+    const BitAddress a{PageId::root(), matrix_addr(3, 9), 0, 5};
+    const BitAddress b{child, matrix_addr(9, 3), 0, 5};
+    g.write_bit(a, true);
+    g.write_bit(b, true);
+    Hyperedge e;
+    e.label = 0x484F5045; // HOPE
+    e.epoch = 1;
+    e.members = {Ref::from_bit(a), Ref::from_bit(b)};
+    g.hypergraph().add(e);
+    g.temporal().link(Ref::from_bit(a), Ref::from_bit(b), 1, kTemporalBranch);
+    g.commit(1, 9, 0, {}, {});
+
+    std::cout << "NaNLM Universal — one global topology\n\n";
+    std::cout << "charts        " << g.chart_count() << "\n";
+    std::cout << "global digest " << hex(g.global_digest()) << "\n";
+    std::cout << "pages digest  " << hex(g.pages().root_hash()) << "\n";
+    std::cout << "hypergraph    " << g.hypergraph().size() << " hyperedges\n";
+    std::cout << "temporal      " << g.temporal().size() << " links\n";
+    std::cout << "ledger        " << g.ledger().size() << " events\n\n";
+    for (const auto& c : g.charts()) {
+        std::cout << "  chart " << c.to_string() << "\n";
+    }
+    std::cout << "\nThe 256 palindromic heads are present in every chart.\n";
+    std::cout << "A chart is a local coordinate region, not a separate mind.\n";
+    return 0;
+}
+
+int cmd_clock() {
+    TemporalClock c;
+    std::cout << "NaNLM Universal — temporal clock (from nanclock.zip)\n\n";
+    std::cout << "cells " << TemporalClock::kCells
+              << "  past=0  future=" << (TemporalClock::kCells - 1) << "\n";
+    std::cout << "+qNaN 0x" << std::hex << TemporalClock::kQnanPositive
+              << "  -sNaN 0x" << TemporalClock::kSnanNegative << std::dec << "\n\n";
+    for (int i = 0; i < 8; ++i) {
+        c.step();
+        std::cout << "tick " << (c.tick() - 1)
+                  << ": future=" << clock_state_name(c.future())
+                  << " -> " << clock_signal_name(c.signal())
+                  << " -> past rewrites future=" << clock_state_name(c.past_rewrite())
+                  << (c.contradiction() ? " [CONTRADICTION]" : " [CONSISTENT]") << "\n";
+    }
+    std::uint64_t start = 0, length = 0;
+    if (c.cycle(start, length)) {
+        std::cout << "\ncycle start=" << start << " length=" << length << "\n";
+    }
+    std::cout << "events " << c.event_count() << "  digest " << hex(c.digest()) << "\n";
+    return 0;
+}
+
+int cmd_heads() {
+    GlobalTopology g(0x4E614E4C4D000001ull);
+    HeadArray heads = g.root_heads();
+    std::string err;
+    if (!heads.verify(&err)) {
+        std::cerr << "head verification failed: " << err << "\n";
+        return 1;
+    }
+    std::cout << "NaNLM Universal — 256-head palindromic layer\n\n";
+    std::cout << "implementation 0x" << std::hex << HeadArray::kImplementationId << std::dec << "\n";
+    std::cout << "count          " << HeadArray::size() << "\n";
+    std::cout << "array digest   " << hex(heads.digest()) << "\n\n";
+    for (int i = 0; i < 8; ++i) {
+        HeadView h = heads.at(static_cast<std::uint8_t>(i));
+        std::cout << "head " << i << " addr=0x" << std::hex << h.address().value << std::dec
+                  << " phase=" << static_cast<int>(h.phase())
+                  << " energy=" << h.record().energy
+                  << " links=" << h.links().total() << "\n";
+    }
+    BidirectionalMemory temporal;
+    HeadRunner runner(heads, PageId::root(), &temporal);
+    HeadToken token;
+    token.id = 1;
+    token.payload = 0x21;
+    token.epoch = 0;
+    std::uint8_t at = 0;
+    std::cout << "\nrunner chain:\n";
+    for (int i = 0; i < 8; ++i) {
+        const RunnerResult r = runner.run(at, token);
+        if (!r.ok) {
+            std::cout << "  stopped: " << r.error << "\n";
+            break;
+        }
+        std::cout << "  " << static_cast<int>(at) << " -> " << static_cast<int>(r.next)
+                  << " epoch=" << r.out.epoch << " phase=0x" << std::hex << r.out.phase
+                  << std::dec << "\n";
+        at = r.next;
+        token = r.out;
+    }
+    std::cout << "\ntemporal links " << temporal.size()
+              << ", history(0) " << heads.history(0).size() << "\n";
+    return 0;
+}
+
+void usage() {
+    std::cout << "nanlm-universal <command>\n\n"
+              << "  verify      exhaustive invariants and self-tests\n"
+              << "  genesis     materialize and describe the genesis register file\n"
+              << "  global      one global topology with cross-space relations\n"
+              << "  heads       256-head palindromic layer and runner handoff\n"
+              << "  clock       temporal oscillator / global epoch heartbeat\n"
+              << "  scale       print the hierarchical scaling table\n"
+              << "  resonance   run the 256-head resonance wave\n"
+              << "  bits        demonstrate bit addressing and copy-on-write\n";
+}
+
+} // namespace
+
+int main(int argc, char** argv) {
+    if (argc < 2) {
+        usage();
+        return 0;
+    }
+    const std::string cmd = argv[1];
+    if (cmd == "verify") return cmd_verify();
+    if (cmd == "genesis") return cmd_genesis();
+    if (cmd == "global") return cmd_global();
+    if (cmd == "heads") return cmd_heads();
+    if (cmd == "clock") return cmd_clock();
+    if (cmd == "scale") return cmd_scale();
+    if (cmd == "resonance") return cmd_resonance();
+    if (cmd == "bits") return cmd_bits();
+    usage();
+    return 1;
+}

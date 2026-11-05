@@ -1,0 +1,64 @@
+=== Round 13: Universality path + hierarchy + self-mod + async ===
+
+--- Two-counter machine: ADD ---
+  2CM 0+0 => 0 cycles=8 ok=1
+  PASS: 2CM add
+  2CM 3+0 => 3 cycles=8 ok=1
+  PASS: 2CM add
+  2CM 0+5 => 5 cycles=24 ok=1
+  PASS: 2CM add
+  2CM 3+5 => 8 cycles=24 ok=1
+  PASS: 2CM add
+  2CM 10+7 => 17 cycles=30 ok=1
+  PASS: 2CM add
+  2CM 20+22 => 42 cycles=75 ok=1
+  PASS: 2CM add
+
+--- Two-counter machine: MUL ---
+  2CM 0*5 => 0 cycles=23 ok=1
+  PASS: 2CM mul
+  2CM 5*0 => 0 cycles=7 ok=1
+  PASS: 2CM mul
+  2CM 3*4 => 12 cycles=20 ok=1
+  PASS: 2CM mul
+  2CM 6*7 => 42 cycles=29 ok=1
+  PASS: 2CM mul
+  2CM 2*10 => 20 cycles=38 ok=1
+  PASS: 2CM mul
+
+--- Two-counter COPY ---
+  copy 0 => 0 ok=1
+  PASS: 2CM copy
+  copy 1 => 1 ok=1
+  PASS: 2CM copy
+  copy 5 => 5 ok=1
+  PASS: 2CM copy
+  copy 12 => 12 ok=1
+  PASS: 2CM copy
+
+--- Self-modifying program ---
+  out=99 patched=1 ok=1
+  PASS: program memory was patched
+  PASS: self-mod program OUT=99 after patch
+
+--- Hierarchical pages ---
+  page0=10 page1=11 ok=1
+  PASS: page0 XOR=10, page1 portal+1=11
+
+--- Async dual VMs (schedule independence) ---
+  order1=1 order2=1 match=1 outs 10,42
+  PASS: A-heavy interleave correct
+  PASS: B-heavy interleave correct
+  PASS: both schedules agree (no global clock needed)
+
+--- Resource compare (2CM mul vs host ops) ---
+  6*7 vm_cycles=29 host_inner_adds=42 same=1
+  PASS: VM mul matches reference product
+  PASS: VM performed measurable work
+
+--- R12 baseline regression ---
+  PASS: R12 suite still green
+
+========================================
+Round 13: 24 passed, 0 failed
+========================================

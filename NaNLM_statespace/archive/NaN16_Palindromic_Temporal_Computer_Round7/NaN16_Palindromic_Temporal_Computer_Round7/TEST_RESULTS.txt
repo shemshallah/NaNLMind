@@ -1,0 +1,43 @@
+=== Round 7: dual-state mirror pairs + scale ===
+
+--- Scale (exact mathematics) ---
+  raw addresses:     65536
+  fixed points:      256
+  mirror pairs:      32640
+  canonical cells:   32896
+  PASS: 256 fixed points
+  PASS: 32640 mirror pairs
+  PASS: 32896 canonical cells
+  config space shared 1-bit/cell:  ~10^9903 configurations
+  config space dual 1-bit/side:    ~10^19728 configurations
+  config space dual 8-bit/side:    ~10^157826 configurations
+  (for scale: atoms in observable universe ~10^80)
+
+--- Experiment 1: Mirror independence ---
+  touch S+: plus a5a5a5a5→2dedd2c3 minus 5a5a5a5a→5a5a5a5a isol=1
+  PASS: touch S+ leaves S- unchanged
+  touch S-: plus a5a5a5a5→a5a5a5a5 minus 5a5a5a5a→bb46b185 isol=1
+  PASS: touch S- leaves S+ unchanged
+  PASS: fixed-point cell also supports dual isolation
+
+--- Experiment 2: Complementary XOR recover ---
+  recovered 32/32 complementary XORs
+  PASS: all complementary XOR recoveries succeed
+
+--- Bulk dual isolation (1024 cells × 50 steps) ---
+  cells=1024 steps=50 isol_fail=0 comp_ok=1024 comp_fail=0
+  PASS: zero isolation failures in bulk dual walk
+  PASS: all bulk complementary recoveries ok
+
+--- Growth path (if address width expands) ---
+  n= 8  cells=136  pairs=120  fixed=16  cfg(1-bit)~10^41
+  n=16  cells=32896  pairs=32640  fixed=256  cfg(1-bit)~10^9903
+  n=24  cells=8390656  pairs=8386560  fixed=4096  cfg(1-bit)~10^2525839
+  n=32  cells=2147516416  pairs=2147450880  fixed=65536  cfg(1-bit)~10^646466857
+  Dual-state roughly doubles payload bits per pair without new addresses.
+  Hierarchical / paged address spaces can grow without expanding the ISA width.
+
+--- Regression ---
+  PASS: signal adder 22+11=33
+
+Round 7: 10 passed, 0 failed

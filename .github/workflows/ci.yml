@@ -1,0 +1,26 @@
+name: ci
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compiler
+        run: c++ --version
+      - name: Build
+        run: make -j2
+      - name: Test suite
+        run: make test
+      - name: Verify CLI
+        run: ./build/nanlm-universal verify
+      - name: Genesis
+        run: ./build/nanlm-universal genesis
+      - name: Global topology
+        run: ./build/nanlm-universal global
+      - name: Scale
+        run: ./build/nanlm-universal scale
