@@ -324,6 +324,20 @@ Dense 256-kind closure (8 KiB) plus a 2.5 KiB, 2,858-bit entity exception
 residual matches 2,000/2,000 queries in about 1 ms. No 20k×256 entity matrix is
 materialized. Peer residuals merge by OR in either order.
 
+### Actual TM runtime
+
+A general TM runtime stores its transition table/state/head in address registers
+and tape symbols in 8 MiB pages. Binary increment passes: 1011 -> 1100 and
+111 -> 1000 with the carry at position -1. This is an actual TM runtime, not a
+UTM claim; the universal transition table and TM→2CM compiler remain.
+
+### U2/U3 and orbit comparison
+
+`ChartLimbStore`/`LimbCounter` carry across 16-bit limbs; `AtlasLimbStore`
+spans 8 MiB pages (17 limbs over two pages). A reference 2CM matches the chart
+machine step-by-step for the copy program (22 decodes). U2/U3 are prototypes,
+not yet wired into `TwoCounterMachine::step`.
+
 ### U1 bounded 2CM
 
 A bounded two-counter machine now stores HALT, IP, counters, and program

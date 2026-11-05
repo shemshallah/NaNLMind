@@ -51,20 +51,25 @@ Counters are limb lists in chart cells; program/state/IP/HALT are fixed cells.
 
 - no host bigint;
 - limbs in cells; carry/borrow in chart;
-- growth until page limit.
+- growth until page limit. **Prototype passed in docs/64; not yet wired into step.**
 
 ### U3 — atlas paging
 
 - fixed allocator; page links; ledger commits;
 - counter growth continues after first 8 MiB chart;
-- same δ, no task-specific host allocation.
+- same δ, no task-specific host allocation. **Atlas prototype passed in docs/64; not yet wired into step.**
 
-### U4 — TM → 2CM → chart encoding
+### U4 — actual TM runtime (partial)
+
+- A general TM runtime with tape pages and binary increment exists.
+- It is not yet a TM → 2CM compiler.
+
+### U5 — TM → 2CM → chart encoding
 
 - document TM description -> program cells + initial counters;
 - simulate small TMs (unary add, BB(2)-class toys).
 
-### U5 — optional UTM program in ROM
+### U6 — optional UTM program in ROM
 
 - one fixed program runs multiple machine descriptions;
 - input tape elsewhere in chart/atlas.
