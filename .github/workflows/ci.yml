@@ -32,5 +32,7 @@ jobs:
         run: ./build/nanlm-universal phase
       - name: Router
         run: ./build/nanlm-universal router
+      - name: NTF
+        run: ./build/nanlm-universal ntf
       - name: Growth
         run: ./build/nanlm-universal growth

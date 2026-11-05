@@ -116,6 +116,29 @@ Wall time never enters the state-ordering digest.
 
 ---
 
+## 5.1 NaN Translation Fabric
+
+The new tier between the Universe Network Map and the physical mesh:
+
+```text
+nan://U-07/R-03/H-0x0180/T-108/model/a
+```
+
+- physical locator: `tcp://node-a.example:7401/nan`
+- universe address: `U / region / head / generation`
+- semantic resource: `model/a`
+
+`MappingRecord` carries `topology_root`, providers, locators, generation,
+mapping version, capabilities, expiry, crypto suite, and signature.
+`TranslationFabric` publishes/resolves/routes/revokes; stale version,
+generation, expiry, and unsigned mappings are rejected.
+`TemporalHandoff` validates destination generation, expiry, epoch, and phase.
+`MeshRegistry` advertises peers and expires them.
+
+Crypto is a hook: Ed25519 / ML-KEM / SHA3 / NSP8 belong in NaN/0S or a native
+verifier. A valid universe address does not grant access; identity, address,
+and authorization are separate.
+
 ## 6. Live ring
 
 - `nanlm-cpu-1..6` — disposable head runners
@@ -133,8 +156,13 @@ round digest = 0cc600649c35b0f91f0ed9693ac0916f14a03fa4587a2d292b33b7b091d7d61c
 ```
 
 Epoch 2 succeeded and self-redispatched. The ring is sequential by default:
-six concurrent writers corrupt the single reporam journal. One epoch is
-~6m25s. A persistent slot loop is the next speedup.
+six concurrent writers corrupt the single reporam journal. One-epoch dispatch is
+~6m25s because it starts six workflow jobs.
+
+The persistent loop (`op=loop`) is now live: one job processes multiple epochs
+in one workspace and rotates across the six runner repos per shift. Three
+epochs were processed in one job in ~94 seconds. The six-workflow protocol is
+still available as the explicit handoff proof.
 
 ---
 
@@ -186,7 +214,7 @@ storage/addressing and bidirectional memory, not a measured learning advantage.
 ## 10. Next
 
 1. Load real chart/head/scratch state from `nanlm-vram` in the ring worker.
-2. Add persistent slot loops to cut epoch time from minutes to seconds.
-3. Route selection by resonance attention with congestion/backpressure.
-4. Final-layer custom directory at 65,536 entries.
+2. Route selection by resonance attention with congestion/backpressure.
+3. Connect the NTF mapping record to the signed registry and peer discovery.
+4. Two-universe communication demo with the NTF and temporal handoff.
 5. Dropped-slot recovery using reverse rails and contemplation frames.

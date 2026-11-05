@@ -103,6 +103,7 @@ make
 ./build/nanlm-universal resonance
 ./build/nanlm-universal phase
 ./build/nanlm-universal router
+./build/nanlm-universal ntf
 ./build/nanlm-universal growth
 make test
 make legacy
@@ -155,6 +156,7 @@ baseline — a plain RNN matching the 256-head topology — is in
 | `docs/20_META_ROUTER.md` | universes as heads, routes as pairs, qNaN/sNaN BE/LE portals |
 | `docs/21_FRAME_SYNC.md` | forward/rollback frame meetings, inverse frames, contemplation |
 | `docs/22_ATOMIC_CLOCK.md` | global wall anchor from multiple HTTPS sources |
+| `docs/23_NAN_TRANSLATION_FABRIC.md` | NTF: physical/universe/semantic address translation |
 | `NaNLM_statespace/` | all original archives + extracted snapshots + SHA-256 manifest |
 
 ---

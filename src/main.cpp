@@ -4,6 +4,7 @@
 #include "nanlm/resonance.hpp"
 #include "nanlm/ring.hpp"
 #include "nanlm/router.hpp"
+#include "nanlm/ntf.hpp"
 #include "nanlm/schedule.hpp"
 #include "nanlm/universe.hpp"
 
@@ -386,6 +387,34 @@ int cmd_growth() {
     return r.ok ? 0 : 1;
 }
 
+int cmd_ntf() {
+    std::cout << "NaNLMind — NaN Translation Fabric\n\n";
+    const auto a = UniverseAddress::parse("nan://U-07/R-03/H-0x0180/T-108/model/a");
+    if (!a) { std::cerr << "address parse failed\n"; return 1; }
+    MappingRecord m;
+    m.universe = 7;
+    m.mapping_version = 1;
+    m.generation = 108;
+    m.owner = NodeId::from_hex("00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff");
+    m.providers.push_back(m.owner);
+    m.locators.push_back({"tcp", "node-a.example", 7401, "nan"});
+    m.locators.push_back({"quic", "node-b.example", 7402, "nan"});
+    m.expiry_unix = 2000000000;
+    m.capabilities = kCapRead | kCapWrite | kCapExec;
+    m.suite = CryptoSuite::Nsp8;
+    m.signature[0] = 1;
+    TranslationFabric fabric;
+    std::string err;
+    const bool published = fabric.publish(m, 1793860000, &err);
+    const auto r = fabric.route(*a, 1793860000);
+    std::cout << "address " << a->to_string() << "\n";
+    std::cout << "published=" << published << " route_ok=" << r.ok
+              << " locators=" << r.locators.size() << "\n";
+    for (const auto& l : r.locators) std::cout << "  " << l.to_string() << "\n";
+    std::cout << "mapping digest " << hex(m.digest()) << "\n";
+    return (published && r.ok) ? 0 : 1;
+}
+
 int cmd_router() {
     GlobalTopology g(0x4E614E4C4D000001ull);
     RouterChart router(g, PageId::root());
@@ -508,6 +537,7 @@ void usage() {
               << "  clock       temporal oscillator / global epoch heartbeat\n"
               << "  phase       transform-phase orbits and wake-slot scheduling\n"
               << "  router      meta-router: universes as heads, routes as pairs\n"
+              << "  ntf         NaN Translation Fabric address/route demo\n"
               << "  growth      child-chart growth and scratch consolidation\n"
               << "  scale       print the hierarchical scaling table\n"
               << "  resonance   run the 256-head resonance wave\n"
@@ -529,6 +559,7 @@ int main(int argc, char** argv) {
     if (cmd == "clock") return cmd_clock();
     if (cmd == "phase") return cmd_phase();
     if (cmd == "router") return cmd_router();
+    if (cmd == "ntf") return cmd_ntf();
     if (cmd == "growth") return cmd_growth();
     if (cmd == "scale") return cmd_scale();
     if (cmd == "resonance") return cmd_resonance();

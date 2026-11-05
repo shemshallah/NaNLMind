@@ -26,6 +26,7 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 20 | [20_META_ROUTER.md](20_META_ROUTER.md) | How do universes become heads and routes become pair cells? |
 | 21 | [21_FRAME_SYNC.md](21_FRAME_SYNC.md) | How do forward/rollback frames meet, and how do heads invert a frame? |
 | 22 | [22_ATOMIC_CLOCK.md](22_ATOMIC_CLOCK.md) | How is wall time anchored without putting it into state order? |
+| 23 | [23_NAN_TRANSLATION_FABRIC.md](23_NAN_TRANSLATION_FABRIC.md) | How do physical, universe, and semantic addresses translate? |
 
 The short version:
 
