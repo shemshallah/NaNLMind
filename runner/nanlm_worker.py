@@ -153,6 +153,47 @@ def op_prewarm(args):
     return 0 if record["ok"] else 1
 
 
+def collect_packets(env, epoch):
+    seen = []
+    if env is not None:
+        for s in range(RUNNERS):
+            seen.extend(reg_get(env, f"nanlm/head/{epoch}/{s}", []) or [])
+    else:
+        for s in range(RUNNERS):
+            p = local_path().joinpath(f"head_{epoch}_{s}.json")
+            if p.exists():
+                seen.extend(json.loads(p.read_text()))
+    return seen
+
+
+def finalize_round(env, epoch):
+    seen = collect_packets(env, epoch)
+    if len(seen) != HEADS:
+        return False, None
+    if len({p["head"] for p in seen}) != HEADS:
+        return False, None
+    if any(p["epoch"] != epoch for p in seen):
+        return False, None
+    d = round_digest(epoch, seen)
+    record = {"epoch": epoch, "digest": d, "heads": HEADS, "slots": RUNNERS, "ok": True}
+    reg_put(env, f"nanlm/round/{epoch}", record)
+    manifest = reg_get(env, "nanlm/manifest", {}) or {}
+    manifest.update({
+        "generation": int(manifest.get("generation", 0)) + 1,
+        "epoch": epoch,
+        "root": d,
+        "pages": ["root"],
+        "ok": True,
+    })
+    reg_put(env, "nanlm/manifest", manifest)
+    clock = reg_get(env, "nanlm/clock", {}) or {}
+    reg_put(env, "nanlm/clock", {
+        "tick": int(clock.get("tick", 0)) + 1,
+        "phase": 1 - int(clock.get("phase", 0)),
+    })
+    return True, record
+
+
 def op_headshift(args):
     env = connect_tiers(writer=True)
     gate = reg_get(env, "nanlm/gate") if env is not None else None
@@ -161,11 +202,12 @@ def op_headshift(args):
         return 2
 
     now = time.time()
-    lease = reg_get(env, "nanlm/lease") if env is not None else None
+    lease_key = f"nanlm/lease/{args.slot}"
+    lease = reg_get(env, lease_key) if env is not None else None
     if lease and lease.get("holder") not in (None, args.slot_name) and lease.get("until", 0) > now:
         print(f"lease held by {lease.get('holder')} until {lease.get('until')}", file=sys.stderr)
         return 3
-    reg_put(env, "nanlm/lease", {
+    reg_put(env, lease_key, {
         "holder": args.slot_name,
         "slot": args.slot,
         "epoch": args.epoch,
@@ -179,50 +221,10 @@ def op_headshift(args):
     local_path().joinpath(f"head_{args.epoch}_{args.slot}.json").write_text(
         json.dumps(packets, indent=1))
 
-    seen = []
-    if env is not None:
-        for s in range(RUNNERS):
-            seen.extend(reg_get(env, f"nanlm/head/{args.epoch}/{s}", []) or [])
-    else:
-        for s in range(RUNNERS):
-            p = local_path().joinpath(f"head_{args.epoch}_{s}.json")
-            if p.exists():
-                seen.extend(json.loads(p.read_text()))
-    complete = len(seen) == HEADS
-
-    round_record = None
-    if complete:
-        heads_seen = {p["head"] for p in seen}
-        ok = len(heads_seen) == HEADS and all(p["epoch"] == args.epoch for p in seen)
-        if ok:
-            d = round_digest(args.epoch, seen)
-            round_record = {
-                "epoch": args.epoch,
-                "digest": d,
-                "heads": HEADS,
-                "slots": RUNNERS,
-                "ok": True,
-            }
-            reg_put(env, f"nanlm/round/{args.epoch}", round_record)
-            manifest = reg_get(env, "nanlm/manifest", {}) or {}
-            manifest.update({
-                "generation": int(manifest.get("generation", 0)) + 1,
-                "epoch": args.epoch,
-                "root": d,
-                "pages": ["root"],
-                "ok": True,
-            })
-            reg_put(env, "nanlm/manifest", manifest)
-            clock = reg_get(env, "nanlm/clock", {}) or {}
-            reg_put(env, "nanlm/clock", {
-                "tick": int(clock.get("tick", 0)) + 1,
-                "phase": 1 - int(clock.get("phase", 0)),
-            })
-            reg_put(env, "nanlm/lease", {"holder": None, "epoch": args.epoch, "until": 0})
-
+    complete, round_record = finalize_round(env, args.epoch)
     # The lease is per slot, not per epoch. The next slot must be able to
     # acquire it as soon as this run has published its packet set.
-    reg_put(env, "nanlm/lease", {"holder": None, "epoch": args.epoch, "until": 0})
+    reg_put(env, f"nanlm/lease/{args.slot}", {"holder": None, "epoch": args.epoch, "until": 0})
 
     out = {
         "ok": True,
@@ -239,9 +241,18 @@ def op_headshift(args):
     return 0
 
 
+def op_finalize(args):
+    env = connect_tiers(writer=True)
+    ok, record = finalize_round(env, args.epoch)
+    reg_put(env, "nanlm/lease/0", {"holder": None, "epoch": args.epoch, "until": 0})
+    out = {"ok": ok, "op": "finalize", "epoch": args.epoch, "round": record}
+    print(json.dumps(out, indent=1))
+    return 0 if ok else 4
+
+
 def op_unlock(args):
     env = connect_tiers(writer=True)
-    reg_put(env, "nanlm/lease", {"holder": None, "epoch": args.epoch, "until": 0})
+    reg_put(env, f"nanlm/lease/{args.slot}", {"holder": None, "epoch": args.epoch, "until": 0})
     print(json.dumps({"ok": True, "op": "unlock", "epoch": args.epoch}, indent=1))
     return 0
 
@@ -251,7 +262,7 @@ def op_status(args):
     out = {
         "gate": reg_get(env, "nanlm/gate"),
         "clock": reg_get(env, "nanlm/clock"),
-        "lease": reg_get(env, "nanlm/lease"),
+        "lease": reg_get(env, f"nanlm/lease/{args.slot}"),
         "manifest": reg_get(env, "nanlm/manifest"),
         "slots": {},
     }
@@ -263,7 +274,7 @@ def op_status(args):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--op", choices=["selftest", "prewarm", "headshift", "handoff", "unlock", "status"],
+    ap.add_argument("--op", choices=["selftest", "prewarm", "headshift", "handoff", "finalize", "unlock", "status"],
                     default="selftest")
     ap.add_argument("--slot", type=int, default=None)
     ap.add_argument("--epoch", type=int, default=0)
@@ -275,6 +286,8 @@ def main():
         return op_selftest(args)
     if args.op == "prewarm":
         return op_prewarm(args)
+    if args.op == "finalize":
+        return op_finalize(args)
     if args.op == "unlock":
         return op_unlock(args)
     if args.op == "status":

@@ -33,9 +33,9 @@ def latest_run(repo):
     return data[0] if data else None
 
 
-def dispatch(repo, slot, epoch, minutes):
+def dispatch(repo, op, slot, epoch, minutes):
     gh("workflow", "run", "runner.yml", "-R", repo,
-       "-f", "op=headshift", "-f", f"slot={slot + 1}", "-f", f"epoch={epoch}",
+       "-f", f"op={op}", "-f", f"slot={slot + 1}", "-f", f"epoch={epoch}",
        "-f", f"minutes={minutes}")
 
 
@@ -61,6 +61,8 @@ def main():
     ap.add_argument("--slots", type=int, default=RUNNERS)
     ap.add_argument("--timeout", type=int, default=5400)
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--parallel", dest="parallel", action="store_true", default=True)
+    ap.add_argument("--sequential", dest="parallel", action="store_false")
     args = ap.parse_args()
 
     if not args.owner:
@@ -72,23 +74,63 @@ def main():
 
     slots = args.slots
     order = [s for s in ORDER if s < slots] + [s for s in range(slots) if s not in ORDER]
-    summary = {"epoch": args.epoch, "owner": args.owner, "slots": [], "ok": True}
-    for slot in order:
-        repo = f"{args.owner}/nanlm-cpu-{slot + 1}"
-        base = latest_run(repo) if not args.dry_run else None
+    summary = {"epoch": args.epoch, "owner": args.owner, "parallel": args.parallel,
+               "slots": [], "ok": True}
+
+    def repo_for(slot):
+        return f"{args.owner}/nanlm-cpu-{slot + 1}"
+
+    if args.parallel:
+        # Two-phase prepare: all slots preload/publish their packets, then a
+        # single finalize run verifies the 256-head round and flips the manifest.
+        bases = {}
+        for slot in order:
+            repo = repo_for(slot)
+            base = latest_run(repo) if not args.dry_run else None
+            bases[slot] = base.get("databaseId") if base else None
+            print(f"epoch {args.epoch}: dispatch {repo} (base {bases[slot]})", flush=True)
+            if not args.dry_run:
+                dispatch(repo, "headshift", slot, args.epoch, args.minutes)
+        for slot in order:
+            repo = repo_for(slot)
+            if args.dry_run:
+                summary["slots"].append({"slot": slot, "repo": repo, "dry_run": True})
+                continue
+            run = await_run(repo, bases[slot], timeout=args.timeout)
+            ok = bool(run and run.get("conclusion") == "success")
+            summary["slots"].append({"slot": slot, "repo": repo, "run": run, "ok": ok})
+            if not ok:
+                summary["ok"] = False
+                print(f"epoch {args.epoch}: slot {slot} failed: {run}", file=sys.stderr)
+    else:
+        for slot in order:
+            repo = repo_for(slot)
+            base = latest_run(repo) if not args.dry_run else None
+            base_id = base.get("databaseId") if base else None
+            print(f"epoch {args.epoch}: dispatch {repo} (base {base_id})", flush=True)
+            if args.dry_run:
+                summary["slots"].append({"slot": slot, "repo": repo, "dry_run": True})
+                continue
+            dispatch(repo, "headshift", slot, args.epoch, args.minutes)
+            run = await_run(repo, base_id, timeout=args.timeout)
+            ok = bool(run and run.get("conclusion") == "success")
+            summary["slots"].append({"slot": slot, "repo": repo, "run": run, "ok": ok})
+            if not ok:
+                summary["ok"] = False
+                print(f"epoch {args.epoch}: slot {slot} failed: {run}", file=sys.stderr)
+                break
+
+    if summary["ok"] and not args.dry_run:
+        repo = repo_for(0)
+        base = latest_run(repo)
         base_id = base.get("databaseId") if base else None
-        print(f"epoch {args.epoch}: dispatch {repo} (base {base_id})", flush=True)
-        if args.dry_run:
-            summary["slots"].append({"slot": slot, "repo": repo, "dry_run": True})
-            continue
-        dispatch(repo, slot, args.epoch, args.minutes)
+        print(f"epoch {args.epoch}: finalize round on {repo}", flush=True)
+        dispatch(repo, "finalize", 0, args.epoch, args.minutes)
         run = await_run(repo, base_id, timeout=args.timeout)
         ok = bool(run and run.get("conclusion") == "success")
-        summary["slots"].append({"slot": slot, "repo": repo, "run": run, "ok": ok})
+        summary["finalize"] = {"repo": repo, "run": run, "ok": ok}
         if not ok:
             summary["ok"] = False
-            print(f"epoch {args.epoch}: slot {slot} failed: {run}", file=sys.stderr)
-            break
     print(json.dumps(summary, indent=1))
     return 0 if summary["ok"] else 1
 

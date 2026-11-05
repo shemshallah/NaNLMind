@@ -6,7 +6,7 @@ on:
       op:
         description: selftest | prewarm | headshift | handoff | status
         type: choice
-        options: [selftest, prewarm, headshift, handoff, unlock, status]
+        options: [selftest, prewarm, headshift, handoff, finalize, unlock, status]
         default: selftest
       slot:
         description: runner slot 1..6
@@ -68,6 +68,7 @@ jobs:
         run: pip install -r engine/requirements-core.txt
 
       - name: Build NaNLMind core
+        if: ${{ inputs.op == 'selftest' || inputs.op == 'prewarm' }}
         run: make -C core -j2
 
       - name: Execute head shift
