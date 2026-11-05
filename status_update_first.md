@@ -198,9 +198,10 @@ First byte-level result on `data/alice_excerpt.txt` (30 KB, 80/20):
 |---|---:|---:|
 | topology bigram | 29.97% | 3.895 |
 | host bigram | 29.97% | 3.895 |
+| order-0 | 16.18% | 4.681 |
 
-The topology matches the host bigram exactly. That is a correctness gate, not a
-win.
+The topology matches the host bigram exactly, and the bigram beats order-0 by
+0.786 bits/byte. That is a real baseline result; the next control is a plain RNN.
 
 `make universe-check` runs the single-universe gate:
 

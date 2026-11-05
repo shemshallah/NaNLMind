@@ -21,12 +21,14 @@ int main() {
     model.train(train);
     const ByteEval eval = model.evaluate(test, 1, test.size());
     const ByteEval ref = ByteModel::reference(train, test);
+    const ByteEval order0 = ByteModel::order0_reference(train, test);
     CHECK(eval.bytes > 0);
     CHECK(eval.accuracy > 0.0);
     CHECK(eval.bits_per_byte < 8.0);
     CHECK_EQ(eval.correct, ref.correct);
     CHECK(std::abs(eval.accuracy - ref.accuracy) < 1e-12);
     CHECK(std::abs(eval.bits_per_byte - ref.bits_per_byte) < 1e-9);
+    CHECK(eval.bits_per_byte < order0.bits_per_byte);
 
     // The topology predicts exactly what the host bigram predicts.
     for (int a = 0; a < 256; ++a) {

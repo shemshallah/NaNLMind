@@ -37,6 +37,8 @@ public:
     // Independent host reference with the same counts/predictions.
     static ByteEval reference(const std::vector<std::uint8_t>& train,
                               const std::vector<std::uint8_t>& test);
+    static ByteEval order0_reference(const std::vector<std::uint8_t>& train,
+                                     const std::vector<std::uint8_t>& test);
 
 private:
     Universe* universe_;

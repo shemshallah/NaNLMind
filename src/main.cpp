@@ -406,11 +406,13 @@ int cmd_byte(int argc, char** argv) {
     model.train(train);
     const ByteEval eval = model.evaluate(test, 1, test.size());
     const ByteEval ref = ByteModel::reference(train, test);
+    const ByteEval order0 = ByteModel::order0_reference(train, test);
     std::cout << "NaNLMind — single-universe byte bigram\n\n";
     std::cout << "corpus " << path << " bytes=" << data.size()
               << " train=" << train.size() << " test=" << test.size() << "\n";
     std::cout << "topology  acc=" << eval.accuracy << " bpc=" << eval.bits_per_byte << "\n";
     std::cout << "reference acc=" << ref.accuracy << " bpc=" << ref.bits_per_byte << "\n";
+    std::cout << "order0    acc=" << order0.accuracy << " bpc=" << order0.bits_per_byte << "\n";
     std::cout << "match=" << ((eval.correct == ref.correct &&
                                std::abs(eval.bits_per_byte - ref.bits_per_byte) < 1e-9) ? "yes" : "no")
               << " cells=" << u.canonical_count() << "\n";

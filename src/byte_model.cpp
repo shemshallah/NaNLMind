@@ -117,4 +117,32 @@ ByteEval ByteModel::reference(const std::vector<std::uint8_t>& train,
     return r;
 }
 
+ByteEval ByteModel::order0_reference(const std::vector<std::uint8_t>& train,
+                                     const std::vector<std::uint8_t>& test) {
+    std::vector<std::uint32_t> counts(256, 0);
+    for (std::uint8_t b : train) ++counts[b];
+    std::uint32_t best = 0;
+    std::uint8_t best_b = 0;
+    for (std::uint32_t b = 0; b < 256; ++b) {
+        if (counts[b] > best) {
+            best = counts[b];
+            best_b = static_cast<std::uint8_t>(b);
+        }
+    }
+    ByteEval r;
+    double bits = 0.0;
+    for (std::uint8_t b : test) {
+        ++r.bytes;
+        if (b == best_b) ++r.correct;
+        const double p = (static_cast<double>(counts[b]) + 1.0) /
+                         (static_cast<double>(train.size()) + 256.0);
+        bits += -std::log2(p);
+    }
+    if (r.bytes) {
+        r.accuracy = static_cast<double>(r.correct) / static_cast<double>(r.bytes);
+        r.bits_per_byte = bits / static_cast<double>(r.bytes);
+    }
+    return r;
+}
+
 } // namespace nanlm

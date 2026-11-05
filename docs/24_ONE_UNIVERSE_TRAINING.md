@@ -89,10 +89,13 @@ Corpus: `data/alice_excerpt.txt`, 30,000 bytes, 80/20 split.
 |---|---:|---:|
 | topology bigram | 29.97% | 3.895 |
 | host bigram reference | 29.97% | 3.895 |
+| order-0 | 16.18% | 4.681 |
 
-The topology **matches** the independent host bigram exactly: same correct
-count and same BPC. This is a correctness gate, not a quality win. The next
-comparison is order-0, a count slot memory, and a plain RNN control.
+The topology **matches** the independent host bigram exactly, and the bigram
+beats order-0 by 0.786 bits/byte. This is a real baseline result for the
+topology as a storage/execution substrate. The next comparison is a count slot
+memory and a plain RNN control; the R18T control predicts the plain RNN will be
+hard to beat.
 
 Run:
 
@@ -113,7 +116,7 @@ Run:
 
 The first external task should be byte-level next-byte prediction with:
 
-- a bigram baseline;
+- the order-0 and bigram baselines (bigram: 3.895 BPC; order-0: 4.681 BPC);
 - a count-based slot memory;
 - a plain RNN control;
 - a held-out stream and confidence interval.
