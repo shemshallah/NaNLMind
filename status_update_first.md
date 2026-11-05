@@ -280,14 +280,17 @@ byte model learned the rules. The byte model remains at 0.5.
 `./build/nanlm-universal words` prints the vocabulary/association count and a
 few answers. The layer is documented in `docs/31_WORD_MEMORY.md`.
 
-### Point 128 and over-universe scope
+### Bootstrap router and layer scope
 
-Point 128 is a control portal, not a palindromic head. The bootstrap universe is
-8 MiB with 256 heads and runs on a GitHub runner. The 2 GiB over-universe is
-capacity for 256 system slots: slot 128 is the bootstrap, while the other 255
-are reserved possible systems and are **not instantiated**. There is no
-macrocluster storage yet; route diffs remain local and the macrocluster merge is
-deferred. See `docs/33_POINT_128_ORCHESTRATOR.md`.
+The router is a role attached to point **1** (0x0001), not point 128. Point 1 is
+an off-diagonal portal, not a head; point 256 is the alternate mapping. The
+bootstrap universe is **8 MiB with 256 heads**, executed by the six-runner ring.
+Only that one universe has a **2 GiB bootstrap map** (256 × 8 MiB system slots):
+slot 1 is the bootstrap, and the other 255 are future peers. The six-runner ring
+instantiates 256 heads, not 256 child charts. Android runs an **8 MiB universe
+only**, has no 2 GiB map, and will live in the separate `NaNLMind_android`
+repository. There is no `NaNLM_128_bootstrap` repo; the 2 GiB map is a release
+artifact in `NaNLMind`. See `docs/33_BOOTSTRAP_ROUTER.md`.
 
 ### Hard logic warmup
 

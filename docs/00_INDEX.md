@@ -36,7 +36,7 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 30 | [30_VECTOR_BINS.md](30_VECTOR_BINS.md) | How do points address vector bins and macro associations? |
 | 31 | [31_WORD_MEMORY.md](31_WORD_MEMORY.md) | What does the word layer over bins answer, and what does it prove? |
 | 32 | [32_HARD_LOGIC_WARMUP.md](32_HARD_LOGIC_WARMUP.md) | What happens after ten bytewise passes on nested-exception relations? |
-| 33 | [33_POINT_128_ORCHESTRATOR.md](33_POINT_128_ORCHESTRATOR.md) | What is point 128, and how is the 2 GiB over-universe scoped without macrocluster storage? |
+| 33 | [33_BOOTSTRAP_ROUTER.md](33_BOOTSTRAP_ROUTER.md) | How does the bootstrap router work with a bootstrap-only 2 GiB map and 8 MiB Android peers? |
 
 The short version:
 
