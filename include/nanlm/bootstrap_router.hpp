@@ -37,15 +37,15 @@ enum class LayerStorage : std::uint8_t {
 
 struct LayerRef {
     std::uint8_t layer = 0;
-    std::uint8_t system_slot = 0;
+    std::uint16_t node = 0; // overbootstrap node point: 1..256
     std::uint8_t head = 0;
     std::uint16_t bank = 0;
     std::uint32_t bin = 0;
     std::uint16_t slot = 0;
 
-    bool valid() const { return bin != 0; }
+    bool valid() const { return node != 0 && bin != 0; }
     bool operator==(const LayerRef& other) const {
-        return layer == other.layer && system_slot == other.system_slot &&
+        return layer == other.layer && node == other.node &&
                head == other.head && bank == other.bank && bin == other.bin &&
                slot == other.slot;
     }

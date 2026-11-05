@@ -10,10 +10,10 @@ The current buildable scope is:
 
 ```text
 bootstrap universe:  8 MiB, 256 heads, six-runner ring
-bootstrap map:       2 GiB, 256 system slots, only in the bootstrap universe
-Android:             8 MiB universe only; no 2 GiB map
-initial expansion:   255 other runners, each with one 8 MiB universe
-runtime control:     point 1 router (point 256 is the alternate mapping)
+bootstrap map:       2 GiB, 256 node points, only in the bootstrap universe
+Android:             8 MiB universe only; no 2 GiB map; node point 2
+initial expansion:   254 other runners, points 3..256, each an 8 MiB universe
+local control:       point-1 portal (point 256 alternate), per universe
 ```
 
 Corrections to the earlier record:
@@ -26,7 +26,8 @@ Corrections to the earlier record:
 3. **The six-runner ring instantiates 256 heads of the bootstrap 8 MiB
    universe.** It does not instantiate 256 child charts.
 4. **The 2 GiB map is not a macrocluster.** It is a bootstrap-local capacity map
-   of 256 system slots: slot 1 is the bootstrap, 255 slots are possible peers.
+   of 256 **node points**: point 1 is NaNLMind/runner ring, point 2 is Android,
+   points 3..256 are the 254 other inputs.
 5. **There is no `NaNLM_128_bootstrap` repository.** The bootstrap is the
    runner ring in `NaNLMind`; the 2 GiB release artifact lives in `NaNLMind`.
 6. **`NaNLMind_android` is the Android build repository**, and it is 8 MiB only.
@@ -45,9 +46,27 @@ These remain fixed:
 6. The 1 KiB head scratchpad is a cache, not a routing table.
 7. The six-runner ring maps heads; it does not create 256 new minds.
 
-### 1.1 The router point
+### 1.1 Node point vs local control point
 
-Raw point **1** is:
+Two different namespaces must not be mixed:
+
+```text
+overbootstrap node point: 1..256
+  1 = NaNLMind bootstrap runner ring
+  2 = Android (NaNLMind_android)
+  3..256 = 254 other NaNLM-INPUT systems
+
+local control portal: 1 (default) or 256 (alternate)
+  a non-head portal inside one 8 MiB universe
+```
+
+`LayerRef.node` is the overbootstrap node point (1..256). The local
+`PointRouter` control point selects the route portal inside that node's 8 MiB
+universe. Point 1 of the overbootstrap is therefore not the same object as "the
+control portal is point 1"; it is the node whose runner ring hosts the
+bootstrap.
+
+Raw control point **1** is:
 
 ```text
 0x0001
@@ -81,40 +100,83 @@ Bootstrap universe (8 MiB)
   6-runner ring executes the 256 heads
 
 Bootstrap map (2 GiB, bootstrap only)
-  256 system slots x 8 MiB
-  slot 1 = bootstrap
-  slots 0, 2..255 = 255 possible peer systems
+  256 node points x 8 MiB
+  point 1 = NaNLMind / runner ring (bootstrap)
+  point 2 = Android / NaNLMind_android
+  points 3..256 = 254 other NaNLM-INPUT systems
 ```
 
 The ring runs the 8 MiB universe and maintains the 2 GiB map. The map is a
-store/registry for the bootstrap's system slots; it is not 256 active child
+store/registry for the bootstrap's node points; it is not 256 active child
 charts.
 
 ### 2.1 First 256 systems
 
-The initial expansion target is 256 systems total:
+The initial expansion target is 256 node points total:
 
 ```text
-system 1          bootstrap (GitHub runner ring)
-systems 2..256    255 other runners, each an 8 MiB universe
+point 1       bootstrap (NaNLMind runner ring)
+point 2       Android (NaNLMind_android)
+points 3..256 254 other inputs, each with its own runner and 8 MiB universe
 ```
 
-Each peer runs its own 8 MiB universe. The bootstrap map holds its slot,
-routing record, and whatever snapshot/weight set the peer publishes. The peer
-does not need a 2 GiB map.
+Each peer runs its own 8 MiB universe and instantiates its own 256 heads. The
+bootstrap map holds its node record, route, and whatever 8 MiB snapshot/weight
+set it publishes. The peer does not need a 2 GiB map.
 
-The bootstrap ring's point-1 route table maps:
+The bootstrap route table maps:
 
 ```text
-(layer, system slot, head) -> BankRef / route
+(layer, node point, head) -> BankRef / route
 ```
 
 ### 2.2 What the ring actually instantiates
 
 - It instantiates **256 heads**, not 256 charts.
-- It loads the 8 MiB bootstrap image.
+- It loads the 8 MiB bootstrap image for node point 1.
 - It loads the 2 GiB map metadata; the map can be sparse/paged.
-- It does **not** allocate 255 live peer universes. Peers are remote runners.
+- It does **not** allocate the 254 live peer universes. Peers are remote runners.
+- Each peer runner instantiates the 256 heads of its own 8 MiB universe.
+
+The point-1 node record is the mapping the runner ring uses to load/host the
+8 MiB bootstrap: node point 1 and the bootstrap 8 MiB image are the same object
+from the ring's perspective.
+
+### 2.3 NANNET and endpoint clients
+
+Every hardware endpoint is a NaN0S-style client. It connects to NANNET, which is
+managed initially by NaNLMind:
+
+```text
+NaN0S endpoint
+  -> NANNET registration
+  -> node point assignment
+  -> 8 MiB universe load
+  -> 256 local heads
+  -> route diff
+```
+
+A peer only syncs its 8 MiB universe through nanclock **when it is merging**.
+There is no continuous full-state replication. The bootstrap ring stores the
+node's route record; the 8 MiB state stays on the endpoint unless a merge/snapshot
+is requested.
+
+A cross-domain resource path is a route chain, not a new geometry:
+
+```text
+Hardware(universe1)
+  <-> cluster
+  <-> macrocluster
+  <-> supercluster
+  <-> global cluster
+  <-> supercluster (research domain)
+  <-> macrocluster (company)
+  <-> cluster (research mind)
+  <-> hardware pool universe
+```
+
+People can sync along this chain when the relevant node merges; the route table
+records the path and the nanclock stamp.
 
 ---
 
@@ -126,11 +188,11 @@ The bootstrap ring's point-1 route table maps:
 2 GiB / 8 MiB = 256
 ```
 
-| node | 8 MiB universe | 2 GiB map |
+| node point | 8 MiB universe | 2 GiB map |
 |---|---:|---:|
-| bootstrap runner ring | yes | yes, one only |
-| Android | yes | **no** |
-| peer runner | yes | no |
+| 1 bootstrap runner ring | yes | yes, one only |
+| 2 Android | yes | **no** |
+| 3..256 peer inputs | yes | no |
 | future supercluster | routing/registry only | not a dense copy |
 
 The 7 GiB bootstrap runner:
@@ -150,10 +212,12 @@ the 2 GiB map.
 ## 4. The 2 GiB bootstrap map
 
 ```text
-SystemSlot[256]
-  slot 1 = bootstrap
+NodeSlot[256]  // node points 1..256
+  point 1 = NaNLMind bootstrap
+  point 2 = Android
+  points 3..256 = peer inputs
   each slot has a header, generation, route hash, bank refs
-  slot capacity = one 8 MiB image/weight-set area
+  point capacity = one 8 MiB image/weight-set area
 ```
 
 The map is maintained by the bootstrap ring. It can hold:
@@ -164,8 +228,9 @@ The map is maintained by the bootstrap ring. It can hold:
 - hot weight/slot bins;
 - empty reserved slots.
 
-It is **not** a populated macrocluster. A slot is not a live mind; it is a
-storage/routing slot. Only slot 1 is guaranteed active at bootstrap.
+It is **not** a populated macrocluster. A node slot is not a live mind; it is a
+storage/routing slot. Point 1 is guaranteed active at bootstrap; point 2 is
+active when Android joins; points 3..256 are reserved until a runner registers.
 
 ---
 
@@ -183,7 +248,7 @@ A route entry:
 ```text
 RouteEntry {
   layer        u8
-  system_slot  u8
+  node         u16     // 1..256
   head         u8
   math         u8     // Boolean, Count, Hopfield, Temporal, Rule, Exact, Retrieval
   storage      u8     // Chart, VectorBin, RuleBin, CorpusBin, RouteOnly
@@ -290,7 +355,7 @@ The NaN route table stores a `LayerRef`, not the payload itself:
 ```text
 LayerRef {
   layer        u8
-  system_slot  u8
+  node         u16     // overbootstrap point 1..256
   head         u8
   bank         u16
   bin          u32
@@ -380,24 +445,28 @@ NaNLMind_android
 ```
 
 Peers are the same shape: 8 MiB universe, point-1 router, route diff. They fill
-the 255 non-bootstrap slots in the bootstrap map. The bootstrap ring keeps the
+the 254 non-bootstrap peer points in the bootstrap map (Android is point 2). The bootstrap ring keeps the
 2 GiB map and the NaN routes.
 
-Android cannot hold the 2 GiB map and is not an overbootstrap node. It is an
-8 MiB edge universe.
+Android cannot hold the 2 GiB map and is not an overbootstrap host. It is an
+8 MiB edge universe at node point 2. Its runner instantiates its own 256 heads.
+The bootstrap ring's map holds node point 2's route; the 8 MiB universe stays on
+Android.
 
 Route diff:
 
 ```text
 {
-  universe, system_slot, layer, base_generation, epoch,
+  universe, node (2 for Android), layer, base_generation, epoch,
   entries: [{head, key_hash, bank, bin, slot, strength_delta, epoch}],
   signature
 }
 ```
 
-The bootstrap ring validates the base and merges into the target system slot.
-There is no macrocluster storage yet; the map is bootstrap-local.
+The bootstrap ring validates the base and merges into node point 2's slot. The
+8 MiB sync uses nanclock only when the 8 MiB universe is actually merging; it is
+not continuous. There is no macrocluster storage yet; the map is
+bootstrap-local.
 
 ---
 
@@ -431,12 +500,12 @@ content-hashed and generation-pinned.
 
 1. Point-1 control portal + route table schema.
 2. 8 MiB bootstrap + 256 heads + six-runner ring.
-3. 2 GiB map as sparse bootstrap-local capacity; slot 1 only.
+3. 2 GiB map as sparse bootstrap-local capacity; node point 1 only.
 4. Hopfield top-k/slot/vote/learn.
 5. Directed pair/BPE and top-256 activation.
 6. Layer policies and payload storage.
 7. Android 8 MiB repo + route-diff client.
-8. 255 peer onboarding; route merge.
+8. Android point-2 onboarding; 254 peer onboarding; route merge.
 9. Hardware supercluster/IoT/global mesh: design only.
 
 ---
@@ -444,17 +513,23 @@ content-hashed and generation-pinned.
 ## 11.1 Implemented so far
 
 - `include/nanlm/bootstrap_router.hpp`
+- `include/nanlm/bootstrap_layers.hpp`
 - `src/bootstrap_router.cpp`
+- `src/bootstrap_layers.cpp`
 - `tests/test_bootstrap_router.cpp`
+- `tests/test_bootstrap_layers.cpp`
 
 The prototype implements:
 
 - point-1 and point-256 non-head control routers;
-- the 256-entry `LayerRef` route table;
+- the 256-entry `LayerRef` route table with node points 1..256;
 - sparse top-k head activation;
 - the 2,040-pair scan bound;
 - weighted pair-slot voting;
-- Hebbian strength/key updates and weakest-slot eviction.
+- Hebbian strength/key updates and weakest-slot eviction;
+- bootstrap map metadata for 256 node points, point 1 active, point 2 Android;
+- the layer registry for Boolean/Count/Hopfield/Temporal/Rule/Exact/Retrieval
+  storage kinds.
 
 It does **not** allocate or load the 2 GiB map. The map loader and peer route
 diff are still design/next-step work.
@@ -471,10 +546,10 @@ diff are still design/next-step work.
 | 2 GiB on Android | **reject** | Android is 8 MiB only; latest correction |
 | 6-runner ring runs 256 child charts | **reject** | ring instantiates 256 heads of one 8 MiB universe |
 | 2 GiB map is a macrocluster | **reject** | bootstrap-local map; no macrocluster storage |
-| 255 live systems now | **reject** | slots are reserved; need external runners |
+| 254 peer systems now | **reject** | points 3..256 are reserved; need external runners |
 | 256 x86 systems, one per head | **reject** | heads are logical; six runners instantiate 256 heads |
 | uniform math all layers | **reject** | each layer has its own learner/storage |
-| flat 2 GiB blob | **reject** | 256 × 8 MiB system slots; slot 1 bootstrap |
+| flat 2 GiB blob | **reject** | 256 × 8 MiB node points; point 1 bootstrap |
 | unordered pair BPE | **reject** | th/ht collide; use direction rails |
 | 1 KiB scratch holds route table | **reject** | table in bin; cache hot entries |
 | hash-only word/paragraph | **reject** | hash -> bin; collision bucket |
@@ -500,7 +575,7 @@ diff are still design/next-step work.
 ## 14. Thesis
 
 The bootstrap is **one 8 MiB, 256-head universe** executed by a six-runner ring,
-with a **bootstrap-only 2 GiB map of 256 system slots**; point 1 is the route
-portal, slot 1 is the bootstrap, 255 slots are future peers, Android is an
-8 MiB edge universe, and every deployment/abstraction layer gets its own math,
-storage format, and NaN route payload.
+with a **bootstrap-only 2 GiB map of 256 node points**; point 1 is
+NaNLMind/runner ring, point 2 is Android, points 3..256 are 254 other inputs,
+and every deployment/abstraction layer gets its own math, storage format, and
+NaN route payload.

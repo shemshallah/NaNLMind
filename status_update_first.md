@@ -301,6 +301,14 @@ the 2,040-pair scan bound, weighted voting, Hebbian strength/key updates, and
 weakest-slot eviction. It does not allocate the 2 GiB map. `test_bootstrap_router`
 passes.
 
+### Bootstrap map and layer registry
+
+`BootstrapMap` now models 256 node points: point 1 is the NaNLMind bootstrap,
+point 2 is Android, and points 3..256 are the 254 other inputs. Slot capacity is
+8 MiB; total capacity is 2 GiB. `LayerRegistry` records per-layer math/storage
+payload references. `test_bootstrap_layers` passes. The Android route diff now
+uses node point 2. No 2 GiB allocation is made.
+
 ### Hard logic warmup
 
 A nested-exception corpus (`emperor -> penguin -> bird`, `penguin cannot fly`,
