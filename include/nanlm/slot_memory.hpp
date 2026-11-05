@@ -35,4 +35,33 @@ private:
     std::array<std::uint32_t, 256> unigram_{};
 };
 
+// Interpolated Kneser-Ney byte model. order = context length in bytes:
+//   1 = bigram KN, 2 = trigram KN, 3 = 4-gram KN.
+class KneserNey {
+public:
+    explicit KneserNey(int order = 2, double discount = 0.75)
+        : order_(order < 1 ? 1 : order), discount_(discount) {}
+
+    void train(const std::vector<std::uint8_t>& data);
+    double probability(std::uint32_t context, std::uint8_t b) const;
+    std::uint8_t predict(std::uint32_t context) const;
+    SlotEval evaluate(const std::vector<std::uint8_t>& data, std::size_t start,
+                      std::size_t end) const;
+
+private:
+    std::uint32_t context_key(const std::vector<std::uint8_t>& data, std::size_t i,
+                              int level) const;
+    std::uint32_t lower_context(std::uint32_t ctx, int level) const;
+    double p_kn(int level, std::uint32_t ctx, std::uint8_t b) const;
+
+    int order_ = 2;
+    double discount_ = 0.75;
+    std::array<std::unordered_map<std::uint32_t, std::array<std::uint32_t, 256>>, 4> counts_;
+    std::array<std::unordered_map<std::uint32_t, std::uint64_t>, 4> totals_;
+    std::array<std::unordered_map<std::uint32_t, std::uint16_t>, 4> types_;
+    std::array<std::array<std::uint64_t, 256>, 4> continuation_{};
+    std::uint64_t continuation_total_ = 0;
+    std::uint32_t continuation_types_ = 0;
+};
+
 } // namespace nanlm

@@ -97,10 +97,26 @@ The topology **matches** the independent host bigram exactly. That is not
 suspicious; it is the storage-fidelity gate. The test now proves it three ways:
 snapshot/restore preserves the result; training on a different corpus changes
 predictions; writing a count directly into a pair cell changes the prediction.
-Bigram beats order-0 by 0.786 bits/byte. The context-2 slot memory improves top-1 to 41.06%
-but its BPC is still worse (4.023 vs 3.895) even with a bigram backoff, because
-30 KB is too sparse for a 65,536-context table. The next baseline is a stronger
-smoothing method (Kneser-Ney) or more data, followed by a plain RNN control.
+Bigram beats order-0 by 0.786 bits/byte on the 30 KB excerpt.
+
+### Larger corpora and Kneser-Ney
+
+Same 80/20 split, byte level:
+
+| corpus | order-0 | topology bigram | KN-1 | KN-2 |
+|---|---:|---:|---:|---:|
+| Alice excerpt (30 KB) | 4.681 | **3.895** | 3.377* | 2.676* |
+| Alice full (151 KB) | 4.713 | 3.509 | 3.377 | **2.676** |
+| Moby Dick (1.2 MB) | 4.563 | 3.539 | — | **2.895** |
+
+`*` measured on `alice_full.txt` for the KN rows; the excerpt topology number is
+shown separately. The topology bigram cannot represent a two-byte context. The
+Kneser-Ney trigram beats it by **0.83 BPC** on Alice full and **0.64 BPC** on
+Moby Dick.
+
+This is the correct next target: a context-2 memory must live somewhere in the
+topology, not in a host `std::unordered_map`. That is exactly what child
+universes / meta-router regions are for.
 
 Run:
 
@@ -121,8 +137,8 @@ Run:
 
 The first external task should be byte-level next-byte prediction with:
 
-- the order-0 and bigram baselines (bigram: 3.895 BPC; order-0: 4.681 BPC);
-- a count-based slot memory;
+- the order-0 and bigram baselines;
+- Kneser-Ney 1/2/3;
 - a plain RNN control;
 - a held-out stream and confidence interval.
 

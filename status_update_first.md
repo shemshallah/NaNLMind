@@ -207,13 +207,17 @@ First byte-level result on `data/alice_excerpt.txt` (30 KB, 80/20):
 | order-0 | 16.18% | 4.681 |
 | slot-1 / host bigram | 29.97% | 3.895 |
 | slot-2 (context 2 + backoff) | 41.06% | 4.023 |
+| KN-2 on Alice full | 45.13% | **2.676** |
+| KN-2 on Moby Dick | 39.01% | **2.895** |
 
 The topology matches the host bigram exactly. That is storage fidelity, not a
 shared-array trick: snapshot/restore preserves it, a different training corpus
 changes predictions, and a direct pair-cell count mutation changes the
-prediction. Bigram beats order-0 by 0.786 bits/byte. Context-2 improves top-1 to 41.06% but is still worse in BPC (4.023)
-because 30 KB is too sparse for a 65,536-context table even with backoff. The
-next baseline is a stronger smoothing method or more data, then a plain RNN.
+prediction. Bigram beats order-0 by 0.786 bits/byte. Context-2 improves top-1 to 41.06% but is still worse in BPC on 30 KB.
+Kneser-Ney trigram on the full corpora is much stronger: 2.676 BPC on Alice
+full and 2.895 on Moby Dick, versus topology bigram 3.509/3.539. The gap is the
+two-byte context the topology cannot store yet. That is the next substrate
+target, not a smoothing trick.
 
 `snapshot` / `headshift` now produce real `HeadView` packets from a serialized
 chart and evolve a local snapshot. Cross-job snapshot persistence to

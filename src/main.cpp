@@ -6,6 +6,7 @@
 #include "nanlm/router.hpp"
 #include "nanlm/ntf.hpp"
 #include "nanlm/byte_model.hpp"
+#include "nanlm/slot_memory.hpp"
 #include "nanlm/handoff.hpp"
 #include "nanlm/schedule.hpp"
 #include "nanlm/universe.hpp"
@@ -487,6 +488,26 @@ int cmd_headshift(int argc, char** argv) {
     return 0;
 }
 
+int cmd_kn(int argc, char** argv) {
+    const char* path = argc > 2 ? argv[2] : "data/alice_full.txt";
+    int order = argc > 3 ? std::stoi(argv[3]) : 2;
+    std::ifstream f(path, std::ios::binary);
+    if (!f) { std::cerr << "cannot open " << path << "\n"; return 1; }
+    std::vector<std::uint8_t> data((std::istreambuf_iterator<char>(f)),
+                                   std::istreambuf_iterator<char>());
+    if (data.size() < 100) { std::cerr << "corpus too small\n"; return 1; }
+    const std::size_t split = (data.size() * 4) / 5;
+    std::vector<std::uint8_t> train(data.begin(), data.begin() + split);
+    std::vector<std::uint8_t> test(data.begin() + split, data.end());
+    KneserNey kn(order);
+    kn.train(train);
+    const SlotEval eval = kn.evaluate(test, static_cast<std::size_t>(order), test.size());
+    std::cout << "Kneser-Ney order=" << order << " corpus=" << path
+              << " bytes=" << data.size() << " test=" << test.size() << "\n";
+    std::cout << "top1=" << eval.accuracy << " bpc=" << eval.bits_per_byte << "\n";
+    return 0;
+}
+
 int cmd_byte(int argc, char** argv) {
     const char* path = argc > 2 ? argv[2] : "data/alice_excerpt.txt";
     std::ifstream f(path, std::ios::binary);
@@ -667,6 +688,7 @@ void usage() {
               << "  router      meta-router: universes as heads, routes as pairs\n"
               << "  ntf         NaN Translation Fabric address/route demo\n"
               << "  byte [path] single-universe byte bigram train/eval\n"
+              << "  kn [path] [order] Kneser-Ney byte baseline\n"
               << "  snapshot    write state/chart.nmc\n"
               << "  headshift   real HeadView packets for one slot\n"
               << "  growth      child-chart growth and scratch consolidation\n"
@@ -692,6 +714,7 @@ int main(int argc, char** argv) {
     if (cmd == "router") return cmd_router();
     if (cmd == "ntf") return cmd_ntf();
     if (cmd == "byte") return cmd_byte(argc, argv);
+    if (cmd == "kn") return cmd_kn(argc, argv);
     if (cmd == "snapshot") return cmd_snapshot(argc, argv);
     if (cmd == "headshift") return cmd_headshift(argc, argv);
     if (cmd == "growth") return cmd_growth();

@@ -36,6 +36,8 @@ jobs:
         run: ./build/nanlm-universal router
       - name: NTF
         run: ./build/nanlm-universal ntf
+      - name: Kneser-Ney smoke
+        run: ./build/nanlm-universal kn data/alice_full.txt 2
       - name: Snapshot/headshift smoke
         run: |
           mkdir -p state
