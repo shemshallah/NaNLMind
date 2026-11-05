@@ -301,6 +301,15 @@ the 2,040-pair scan bound, weighted voting, Hebbian strength/key updates, and
 weakest-slot eviction. It does not allocate the 2 GiB map. `test_bootstrap_router`
 passes.
 
+### Hopfield sequence learning
+
+The sparse Hopfield layer now learns and replays an 8-token cycle for 10 passes:
+**8/8 transitions**, **8 used slots**, and **15/15 replay tokens**. The key fix:
+a wrong update only decays slots whose key actually matches the query
+(`dot(q,key)>0`), so two queries sharing an active head no longer damage each
+other. This is a real associative learner on a toy token sequence, not a
+language result.
+
 ### Bootstrap map and layer registry
 
 `BootstrapMap` now models 256 node points: point 1 is the NaNLMind bootstrap,

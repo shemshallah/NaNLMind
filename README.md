@@ -173,6 +173,7 @@ baseline — a plain RNN matching the 256-head topology — is in
 | `docs/31_WORD_MEMORY.md` | word layer over bins, fixed-challenge baseline, honesty note |
 | `docs/32_HARD_LOGIC_WARMUP.md` | nested-exception challenge and ten-pass byte warmup |
 | `docs/33_BOOTSTRAP_ROUTER.md` | point-1 router, bootstrap-only 2 GiB map, layer storage, Android scope |
+| `docs/34_HOPFIELD_LEARNING.md` | sparse Hopfield token-sequence learning and key-identity fix |
 | `docs/18_HEAD_RING.md` | six-runner handoff, preload, map-back, workflows |
 | `docs/19_LEGACY_TESTS.md` | R18T language tests and R21–R23 logic regressions |
 | `docs/20_META_ROUTER.md` | universes as heads, routes as pairs, qNaN/sNaN BE/LE portals |

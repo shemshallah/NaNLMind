@@ -37,6 +37,7 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 31 | [31_WORD_MEMORY.md](31_WORD_MEMORY.md) | What does the word layer over bins answer, and what does it prove? |
 | 32 | [32_HARD_LOGIC_WARMUP.md](32_HARD_LOGIC_WARMUP.md) | What happens after ten bytewise passes on nested-exception relations? |
 | 33 | [33_BOOTSTRAP_ROUTER.md](33_BOOTSTRAP_ROUTER.md) | How does the bootstrap router work with a bootstrap-only 2 GiB map and 8 MiB Android peers? |
+| 34 | [34_HOPFIELD_LEARNING.md](34_HOPFIELD_LEARNING.md) | Can the sparse Hopfield layer learn and replay a token sequence? |
 
 The short version:
 

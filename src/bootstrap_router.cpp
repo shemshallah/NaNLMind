@@ -179,6 +179,9 @@ bool HopfieldRouter::learn(const Vector& query, std::uint32_t target) {
     for (std::uint32_t p : pairs) {
         Slot& s = slots_[p];
         if (!s.used) continue;
+        // Do not decay a slot that belongs to a different query just because
+        // one of its heads is active. The key is the association identity.
+        if (dot(query, s.key) <= 0) continue;
         s.strength = clamp_strength(static_cast<std::int64_t>(s.strength) - 1);
         if (weakest == kMirrorPairCount ||
             s.strength < slots_[weakest].strength ||
