@@ -52,6 +52,18 @@ const HopfieldRouter::Vector& HopfieldRouter::head(std::uint8_t head) const {
     return heads_[head];
 }
 
+void HopfieldRouter::set_head_bias(std::uint8_t head, std::int16_t bias) {
+    head_bias_[head] = bias;
+}
+
+void HopfieldRouter::clear_head_bias() {
+    head_bias_.fill(0);
+}
+
+std::int16_t HopfieldRouter::head_bias(std::uint8_t head) const {
+    return head_bias_[head];
+}
+
 const HopfieldRouter::Slot& HopfieldRouter::slot(std::uint32_t pair) const {
     if (pair >= slots_.size()) return slots_[0];
     return slots_[pair];
@@ -69,7 +81,8 @@ std::vector<std::uint8_t> HopfieldRouter::active_heads(const Vector& query) cons
     std::vector<std::pair<std::int64_t, std::uint8_t>> scored;
     scored.reserve(256);
     for (std::uint32_t h = 0; h < 256; ++h) {
-        scored.emplace_back(dot(query, heads_[h]), static_cast<std::uint8_t>(h));
+        scored.emplace_back(dot(query, heads_[h]) + head_bias_[h],
+                            static_cast<std::uint8_t>(h));
     }
     std::sort(scored.begin(), scored.end(), [](const auto& a, const auto& b) {
         if (a.first != b.first) return a.first > b.first;
@@ -213,6 +226,7 @@ Hash256 HopfieldRouter::digest() const {
     h.update(tag, sizeof(tag));
     h.update(&config_, sizeof(config_));
     h.update(heads_.data(), heads_.size() * sizeof(Vector));
+    h.update(head_bias_.data(), head_bias_.size() * sizeof(std::int16_t));
     for (const Slot& s : slots_) {
         if (!s.used) continue;
         h.update(&s, sizeof(s));

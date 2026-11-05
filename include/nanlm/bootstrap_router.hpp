@@ -102,6 +102,9 @@ public:
 
     void set_head(std::uint8_t head, const Vector& vector);
     const Vector& head(std::uint8_t head) const;
+    void set_head_bias(std::uint8_t head, std::int16_t bias);
+    void clear_head_bias();
+    std::int16_t head_bias(std::uint8_t head) const;
     const Slot& slot(std::uint32_t pair) const;
     std::size_t used_slots() const { return used_slots_; }
 
@@ -121,6 +124,7 @@ private:
 
     HopfieldConfig config_;
     std::array<Vector, 256> heads_{};
+    std::array<std::int16_t, 256> head_bias_{};
     std::vector<Slot> slots_;
     std::size_t used_slots_ = 0;
     std::uint64_t epoch_ = 0;

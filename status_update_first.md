@@ -311,6 +311,16 @@ pages they use. The Android constructor is guarded invalid, and the dense map
 test is skipped on Android; only the x86 runner ring maps the 2 GiB region.
 `test_overbootstrap_map` passes on the runner path.
 
+### Two-rate learning mesh
+
+Bootstrap and overbootstrap now mesh at different timescales and with different
+math. Bootstrap learns fast sparse Hopfield slot associations; overbootstrap
+observes correctness and active heads, maintains evidence counters, and sends
+bounded ±8 head bias back. The 8-token test trains 10 passes, keeps 8/8
+bootstrap predictions, records 80 overbootstrap traces, and proves deterministic
+meta digest. Overbootstrap is the meta/mind layer, not a larger copy of
+bootstrap.
+
 ### Koyeb training merge
 
 Training deltas can merge without macrocluster storage. `runner/training_merge.py`
