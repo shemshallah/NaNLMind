@@ -23,6 +23,7 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 17 | [17_TRAINING_HEADS.md](17_TRAINING_HEADS.md) | How do the heads train, and what do the language/logic baselines show? |
 | 18 | [18_HEAD_RING.md](18_HEAD_RING.md) | How do six runners hand off 256 heads and map them back? |
 | 19 | [19_LEGACY_TESTS.md](19_LEGACY_TESTS.md) | Which R18T language tests and R21–R23 logic tests are integrated? |
+| 20 | [20_META_ROUTER.md](20_META_ROUTER.md) | How do universes become heads and routes become pair cells? |
 
 The short version:
 

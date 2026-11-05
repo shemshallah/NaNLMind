@@ -3,6 +3,7 @@
 #include "nanlm/pager.hpp"
 #include "nanlm/resonance.hpp"
 #include "nanlm/ring.hpp"
+#include "nanlm/router.hpp"
 #include "nanlm/schedule.hpp"
 #include "nanlm/universe.hpp"
 
@@ -385,6 +386,24 @@ int cmd_growth() {
     return r.ok ? 0 : 1;
 }
 
+int cmd_router() {
+    GlobalTopology g(0x4E614E4C4D000001ull);
+    RouterChart router(g, PageId::root());
+    std::cout << "NaNLMind — meta-router chart\n\n";
+    std::cout << "portals 256, routes 32640, portal address (src<<8)|rev8(dst)\n";
+    const bool opened = router.open_universe(3, 0x99);
+    const RouteResult w = router.route(3, 7, PortalOp::WriteForward, 0xDEADBEEFu, 0x5, 1);
+    const RouteResult r = router.read(3, 7, true);
+    std::cout << "open universe 3: " << (opened ? "yes" : "no") << "\n";
+    std::cout << "write forward: ok=" << w.ok << " data=0x" << std::hex << w.word.data
+              << " flags=0x" << static_cast<int>(w.word.flags) << std::dec << "\n";
+    std::cout << "read  forward: ok=" << r.ok << " data=0x" << std::hex << r.word.data
+              << " flags=0x" << static_cast<int>(r.word.flags) << std::dec << "\n";
+    std::cout << "charts=" << g.chart_count() << " manifest=" << g.manifest().generation
+              << " digest=" << hex(g.global_digest()) << "\n";
+    return (opened && w.ok && r.ok) ? 0 : 1;
+}
+
 int cmd_phase() {
     std::cout << "NaNLM Universal — transform phase and wake scheduling\n\n";
     std::uint32_t c4 = 0, c2 = 0, c1 = 0;
@@ -488,6 +507,7 @@ void usage() {
               << "  heads       256-head palindromic layer and runner handoff\n"
               << "  clock       temporal oscillator / global epoch heartbeat\n"
               << "  phase       transform-phase orbits and wake-slot scheduling\n"
+              << "  router      meta-router: universes as heads, routes as pairs\n"
               << "  growth      child-chart growth and scratch consolidation\n"
               << "  scale       print the hierarchical scaling table\n"
               << "  resonance   run the 256-head resonance wave\n"
@@ -508,6 +528,7 @@ int main(int argc, char** argv) {
     if (cmd == "heads") return cmd_heads();
     if (cmd == "clock") return cmd_clock();
     if (cmd == "phase") return cmd_phase();
+    if (cmd == "router") return cmd_router();
     if (cmd == "growth") return cmd_growth();
     if (cmd == "scale") return cmd_scale();
     if (cmd == "resonance") return cmd_resonance();

@@ -252,6 +252,18 @@ bool PageTable::write_word(const PageId& page, std::uint16_t cell, std::uint8_t 
     return true;
 }
 
+bool PageTable::touch(const PageId& page, std::uint16_t cell) {
+    Entry* e = get(page);
+    if (!e) return false;
+    NanCell& c = e->page->at_addr(cell);
+    Descriptor& d = e->page->descriptor_at_addr(cell);
+    d.checksum = Universe::cell_checksum(c);
+    d.generation = c.generation;
+    d.epoch = c.epoch;
+    mark_dirty(*e, cell);
+    return true;
+}
+
 bool PageTable::is_dirty(const PageId& id) const {
     const Entry* e = get(id);
     return e && e->dirty;

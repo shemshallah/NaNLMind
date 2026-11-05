@@ -102,6 +102,7 @@ make
 ./build/nanlm-universal scale
 ./build/nanlm-universal resonance
 ./build/nanlm-universal phase
+./build/nanlm-universal router
 ./build/nanlm-universal growth
 make test
 make legacy
@@ -151,6 +152,7 @@ baseline — a plain RNN matching the 256-head topology — is in
 | `docs/17_TRAINING_HEADS.md` | integer head learning, sequence memory, RNN baseline |
 | `docs/18_HEAD_RING.md` | six-runner handoff, preload, map-back, workflows |
 | `docs/19_LEGACY_TESTS.md` | R18T language tests and R21–R23 logic regressions |
+| `docs/20_META_ROUTER.md` | universes as heads, routes as pairs, qNaN/sNaN BE/LE portals |
 | `NaNLM_statespace/` | all original archives + extracted snapshots + SHA-256 manifest |
 
 ---

@@ -168,6 +168,8 @@ public:
     bool read_word(const PageId& page, std::uint16_t cell, std::uint8_t word, NanWord& out) const;
     bool write_word(const PageId& page, std::uint16_t cell, std::uint8_t word, NanWord value,
                     bool cow = true);
+    // Recompute the descriptor checksum after a direct cell edit (aux/epoch/flags).
+    bool touch(const PageId& page, std::uint16_t cell);
 
     bool is_dirty(const PageId& id) const;
     std::size_t dirty_cell_count(const PageId& id) const;

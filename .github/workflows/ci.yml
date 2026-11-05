@@ -28,5 +28,7 @@ jobs:
         run: ./build/nanlm-universal scale
       - name: Phase
         run: ./build/nanlm-universal phase
+      - name: Router
+        run: ./build/nanlm-universal router
       - name: Growth
         run: ./build/nanlm-universal growth
