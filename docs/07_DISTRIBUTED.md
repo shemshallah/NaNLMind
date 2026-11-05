@@ -1,4 +1,4 @@
-# One object on five replicas
+# One object on a replica ring
 
 ## 1. The rule
 
@@ -167,7 +167,7 @@ territories. The object is sparse: only written charts exist. The global digest
 is a Merkle root over the live page set, so a replica can verify a subset
 without downloading everything.
 
-| depth | charts | dense | 5 × 7 GiB? | storage |
+| depth | charts | dense | 6 × 7 GiB? | storage |
 |---:|---:|---:|---|---|
 | 0 | 1 | 8 MiB | yes | any |
 | 1 | 256 | 2 GiB | yes | GitHub runners |
@@ -236,7 +236,7 @@ The R17 "disappearing head" test is the specification for this behavior.
 A fragmented design would have:
 
 ```text
-five replicas × private state × private history × external coordinator
+six runners × private state × private history × external coordinator
 ```
 
 This design has:

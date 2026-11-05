@@ -87,7 +87,7 @@ This is enough for:
 - the whole depth-1 brain (256 charts = 2 GiB) in two bins;
 - a large working set of depth-2 charts;
 - history, deltas, hyperedges, and temporal links;
-- five replicas with independent caches.
+- six head runners with independent caches.
 
 ### 3.2 Symbolic geometry
 

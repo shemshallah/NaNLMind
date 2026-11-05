@@ -246,6 +246,19 @@ hash; consolidation replays it into a COW page.
 
 ## 10. Current status
 
+First live epoch completed on 2026-11-05:
+
+- `nanlm-ram`/`nanlm-vram` bootstrapped;
+- six slots ran sequentially;
+- all six packet sets present;
+- `nanlm/manifest.generation = 2`, `epoch = 1`;
+- round digest recorded;
+- ring self-redispatch enabled (`loop=true`).
+
+Wall time for one epoch is ~6m25s, dominated by six separate workflow jobs.
+That is the correct single-writer cost for now. The next speedup is a
+persistent slot job, not parallel writers.
+
 Implemented and tested:
 
 - `HeadMap` and `HandoffRound` (prepare/commit/verify/digest);
@@ -258,12 +271,12 @@ Implemented and tested:
 
 Next:
 
-1. run `nanlm-bootstrap.yml` to create the tier releases;
-2. run `ring.yml` for one epoch and inspect the `nanlm/round/0` record;
-3. replace the deterministic packet worker with live `HeadView` state and a
+1. replace the deterministic packet worker with live `HeadView` state and a
    chart snapshot from `nanlm-vram`;
-4. add a drift/dropped-slot test with the real workflow;
-5. add the legacy R18T sequence and logic suites to the ring acceptance gate.
+2. add a drift/dropped-slot test with the real workflow;
+3. add the legacy R18T sequence and logic suites to the ring acceptance gate;
+4. add a persistent slot loop to reduce the six-job overhead;
+5. keep Qwen and NaNLMind on separate tiers and budgets.
 
 ---
 

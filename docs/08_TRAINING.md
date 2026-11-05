@@ -168,7 +168,7 @@ GPUs are **not** required for the core. The object is integer and page-based;
 a CPU runner can host a chart. A free GPU can accelerate training, but the
 artifact must still replay on CPU.
 
-The five 7 GiB runners are the baseline. A GPU farm is an optional accelerator,
+The six 7 GiB head runners are the baseline. A GPU farm is an optional accelerator,
 not a dependency.
 
 ---

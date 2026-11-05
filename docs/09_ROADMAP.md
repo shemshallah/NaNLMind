@@ -118,7 +118,7 @@ then train it. Do not invert the order.
 
 ## M4 — Five replicas, one object
 
-**Goal:** run the one object on `deeprepo-cpu-1..5`.
+**Goal:** run the one object on `nanlm-cpu-1..6`.
 
 **Deliverables**
 
@@ -133,7 +133,7 @@ then train it. Do not invert the order.
 
 **Acceptance**
 
-- the depth-1 brain (2 GiB) runs across five 7 GiB replicas;
+- the depth-1 brain (2 GiB) runs across six 7 GiB head runners;
 - a replica failure does not change the committed digest;
 - a stale writer cannot fork the object;
 - a page migration preserves head identity and collective facts;
@@ -186,7 +186,7 @@ then train it. Do not invert the order.
 
 **Acceptance**
 
-- a working set fits in five 7 GiB caches;
+- a working set fits in six 7 GiB caches;
 - a cold page fetch is transparent;
 - the global digest is verifiable from a subset + proofs;
 - a full generation can be rebuilt from the manifest and the store;
@@ -269,7 +269,7 @@ now:      M0 complete
 next:     M1 single-chart brain on GitHub
 then:     M2 hypergraph + bidirectional memory
 then:     M3 reporam/repovram prototype
-then:     M4 five replicas, one object
+then:     M4 six runners, one object
 then:     M5 training + community shards
 then:     M6 remote tiers
 then:     M7 universality decision

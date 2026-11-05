@@ -141,7 +141,7 @@ baseline — a plain RNN matching the 256-head topology — is in
 | `docs/04_REGISTER_FILE.md` | exact 8 MiB full-address chart layout and linked register file |
 | `docs/05_MEMORY_TIERS.md` | rebuilt reporam/repovram specifications |
 | `docs/06_HEADS_RESONANCE.md` | 256 heads, resonance, self-modification, bidirectional memory |
-| `docs/07_DISTRIBUTED.md` | one object on 5 replicas; leases, replay, failure modes |
+| `docs/07_DISTRIBUTED.md` | one object on a replica ring; leases, replay, failure modes |
 | `docs/08_TRAINING.md` | integer/CRDT training, teacher distillation, GPU plan |
 | `docs/09_ROADMAP.md` | M0–M7 deliverables and gates |
 | `docs/10_FALSIFICATION.md` | claims, tests, stop conditions |

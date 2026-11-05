@@ -361,7 +361,7 @@ mind; it is a divergent cache and must be reconciled or rejected.
 
 ## 11. The five-replica deployment
 
-Five GitHub runners (`deeprepo-cpu-1..5`, 7 GiB each) host regions of the one
+Six head runners (`nanlm-cpu-1..6`, 7 GiB each) host regions of the one
 object:
 
 ```text

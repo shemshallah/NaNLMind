@@ -22,7 +22,7 @@ Why 8 MiB is the right size:
 - the page is a power of two, so it fits page caches and range reads;
 - it leaves ~2 MiB for the features that are coming (hyperedges, temporal
   blocks, mailboxes, capability tables);
-- depth-1 (256 charts) is 2 GiB dense, which fits five 7 GiB replicas with
+- depth-1 (256 charts) is 2 GiB dense, which fits six 7 GiB head runners with
   placement and history.
 
 ---

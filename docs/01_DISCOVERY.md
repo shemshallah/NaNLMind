@@ -358,7 +358,7 @@ R17 is a distributed-systems suite:
   matches.
 
 This is the strongest part of the archive for the one-global-topology design.
-It is exactly the machinery needed so that five replicas cannot fork the mind.
+It is exactly the machinery needed so that six runners cannot fork the mind.
 
 ---
 
