@@ -19,9 +19,14 @@ struct TapeCheckpoint {
 
 class TapeCheckpointManager {
 public:
+    static constexpr std::uint8_t kRootKind = 0x40;
+    static constexpr std::uint8_t kPageKind = 0x41;
+
     static TapeCheckpoint make(const TuringTape& tape);
     static bool commit(GlobalTopology& topology, const TapeCheckpoint& checkpoint,
                        std::uint32_t shard, std::uint64_t epoch);
+    static std::size_t page_records(const GlobalTopology& topology,
+                                    const TapeCheckpoint& checkpoint);
 };
 
 } // namespace nanlm

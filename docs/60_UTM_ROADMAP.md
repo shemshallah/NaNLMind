@@ -84,10 +84,10 @@ Counters are limb lists in chart cells; program/state/IP/HALT are fixed cells.
 
 ### U8 — tape ledger checkpoint (partial)
 
-- Tape root over sorted page hashes.
+- Tape root plus one per-page journal record.
 - Sharded-journal commit and verified restore.
 - Tape pages can allocate through an attached atlas.
-- Ledger-owned page maps remain.
+- Fully ledger-owned page map remains.
 
 ### U9 — explicit finite-control proof
 

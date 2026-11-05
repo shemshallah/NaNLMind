@@ -25,7 +25,8 @@ int main() {
     CHECK(TapeCheckpointManager::commit(g, cp, 7, 42));
     std::string err;
     CHECK(g.journals().verify(&err));
-    CHECK_EQ(g.journals().size(), 1u);
+    CHECK_EQ(g.journals().size(), 1u + cp.page_keys.size());
+    CHECK_EQ(TapeCheckpointManager::page_records(g, cp), cp.page_keys.size());
     CHECK(g.journals().ordered().front().subject == cp.root);
 
     // A fresh interpreter can restore the exact tape bytes.

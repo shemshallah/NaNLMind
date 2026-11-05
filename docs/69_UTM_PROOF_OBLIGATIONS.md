@@ -37,9 +37,10 @@ being executed by the interpreter. This is the largest missing proof object.
 
 ### O4 — atlas/ledger ownership
 
-Tape pages can be allocated through `Atlas` when explicitly attached, and a
-page root is committed to the sharded journal. The journal does not own the page
-map, and pages are not yet first-class allocated ledger objects.
+Tape pages can be allocated through `Atlas` when explicitly attached. A page
+root and one per-page hash record are committed to the sharded journal. The
+journal still stores hashes rather than the mutable page map, so pages are not
+yet fully persisted ledger-owned objects.
 
 ### O5 — equivalence proof
 

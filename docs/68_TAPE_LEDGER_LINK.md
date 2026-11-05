@@ -18,9 +18,10 @@ and page count.
 ## 2. Journal commit
 
 `TapeCheckpointManager::commit` appends the root to the sharded journal through
-`GlobalTopology::commit_shard` and verifies the forest. The checkpoint can then
-be restored into a fresh `UniversalTuringMachine` by restoring the serialized
-tape bytes.
+`GlobalTopology::commit_shard`, then appends one `kPageKind` record per sorted
+tape page. Each page record carries the page hash as subject, a hash of the
+signed page key as payload, and the root record hash as causal parent. The
+forest verifies the chain and `page_records` counts the per-page records.
 
 Tested:
 
@@ -52,6 +53,6 @@ Pages created by `restore` are owned by the tape until explicitly migrated.
 
 ## 4. Honest boundary
 
-This binds tape contents to a page root and a journal record, and can allocate
-new pages through the atlas. The journal does **not** own the page map, and atlas
-pages are not yet first-class persisted ledger objects. That is still open.
+This binds tape contents to a page root and per-page journal records. The
+journal still stores page hashes, not the page data or a mutable atlas page
+table, so a fully ledger-owned page map remains open.

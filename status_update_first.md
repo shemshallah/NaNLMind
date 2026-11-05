@@ -327,10 +327,10 @@ materialized. Peer residuals merge by OR in either order.
 ### Tape page ledger link
 
 Tape pages now have a sorted page-root digest and a checkpoint manager that
-commits the root through the sharded journal and verifies restore into a fresh
-UTM. Tapes can allocate new pages through an attached `Atlas`. The journal does
-not yet own the page map, and the formal finite-control/self-encoding proof is
-still open (doc 69).
+commits the root plus one per-page record through the sharded journal and
+verifies restore into a fresh UTM. Tapes can allocate new pages through an
+attached `Atlas`. The journal stores page hashes, not the mutable page map; the
+formal finite-control/self-encoding proof is still open (doc 69).
 
 ### UTM proof harness
 
