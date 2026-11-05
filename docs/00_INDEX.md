@@ -63,6 +63,8 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 57 | [57_SEMIRING_INHERITANCE.md](57_SEMIRING_INHERITANCE.md) | Can semiring closure handle 20k inheritance queries? |
 | 58 | [58_NTT_AND_REVERSIBLE.md](58_NTT_AND_REVERSIBLE.md) | Do real-window NTT correlation and reversible coupling hold? |
 | 59 | [59_SLOT_RECOVERY.md](59_SLOT_RECOVERY.md) | What happens when 30% of learned slots are deleted? |
+| 60 | [60_UTM_ROADMAP.md](60_UTM_ROADMAP.md) | What is the honest 2CM/UTM path, and what must not be claimed? |
+| 61 | [61_SPARSE_EXCEPTIONS.md](61_SPARSE_EXCEPTIONS.md) | How do sparse entity exceptions sit on top of dense kind closure? |
 
 The short version:
 

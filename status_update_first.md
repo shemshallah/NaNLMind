@@ -311,6 +311,19 @@ pages they use. The Android constructor is guarded invalid, and the dense map
 test is skipped on Android; only the x86 runner ring maps the 2 GiB region.
 `test_overbootstrap_map` passes on the runner path.
 
+### Sparse exception residuals
+
+Dense 256-kind closure (8 KiB) plus a 2.5 KiB, 2,858-bit entity exception
+residual matches 2,000/2,000 queries in about 1 ms. No 20k×256 entity matrix is
+materialized.
+
+### UTM / 2CM roadmap
+
+The universal-machine goal is recorded as a long-term 2CM-first program:
+fixed `step`, program/state/counters in chart cells, multi-limb growth, atlas
+paging, then TM encoding. It is explicitly **not implemented**; semiring/NTT/
+heads are not a substitute for the simulation theorem.
+
 ### Slot loss and recovery
 
 Dropping 3/8 learned slots reduces recall to 5/8. Retraining rebuilds eight
