@@ -48,6 +48,9 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 42 | [42_BYTE_EXPERT_ROUTER.md](42_BYTE_EXPERT_ROUTER.md) | How does overbootstrap choose between Hopfield and bigram byte experts? |
 | 43 | [43_BYTE_ROUTER_REPEATS.md](43_BYTE_ROUTER_REPEATS.md) | Does repeating the same byte corpus improve the routed result? |
 | 44 | [44_WORD_STREAM_GATE.md](44_WORD_STREAM_GATE.md) | How strong is a simple word-level baseline on Alice? |
+| 45 | [45_WORD_VECTOR_GATE.md](45_WORD_VECTOR_GATE.md) | Can the word-vector layer beat unigram or bigram? |
+| 46 | [46_LOGIC_SCALE_BASELINE.md](46_LOGIC_SCALE_BASELINE.md) | How large is the symbolic logic baseline, and what does it prove? |
+| 47 | [47_BOOLEAN_HEADS_CURRICULUM.md](47_BOOLEAN_HEADS_CURRICULUM.md) | Do all 256 heads learn their own Boolean mappings and bit manipulation? |
 
 The short version:
 

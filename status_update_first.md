@@ -311,6 +311,28 @@ pages they use. The Android constructor is guarded invalid, and the dense map
 test is skipped on Android; only the x86 runner ring maps the 2 GiB region.
 `test_overbootstrap_map` passes on the runner path.
 
+### 256-head Boolean curriculum
+
+All 256 self-modifying heads learned their individual 16-function target:
+256/256 rules, 1,280/1,280 32-bit vectors, 256/256 XOR self-modification
+restores, and `HeadArray::verify`. This is bit-level Boolean learning, not the
+penguin logic claim.
+
+### Massive logic baseline
+
+A generated triple-store benchmark has 20,000 entities, 256 kinds, 23,370 facts,
+2,858 exceptions, and 2,000 queries. The symbolic reference is **2000/2000
+(100%)** in 47 ms. It is the fixed baseline for learned relation layers, not a
+learned result.
+
+### Word-vector gate
+
+`WordVectorLayer` uses 1024-dimension exact word anchors + co-occurrence tails,
+one-hot next-word values, and weighted associations. It reaches **7.85%** top-1
+on Alice, beating unigram **6.42%** and nearly matching word bigram **8.12%**.
+The first 64-dimension version collided at ~3.4%; exact anchors and an
+unknown-word fallback fixed that.
+
 ### Word-stream baseline
 
 Alice excerpt: 5,607 words, 960 vocabulary, 1,121 test words. Unigram top-1 is

@@ -198,6 +198,9 @@ baseline — a plain RNN matching the 256-head topology — is in
 | `docs/42_BYTE_EXPERT_ROUTER.md` | overbootstrap chooses between Hopfield and bigram byte experts |
 | `docs/43_BYTE_ROUTER_REPEATS.md` | ten-pass byte measurement: repetition does not improve top-1 |
 | `docs/44_WORD_STREAM_GATE.md` | word unigram/bigram baseline and the weak word signal |
+| `docs/45_WORD_VECTOR_GATE.md` | binned word-vector expert vs word bigram |
+| `docs/46_LOGIC_SCALE_BASELINE.md` | 20k-entity symbolic logic baseline and universal triple corpus |
+| `docs/47_BOOLEAN_HEADS_CURRICULUM.md` | all 256 heads learn individual Boolean functions and bit manipulation |
 | `docs/18_HEAD_RING.md` | six-runner handoff, preload, map-back, workflows |
 | `docs/19_LEGACY_TESTS.md` | R18T language tests and R21–R23 logic regressions |
 | `docs/20_META_ROUTER.md` | universes as heads, routes as pairs, qNaN/sNaN BE/LE portals |
