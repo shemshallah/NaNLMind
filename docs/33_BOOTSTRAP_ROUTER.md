@@ -204,8 +204,8 @@ The 7 GiB bootstrap runner:
 = 4.992 GiB theoretical headroom
 ```
 
-The map is memory-mapped/sparse; it is not forced resident. Android never gets
-the 2 GiB map.
+The map is one contiguous 2 GiB virtual mapping. The runner calls
+`prefault()` to commit all 256 pages; Android never maps it.
 
 ---
 
@@ -516,8 +516,10 @@ content-hashed and generation-pinned.
 - `include/nanlm/bootstrap_layers.hpp`
 - `src/bootstrap_router.cpp`
 - `src/bootstrap_layers.cpp`
+- `src/overbootstrap.cpp`
 - `tests/test_bootstrap_router.cpp`
 - `tests/test_bootstrap_layers.cpp`
+- `tests/test_overbootstrap_map.cpp`
 
 The prototype implements:
 
@@ -528,11 +530,15 @@ The prototype implements:
 - weighted pair-slot voting;
 - Hebbian strength/key updates and weakest-slot eviction;
 - bootstrap map metadata for 256 node points, point 1 active, point 2 Android;
+- a contiguous 2 GiB virtual overbootstrap region with `prefault()`;
+- 8 MiB live runner image mapped to page 0;
+- 256 head regions (32 KiB each) in page 1;
+- six-runner ownership counts 43/43/43/43/42/42;
 - the layer registry for Boolean/Count/Hopfield/Temporal/Rule/Exact/Retrieval
   storage kinds.
 
-It does **not** allocate or load the 2 GiB map. The map loader and peer route
-diff are still design/next-step work.
+The Android test maps only the pages it touches; the runner can prefault the
+full 2 GiB. Peer route diff remains next-step work.
 
 ---
 

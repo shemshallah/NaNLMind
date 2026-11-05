@@ -301,6 +301,16 @@ the 2,040-pair scan bound, weighted voting, Hebbian strength/key updates, and
 weakest-slot eviction. It does not allocate the 2 GiB map. `test_bootstrap_router`
 passes.
 
+### Dense overbootstrap mapping
+
+`OverbootstrapMap` now reserves the real 2 GiB as one contiguous virtual
+mapping. The runner can call `prefault()` to commit all 256 × 8 MiB pages.
+Page 0 holds the live 8 MiB runner image; page 1 holds 256 head regions of
+32 KiB each; six-runner ownership is 43/43/43/43/42/42. Tests touch only the
+pages they use. The Android constructor is guarded invalid, and the dense map
+test is skipped on Android; only the x86 runner ring maps the 2 GiB region.
+`test_overbootstrap_map` passes on the runner path.
+
 ### Hopfield sequence learning
 
 The sparse Hopfield layer now learns and replays an 8-token cycle for 10 passes:
