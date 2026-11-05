@@ -311,6 +311,16 @@ pages they use. The Android constructor is guarded invalid, and the dense map
 test is skipped on Android; only the x86 runner ring maps the 2 GiB region.
 `test_overbootstrap_map` passes on the runner path.
 
+### Layered learning and hyperparameter bandit
+
+The L0–L6 learning stack is recorded in `docs/38_LAYERED_LEARNING.md`: fast
+bootstrap Hopfield, overbootstrap meta evidence, vector/concept bins, temporal
+and rule layers, exact code/tests, corpus superclusters, and route-only global
+regions. Lower layers emit compressed traces; higher layers return bounded
+policy. `HyperparameterLearner` implements the L1 bandit over top-k/bias
+candidates; `test_hyperparameter` passes. Macroclusters are routing/merge/corpus
+learners, not larger copies of bootstrap.
+
 ### Two-rate learning mesh
 
 Bootstrap and overbootstrap now mesh at different timescales and with different

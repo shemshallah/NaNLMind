@@ -32,6 +32,24 @@ private:
     std::uint64_t traces_ = 0;
 };
 
+// L1 hyperparameter learner: a small integer bandit over top-k candidates.
+// This is deliberately not Hopfield and not a gradient step.
+class HyperparameterLearner {
+public:
+    static constexpr std::array<std::uint8_t, 5> kCandidates{{1, 2, 4, 8, 16}};
+
+    void observe(std::uint8_t used_top_k, bool correct);
+    std::uint8_t best_top_k() const;
+    std::int16_t bias_limit() const;
+    std::uint64_t samples() const { return samples_; }
+    Hash256 digest() const;
+
+private:
+    std::array<std::uint64_t, 17> success_{};
+    std::array<std::uint64_t, 17> total_{};
+    std::uint64_t samples_ = 0;
+};
+
 class BootstrapMesh {
 public:
     BootstrapMesh(HopfieldConfig config, std::uint8_t top_k_active = 8)
