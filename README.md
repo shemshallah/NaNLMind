@@ -206,6 +206,7 @@ baseline — a plain RNN matching the 256-head topology — is in
 | `docs/50_LIFT_AND_SCALE.md` | lift/sketch/outer-product choices, hypervectors, scale stack |
 | `docs/51_HYPERVECTOR_TRIPLES.md` | XOR bind/bundle/cleanup triple store and merge test |
 | `docs/52_TEACHER_GATE.md` | Hopfield candidate → Boolean exception gate → triple-store grader |
+| `docs/53_DETERMINISTIC_LAYERS.md` | reversible coupling, Boolean closure, exact F257 NTT |
 | `docs/18_HEAD_RING.md` | six-runner handoff, preload, map-back, workflows |
 | `docs/19_LEGACY_TESTS.md` | R18T language tests and R21–R23 logic regressions |
 | `docs/20_META_ROUTER.md` | universes as heads, routes as pairs, qNaN/sNaN BE/LE portals |

@@ -311,6 +311,14 @@ pages they use. The Android constructor is guarded invalid, and the dense map
 test is skipped on Android; only the x86 runner ring maps the 2 GiB region.
 `test_overbootstrap_map` passes on the runner path.
 
+### Deterministic layers
+
+Reversible XOR coupling round-trips through seven layers; Boolean semiring
+closure computes 256-node inheritance; exact 256-point NTT over F257
+round-trips and matches naive convolution. Tests:
+`reversible integer coupling`, `Boolean semiring closure`, and
+`exact 256-point NTT over F257`.
+
 ### Teacher, gate, grader
 
 The cassowary case now runs through all three stages: Hopfield recalls

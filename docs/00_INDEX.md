@@ -56,6 +56,7 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 50 | [50_LIFT_AND_SCALE.md](50_LIFT_AND_SCALE.md) | Which lift, hypervector and scale-stack forms should we build? |
 | 51 | [51_HYPERVECTOR_TRIPLES.md](51_HYPERVECTOR_TRIPLES.md) | Can XOR hypervectors store and recall merged triples? |
 | 52 | [52_TEACHER_GATE.md](52_TEACHER_GATE.md) | Do Hopfield, Boolean gates, and the triple store agree on cassowary? |
+| 53 | [53_DETERMINISTIC_LAYERS.md](53_DETERMINISTIC_LAYERS.md) | What do reversible coupling, semiring closure, and exact NTT add? |
 
 The short version:
 
