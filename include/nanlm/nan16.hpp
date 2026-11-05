@@ -190,6 +190,10 @@ struct NanWord {
         return static_cast<std::uint16_t>((raw >> 48) & 0xFFFFu);
     }
     constexpr std::uint8_t far_class() const { return class_of_head(far_head()); }
+    constexpr NanType far_type() const {
+        const std::uint8_t c = far_class();
+        return c == 0xFF ? NanType::QuietPositive : static_cast<NanType>(c);
+    }
     constexpr std::uint8_t near_class() const { return class_of_head(near_head()); }
     constexpr std::uint8_t opcode() const {
         return static_cast<std::uint8_t>((near_class() << 2) | far_class());

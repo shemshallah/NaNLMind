@@ -85,6 +85,9 @@ struct PortalWord {
     }
 };
 
+inline constexpr std::uint32_t kTimeRequestMagic = 0x54494D45u; // "TIME"
+inline constexpr std::uint8_t kTimeRequestFlag = 1u << 4;
+
 struct RouteResult {
     bool ok = false;
     PortalWord word{};
@@ -104,6 +107,10 @@ public:
     RouteResult route(std::uint8_t src, std::uint8_t dst, PortalOp op, std::uint32_t data,
                       std::uint8_t flags, std::uint64_t epoch);
     RouteResult read(std::uint8_t src, std::uint8_t dst, bool forward) const;
+
+    // Ask the router/time service for the current anchor. The request is a
+    // ReadForward portal word with the TIME magic and the request flag.
+    RouteResult request_time(std::uint8_t src, std::uint8_t dst, std::uint64_t epoch);
 
     // Create the child chart for a portal head (on demand).
     bool open_universe(std::uint8_t head, std::uint64_t genome = 0);

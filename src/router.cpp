@@ -41,6 +41,14 @@ RouteResult RouterChart::route(std::uint8_t src, std::uint8_t dst, PortalOp op,
     return result;
 }
 
+RouteResult RouterChart::request_time(std::uint8_t src, std::uint8_t dst,
+                                         std::uint64_t epoch) {
+    RouteResult r = route(src, dst, PortalOp::ReadForward, kTimeRequestMagic,
+                          kTimeRequestFlag, epoch);
+    if (r.ok) r.word.flags = kTimeRequestFlag;
+    return r;
+    }
+
 RouteResult RouterChart::read(std::uint8_t src, std::uint8_t dst, bool forward) const {
     RouteResult result;
     const std::uint16_t addr = matrix_addr(src, dst);

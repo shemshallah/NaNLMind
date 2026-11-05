@@ -11,6 +11,7 @@
 // coordinator. Identity is the global digest.
 #pragma once
 
+#include "nanlm/atomic.hpp"
 #include "nanlm/clock.hpp"
 #include "nanlm/consolidation.hpp"
 #include "nanlm/hypergraph.hpp"
@@ -58,6 +59,12 @@ public:
     const Ledger& ledger() const { return ledger_; }
     TemporalClock& clock() { return clock_; }
     const TemporalClock& clock() const { return clock_; }
+
+    // Wall anchor for snapshot stamps. It is metadata; it never reorders state.
+    AtomicClock& atomic_clock() { return atomic_; }
+    const AtomicClock& atomic_clock() const { return atomic_; }
+    void set_atomic_anchor(const AtomicAnchor& anchor) { atomic_.set(anchor); }
+    SnapshotStamp stamp_snapshot() const { return atomic_.stamp(clock_.tick(), clock_.phase()); }
     PageTable& pages() { return pages_; }
     const PageTable& pages() const { return pages_; }
 
@@ -94,6 +101,7 @@ private:
     BidirectionalMemory temporal_;
     Ledger ledger_;
     TemporalClock clock_;
+    AtomicClock atomic_;
     ManifestStore manifests_;
     ConsolidationEngine consolidation_{pages_, ledger_, manifests_};
     void publish_manifest(const PageId& changed);

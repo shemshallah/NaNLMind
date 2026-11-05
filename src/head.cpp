@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <bit>
+#include <cstring>
 #include <set>
 
 namespace nanlm {
@@ -356,6 +357,106 @@ RunnerResult HeadRunner::run(std::uint8_t head, const HeadToken& token) {
     result.out.phase = record.phase;
 
     if (clock_ != nullptr) clock_->step();
+    return result;
+}
+
+HeadFrame capture_head(HeadView& view) {
+    HeadFrame f;
+    f.head = view.index();
+    f.before_cell = view.cell();
+    f.before_head = view.record();
+    f.before_scratch = view.scratch();
+    return f;
+}
+
+void capture_after(HeadFrame& frame, HeadView& view) {
+    frame.after_cell = view.cell();
+    frame.after_head = view.record();
+    frame.after_scratch = view.scratch();
+    frame.has_after = true;
+}
+
+void restore_before(HeadView& view, const HeadFrame& frame) {
+    view.cell() = frame.before_cell;
+    view.record() = frame.before_head;
+    view.scratch() = frame.before_scratch;
+    view.refresh();
+    HeadEvent ev;
+    ev.kind = 4; // inverse restore
+    ev.epoch = frame.before_cell.epoch;
+    ev.phase = frame.before_head.phase;
+    ev.energy = frame.before_head.energy;
+    ev.before = frame.before_cell.generation;
+    ev.after = frame.before_cell.generation;
+    view.history().record(ev);
+}
+
+void restore_after(HeadView& view, const HeadFrame& frame) {
+    if (!frame.has_after) return;
+    view.cell() = frame.after_cell;
+    view.record() = frame.after_head;
+    view.scratch() = frame.after_scratch;
+    view.refresh();
+}
+
+void compute_reverse_frame(HeadView& view, const HeadFrame& frame) {
+    restore_before(view, frame);
+}
+
+void compute_forward_frame(HeadView& view, const HeadFrame& frame) {
+    restore_after(view, frame);
+}
+
+namespace {
+std::uint64_t fnv64(const void* data, std::size_t len, std::uint64_t h = 1469598103934665603ull) {
+    const auto* p = static_cast<const std::uint8_t*>(data);
+    for (std::size_t i = 0; i < len; ++i) {
+        h ^= p[i];
+        h *= 1099511628211ull;
+    }
+    return h;
+}
+} // namespace
+
+std::uint64_t frame_hash(const HeadFrame& frame, bool after) {
+    const NanCell& c = after ? frame.after_cell : frame.before_cell;
+    const Head& h = after ? frame.after_head : frame.before_head;
+    const HeadScratch& s = after ? frame.after_scratch : frame.before_scratch;
+    std::uint64_t v = fnv64(&c, sizeof(c));
+    v = fnv64(&h, sizeof(h), v);
+    v = fnv64(s.bytes.data(), s.bytes.size(), v);
+    return v;
+}
+
+ContemplationResult contemplate(HeadView& view, const HeadMutation& mutation,
+                                bool commit) {
+    ContemplationResult result;
+    HeadFrame frame = capture_head(view);
+    try {
+        if (mutation) mutation(view);
+    } catch (...) {
+        restore_before(view, frame);
+        result.error = "mutation threw; restored before-frame";
+        return result;
+    }
+    capture_after(frame, view);
+    result.forward_hash = frame_hash(frame, true);
+    result.inverse_hash = frame_hash(frame, false);
+
+    compute_reverse_frame(view, frame);
+    result.inverse_ok =
+        std::memcmp(&view.cell(), &frame.before_cell, sizeof(NanCell)) == 0 &&
+        std::memcmp(&view.record(), &frame.before_head, sizeof(Head)) == 0 &&
+        std::memcmp(&view.scratch(), &frame.before_scratch, sizeof(HeadScratch)) == 0;
+    result.ok = result.inverse_ok;
+    if (!result.inverse_ok) {
+        result.error = "inverse did not restore the before-frame";
+        return result;
+    }
+    if (commit) {
+        compute_forward_frame(view, frame);
+        result.committed = true;
+    }
     return result;
 }
 

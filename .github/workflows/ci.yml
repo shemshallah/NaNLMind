@@ -18,6 +18,8 @@ jobs:
         run: make test
       - name: Legacy logic suite
         run: make legacy
+      - name: Atomic clock self-test
+        run: python3 runner/atomic_clock.py --self-test
       - name: Verify CLI
         run: ./build/nanlm-universal verify
       - name: Genesis

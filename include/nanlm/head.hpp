@@ -13,6 +13,7 @@
 
 #include <array>
 #include <cstdint>
+#include <functional>
 #include <string>
 
 namespace nanlm {
@@ -189,6 +190,47 @@ private:
     BidirectionalMemory* temporal_;
     TemporalClock* clock_;
 };
+
+// Exact before/after frame for inverse computation. The frame stores the full
+// cell, head record, and 1 KiB scratchpad, so a head can be restored without
+// guessing what a Boolean function did.
+struct HeadFrame {
+    std::uint8_t head = 0;
+    NanCell before_cell{};
+    Head before_head{};
+    HeadScratch before_scratch{};
+    NanCell after_cell{};
+    Head after_head{};
+    HeadScratch after_scratch{};
+    bool has_after = false;
+};
+
+HeadFrame capture_head(HeadView& view);
+void capture_after(HeadFrame& frame, HeadView& view);
+void restore_before(HeadView& view, const HeadFrame& frame);
+void restore_after(HeadView& view, const HeadFrame& frame);
+
+// Reverse/forward frame computation. These are named aliases so a
+// contemplation cycle reads as: forward -> reverse -> compare -> commit.
+void compute_reverse_frame(HeadView& view, const HeadFrame& frame);
+void compute_forward_frame(HeadView& view, const HeadFrame& frame);
+std::uint64_t frame_hash(const HeadFrame& frame, bool after);
+
+using HeadMutation = std::function<void(HeadView&)>;
+
+struct ContemplationResult {
+    bool ok = false;         // the inverse restored the before-state exactly
+    bool inverse_ok = false;
+    bool committed = false;  // true = after-frame kept, false = before-frame kept
+    std::uint64_t forward_hash = 0;
+    std::uint64_t inverse_hash = 0;
+    std::string error;
+};
+
+// Contemplate one candidate mutation. The head is always left in a known
+// state: the after-frame if commit, otherwise the exact before-frame.
+ContemplationResult contemplate(HeadView& view, const HeadMutation& mutation,
+                                bool commit);
 
 class HeadArray {
 public:

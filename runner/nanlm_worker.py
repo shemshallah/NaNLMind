@@ -175,7 +175,9 @@ def finalize_round(env, epoch):
     if any(p["epoch"] != epoch for p in seen):
         return False, None
     d = round_digest(epoch, seen)
-    record = {"epoch": epoch, "digest": d, "heads": HEADS, "slots": RUNNERS, "ok": True}
+    atomic = reg_get(env, "nanlm/atomic") if env is not None else None
+    record = {"epoch": epoch, "digest": d, "heads": HEADS, "slots": RUNNERS,
+              "atomic": atomic, "ok": True}
     reg_put(env, f"nanlm/round/{epoch}", record)
     manifest = reg_get(env, "nanlm/manifest", {}) or {}
     manifest.update({
@@ -183,6 +185,7 @@ def finalize_round(env, epoch):
         "epoch": epoch,
         "root": d,
         "pages": ["root"],
+        "atomic": atomic,
         "ok": True,
     })
     reg_put(env, "nanlm/manifest", manifest)

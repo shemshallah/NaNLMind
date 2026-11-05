@@ -153,6 +153,8 @@ baseline — a plain RNN matching the 256-head topology — is in
 | `docs/18_HEAD_RING.md` | six-runner handoff, preload, map-back, workflows |
 | `docs/19_LEGACY_TESTS.md` | R18T language tests and R21–R23 logic regressions |
 | `docs/20_META_ROUTER.md` | universes as heads, routes as pairs, qNaN/sNaN BE/LE portals |
+| `docs/21_FRAME_SYNC.md` | forward/rollback frame meetings, inverse frames, contemplation |
+| `docs/22_ATOMIC_CLOCK.md` | global wall anchor from multiple HTTPS sources |
 | `NaNLM_statespace/` | all original archives + extracted snapshots + SHA-256 manifest |
 
 ---

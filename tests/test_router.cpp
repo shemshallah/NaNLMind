@@ -31,6 +31,14 @@ int main() {
     // Forward and reverse are independent.
     CHECK_EQ(router.read(3, 7, true).word.data, 0xDEADBEEFu);
 
+    // A universe can request the universal time anchor through the router.
+    const RouteResult tr = router.request_time(3, 7, 44);
+    CHECK(tr.ok);
+    const RouteResult trr = router.read(3, 7, true);
+    CHECK(trr.ok);
+    CHECK_EQ(trr.word.data, kTimeRequestMagic);
+    CHECK_EQ(trr.word.flags, kTimeRequestFlag);
+
     // Open a real child universe on demand.
     CHECK(router.open_universe(3, 0x99));
     CHECK(router.has_universe(3));

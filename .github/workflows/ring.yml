@@ -78,6 +78,10 @@ jobs:
               raise SystemExit("GitHub API core budget too low")
           PY
 
+      - name: Wall anchor
+        run: |
+          PYTHONPATH=engine:. python3 runner/atomic_clock.py --sync
+
       - name: Gate selftest
         run: |
           PYTHONPATH=engine:. python3 runner/nanlm_worker.py --op selftest --slot 1 --epoch "${{ inputs.epoch }}"
