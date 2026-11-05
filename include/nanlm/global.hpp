@@ -94,6 +94,8 @@ public:
     // One identity for the whole object: chart hashes + hypergraph + temporal
     // memory + ledger head.
     Hash256 global_digest() const;
+    std::vector<std::uint8_t> serialize() const;
+    static std::unique_ptr<GlobalTopology> from_bytes(const std::uint8_t*, std::size_t);
 
     // Explicit committed event. The caller supplies the before/after state
     // hashes; the global ledger is the single history.
