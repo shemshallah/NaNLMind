@@ -189,6 +189,7 @@ baseline — a plain RNN matching the 256-head topology — is in
 | `docs/36_TRAINING_MERGE.md` | Koyeb training-delta merger, stale/idempotent merge, scoped token |
 | `docs/37_TWO_RATE_MESH.md` | bootstrap/overbootstrap mesh, meta evidence, bounded feedback |
 | `docs/38_LAYERED_LEARNING.md` | L0–L6 learning stack, trace/policy contract, macrocluster/global-region options |
+| `docs/39_BIT_BYTE_GATE.md` | bit/byte two-rate learning gate and the unresolved byte transition |
 | `docs/18_HEAD_RING.md` | six-runner handoff, preload, map-back, workflows |
 | `docs/19_LEGACY_TESTS.md` | R18T language tests and R21–R23 logic regressions |
 | `docs/20_META_ROUTER.md` | universes as heads, routes as pairs, qNaN/sNaN BE/LE portals |

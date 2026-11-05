@@ -44,6 +44,18 @@ HopfieldRouter::HopfieldRouter(HopfieldConfig config) : config_(config) {
     slots_.resize(kMirrorPairCount);
 }
 
+HopfieldRouter::Vector HopfieldRouter::token_code(std::uint8_t token) {
+    std::uint64_t x = static_cast<std::uint64_t>(token) + 0x9E3779B97F4A7C15ull;
+    x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9ull;
+    x = (x ^ (x >> 27)) * 0x94D049BB133111EBull;
+    x ^= x >> 31;
+    Vector v{};
+    for (std::size_t i = 0; i < kDim; ++i) {
+        v[i] = ((x >> (i % 64u)) & 1ull) ? 8 : -8;
+    }
+    return v;
+}
+
 void HopfieldRouter::set_head(std::uint8_t head, const Vector& vector) {
     heads_[head] = vector;
 }
@@ -193,8 +205,10 @@ bool HopfieldRouter::learn(const Vector& query, std::uint32_t target) {
         Slot& s = slots_[p];
         if (!s.used) continue;
         // Do not decay a slot that belongs to a different query just because
-        // one of its heads is active. The key is the association identity.
-        if (dot(query, s.key) <= 0) continue;
+        // one of its heads is active. Require the key to be at least half the
+        // query's own energy (cosine >= 0.5), not merely a positive dot.
+        const std::int64_t self_energy = dot(query, query);
+        if (dot(query, s.key) * 4 < self_energy * 3) continue;
         s.strength = clamp_strength(static_cast<std::int64_t>(s.strength) - 1);
         if (weakest == kMirrorPairCount ||
             s.strength < slots_[weakest].strength ||

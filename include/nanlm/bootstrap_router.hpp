@@ -87,8 +87,11 @@ struct HopfieldPrediction {
 
 class HopfieldRouter {
 public:
-    static constexpr std::uint8_t kDim = 16;
+    static constexpr std::uint8_t kDim = 32;
     using Vector = std::array<std::int16_t, kDim>;
+
+    // Deterministic, low-cross-correlation byte/token code.
+    static Vector token_code(std::uint8_t token);
 
     struct Slot {
         Vector key{};

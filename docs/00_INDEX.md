@@ -42,6 +42,7 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 36 | [36_TRAINING_MERGE.md](36_TRAINING_MERGE.md) | How does Koyeb merge training deltas without holding the 2 GiB map? |
 | 37 | [37_TWO_RATE_MESH.md](37_TWO_RATE_MESH.md) | How do bootstrap and overbootstrap learn together with different math? |
 | 38 | [38_LAYERED_LEARNING.md](38_LAYERED_LEARNING.md) | How does every layer learn from the layer below, up to the global mesh? |
+| 39 | [39_BIT_BYTE_GATE.md](39_BIT_BYTE_GATE.md) | What happens when the mesh learns bit and byte transitions? |
 
 The short version:
 

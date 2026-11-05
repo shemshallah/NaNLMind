@@ -46,7 +46,7 @@ struct StoredSlot {
     std::uint16_t used = 0;
     std::uint64_t epoch = 0;
 };
-static_assert(sizeof(StoredSlot) == 48);
+static_assert(sizeof(StoredSlot) == 80);
 
 class HeadStore {
 public:

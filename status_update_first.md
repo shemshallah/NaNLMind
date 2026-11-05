@@ -311,6 +311,13 @@ pages they use. The Android constructor is guarded invalid, and the dense map
 test is skipped on Android; only the x86 runner ring maps the 2 GiB region.
 `test_overbootstrap_map` passes on the runner path.
 
+### Bit/byte learning gate
+
+The two-rate mesh now learns a 2-token bit cycle (2/2) and a 256-token byte
+cycle (255/256, 256 used slots, 2,560 overbootstrap traces). The byte code is a
+splitmix-based 32-dimension signed code in the learner API. One byte transition
+remains unresolved; the test reports it rather than hiding it.
+
 ### Layered learning and hyperparameter bandit
 
 The L0–L6 learning stack is recorded in `docs/38_LAYERED_LEARNING.md`: fast
