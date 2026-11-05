@@ -116,6 +116,9 @@ public:
     HopfieldPrediction predict(const Vector& query) const;
     // Returns true when a slot was written or updated.
     bool learn(const Vector& query, std::uint32_t target);
+    // Supervised repair: write the association without consulting prediction.
+    // Used after known slot loss; still a local slot write, not a host table.
+    bool teach(const Vector& query, std::uint32_t target);
 
     Hash256 digest() const;
 

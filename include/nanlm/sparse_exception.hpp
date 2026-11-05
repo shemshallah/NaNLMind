@@ -17,6 +17,10 @@ public:
     std::size_t size() const { return bits_; }
     std::size_t bytes() const { return words_.size() * sizeof(std::uint64_t); }
     std::size_t count() const;
+    void merge(const SparseBitset& other);
+    bool operator==(const SparseBitset& other) const {
+        return bits_ == other.bits_ && words_ == other.words_;
+    }
 
 private:
     std::size_t bits_;

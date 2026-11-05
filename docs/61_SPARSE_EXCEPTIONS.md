@@ -45,7 +45,12 @@ blocks ability0 for every seventh entity.
 ./build/test_sparse_exceptions
 ```
 
-## 5. Next
+## 5. Merge
+
+`SparseBitset::merge` is bitwise OR; two peer residuals merge in either order
+and produce identical bitsets. This is the CRDT-style exception path.
+
+## 6. Next
 
 1. Add multi-level exception residuals.
 2. Merge residuals by OR/set union across peers.

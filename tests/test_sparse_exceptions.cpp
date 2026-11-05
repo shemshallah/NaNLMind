@@ -55,6 +55,18 @@ int main() {
               << " queries=" << kQueries << " matches=" << matches
               << " ms=" << ms << "\n";
     CHECK_EQ(exception.count(), (kEntities + 6) / 7);
+
+    SparseBitset peer(kEntities);
+    for (std::uint32_t e = 0; e < kEntities; e += 11) peer.set(e);
+    SparseBitset merged = exception;
+    merged.merge(peer);
+    SparseBitset reverse = peer;
+    reverse.merge(exception);
+    CHECK(merged == reverse);
+    for (std::uint32_t e = 0; e < kEntities; e += 37) {
+        CHECK_EQ(merged.test(e), exception.test(e) || peer.test(e));
+    }
+
     CHECK_EQ(matches, kQueries);
     CHECK(exception.bytes() < sizeof(closure));
     return test_done("sparse exception residual rows");

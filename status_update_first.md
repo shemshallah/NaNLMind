@@ -311,11 +311,18 @@ pages they use. The Android constructor is guarded invalid, and the dense map
 test is skipped on Android; only the x86 runner ring maps the 2 GiB region.
 `test_overbootstrap_map` passes on the runner path.
 
+### Sparse degree learner on 20k samples
+
+A sparse conjunction-term learner over 20k sampled assignments (16k/4k split)
+is exact only at **degree = nesting depth + 1**: depth 1 at D2, depth 2 at D3,
+depth 3 at D4. Lower degrees fail held-out accuracy. This confirms the degree
+rule under sampling, not only exhaustive truth tables.
+
 ### Sparse exception residuals
 
 Dense 256-kind closure (8 KiB) plus a 2.5 KiB, 2,858-bit entity exception
 residual matches 2,000/2,000 queries in about 1 ms. No 20k×256 entity matrix is
-materialized.
+materialized. Peer residuals merge by OR in either order.
 
 ### UTM / 2CM roadmap
 
@@ -326,9 +333,9 @@ heads are not a substitute for the simulation theorem.
 
 ### Slot loss and recovery
 
-Dropping 3/8 learned slots reduces recall to 5/8. Retraining rebuilds eight
-slots but recovers only **7/8**; one transition remains wrong. The test records
-the partial recovery rather than claiming 8/8.
+Dropping 3/8 learned slots reduces recall to 5/8. Ordinary retraining recovers
+7/8; an explicit `teach()` repair pass recovers **8/8**. The test distinguishes
+autonomous retraining from trusted repair.
 
 ### NTT and reversible memory
 

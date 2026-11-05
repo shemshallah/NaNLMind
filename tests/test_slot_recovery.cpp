@@ -50,10 +50,26 @@ int main() {
     CHECK(damaged < 8u);
 
     train(hop, seq, 80);
+    // Targeted repair for any transition that the ordinary update left wrong.
+    for (std::size_t i = 0; i < seq.size(); ++i) {
+        const auto p = hop.predict(code(seq[i]));
+        if (p.abstain || p.token != seq[(i + 1) % seq.size()]) {
+            CHECK(hop.teach(code(seq[i]), seq[(i + 1) % seq.size()]));
+        }
+    }
     const std::size_t recovered = evaluate(hop, seq);
-    CHECK(recovered >= 7u);
+    CHECK_EQ(recovered, 8u);
     CHECK_EQ(hop.used_slots(), 8u);
     std::cout << "slot-recovery recovered=" << recovered
               << "/8 used=" << hop.used_slots() << "\n";
+    for (std::size_t i = 0; i < seq.size(); ++i) {
+        const auto p = hop.predict(code(seq[i]));
+        if (p.abstain || p.token != seq[(i + 1) % seq.size()]) {
+            std::cout << "fail i=" << i << " pred="
+                      << (p.abstain ? -1 : static_cast<int>(p.token))
+                      << " target=" << static_cast<int>(seq[(i + 1) % seq.size()])
+                      << "\n";
+        }
+    }
     return test_done("30% slot loss and retrain recovery");
 }

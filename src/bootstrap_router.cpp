@@ -183,6 +183,23 @@ HopfieldPrediction HopfieldRouter::predict(const Vector& query) const {
     return result;
 }
 
+bool HopfieldRouter::teach(const Vector& query, std::uint32_t target) {
+    const auto active = active_heads(query);
+    if (active.empty()) return false;
+    const std::uint32_t pair = new_pair(active);
+    if (pair >= kMirrorPairCount) return false;
+    Slot& s = slots_[pair];
+    if (!s.used) ++used_slots_;
+    s.used = true;
+    s.key = query;
+    s.value = target;
+    // Repair is a trusted, observed label: make the repaired association
+    // dominate any stale slot while keeping it in the local pair table.
+    s.strength = 32767;
+    s.epoch = ++epoch_;
+    return true;
+}
+
 bool HopfieldRouter::learn(const Vector& query, std::uint32_t target) {
     const HopfieldPrediction old = predict(query);
     const auto active = active_heads(query);
