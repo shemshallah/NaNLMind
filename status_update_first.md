@@ -311,6 +311,19 @@ pages they use. The Android constructor is guarded invalid, and the dense map
 test is skipped on Android; only the x86 runner ring maps the 2 GiB region.
 `test_overbootstrap_map` passes on the runner path.
 
+### Nested-exception degree
+
+A degree-limited ANF learner shows exact recovery only at **degree =
+nesting depth + 1**. Depth 1 needs degree 2, depth 2 needs degree 3, and so on;
+every lower degree is strictly worse. This is the concrete reason byte counts
+cannot express exception-over-inheritance.
+
+### SUPERPOSITION deferred
+
+The signed-amplitude superposition prototype is recorded in
+`docs/55_SUPERPOSITION_TODO.md`. It is **not implemented** and not used in any
+gate. The next requirement is a full-ledger replay test, not a code merge.
+
 ### Hypervector 20k scale
 
 A global 4096-bit bundle recalls **0%** of the 20k split. With 1,024

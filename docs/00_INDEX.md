@@ -58,6 +58,8 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 52 | [52_TEACHER_GATE.md](52_TEACHER_GATE.md) | Do Hopfield, Boolean gates, and the triple store agree on cassowary? |
 | 53 | [53_DETERMINISTIC_LAYERS.md](53_DETERMINISTIC_LAYERS.md) | What do reversible coupling, semiring closure, and exact NTT add? |
 | 54 | [54_HYPERVECTOR_SCALE.md](54_HYPERVECTOR_SCALE.md) | Does the hypervector store hold 20k facts, and when does it fail? |
+| 55 | [55_SUPERPOSITION_TODO.md](55_SUPERPOSITION_TODO.md) | What is the deferred superposition/phase design, and why is it not implemented? |
+| 56 | [56_DEGREE_EXCEPTIONS.md](56_DEGREE_EXCEPTIONS.md) | Why does each nested exception level add one polynomial degree? |
 
 The short version:
 
