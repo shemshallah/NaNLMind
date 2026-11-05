@@ -534,8 +534,13 @@ The prototype implements:
 - 8 MiB live runner image mapped to page 0;
 - 256 head regions (32 KiB each) in page 1;
 - six-runner ownership counts 43/43/43/43/42/42;
+- per-head slot serialization into the head arena;
+- per-layer payload allocation from page 2;
+- a local `RouteMerger` that rejects stale base generations;
 - the layer registry for Boolean/Count/Hopfield/Temporal/Rule/Exact/Retrieval
   storage kinds.
+- Android/community credentials are scoped and revocable; `DEEPREPO_PAT` is
+  CI-only and never enters the APK.
 
 The Android test maps only the pages it touches; the runner can prefault the
 full 2 GiB. Peer route diff remains next-step work.

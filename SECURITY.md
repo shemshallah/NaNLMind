@@ -21,3 +21,33 @@ details in a public issue.
   pinned head controls the identity.
 - SHA-256 is used for hashes, not for signatures. Publication of the head is
   the trust anchor.
+
+## Credentials
+
+`DEEPREPO_PAT` is a **GitHub runner secret**. It is never shipped in an APK,
+Android build, release artifact, container image, log, cache, or route diff. An
+APK is extractable; treat every string, asset, preference, and native blob in it
+as public.
+
+Community nodes do **not** receive `DEEPREPO_PAT` or the ring secret. They talk
+to the intake endpoint with a:
+
+- short-lived credential;
+- scoped to intake/route submission (no repo, release, workflow, or ring access);
+- revocable per device or community node;
+- separate audience from the GitHub runner ring;
+- rotated on revocation, compromise, or expiry.
+
+The Android client uses `NANLM_DEVICE_TOKEN` from the environment and
+`NANLM_INTAKE_URL`. It never reads `DEEPREPO_PAT`.
+
+`DEEPREPO_PAT` exists only in GitHub Actions secrets. It must have the minimum
+permissions in [docs/18_HEAD_RING.md](docs/18_HEAD_RING.md). It is not available
+to user-facing endpoints, APKs, or community clients.
+
+## Build hygiene
+
+- `.nanlmind/` is an external source clone and is gitignored.
+- Do not commit `.env`, token files, keystores, or local credentials.
+- Route diffs contain node IDs, hashes, and route metadata, not raw input text.
+- If a token leaks, revoke it first, then rotate. Deleting a file is not enough.

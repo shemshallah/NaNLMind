@@ -311,6 +311,17 @@ pages they use. The Android constructor is guarded invalid, and the dense map
 test is skipped on Android; only the x86 runner ring maps the 2 GiB region.
 `test_overbootstrap_map` passes on the runner path.
 
+### Bootstrap head store
+
+`HeadStore` writes all 256 Hopfield head vectors through the runner map into the
+2 GiB overbootstrap head arena. The test trains the 8-token cycle, writes all 256
+heads and their used slots, reads them back, and checks page residency.
+`LayerPayloadStore` allocates per-layer payloads from page 2; a local
+`RouteMerger` rejects stale base generations. Android remains 8 MiB only; the
+dense-map test is skipped there. This is the first **train → runner map →
+2 GiB map** path. Android/community credentials are scoped and revocable;
+`DEEPREPO_PAT` is CI-only and never enters the APK.
+
 ### Hopfield sequence learning
 
 The sparse Hopfield layer now learns and replays an 8-token cycle for 10 passes:

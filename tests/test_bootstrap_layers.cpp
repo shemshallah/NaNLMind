@@ -60,5 +60,22 @@ int main() {
     CHECK(map2.activate(256));
     CHECK(map.digest() == map2.digest());
 
+    // Local route diff: node 2, base generation 0, one head route.
+    PointRouter router(PointRouter::kDefaultPoint);
+    const LayerRef routed{3, 2, 7, 1, 9100, 4};
+    RouteDiff diff;
+    diff.node = 2;
+    diff.base_generation = map.slot(2) ? map.slot(2)->generation : 0;
+    diff.logical_tick = 44;
+    diff.entries.push_back(RouteDelta{7, routed, 44});
+    std::string error;
+    CHECK(RouteMerger::apply(map, router, diff, &error));
+    CHECK(router.resolve(7).has_value());
+    if (router.resolve(7)) CHECK(*router.resolve(7) == routed);
+    CHECK_EQ(map.slot(2)->generation, 2u);
+    CHECK_EQ(map.slot(2)->epoch, 44u);
+    CHECK(!RouteMerger::apply(map, router, diff, &error)); // stale
+    CHECK_EQ(error, std::string("stale base generation"));
+
     return test_done("bootstrap map points and layer registry");
 }

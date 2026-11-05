@@ -184,7 +184,8 @@ handoff summary.
 | `NaNLMind/runner/nanlm_worker.py` | selftest, prewarm, headshift, handoff, status |
 | `NaNLMind/runner/ring_dispatch.py` | interleaved dispatch and await |
 
-One secret: `DEEPREPO_PAT`.
+One CI secret: `DEEPREPO_PAT`. It is never shipped in an APK and never given to
+Android/community nodes; those use a scoped, revocable intake credential.
 
 Required permissions:
 

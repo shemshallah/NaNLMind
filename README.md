@@ -144,7 +144,8 @@ make challenge   # expected to fail: held-out logic probe
 | Qwen demo | `deeprepo-cpu-1..5` | `reporam`, `repovram` | existing 24/7 model demo |
 | NaNLMind heads | `nanlm-cpu-1..6` | `nanlm-ram`, `nanlm-vram` | 256-head handoff ring |
 
-One secret, `DEEPREPO_PAT`, is used everywhere. `NaNLMind/ring.yml` dispatches
+`DEEPREPO_PAT` is a GitHub Actions runner secret only; it is never shipped in
+an APK or given to community nodes. See [SECURITY.md](SECURITY.md). `NaNLMind/ring.yml` dispatches
 one slot at a time, checks the rate limit, and self-redispatches the next
 logical epoch; `keeper.yml` restarts only when no ring run is active. The head
 protocol is in [docs/18_HEAD_RING.md](docs/18_HEAD_RING.md).
@@ -183,6 +184,7 @@ baseline — a plain RNN matching the 256-head topology — is in
 | `docs/32_HARD_LOGIC_WARMUP.md` | nested-exception challenge and ten-pass byte warmup |
 | `docs/33_BOOTSTRAP_ROUTER.md` | point-1 router, bootstrap-only 2 GiB map, layer storage, Android scope |
 | `docs/34_HOPFIELD_LEARNING.md` | sparse Hopfield token-sequence learning and key-identity fix |
+| `docs/35_BOOTSTRAP_HEAD_STORE.md` | train → 256 head vectors → 2 GiB head arena persistence |
 | `docs/18_HEAD_RING.md` | six-runner handoff, preload, map-back, workflows |
 | `docs/19_LEGACY_TESTS.md` | R18T language tests and R21–R23 logic regressions |
 | `docs/20_META_ROUTER.md` | universes as heads, routes as pairs, qNaN/sNaN BE/LE portals |
