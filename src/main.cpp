@@ -7,6 +7,7 @@
 #include "nanlm/ntf.hpp"
 #include "nanlm/byte_model.hpp"
 #include "nanlm/slot_memory.hpp"
+#include "nanlm/context2.hpp"
 #include "nanlm/handoff.hpp"
 #include "nanlm/schedule.hpp"
 #include "nanlm/universe.hpp"
@@ -488,6 +489,24 @@ int cmd_headshift(int argc, char** argv) {
     return 0;
 }
 
+int cmd_ctx2(int argc, char** argv) {
+    const char* path = argc > 2 ? argv[2] : "data/alice_full.txt";
+    std::ifstream f(path, std::ios::binary);
+    if (!f) { std::cerr << "cannot open " << path << "\n"; return 1; }
+    std::vector<std::uint8_t> data((std::istreambuf_iterator<char>(f)),
+                                   std::istreambuf_iterator<char>());
+    const std::size_t split = (data.size() * 4) / 5;
+    std::vector<std::uint8_t> train(data.begin(), data.begin() + split);
+    std::vector<std::uint8_t> test(data.begin() + split, data.end());
+    Context2Model model;
+    model.train(train);
+    const Context2Eval eval = model.evaluate(test, 2, test.size());
+    std::cout << "context2 corpus=" << path << " bytes=" << data.size()
+              << " slabs=" << model.slabs() << "\n";
+    std::cout << "top1=" << eval.accuracy << " bpc=" << eval.bits_per_byte << "\n";
+    return 0;
+}
+
 int cmd_kn(int argc, char** argv) {
     const char* path = argc > 2 ? argv[2] : "data/alice_full.txt";
     int order = argc > 3 ? std::stoi(argv[3]) : 2;
@@ -689,6 +708,7 @@ void usage() {
               << "  ntf         NaN Translation Fabric address/route demo\n"
               << "  byte [path] single-universe byte bigram train/eval\n"
               << "  kn [path] [order] Kneser-Ney byte baseline\n"
+              << "  ctx2 [path] context-2 child-chart layout\n"
               << "  snapshot    write state/chart.nmc\n"
               << "  headshift   real HeadView packets for one slot\n"
               << "  growth      child-chart growth and scratch consolidation\n"
@@ -715,6 +735,7 @@ int main(int argc, char** argv) {
     if (cmd == "ntf") return cmd_ntf();
     if (cmd == "byte") return cmd_byte(argc, argv);
     if (cmd == "kn") return cmd_kn(argc, argv);
+    if (cmd == "ctx2") return cmd_ctx2(argc, argv);
     if (cmd == "snapshot") return cmd_snapshot(argc, argv);
     if (cmd == "headshift") return cmd_headshift(argc, argv);
     if (cmd == "growth") return cmd_growth();

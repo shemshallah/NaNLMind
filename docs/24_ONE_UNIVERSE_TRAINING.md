@@ -103,20 +103,41 @@ Bigram beats order-0 by 0.786 bits/byte on the 30 KB excerpt.
 
 Same 80/20 split, byte level:
 
-| corpus | order-0 | topology bigram | KN-1 | KN-2 |
-|---|---:|---:|---:|---:|
-| Alice excerpt (30 KB) | 4.681 | **3.895** | 3.377* | 2.676* |
-| Alice full (151 KB) | 4.713 | 3.509 | 3.377 | **2.676** |
-| Moby Dick (1.2 MB) | 4.563 | 3.539 | — | **2.895** |
+| corpus | order-0 | topology bigram | KN-1 | KN-2 | context-2 layout |
+|---|---:|---:|---:|---:|---:|
+| Alice excerpt (30 KB) | 4.681 | **3.895** | 3.377* | 2.676* | — |
+| Alice full (151 KB) | 4.713 | 3.509 | 3.377 | **2.676** | 3.281 |
+| Moby Dick (1.2 MB) | 4.563 | 3.539 | — | **2.895** | 3.067 |
 
 `*` measured on `alice_full.txt` for the KN rows; the excerpt topology number is
 shown separately. The topology bigram cannot represent a two-byte context. The
 Kneser-Ney trigram beats it by **0.83 BPC** on Alice full and **0.64 BPC** on
 Moby Dick.
 
-This is the correct next target: a context-2 memory must live somewhere in the
-topology, not in a host `std::unordered_map`. That is exactly what child
-universes / meta-router regions are for.
+The context-2 layout is the child-universe mapping, measured with compact slabs:
+79 slabs on Alice full and 109 on Moby Dick. Its top-1 is 45.12% / 38.98%. It
+beats the topology bigram but not KN-2, which is the honest target.
+
+### Context-2 child universes
+
+`Context2Topology` materializes the layout: the router chart's 256 heads are
+first context bytes, and each observed first byte opens one child universe. The
+child's pair cells hold a directed 256x256 count matrix:
+
+```text
+child(a).pair_cell(b,c).s_plus()  = count(a,b,c)  when b <= c
+child(a).pair_cell(b,c).s_minus() = count(a,b,c)  when b >  c
+```
+
+The two rails are required: a pair cell is canonical, so using only the address
+would alias `(b,c)` with `(c,b)`. `tests/test_context2_topology.cpp` proves the
+counts, prediction, child count, checksums, and missing-context empty result.
+
+Dense child-universe cost is 8 MiB each: 79 charts = 632 MiB on Alice full,
+109 = 872 MiB on Moby Dick. That fits a runner with paging, but it is why the
+next step is sparse child pages or a compact count slab behind the pager, not
+256 dense universes. The topology mapping is real; the dense allocation is the
+remaining engineering cost.
 
 Run:
 

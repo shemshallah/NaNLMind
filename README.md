@@ -104,6 +104,9 @@ make
 ./build/nanlm-universal phase
 ./build/nanlm-universal router
 ./build/nanlm-universal ntf
+./build/nanlm-universal byte
+./build/nanlm-universal kn
+./build/nanlm-universal ctx2
 ./build/nanlm-universal growth
 make test
 make legacy

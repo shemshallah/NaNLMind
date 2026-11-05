@@ -209,15 +209,18 @@ First byte-level result on `data/alice_excerpt.txt` (30 KB, 80/20):
 | slot-2 (context 2 + backoff) | 41.06% | 4.023 |
 | KN-2 on Alice full | 45.13% | **2.676** |
 | KN-2 on Moby Dick | 39.01% | **2.895** |
+| context-2 layout, Alice full | 45.12% | 3.281 |
+| context-2 layout, Moby Dick | 38.98% | 3.067 |
 
 The topology matches the host bigram exactly. That is storage fidelity, not a
 shared-array trick: snapshot/restore preserves it, a different training corpus
 changes predictions, and a direct pair-cell count mutation changes the
 prediction. Bigram beats order-0 by 0.786 bits/byte. Context-2 improves top-1 to 41.06% but is still worse in BPC on 30 KB.
 Kneser-Ney trigram on the full corpora is much stronger: 2.676 BPC on Alice
-full and 2.895 on Moby Dick, versus topology bigram 3.509/3.539. The gap is the
-two-byte context the topology cannot store yet. That is the next substrate
-target, not a smoothing trick.
+full and 2.895 on Moby Dick, versus topology bigram 3.509/3.539. The context-2
+child-universe layout now exists: one child per first byte, with directed
+pair-cell counts, and it reaches 3.281/3.067 BPC. It still trails KN-2. The
+remaining issue is sparse child-page allocation, not the topology mapping.
 
 `snapshot` / `headshift` now produce real `HeadView` packets from a serialized
 chart and evolve a local snapshot. Cross-job snapshot persistence to
