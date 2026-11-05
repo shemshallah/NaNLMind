@@ -27,6 +27,8 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 21 | [21_FRAME_SYNC.md](21_FRAME_SYNC.md) | How do forward/rollback frames meet, and how do heads invert a frame? |
 | 22 | [22_ATOMIC_CLOCK.md](22_ATOMIC_CLOCK.md) | How is wall time anchored without putting it into state order? |
 | 23 | [23_NAN_TRANSLATION_FABRIC.md](23_NAN_TRANSLATION_FABRIC.md) | How do physical, universe, and semantic addresses translate? |
+| 24 | [24_ONE_UNIVERSE_TRAINING.md](24_ONE_UNIVERSE_TRAINING.md) | How does one universe train and pass its gates? |
+| 25 | [25_GLOBAL_META_BRAINSTORM.md](25_GLOBAL_META_BRAINSTORM.md) | What is the 256×256×256 global meta, and why not build it yet? |
 
 The short version:
 

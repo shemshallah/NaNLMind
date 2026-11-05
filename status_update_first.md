@@ -139,6 +139,26 @@ Crypto is a hook: Ed25519 / ML-KEM / SHA3 / NSP8 belong in NaN/0S or a native
 verifier. A valid universe address does not grant access; identity, address,
 and authorization are separate.
 
+## 5.2 NCR and two cluster layers
+
+The NaN Cluster Runtime maps physical systems to Heads:
+
+- `SystemProfile` — arch, cores, RAM, GPU, storage, bandwidth;
+- `ClusterProfile` — up to 256 systems;
+- `ClusterRuntime` — placement, two-phase handoff ownership, failover,
+  migration planning;
+- `SuperclusterProfile` — 256 clusters;
+- `SuperclusterRuntime` — 256 regions × 256 Heads = 65,536 Head placements.
+
+A failed system reassigns its Heads inside the cluster. A whole region can
+migrate to another compatible cluster. A universe can be hosted by a cluster
+of phones, a cluster of servers, or a mixed cluster.
+
+The global meta (256 meta-universes × 256 superclusters × 256 clusters × 256
+systems) is design-only. The arithmetic envelope is 4.29B systems, 1.1T Head
+instances, 32 PiB dense at the extreme; the regional reading is one universe per
+supercluster = 65,536 universes, 16.7M Heads, 512 GiB dense.
+
 ## 6. Live ring
 
 - `nanlm-cpu-1..6` — disposable head runners
@@ -165,6 +185,24 @@ epochs were processed in one job in ~94 seconds. The six-workflow protocol is
 still available as the explicit handoff proof.
 
 ---
+
+## 6.1 Single-universe training
+
+`UniverseTrainer` trains Boolean heads and temporal sequences on one 8 MiB
+chart. `tests/test_universe_task.cpp` learns XOR, AND, and OR on separate heads
+at 4/4, and replays a four-head sequence forward and backward.
+
+`make universe-check` runs the single-universe gate:
+
+- Boolean learning;
+- 256-head structure;
+- sequence order;
+- handoff;
+- growth;
+- inverse frames;
+- contemplation.
+
+The global meta waits until these pass on a real byte-level task.
 
 ## 7. CLOCK_SYNC result
 
@@ -214,7 +252,7 @@ storage/addressing and bidirectional memory, not a measured learning advantage.
 ## 10. Next
 
 1. Load real chart/head/scratch state from `nanlm-vram` in the ring worker.
-2. Route selection by resonance attention with congestion/backpressure.
+2. Run a held-out byte-level task with bigram and plain-RNN baselines.
 3. Connect the NTF mapping record to the signed registry and peer discovery.
 4. Two-universe communication demo with the NTF and temporal handoff.
 5. Dropped-slot recovery using reverse rails and contemplation frames.

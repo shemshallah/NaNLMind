@@ -157,6 +157,8 @@ baseline — a plain RNN matching the 256-head topology — is in
 | `docs/21_FRAME_SYNC.md` | forward/rollback frame meetings, inverse frames, contemplation |
 | `docs/22_ATOMIC_CLOCK.md` | global wall anchor from multiple HTTPS sources |
 | `docs/23_NAN_TRANSLATION_FABRIC.md` | NTF: physical/universe/semantic address translation |
+| `docs/24_ONE_UNIVERSE_TRAINING.md` | single-universe training and test ladder |
+| `docs/25_GLOBAL_META_BRAINSTORM.md` | 256×256×256 global meta, design only |
 | `NaNLM_statespace/` | all original archives + extracted snapshots + SHA-256 manifest |
 
 ---
