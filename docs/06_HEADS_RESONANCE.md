@@ -49,6 +49,10 @@ regions of the one object.
 | `HeadLinks` | row/column pair links, adjacency | `HeadView::links`, `adjacent_to` |
 | `HeadHistory` | local event ring (cache; ledger is authority) | `HeadHistory` |
 
+Each head also carries a **2-bit transform phase** in the scratch (`I, B, BR,
+R`). This is the address-transform oscillator, not the four NaN head classes.
+The 256 heads split into 240 half-rate and 16 static anchors.
+
 Key rules:
 
 - exactly 256 valid identities; the registry rejects a duplicate or a

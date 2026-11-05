@@ -3,6 +3,7 @@
 #include "nanlm/pager.hpp"
 #include "nanlm/resonance.hpp"
 #include "nanlm/ring.hpp"
+#include "nanlm/schedule.hpp"
 #include "nanlm/universe.hpp"
 
 #include <cstdio>
@@ -351,6 +352,67 @@ int cmd_global() {
     return 0;
 }
 
+int cmd_growth() {
+    GlobalTopology g(0x4E614E4C4D000001ull);
+    GrowthPolicy policy;
+    HeadArray heads = g.root_heads();
+    HeadView h = heads.at(0);
+    for (int i = 0; i < policy.error_streak_required; ++i) {
+        h.note_self_model_error(40000, policy.self_error_threshold,
+                                policy.error_streak_required);
+    }
+    std::cout << "NaNLM Universal — growth and consolidation\n\n";
+    std::cout << "head 0 error=" << h.self_error() << " streak="
+              << static_cast<int>(h.error_streak()) << "\n";
+    const PageId parent = PageId::root();
+    const PageId child = g.grow_head(parent, 0, policy, 0x99);
+    std::cout << "grew child " << child.to_string() << ", charts=" << g.chart_count()
+              << ", manifest gen=" << g.manifest().generation << "\n";
+
+    const auto* entry = g.pages().entry(parent);
+    if (!entry) return 1;
+    ScratchJournal j;
+    j.id = 1;
+    j.epoch = g.clock().tick();
+    j.page = parent;
+    j.base = entry->page->digest();
+    j.ops.push_back({ScratchKind::Chart, 0, 0, {1, 2, 3}});
+    j.ops.push_back({ScratchKind::HeadLocal, 0, 0, {0xAA, 0xBB}});
+    const ConsolidationResult r = g.consolidate(j, 1);
+    std::cout << "consolidate ok=" << r.ok << " gen=" << r.generation
+              << " error=" << r.error << "\n";
+    std::cout << "global digest " << hex(g.global_digest()) << "\n";
+    return r.ok ? 0 : 1;
+}
+
+int cmd_phase() {
+    std::cout << "NaNLM Universal — transform phase and wake scheduling\n\n";
+    std::uint32_t c4 = 0, c2 = 0, c1 = 0;
+    for (std::uint32_t i = 0; i < 65536; ++i) {
+        const std::uint8_t s = transform_orbit_size(static_cast<std::uint16_t>(i));
+        if (s == 4) ++c4;
+        else if (s == 2) ++c2;
+        else ++c1;
+    }
+    std::cout << "transform orbits (I, B, BR, R):\n";
+    std::cout << "  size 4  " << c4 << "\n";
+    std::cout << "  size 2  " << c2 << "\n";
+    std::cout << "  size 1  " << c1 << "\n\n";
+    std::cout << "wake-slot max gap (256 slots):\n";
+    std::cout << "  alive  ideal  bit-reversed  linear  random\n";
+    for (int k : {8, 16, 32, 5}) {
+        const auto br = bit_reversed_wake_slots(k);
+        const auto lin = linear_wake_slots(k);
+        const auto rnd = random_wake_slots(k, 0x4E614E4C);
+        std::cout << "  " << k << "      " << ideal_max_gap(k) << "     "
+                  << max_wake_gap(br) << "           " << max_wake_gap(lin) << "     "
+                  << max_wake_gap(rnd) << "\n";
+    }
+    std::cout << "\npalindromic 16-bit epoch markers: " << palindromic_epochs().size() << "\n";
+    std::cout << "These are markers, not a regular wall clock.\n";
+    return 0;
+}
+
 int cmd_clock() {
     TemporalClock c;
     std::cout << "NaNLM Universal — temporal clock (from nanclock.zip)\n\n";
@@ -425,6 +487,8 @@ void usage() {
               << "  global      one global topology with cross-space relations\n"
               << "  heads       256-head palindromic layer and runner handoff\n"
               << "  clock       temporal oscillator / global epoch heartbeat\n"
+              << "  phase       transform-phase orbits and wake-slot scheduling\n"
+              << "  growth      child-chart growth and scratch consolidation\n"
               << "  scale       print the hierarchical scaling table\n"
               << "  resonance   run the 256-head resonance wave\n"
               << "  bits        demonstrate bit addressing and copy-on-write\n";
@@ -443,6 +507,8 @@ int main(int argc, char** argv) {
     if (cmd == "global") return cmd_global();
     if (cmd == "heads") return cmd_heads();
     if (cmd == "clock") return cmd_clock();
+    if (cmd == "phase") return cmd_phase();
+    if (cmd == "growth") return cmd_growth();
     if (cmd == "scale") return cmd_scale();
     if (cmd == "resonance") return cmd_resonance();
     if (cmd == "bits") return cmd_bits();

@@ -210,12 +210,12 @@ void Universe::rebuild_links() {
         if (heads_[a].edge_head == 0xFFFFu) heads_[a].edge_head = static_cast<std::uint16_t>(p);
         if (last_a[a] != kNoIndex) desc_[pair_to_index_[last_a[a]]].next_a = p;
         last_a[a] = p;
-        heads_[a].edge_count = static_cast<std::uint16_t>(heads_[a].edge_count + 1u);
+        heads_[a].edge_count = static_cast<std::uint8_t>(heads_[a].edge_count + 1u);
 
         // Column list for head b: pairs (a, b) traversed through next_b.
         if (last_b[b] != kNoIndex) desc_[pair_to_index_[last_b[b]]].next_b = p;
         last_b[b] = p;
-        heads_[b].edge_count = static_cast<std::uint16_t>(heads_[b].edge_count + 1u);
+        heads_[b].edge_count = static_cast<std::uint8_t>(heads_[b].edge_count + 1u);
 
         adjacency_[a][b >> 6] |= (1ull << (b & 63u));
         adjacency_[b][a >> 6] |= (1ull << (a & 63u));

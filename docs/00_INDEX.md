@@ -18,6 +18,8 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 12 | [12_PROVENANCE.md](12_PROVENANCE.md) | Archive hashes, duplicates, and round map. |
 | 13 | [13_OPEN_QUESTIONS.md](13_OPEN_QUESTIONS.md) | The genuinely unresolved questions. |
 | 14 | [14_TEMPORAL_CLOCK.md](14_TEMPORAL_CLOCK.md) | How does the nanclock logical oscillator synchronize distributed spaces? |
+| 15 | [15_PHASE_SCHEDULING.md](15_PHASE_SCHEDULING.md) | What are the transform-phase orbits and the bit-reversed wake schedule? |
+| 16 | [16_GROWTH_CONSOLIDATION.md](16_GROWTH_CONSOLIDATION.md) | When does a head grow, and how does consolidation flip the manifest? |
 
 The short version:
 

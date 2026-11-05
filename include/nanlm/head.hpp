@@ -110,6 +110,21 @@ public:
     HeadLinks links() const;
     bool adjacent_to(std::uint8_t other) const;
 
+    std::uint8_t transform_phase() const;
+    void set_transform_phase(std::uint8_t phase);
+    void advance_transform_phase();
+    std::uint16_t self_error() const;
+    std::uint8_t error_streak() const;
+    std::uint16_t scratch_used() const;
+    void set_self_error(std::uint16_t error);
+    void note_self_model_error(std::uint16_t error, std::uint16_t threshold,
+                               std::uint8_t required_streak);
+    void note_scratch_used(std::uint16_t used);
+    bool should_grow(std::uint16_t error_threshold, std::uint8_t required_streak,
+                     std::uint16_t scratch_threshold) const;
+    bool has_child() const;
+    void mark_grown();
+
     HeadPhase phase() const;
     void set_phase(HeadPhase phase);
     void phase_step(std::uint32_t delta);

@@ -46,6 +46,8 @@ The 4 NaN types are the four legal heads:
 
 The 4 types in the two faces give a 4-bit class nibble, and that nibble is one of the 16 two-input Boolean truth tables. The four types x four values are the 16 Boolean functions.
 
+Do not confuse the four NaN head classes with the four **transform images** `I, B, BR, R`. The transform oscillator and its orbit counts are in [docs/15_PHASE_SCHEDULING.md](docs/15_PHASE_SCHEDULING.md).
+
 ---
 
 ## One global topology
@@ -99,6 +101,8 @@ make
 ./build/nanlm-universal global
 ./build/nanlm-universal scale
 ./build/nanlm-universal resonance
+./build/nanlm-universal phase
+./build/nanlm-universal growth
 make test
 ```
 
@@ -124,6 +128,8 @@ make test
 | `docs/09_ROADMAP.md` | M0–M7 deliverables and gates |
 | `docs/10_FALSIFICATION.md` | claims, tests, stop conditions |
 | `docs/14_TEMPORAL_CLOCK.md` | nanclock logical time for distributed synchronization |
+| `docs/15_PHASE_SCHEDULING.md` | transform-phase orbits, global-scratch sync, bit-reversed wake slots |
+| `docs/16_GROWTH_CONSOLIDATION.md` | child-chart growth and atomic scratch consolidation |
 | `NaNLM_statespace/` | all original archives + extracted snapshots + SHA-256 manifest |
 
 ---
@@ -150,8 +156,9 @@ Full state is dense only in the table. The real system is sparse: an unwritten c
 
 - a precise address algebra with a verified transposition theorem;
 - a 32,896 shared-register + 65,536 address-register, bit-addressable substrate;
-- 256 self-modifying heads with 1 KiB scratchpads and a 16-bit Boolean mask;
+- 256 self-modifying heads with 1 KiB scratchpads, a 16-bit Boolean mask, and a 2-bit transform phase;
 - a deterministic logical clock (`nanclock`) for distributed ordering;
+- growth by self-model error or scratch overflow, and atomic scratch consolidation;
 - one global topology with charts as coordinate regions;
 - a palindromic temporal hypergraph with bidirectional memory;
 - a deterministic, integer-only core with a logical clock that can be replayed and audited;

@@ -67,6 +67,10 @@ then train it. Do not invert the order.
 - temporal link creation/removal, branch/merge, epoch slices;
 - the nanclock logical oscillator as the global `(tick, phase)` stamp; runner
   handoffs and lease ticks use it;
+- the transform-phase oscillator (`I, B, BR, R`) with 2 bits per head in scratch;
+- bit-reversed wake slots for survivor scheduling;
+- growth by self-model error / scratch overflow, and atomic scratch
+  consolidation with an R17 base-hash gate;
 - a cross-chart relation demo with a pairwise-only baseline;
 - a sequence replay demo (forward and backward) with a symmetric-storage
   baseline;

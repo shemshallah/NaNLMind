@@ -14,8 +14,9 @@ void put_u64(std::vector<std::uint8_t>& out, std::uint64_t v) {
 
 Hash256 event_hash(const Hash256& parent, const Event& e) {
     std::vector<std::uint8_t> buf;
-    buf.reserve(8 + 32 + 8 + 2 + 8 + 32 + 32);
+    buf.reserve(8 + 8 + 8 + 2 + 8 + 32 + 32);
     put_u64(buf, e.seq);
+    put_u64(buf, e.epoch);
     buf.push_back(e.actor);
     buf.push_back(e.kind);
     put_u64(buf, e.addr);
@@ -40,9 +41,10 @@ Ledger::Ledger() : genesis_{}, head_{} {}
 Ledger::Ledger(Hash256 genesis) : genesis_(genesis), head_(genesis) {}
 
 Event Ledger::append(std::uint8_t actor, std::uint8_t kind, std::uint64_t addr,
-                     Hash256 before, Hash256 after) {
+                     Hash256 before, Hash256 after, std::uint64_t epoch) {
     Event e;
     e.seq = events_.size();
+    e.epoch = epoch;
     e.actor = actor;
     e.kind = kind;
     e.addr = addr;
@@ -147,7 +149,7 @@ CommitResult Replica::commit(const Delta& delta, PageTable& table, Ledger& globa
     if (!r.ok) return r;
     const auto* entry = table.entry(delta.page);
     const Hash256 before = entry->page->digest();
-    global_ledger.append(id_, kind, 0, before, delta.next);
+    global_ledger.append(id_, kind, 0, before, delta.next, delta.epoch);
     table.flush(delta.page);
     r.ok = true;
     return r;

@@ -177,12 +177,16 @@ static_assert(std::is_trivially_copyable_v<Descriptor>);
 struct Head {
     std::uint16_t fixed_addr = 0;
     std::uint16_t edge_head = 0xFFFFu; // first pair index in the row list
-    std::uint16_t edge_count = 0;
-    std::uint16_t child = 0;           // child page id / 0 = none
+    std::uint16_t child = 0;           // 1 = has a child chart at PageId::child(chart, h)
+    std::uint16_t self_error = 0;      // normalized self-model error, 0..65535
     std::uint32_t phase = 0;           // Q16.16 phase
     std::uint32_t energy = 0;          // Q16.16 amplitude
-    std::uint32_t load = 0;            // homeostasis
-    std::uint32_t flags = 0;
+    std::uint16_t load = 0;            // homeostasis
+    std::uint16_t scratch_used = 0;    // high-water mark of the head scratchpad
+    std::uint8_t edge_count = 0;       // 255 for an interior head
+    std::uint8_t flags = 0;
+    std::uint8_t error_streak = 0;     // consecutive high-error observations
+    std::uint8_t transform_phase = 0; // 2 bits: I/B/BR/R oscillator phase
     std::uint32_t genome = 0;
     std::uint32_t checksum = 0;
 };

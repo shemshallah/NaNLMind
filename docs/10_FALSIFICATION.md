@@ -69,6 +69,10 @@ by the API and tests.
 | D8 | the clock is a deterministic logical stamp | two clocks, same ticks | different digest |
 | D9 | a replica can catch up by `observe(stamp)` | rewind/replay | phase mismatch |
 | D10 | the clock is not used as wall time | no ns/ms in the state | wall time leaks into order |
+| D11 | the transform orbit counts are 65,040/480/16 | exhaustive | different counts |
+| D12 | bit-reversed wake slots stay evenly spread | max-gap test | gap > bit-reversed |
+| D13 | growth requires error streak or scratch overflow | policy test | grows on one low sample |
+| D14 | consolidation rejects stale base and aborts on bad op | R17 tests | partial commit |
 
 **Status:** D1–D4, D6 pass in the core. D5 is the R18 result but needs a
 substrate-only reproduction. D7 needs the M3 integration.

@@ -264,6 +264,60 @@ constexpr std::uint16_t transform16(std::uint16_t a, Orientation o) {
     return x;
 }
 
+// The four images of an address under the Klein-four action. This is a
+// different "4" from the four NaN head classes:
+//   phase 0 = I, 1 = B, 2 = B∘R, 3 = R.
+// Alternating B and R gives x -> Bx -> BRx -> Rx -> x.
+enum class TransformPhase : std::uint8_t {
+    Identity = 0,
+    ByteSwap = 1,
+    Both = 2,
+    BitReverse = 3,
+};
+
+constexpr std::uint16_t apply_transform_phase(std::uint16_t a, std::uint8_t phase) {
+    switch (phase & 3u) {
+        case 0: return a;
+        case 1: return byte_swap16(a);
+        case 2: return transform16(a, Orientation::ByteAndBitReverse);
+        case 3: return reverse16(a);
+    }
+    return a;
+}
+
+constexpr std::uint8_t next_transform_phase(std::uint8_t phase) {
+    return static_cast<std::uint8_t>((phase + 1u) & 3u);
+}
+
+// Advance the oscillator by one tick: alternating B, R, B, R.
+// phase 0 (I) -> B, phase 1 (B) -> R, phase 2 (BR) -> B, phase 3 (R) -> R.
+constexpr std::uint16_t advance_transform_phase(std::uint16_t a, std::uint8_t phase) {
+    return (phase & 1u) ? reverse16(a) : byte_swap16(a);
+}
+
+// Orbit size under the Klein-four action {I, B, R, B∘R}.
+constexpr std::uint8_t transform_orbit_size(std::uint16_t a) {
+    const bool b = byte_swap16(a) == a;
+    const bool r = reverse16(a) == a;
+    if (b && r) return 1;
+    if (b || r) return 2;
+    return 4;
+}
+
+constexpr bool transform_static(std::uint16_t a) {
+    return byte_swap16(a) == a && reverse16(a) == a;
+}
+
+constexpr std::string_view transform_phase_name(std::uint8_t phase) {
+    switch (phase & 3u) {
+        case 0: return "I";
+        case 1: return "B";
+        case 2: return "BR";
+        case 3: return "R";
+    }
+    return "?";
+}
+
 constexpr std::string_view orientation_name(Orientation o) {
     switch (o) {
         case Orientation::Identity: return "I";

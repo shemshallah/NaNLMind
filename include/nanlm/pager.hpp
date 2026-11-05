@@ -155,6 +155,7 @@ public:
     PageTable();
 
     bool map(const PageId& id, PagePtr page, std::uint8_t perms = kPermAll);
+    bool replace(const PageId& id, PagePtr page, const Hash256& expected_base);
     bool unmap(const PageId& id);
     bool contains(const PageId& id) const;
     PagePtr resolve(const PageId& id);

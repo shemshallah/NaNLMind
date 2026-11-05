@@ -12,6 +12,7 @@
 #pragma once
 
 #include "nanlm/clock.hpp"
+#include "nanlm/consolidation.hpp"
 #include "nanlm/hypergraph.hpp"
 #include "nanlm/head.hpp"
 #include "nanlm/ledger.hpp"
@@ -65,6 +66,19 @@ public:
     HeadArray head_array(const PageId& chart);
     HeadArray root_heads() { return head_array(PageId::root()); }
 
+    // Growth: materialize a child chart when a head's self-model error stays
+    // high or its scratchpad overflows.
+    GrowthDecision evaluate_growth(const PageId& chart, std::uint8_t head,
+                                   const GrowthPolicy& policy);
+    std::vector<GrowthDecision> scan_growth(const PageId& chart, const GrowthPolicy& policy);
+    PageId grow_head(const PageId& chart, std::uint8_t head, const GrowthPolicy& policy,
+                     std::uint64_t genome = 0);
+
+    // Consolidation: replay community scratch into a new page version and flip
+    // the manifest atomically under the R17 base-hash rules.
+    ConsolidationResult consolidate(const ScratchJournal& journal, std::uint8_t actor = 1);
+    Manifest manifest() const { return manifests_.snapshot(); }
+
     // One identity for the whole object: chart hashes + hypergraph + temporal
     // memory + ledger head.
     Hash256 global_digest() const;
@@ -72,7 +86,7 @@ public:
     // Explicit committed event. The caller supplies the before/after state
     // hashes; the global ledger is the single history.
     Event commit(std::uint8_t actor, std::uint8_t kind, std::uint64_t addr,
-                 Hash256 before, Hash256 after);
+                 Hash256 before, Hash256 after, std::uint64_t epoch = 0);
 
 private:
     PageTable pages_;
@@ -80,6 +94,9 @@ private:
     BidirectionalMemory temporal_;
     Ledger ledger_;
     TemporalClock clock_;
+    ManifestStore manifests_;
+    ConsolidationEngine consolidation_{pages_, ledger_, manifests_};
+    void publish_manifest(const PageId& changed);
 };
 
 } // namespace nanlm

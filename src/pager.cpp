@@ -144,6 +144,19 @@ bool PageTable::map(const PageId& id, PagePtr page, std::uint8_t perms) {
     return true;
 }
 
+bool PageTable::replace(const PageId& id, PagePtr page, const Hash256& expected_base) {
+    Entry* e = get(id);
+    if (!e || !page) return false;
+    if (!(e->page->digest() == expected_base)) return false;
+    e->page = std::move(page);
+    e->dirty = false;
+    std::fill(e->dirty_cells.begin(), e->dirty_cells.end(), 0);
+    e->page->clear_address_dirty();
+    e->base_hash = e->page->digest();
+    ++e->version;
+    return true;
+}
+
 bool PageTable::unmap(const PageId& id) { return pages_.erase(id) != 0; }
 
 bool PageTable::contains(const PageId& id) const { return get(id) != nullptr; }

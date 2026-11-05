@@ -66,6 +66,63 @@ bool HeadView::adjacent_to(std::uint8_t other) const {
     return array_->universe().adjacent(index_, other);
 }
 
+std::uint8_t HeadView::transform_phase() const {
+    return static_cast<std::uint8_t>(record().transform_phase & 3u);
+}
+
+void HeadView::set_transform_phase(std::uint8_t phase) {
+    const std::uint8_t p = static_cast<std::uint8_t>(phase & 3u);
+    record().transform_phase = p;
+    std::uint8_t* local = scratch().local();
+    local[0] = static_cast<std::uint8_t>((local[0] & ~0x03u) | p);
+}
+
+void HeadView::advance_transform_phase() {
+    set_transform_phase(next_transform_phase(transform_phase()));
+}
+
+std::uint16_t HeadView::self_error() const { return record().self_error; }
+std::uint8_t HeadView::error_streak() const { return record().error_streak; }
+std::uint16_t HeadView::scratch_used() const { return record().scratch_used; }
+
+void HeadView::set_self_error(std::uint16_t error) {
+    record().self_error = error;
+}
+
+void HeadView::note_self_model_error(std::uint16_t error, std::uint16_t threshold,
+                                     std::uint8_t required_streak) {
+    Head& r = record();
+    r.self_error = error;
+    if (error >= threshold) {
+        if (r.error_streak < 255) ++r.error_streak;
+    } else {
+        r.error_streak = 0;
+    }
+    (void)required_streak;
+}
+
+void HeadView::note_scratch_used(std::uint16_t used) {
+    Head& r = record();
+    if (used > r.scratch_used) r.scratch_used = used;
+}
+
+bool HeadView::should_grow(std::uint16_t error_threshold, std::uint8_t required_streak,
+                           std::uint16_t scratch_threshold) const {
+    const Head& r = record();
+    if (r.scratch_used >= scratch_threshold) return true;
+    return r.self_error >= error_threshold && r.error_streak >= required_streak;
+}
+
+bool HeadView::has_child() const { return record().child != 0; }
+
+void HeadView::mark_grown() {
+    Head& r = record();
+    r.child = 1;
+    r.self_error = 0;
+    r.error_streak = 0;
+    r.scratch_used = 0;
+}
+
 HeadPhase HeadView::phase() const {
     const std::uint8_t c = cell().s_plus().far_class();
     if (c == 0xFFu) return HeadPhase::QuietPositive;
@@ -172,11 +229,14 @@ RunnerResult HeadRunner::run(std::uint8_t head, const HeadToken& token) {
     const std::uint64_t before = view.cell().generation;
     view.cell().epoch = static_cast<std::uint32_t>(effective.epoch + 1u);
     view.cell().generation = static_cast<std::uint16_t>(view.cell().generation + 1u);
-    record.load = static_cast<std::uint32_t>(record.load + 1u + (effective.payload & 0xFFu));
+    const std::uint32_t load =
+        static_cast<std::uint32_t>(record.load) + 1u + (effective.payload & 0xFFu);
+    record.load = static_cast<std::uint16_t>(std::min<std::uint32_t>(load, 0xFFFFu));
     const std::uint64_t energy =
         static_cast<std::uint64_t>(record.energy) + 1024u + (effective.payload & 0xFFu);
     record.energy = static_cast<std::uint32_t>(std::min<std::uint64_t>(energy, 1u << 20));
     record.phase = (effective.phase + (effective.payload & 0xFFu)) & 0xFFFFu;
+    view.advance_transform_phase();
 
     // Per-head scratchpad + optional Boolean self-modification.
     // High bit of payload = patch the 16-bit operator mask with the low word.

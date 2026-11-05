@@ -4,12 +4,12 @@ DEPFLAGS := -MMD -MP
 LDFLAGS ?=
 BUILD := build
 
-LIB_SRC := src/sha256.cpp src/universe.cpp src/pager.cpp src/resonance.cpp src/ledger.cpp src/ring.cpp src/hypergraph.cpp src/temporal.cpp src/global.cpp src/head.cpp src/clock.cpp
+LIB_SRC := src/sha256.cpp src/universe.cpp src/pager.cpp src/resonance.cpp src/ledger.cpp src/ring.cpp src/hypergraph.cpp src/temporal.cpp src/global.cpp src/head.cpp src/clock.cpp src/consolidation.cpp src/schedule.cpp
 LIB_OBJ := $(patsubst src/%.cpp,$(BUILD)/%.o,$(LIB_SRC))
 LIB := $(BUILD)/libnanlm.a
 CLI := $(BUILD)/nanlm-universal
 
-TEST_SRC := tests/test_address.cpp tests/test_nan16.cpp tests/test_universe.cpp tests/test_pager.cpp tests/test_resonance.cpp tests/test_ledger.cpp tests/test_scale.cpp tests/test_hypergraph.cpp tests/test_temporal.cpp tests/test_global.cpp tests/test_heads.cpp tests/test_clock.cpp
+TEST_SRC := tests/test_address.cpp tests/test_nan16.cpp tests/test_universe.cpp tests/test_pager.cpp tests/test_resonance.cpp tests/test_ledger.cpp tests/test_scale.cpp tests/test_hypergraph.cpp tests/test_temporal.cpp tests/test_global.cpp tests/test_heads.cpp tests/test_clock.cpp tests/test_phase.cpp tests/test_growth.cpp tests/test_consolidation.cpp
 TEST_BIN := $(patsubst tests/%.cpp,$(BUILD)/%,$(TEST_SRC))
 
 .PHONY: all test clean verify

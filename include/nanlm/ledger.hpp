@@ -17,6 +17,7 @@ namespace nanlm {
 
 struct Event {
     std::uint64_t seq = 0;
+    std::uint64_t epoch = 0; // logical clock tick
     std::uint8_t actor = 0;
     std::uint8_t kind = 0;
     std::uint64_t addr = 0;
@@ -32,7 +33,7 @@ public:
     explicit Ledger(Hash256 genesis);
 
     Event append(std::uint8_t actor, std::uint8_t kind, std::uint64_t addr,
-                 Hash256 before, Hash256 after);
+                 Hash256 before, Hash256 after, std::uint64_t epoch = 0);
 
     bool verify(std::string* error = nullptr) const;
     std::size_t size() const { return events_.size(); }

@@ -122,6 +122,19 @@ single integer plus one bit, reconstructible from genesis, and independent of
 how long a tick takes in nanoseconds or milliseconds. See
 [14_TEMPORAL_CLOCK.md](14_TEMPORAL_CLOCK.md).
 
+### 4.6 Wake slots and phase sync
+
+Replicas should not wake in linear order. Assign wake slot `reverse8(i)`; any
+power-of-two subset of survivors stays evenly spread. Verified max gaps with
+256 slots: 8 alive = 32, 16 = 16, 32 = 8 (linear: 249, 241, 225). Five alive is
+64 against an ideal of 52 because 5 is not a power of two.
+
+The 256 phase oscillators also need the community scratch to avoid frozen
+domains. Local plurality alone synchronized 1/10 runs in the reported
+experiment; adding the global scratch synchronized 10/10. The scratch is a
+field of the one object, so this does not introduce a coordinator. See
+[15_PHASE_SCHEDULING.md](15_PHASE_SCHEDULING.md).
+
 ---
 
 ## 5. Memory budget

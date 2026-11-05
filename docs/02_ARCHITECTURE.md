@@ -266,6 +266,17 @@ A logical clock (`include/nanlm/clock.hpp`, from `nanclock.zip`) provides a
 deterministic `(tick, phase)` stamp. It is a field of the same object, included
 in the global digest; it is not a wall clock and not a second topology.
 
+A head also carries a 2-bit **transform phase** (`I, B, BR, R`). This is the
+4-phase address oscillator, distinct from the four NaN head classes. The 256
+palindromic heads are 240 half-rate and 16 static anchors; the non-fixed cells
+are the fast phases. See [15_PHASE_SCHEDULING.md](15_PHASE_SCHEDULING.md).
+
+Growth and consolidation are fields of the same object. A head materializes a
+child chart when its self-model error stays high or its scratchpad overflows.
+Consolidation replays community scratch into a COW workspace and flips the
+manifest only after the R17 base-hash checks. See
+[16_GROWTH_CONSOLIDATION.md](16_GROWTH_CONSOLIDATION.md).
+
 Homeostasis is a global scheduling policy, not a negotiation between minds:
 load, energy, and fatigue determine which coordinate regions are active,
 which are cached, and which are consolidated. Different layers can own

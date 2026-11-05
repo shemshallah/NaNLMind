@@ -24,3 +24,7 @@ jobs:
         run: ./build/nanlm-universal global
       - name: Scale
         run: ./build/nanlm-universal scale
+      - name: Phase
+        run: ./build/nanlm-universal phase
+      - name: Growth
+        run: ./build/nanlm-universal growth
