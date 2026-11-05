@@ -8,6 +8,7 @@
 #include "nanlm/byte_model.hpp"
 #include "nanlm/slot_memory.hpp"
 #include "nanlm/context2.hpp"
+#include "nanlm/vector_store.hpp"
 #include "nanlm/handoff.hpp"
 #include "nanlm/schedule.hpp"
 #include "nanlm/universe.hpp"
@@ -553,6 +554,34 @@ int cmd_bootstrap(int argc, char** argv) {
     return 0;
 }
 
+int cmd_vectors() {
+    BinStore store;
+    const BinId keys = store.create(8, 2);
+    const BinId values = store.create(8, 1);
+    if (keys == kInvalidBin || values == kInvalidBin) return 1;
+    store.write(keys, 0, {1, 2, 0, 0, 0, 0, 0, 0});
+    store.write(keys, 1, {0, 0, 3, 4, 0, 0, 0, 0});
+    store.write(values, 0, {7, 0, 0, 0, 0, 0, 0, 0});
+
+    PointBinMap points;
+    points.bind(16254, BinRef{keys, 0});
+
+    AssocMemory memory(store);
+    memory.bind({BinRef{keys, 0}}, {BinRef{values, 0}}, 65536, 0x50414952ull);
+    memory.bind({BinRef{keys, 1}}, {BinRef{values, 0}}, 65536, 0x4B455932ull);
+
+    std::cout << "point 16254 -> bin " << points.resolve(16254).bin
+              << " slot " << points.resolve(16254).slot << "\n";
+    const auto hits = memory.recall({1, 2, 0, 0, 0, 0, 0, 0}, 2);
+    for (const auto& hit : hits) {
+        std::cout << "recall id=" << hit.id << " score=" << hit.score
+                  << " value_bin=" << hit.values.front().bin << "\n";
+    }
+    std::cout << "bins=" << store.size() << " bindings=" << points.bindings()
+              << " associations=" << memory.size() << "\n";
+    return hits.empty() ? 1 : 0;
+}
+
 int cmd_ctx2(int argc, char** argv) {
     const char* path = argc > 2 ? argv[2] : "data/alice_full.txt";
     std::ifstream f(path, std::ios::binary);
@@ -773,6 +802,7 @@ void usage() {
               << "  byte [path] single-universe byte bigram train/eval\n"
               << "  kn [path] [order] Kneser-Ney byte baseline\n"
               << "  ctx2 [path] context-2 child-chart layout\n"
+              << "  vectors      addressable vector bins and macro recall\n"
               << "  bootstrap [path] [epochs] streaming byte bootstrap\n"
               << "  snapshot    write state/chart.nmc\n"
               << "  headshift   real HeadView packets for one slot\n"
@@ -801,6 +831,7 @@ int main(int argc, char** argv) {
     if (cmd == "byte") return cmd_byte(argc, argv);
     if (cmd == "kn") return cmd_kn(argc, argv);
     if (cmd == "ctx2") return cmd_ctx2(argc, argv);
+    if (cmd == "vectors") return cmd_vectors();
     if (cmd == "bootstrap") return cmd_bootstrap(argc, argv);
     if (cmd == "snapshot") return cmd_snapshot(argc, argv);
     if (cmd == "headshift") return cmd_headshift(argc, argv);

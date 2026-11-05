@@ -30,6 +30,10 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 24 | [24_ONE_UNIVERSE_TRAINING.md](24_ONE_UNIVERSE_TRAINING.md) | How does one universe train and pass its gates? |
 | 25 | [25_GLOBAL_META_BRAINSTORM.md](25_GLOBAL_META_BRAINSTORM.md) | What is the 256×256×256 global meta, and why not build it yet? |
 | 26 | [26_RATE_LIMITS.md](26_RATE_LIMITS.md) | How does the 24/7 ring stay inside GitHub API limits? |
+| 27 | [27_ANDROID_BOOTSTRAP.md](27_ANDROID_BOOTSTRAP.md) | How does the bootstrap run on Android, and how large is Gutenberg? |
+| 28 | [28_BEHAVIOR_GATES.md](28_BEHAVIOR_GATES.md) | What do the penguin/logic gates prove, and what is the fixed challenge? |
+| 29 | [29_REPEATABILITY.md](29_REPEATABILITY.md) | Is the alternating clock nondeterminism or a designed period-2 orbit? |
+| 30 | [30_VECTOR_BINS.md](30_VECTOR_BINS.md) | How do points address vector bins and macro associations? |
 
 The short version:
 

@@ -4,12 +4,12 @@ DEPFLAGS := -MMD -MP
 LDFLAGS ?=
 BUILD := build
 
-LIB_SRC := src/sha256.cpp src/universe.cpp src/pager.cpp src/resonance.cpp src/ledger.cpp src/ring.cpp src/hypergraph.cpp src/temporal.cpp src/global.cpp src/head.cpp src/clock.cpp src/consolidation.cpp src/schedule.cpp src/handoff.cpp src/router.cpp src/frame_sync.cpp src/meta_index.cpp src/atomic.cpp src/ntf.cpp src/ncr.cpp src/training.cpp src/supercluster.cpp src/byte_model.cpp src/slot_memory.cpp src/context2.cpp src/context2_topology.cpp
+LIB_SRC := src/sha256.cpp src/universe.cpp src/pager.cpp src/resonance.cpp src/ledger.cpp src/ring.cpp src/hypergraph.cpp src/temporal.cpp src/global.cpp src/head.cpp src/clock.cpp src/consolidation.cpp src/schedule.cpp src/handoff.cpp src/router.cpp src/frame_sync.cpp src/meta_index.cpp src/atomic.cpp src/ntf.cpp src/ncr.cpp src/training.cpp src/supercluster.cpp src/byte_model.cpp src/slot_memory.cpp src/context2.cpp src/context2_topology.cpp src/vector_store.cpp
 LIB_OBJ := $(patsubst src/%.cpp,$(BUILD)/%.o,$(LIB_SRC))
 LIB := $(BUILD)/libnanlm.a
 CLI := $(BUILD)/nanlm-universal
 
-TEST_SRC := tests/test_address.cpp tests/test_nan16.cpp tests/test_universe.cpp tests/test_pager.cpp tests/test_resonance.cpp tests/test_ledger.cpp tests/test_scale.cpp tests/test_hypergraph.cpp tests/test_temporal.cpp tests/test_global.cpp tests/test_heads.cpp tests/test_clock.cpp tests/test_phase.cpp tests/test_growth.cpp tests/test_consolidation.cpp tests/test_handoff.cpp tests/test_training.cpp tests/test_r18t_sequence.cpp tests/test_router.cpp tests/test_inverse.cpp tests/test_frame_sync.cpp tests/test_meta_index.cpp tests/test_contemplation.cpp tests/test_atomic.cpp tests/test_ntf.cpp tests/test_ncr.cpp tests/test_universe_task.cpp tests/test_supercluster.cpp tests/test_byte_model.cpp tests/test_recovery.cpp tests/test_slot_model.cpp tests/test_kneser_ney.cpp tests/test_context2.cpp tests/test_context2_topology.cpp
+TEST_SRC := tests/test_address.cpp tests/test_nan16.cpp tests/test_universe.cpp tests/test_pager.cpp tests/test_resonance.cpp tests/test_ledger.cpp tests/test_scale.cpp tests/test_hypergraph.cpp tests/test_temporal.cpp tests/test_global.cpp tests/test_heads.cpp tests/test_clock.cpp tests/test_phase.cpp tests/test_growth.cpp tests/test_consolidation.cpp tests/test_handoff.cpp tests/test_training.cpp tests/test_r18t_sequence.cpp tests/test_router.cpp tests/test_inverse.cpp tests/test_frame_sync.cpp tests/test_meta_index.cpp tests/test_contemplation.cpp tests/test_atomic.cpp tests/test_ntf.cpp tests/test_ncr.cpp tests/test_universe_task.cpp tests/test_supercluster.cpp tests/test_byte_model.cpp tests/test_recovery.cpp tests/test_slot_model.cpp tests/test_kneser_ney.cpp tests/test_context2.cpp tests/test_context2_topology.cpp tests/test_vector_store.cpp
 TEST_BIN := $(patsubst tests/%.cpp,$(BUILD)/%,$(TEST_SRC))
 
 .PHONY: all test clean verify legacy universe-check bootstrap penguin logic behavior challenge

@@ -256,6 +256,18 @@ Data scale: the 2024 English Gutenberg plaintext archive is **7.8 GB / 57,049
 files**; Gutenberg has nearly 78,000 items overall. Use a 100-500 MB subset for
 the first on-device curriculum; do not put 7.8 GB in GitHub.
 
+### Vector bins and macro associations
+
+The vector substrate is now explicit: `BinStore` holds formatted int16 vector
+bins, `PointBinMap` maps a chart point to a bin reference, and `AssocMemory`
+retrieves by integer dot product with Q16.16 weights. Point **16254** maps to a
+bin in the demo, and a head can query from its 768-byte work scratchpad. A
+separate bank can hold a separate weight set; a word layer can use the same
+`BinRef` API. This is associative memory, not learned attention.
+
+`make test` includes `test_vector_store`; `./build/nanlm-universal vectors`
+prints the mapping and a recall.
+
 ### Behavior gates and the fixed challenge
 
 Archived behavior gates run as reproducible targets:
