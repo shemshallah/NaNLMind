@@ -220,6 +220,10 @@ def op_headshift(args):
             })
             reg_put(env, "nanlm/lease", {"holder": None, "epoch": args.epoch, "until": 0})
 
+    # The lease is per slot, not per epoch. The next slot must be able to
+    # acquire it as soon as this run has published its packet set.
+    reg_put(env, "nanlm/lease", {"holder": None, "epoch": args.epoch, "until": 0})
+
     out = {
         "ok": True,
         "op": "headshift",
@@ -232,6 +236,13 @@ def op_headshift(args):
         "round": round_record,
     }
     print(json.dumps(out, indent=1))
+    return 0
+
+
+def op_unlock(args):
+    env = connect_tiers(writer=True)
+    reg_put(env, "nanlm/lease", {"holder": None, "epoch": args.epoch, "until": 0})
+    print(json.dumps({"ok": True, "op": "unlock", "epoch": args.epoch}, indent=1))
     return 0
 
 
@@ -252,7 +263,7 @@ def op_status(args):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--op", choices=["selftest", "prewarm", "headshift", "handoff", "status"],
+    ap.add_argument("--op", choices=["selftest", "prewarm", "headshift", "handoff", "unlock", "status"],
                     default="selftest")
     ap.add_argument("--slot", type=int, default=None)
     ap.add_argument("--epoch", type=int, default=0)
@@ -264,6 +275,8 @@ def main():
         return op_selftest(args)
     if args.op == "prewarm":
         return op_prewarm(args)
+    if args.op == "unlock":
+        return op_unlock(args)
     if args.op == "status":
         return op_status(args)
     return op_headshift(args)

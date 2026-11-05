@@ -6,7 +6,7 @@ on:
       op:
         description: selftest | prewarm | headshift | handoff | status
         type: choice
-        options: [selftest, prewarm, headshift, handoff, status]
+        options: [selftest, prewarm, headshift, handoff, unlock, status]
         default: selftest
       slot:
         description: runner slot 1..6
