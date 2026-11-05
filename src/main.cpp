@@ -9,6 +9,7 @@
 #include "nanlm/slot_memory.hpp"
 #include "nanlm/context2.hpp"
 #include "nanlm/vector_store.hpp"
+#include "nanlm/word_memory.hpp"
 #include "nanlm/handoff.hpp"
 #include "nanlm/schedule.hpp"
 #include "nanlm/universe.hpp"
@@ -554,6 +555,31 @@ int cmd_bootstrap(int argc, char** argv) {
     return 0;
 }
 
+int cmd_words() {
+    const std::string corpus =
+        "robin is a bird. eagle is a bird. penguin is a bird. "
+        "penguin cannot fly. bird can fly. sparrow is a bird. "
+        "magpie is a bird. ostrich is a bird. ostrich cannot fly. "
+        "kiwi is a bird. kiwi cannot fly. emu is a bird. emu cannot fly. "
+        "cassowary is a bird. cassowary cannot fly. salmon is a fish. "
+        "fish can swim. shark is a fish. trout is a fish. cod is a fish. "
+        "carp is a fish.";
+    BinStore store;
+    WordMemory words(store);
+    if (!words.build(corpus)) return 1;
+    std::cout << "words vocab=" << words.vocab()
+              << " associations=" << words.associations()
+              << " token_bin=" << words.bin_id() << "\n";
+    const char* cases[][2] = {
+        {"sparrow", "fly"}, {"ostrich", "fly"}, {"trout", "swim"}, {"cod", "swim"},
+    };
+    for (const auto& c : cases) {
+        std::cout << "  " << c[0] << " can " << c[1] << "? "
+                  << (words.answer_yes(c[0], c[1]) ? "yes" : "no") << "\n";
+    }
+    return 0;
+}
+
 int cmd_vectors() {
     BinStore store;
     const BinId keys = store.create(8, 2);
@@ -803,6 +829,7 @@ void usage() {
               << "  kn [path] [order] Kneser-Ney byte baseline\n"
               << "  ctx2 [path] context-2 child-chart layout\n"
               << "  vectors      addressable vector bins and macro recall\n"
+              << "  words        word layer over vector bins\n"
               << "  bootstrap [path] [epochs] streaming byte bootstrap\n"
               << "  snapshot    write state/chart.nmc\n"
               << "  headshift   real HeadView packets for one slot\n"
@@ -832,6 +859,7 @@ int main(int argc, char** argv) {
     if (cmd == "kn") return cmd_kn(argc, argv);
     if (cmd == "ctx2") return cmd_ctx2(argc, argv);
     if (cmd == "vectors") return cmd_vectors();
+    if (cmd == "words") return cmd_words();
     if (cmd == "bootstrap") return cmd_bootstrap(argc, argv);
     if (cmd == "snapshot") return cmd_snapshot(argc, argv);
     if (cmd == "headshift") return cmd_headshift(argc, argv);

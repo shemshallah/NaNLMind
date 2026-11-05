@@ -268,6 +268,18 @@ separate bank can hold a separate weight set; a word layer can use the same
 `make test` includes `test_vector_store`; `./build/nanlm-universal vectors`
 prints the mapping and a recall.
 
+### Word memory over bins
+
+`WordMemory` maps tokens to one-hot vectors in a `BinStore`, stores
+`is a` / `can` / `cannot` facts as macro associations, and traverses
+entity → kind → ability with an exception check. It answers the fixed
+fish/bird challenge **8/8**. The relation extraction is explicit host code; the
+word layer proves the bins can carry word-level relational memory, not that the
+byte model learned the rules. The byte model remains at 0.5.
+
+`./build/nanlm-universal words` prints the vocabulary/association count and a
+few answers. The layer is documented in `docs/31_WORD_MEMORY.md`.
+
 ### Behavior gates and the fixed challenge
 
 Archived behavior gates run as reproducible targets:

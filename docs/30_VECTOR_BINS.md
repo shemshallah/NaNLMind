@@ -113,8 +113,8 @@ recall id=1 score=5 value_bin=2
 
 - It is not learned attention; there are no gradient-trained query/key/value
   projections yet.
-- It is not a word model yet; it is the storage and recall substrate a word
-  model can use.
+- It is the storage and recall substrate; the first explicit word layer is in
+  [31_WORD_MEMORY.md](31_WORD_MEMORY.md).
 - It does not solve the logic challenge. It gives the future word/entity layer a
   place to put entity and relation vectors so the answer is not a two-byte prior.
 
