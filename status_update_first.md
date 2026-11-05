@@ -324,6 +324,14 @@ Dense 256-kind closure (8 KiB) plus a 2.5 KiB, 2,858-bit entity exception
 residual matches 2,000/2,000 queries in about 1 ms. No 20k×256 entity matrix is
 materialized. Peer residuals merge by OR in either order.
 
+### Universal TM runtime
+
+One fixed `UniversalTuringMachine::step()` now interprets machine descriptions
+stored on chart tape. The same instance runs binary increment (`1011 -> 1100`)
+and unary increment (`111 -> 1111`). This is a UTM-class interpreter runtime,
+not yet atlas/ledger-linked or formally complete. Tape pages now initialize
+unwritten cells to blank, fixing a real blank-cell bug.
+
 ### Actual TM runtime
 
 A general TM runtime stores its transition table/state/head in address registers

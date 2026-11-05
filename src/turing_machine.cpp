@@ -28,7 +28,10 @@ std::uint8_t TuringTape::read(std::int64_t position) const {
 void TuringTape::write(std::int64_t position, std::uint8_t symbol) {
     const auto [page, offset] = split_position(position);
     auto& ptr = pages_[page];
-    if (!ptr) ptr = std::make_unique<Universe>(0x544D5047u + static_cast<std::uint64_t>(page));
+    if (!ptr) {
+        ptr = std::make_unique<Universe>(0x544D5047u + static_cast<std::uint64_t>(page));
+        for (std::uint16_t i = 0; i < 0x1000u; ++i) ptr->set_address_meta(i, 2);
+    }
     ptr->set_address_meta(static_cast<std::uint16_t>(offset), symbol);
 }
 

@@ -69,7 +69,13 @@ Counters are limb lists in chart cells; program/state/IP/HALT are fixed cells.
 - document TM description -> program cells + initial counters;
 - simulate small TMs (unary add, BB(2)-class toys).
 
-### U6 — optional UTM program in ROM
+### U6 — universal interpreter runtime (partial)
+
+- One fixed `step` interprets encoded machine descriptions on chart tape.
+- Binary increment and unary increment run on the same instance.
+- Not yet atlas/ledger-linked or formally complete.
+
+### U7 — optional UTM program in ROM
 
 - one fixed program runs multiple machine descriptions;
 - input tape elsewhere in chart/atlas.

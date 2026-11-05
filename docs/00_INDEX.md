@@ -69,6 +69,7 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 63 | [63_TWO_COUNTER_U1.md](63_TWO_COUNTER_U1.md) | Can a bounded 2CM run entirely in chart registers? |
 | 64 | [64_LIMB_ATLAS_ORBIT.md](64_LIMB_ATLAS_ORBIT.md) | Do multi-limb counters, atlas pages, and the 2CM orbit agree? |
 | 65 | [65_TURING_MACHINE.md](65_TURING_MACHINE.md) | Is the Turing machine runtime real, and what is still missing for UTM? |
+| 66 | [66_UNIVERSAL_TM_RUNTIME.md](66_UNIVERSAL_TM_RUNTIME.md) | Can one fixed step interpret multiple encoded TMs from chart tape? |
 
 The short version:
 

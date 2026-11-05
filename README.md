@@ -219,6 +219,7 @@ baseline — a plain RNN matching the 256-head topology — is in
 | `docs/63_TWO_COUNTER_U1.md` | bounded 2CM in chart address registers |
 | `docs/64_LIMB_ATLAS_ORBIT.md` | multi-limb counters, atlas paging, reference 2CM orbit |
 | `docs/65_TURING_MACHINE.md` | actual TM runtime with tape pages and binary increment |
+| `docs/66_UNIVERSAL_TM_RUNTIME.md` | fixed-step UTM interpreter: encoded descriptions on chart tape |
 | `docs/18_HEAD_RING.md` | six-runner handoff, preload, map-back, workflows |
 | `docs/19_LEGACY_TESTS.md` | R18T language tests and R21–R23 logic regressions |
 | `docs/20_META_ROUTER.md` | universes as heads, routes as pairs, qNaN/sNaN BE/LE portals |
