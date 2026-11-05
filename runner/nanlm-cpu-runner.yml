@@ -17,13 +17,13 @@ on:
         type: string
         default: "0"
       minutes:
-        description: shift wall-clock budget
+        description: shift wall-clock budget (max 300)
         type: string
-        default: "20"
+        default: "300"
       epochs:
         description: epochs for op=loop
         type: string
-        default: "10"
+        default: "200"
 
 permissions:
   contents: read
@@ -46,7 +46,7 @@ env:
 jobs:
   runner:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 350
     steps:
       - name: Checkout NaNLMind core
         uses: actions/checkout@v4

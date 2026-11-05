@@ -252,7 +252,12 @@ def op_loop(args):
         return 2
     mapping = head_map()
     rounds = []
+    deadline = time.monotonic() + max(1, args.minutes) * 60
+    partial = False
     for epoch in range(args.epoch, args.epoch + max(1, args.epochs)):
+        if time.monotonic() >= deadline:
+            partial = True
+            break
         for slot in range(RUNNERS):
             heads = mapping[str(slot)]
             packets = [packet(slot, epoch, h) for h in heads]
@@ -267,7 +272,8 @@ def op_loop(args):
         rounds.append(record)
         print(f"epoch {epoch}: {record['digest']}", flush=True)
     out = {"ok": True, "op": "loop", "start": args.epoch,
-           "epochs": len(rounds), "rounds": rounds}
+           "epochs": len(rounds), "partial": partial,
+           "next_epoch": args.epoch + len(rounds), "rounds": rounds}
     print(json.dumps(out, indent=1))
     return 0
 

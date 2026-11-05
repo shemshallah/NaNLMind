@@ -260,7 +260,14 @@ storage/addressing and bidirectional memory, not a measured learning advantage.
 
 ---
 
-## 9.1 Rate-limit guard
+## 9.1 Runner time limit
+
+Six hours is the maximum duration of **one job**, not a daily quota. The ring
+uses a 350-minute job timeout, a 300-minute loop budget, and 200 epochs per
+shift, then dispatches a fresh job. Concurrency, API limits, and fair use still
+apply.
+
+## 9.2 Rate-limit guard
 
 A 403 during development polling was contained: `/rate_limit` preflight (<200),
 keeper resume (<100), 30s polling, 60s backoff on 403, persistent 10-epoch jobs,

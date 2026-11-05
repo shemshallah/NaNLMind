@@ -38,6 +38,27 @@ all polling the same PAT.
 6. The Qwen ring has its own dispatches; both rings share the same account
    budget. Leave headroom.
 
+## 3.1 The six-hour limit
+
+Six hours is the **maximum duration of one job**, not a daily quota.
+
+- a job may run up to 360 minutes;
+- after it ends, another job can be dispatched;
+- concurrency, API budgets, and fair-use limits still apply;
+- a public repository's standard runners are free, but that is not a license
+  to run unbounded parallel jobs.
+
+The ring uses:
+
+```text
+job timeout       350 minutes
+loop budget       300 minutes
+epochs per shift  200
+```
+
+The loop checks a deadline and exits cleanly before the job timeout. The next
+shift is a fresh job.
+
 ## 4. Budget math
 
 A persistent loop job:

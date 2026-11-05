@@ -9,13 +9,13 @@ on:
         type: string
         default: "0"
       minutes:
-        description: per-slot wall-clock budget
+        description: loop wall-clock budget (max 300)
         type: string
-        default: "20"
+        default: "300"
       epochs:
         description: epochs per persistent loop job
         type: string
-        default: "10"
+        default: "200"
       loop:
         description: dispatch the next epoch when this one completes
         type: boolean
@@ -38,11 +38,12 @@ env:
   DEEPREPO_RAM_BACKEND: github
   DEEPREPO_VRAM_BACKEND: github
   NANLM_CORE: .
+  PYTHONPATH: engine:.
 
 jobs:
   ring:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 350
     steps:
       - uses: actions/checkout@v4
 
@@ -91,6 +92,7 @@ jobs:
           PYTHONPATH=engine:. python3 runner/nanlm_worker.py --op selftest --slot 1 --epoch "${{ inputs.epoch }}"
 
       - name: Dispatch 6-slot head epoch
+        id: dispatch
         run: |
           python runner/ring_dispatch.py \
             --owner "${{ github.repository_owner }}" \
@@ -98,12 +100,14 @@ jobs:
             --minutes "${{ inputs.minutes }}" \
             --epochs "${{ inputs.epochs }}" \
             --persistent \
-            --slots 6
+            --slots 6 | tee ring.json
+          next=$(python -c "import json; print(json.load(open('ring.json')).get('next_epoch', ${{ inputs.epoch }} + ${{ inputs.epochs }}))")
+          echo "next=$next" >> "$GITHUB_OUTPUT"
 
       - name: Continue to next epoch
         if: ${{ inputs.loop && success() }}
         run: |
-          next=$(( ${{ inputs.epoch }} + ${{ inputs.epochs }} ))
+          next="${{ steps.dispatch.outputs.next }}"
           gh variable set NANLM_EPOCH --body "$next" -R "${{ github.repository }}" || true
           gh workflow run ring.yml -R "${{ github.repository }}" \
             -f epoch="$next" -f minutes="${{ inputs.minutes }}" \

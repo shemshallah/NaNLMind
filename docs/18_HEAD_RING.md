@@ -255,9 +255,9 @@ First live epoch completed on 2026-11-05:
 - round digest recorded;
 - ring self-redispatch enabled (`loop=true`).
 
-Wall time for one epoch is ~6m25s, dominated by six separate workflow jobs.
-That is the correct single-writer cost for now. The next speedup is a
-persistent slot job, not parallel writers.
+Wall time for one epoch is ~6m25s in the six-workflow path. The persistent loop
+processes many epochs in one 350-minute job (300-minute loop budget, 200 epochs
+target). The six-hour limit is per job, not per day.
 
 Implemented and tested:
 

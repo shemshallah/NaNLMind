@@ -61,7 +61,18 @@ def dispatch(repo, op, slot, epoch, minutes, epochs=10):
        "-f", f"minutes={minutes}", "-f", f"epochs={epochs}")
 
 
-def await_run(repo, base_id, timeout=5400, poll=30):
+def read_clock():
+    try:
+        from deepcore.runtime import Env  # type: ignore
+        env = Env(writer=False)
+        clock = env.regs.get("nanlm/clock") or {}
+        tick = int(clock.get("tick", -1))
+        return tick if tick >= 0 else None
+    except Exception:
+        return None
+
+
+def await_run(repo, base_id, timeout=21600, poll=60):
     start = time.time()
     while time.time() - start < timeout:
         time.sleep(poll)
@@ -81,8 +92,8 @@ def main():
     ap.add_argument("--epoch", type=int, default=0)
     ap.add_argument("--minutes", type=int, default=20)
     ap.add_argument("--slots", type=int, default=RUNNERS)
-    ap.add_argument("--timeout", type=int, default=5400)
-    ap.add_argument("--poll", type=int, default=30)
+    ap.add_argument("--timeout", type=int, default=21600)
+    ap.add_argument("--poll", type=int, default=60)
     ap.add_argument("--epochs", type=int, default=10)
     ap.add_argument("--persistent", action="store_true",
                     help="one loop job processes many epochs in one workspace")
@@ -119,7 +130,7 @@ def main():
             ok = bool(run and run.get("conclusion") == "success")
             summary["slots"].append({"slot": slot, "repo": repo, "run": run, "ok": ok})
             summary["epochs"] = args.epochs
-            summary["next_epoch"] = args.epoch + args.epochs
+            summary["next_epoch"] = read_clock() or (args.epoch + args.epochs)
             summary["ok"] = ok
         print(json.dumps(summary, indent=1))
         return 0 if summary["ok"] else 1
