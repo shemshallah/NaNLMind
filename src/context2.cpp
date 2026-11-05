@@ -33,6 +33,25 @@ std::uint32_t Context2Model::count(std::uint8_t a, std::uint8_t b, std::uint8_t 
     return slabs_[a]->counts[b][c];
 }
 
+double Context2Model::probability(std::uint8_t a, std::uint8_t b,
+                                   std::uint8_t c) const {
+    std::uint32_t row_total = 0;
+    std::uint32_t c2 = 0;
+    if (slabs_[a]) {
+        row_total = slabs_[a]->row_total[b];
+        c2 = slabs_[a]->counts[b][c];
+    }
+    const double p2 = (static_cast<double>(c2) + 1.0) /
+                      (static_cast<double>(row_total) + 256.0);
+    std::uint32_t bigram_total = 0;
+    for (std::uint32_t x : bigram_[b]) bigram_total += x;
+    const double p1 = (static_cast<double>(bigram_[b][c]) + 1.0) /
+                      (static_cast<double>(bigram_total) + 256.0);
+    const double lambda = static_cast<double>(row_total) /
+                          (static_cast<double>(row_total) + 50.0);
+    return lambda * p2 + (1.0 - lambda) * p1;
+}
+
 std::uint8_t Context2Model::predict(std::uint8_t a, std::uint8_t b) const {
     if (slabs_[a]) {
         const Slab& s = *slabs_[a];

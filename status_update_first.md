@@ -256,6 +256,29 @@ Data scale: the 2024 English Gutenberg plaintext archive is **7.8 GB / 57,049
 files**; Gutenberg has nearly 78,000 items overall. Use a 100-500 MB subset for
 the first on-device curriculum; do not put 7.8 GB in GitHub.
 
+### Behavior gates and the fixed challenge
+
+Archived behavior gates run as reproducible targets:
+
+| gate | result |
+|---|---|
+| R14 penguin | 17/17 |
+| R19 hard cognition | 18/18 |
+| R20 extreme cognition | 10/10 |
+| current legacy | cog 9/9, hard 8/8, extreme 8/8, formal 9/9, puzzles 7/7, modal 8/8 |
+
+These are host-symbolic rules, not byte-learned behavior. The fixed challenge in
+`tests/test_logic_challenge.cpp` uses held-out entities with balanced yes/no
+labels. The current order-2 byte model gets **0.500**; the symbolic baseline gets
+**1.000**. It answers yes to all eight cases, so the failure is structural and
+deterministic, not a flaky test. `make challenge` is intentionally not in
+`make test`.
+
+Ten process launches of `verify`, `phase`, `clock`, and the challenge produced
+identical output hashes and the same clock digest. The clock's HALT/LOOP
+alternation is a designed period-2 orbit (`cycle start=5 length=2`), not
+run-to-run nondeterminism. `C(256,2) = 32,640` passes every run.
+
 `snapshot` / `headshift` now produce real `HeadView` packets from a serialized
 chart and evolve a local snapshot. Cross-job snapshot persistence to
 `nanlm-vram` is the next adapter.

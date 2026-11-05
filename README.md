@@ -110,7 +110,10 @@ make
 ./build/nanlm-universal bootstrap
 ./build/nanlm-universal growth
 make test
+make penguin
+make logic
 make legacy
+make challenge   # expected to fail: held-out logic probe
 ```
 
 `verify` is exhaustive over the 65,536 addresses and the 32,640 pairs. It checks the transposition theorem, all 16 Boolean functions, the mirror law, the 8 MiB full-address register file, bit addressing, copy-on-write, the ledger, the hypergraph, the temporal split, and one-global-topology identity.
@@ -156,6 +159,8 @@ baseline — a plain RNN matching the 256-head topology — is in
 | `docs/16_GROWTH_CONSOLIDATION.md` | child-chart growth and atomic scratch consolidation |
 | `docs/17_TRAINING_HEADS.md` | integer head learning, sequence memory, RNN baseline |
 | `docs/27_ANDROID_BOOTSTRAP.md` | on-device byte bootstrap, memory profile, Gutenberg scale, curriculum |
+| `docs/28_BEHAVIOR_GATES.md` | penguin, first logic puzzles, and what they do/do not prove |
+| `docs/29_REPEATABILITY.md` | ten-run determinism record and the period-2 clock |
 | `docs/18_HEAD_RING.md` | six-runner handoff, preload, map-back, workflows |
 | `docs/19_LEGACY_TESTS.md` | R18T language tests and R21–R23 logic regressions |
 | `docs/20_META_ROUTER.md` | universes as heads, routes as pairs, qNaN/sNaN BE/LE portals |

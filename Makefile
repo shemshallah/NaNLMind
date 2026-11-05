@@ -12,10 +12,16 @@ CLI := $(BUILD)/nanlm-universal
 TEST_SRC := tests/test_address.cpp tests/test_nan16.cpp tests/test_universe.cpp tests/test_pager.cpp tests/test_resonance.cpp tests/test_ledger.cpp tests/test_scale.cpp tests/test_hypergraph.cpp tests/test_temporal.cpp tests/test_global.cpp tests/test_heads.cpp tests/test_clock.cpp tests/test_phase.cpp tests/test_growth.cpp tests/test_consolidation.cpp tests/test_handoff.cpp tests/test_training.cpp tests/test_r18t_sequence.cpp tests/test_router.cpp tests/test_inverse.cpp tests/test_frame_sync.cpp tests/test_meta_index.cpp tests/test_contemplation.cpp tests/test_atomic.cpp tests/test_ntf.cpp tests/test_ncr.cpp tests/test_universe_task.cpp tests/test_supercluster.cpp tests/test_byte_model.cpp tests/test_recovery.cpp tests/test_slot_model.cpp tests/test_kneser_ney.cpp tests/test_context2.cpp tests/test_context2_topology.cpp
 TEST_BIN := $(patsubst tests/%.cpp,$(BUILD)/%,$(TEST_SRC))
 
-.PHONY: all test clean verify legacy universe-check bootstrap
+.PHONY: all test clean verify legacy universe-check bootstrap penguin logic behavior challenge
 
 LEGACY_R23 := NaNLM_statespace/archive/NaN16_Palindromic_Temporal_Computer_Round23/R23
 LEGACY_BIN := $(BUILD)/test_legacy_logic
+R14 := NaNLM_statespace/archive/NaN16_Palindromic_Temporal_Computer_Round14/NaN16_Palindromic_Temporal_Computer_Round14
+R19 := NaNLM_statespace/archive/NaN16_Palindromic_Temporal_Computer_Round19/NaN16_Palindromic_Temporal_Computer_Round19
+R20 := NaNLM_statespace/archive/NaN16_Palindromic_Temporal_Computer_Round20/R20
+PENGUIN_BIN := $(BUILD)/test_round14_archive
+R19_BIN := $(BUILD)/test_round19_archive
+R20_BIN := $(BUILD)/test_round20_archive
 
 all: $(CLI)
 
@@ -45,6 +51,27 @@ $(LEGACY_BIN): tests/test_legacy_logic.cpp $(LEGACY_R23)/src/topology.cpp | $(BU
 
 legacy: $(LEGACY_BIN)
 	./$(LEGACY_BIN)
+
+$(PENGUIN_BIN): $(R14)/tests/test_round14.cpp $(R14)/src/topology.cpp | $(BUILD)
+	$(CXX) $(CXXFLAGS) -I$(R14)/include $^ -o $@
+
+penguin: $(PENGUIN_BIN)
+	./$(PENGUIN_BIN)
+
+$(R19_BIN): $(R19)/tests/test_round19.cpp $(R19)/src/topology.cpp | $(BUILD)
+	$(CXX) $(CXXFLAGS) -I$(R19)/include $^ -o $@
+
+$(R20_BIN): $(R20)/tests/test_round20.cpp $(R20)/src/topology.cpp | $(BUILD)
+	$(CXX) $(CXXFLAGS) -I$(R20)/include $^ -o $@
+
+logic: $(R19_BIN) $(R20_BIN)
+	./$(R19_BIN)
+	./$(R20_BIN)
+
+behavior: penguin logic legacy
+
+challenge: $(BUILD)/test_logic_challenge
+	./$(BUILD)/test_logic_challenge
 
 universe-check: $(BUILD)/test_universe_task $(BUILD)/test_byte_model $(BUILD)/test_slot_model $(BUILD)/test_kneser_ney $(BUILD)/test_context2 $(BUILD)/test_context2_topology $(BUILD)/test_heads $(BUILD)/test_training $(BUILD)/test_r18t_sequence $(BUILD)/test_handoff $(BUILD)/test_growth $(BUILD)/test_inverse $(BUILD)/test_contemplation $(BUILD)/test_recovery
 	@set -e; for t in $^; do ./$$t; done

@@ -83,9 +83,11 @@ or the word-start result. That is not new learning.
    R19-R23 logic regressions. These are currently host-symbolic tests, not
    evidence that the topology learned logic from bytes. Keep the distinction.
 
-The older material is in `NaNLM_statespace/archive/`; `make legacy` exercises the
-R19-R23 behavior gate. The penguin exception test is a specification target, not
-a claim about byte-level learning.
+The older material is in `NaNLM_statespace/archive/`; `make penguin` runs R14,
+`make logic` runs R19/R20, and `make legacy` exercises the current R19-R23 gate.
+The penguin exception test is a specification target, not a claim about
+byte-level learning. The fixed held-out challenge is in
+[28_BEHAVIOR_GATES.md](28_BEHAVIOR_GATES.md).
 
 ## 6. Command
 

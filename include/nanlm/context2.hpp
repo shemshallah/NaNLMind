@@ -31,6 +31,7 @@ public:
     void observe(std::uint8_t a, std::uint8_t b, std::uint8_t c, std::uint32_t n = 1);
     std::uint32_t count(std::uint8_t a, std::uint8_t b, std::uint8_t c) const;
     std::uint8_t predict(std::uint8_t a, std::uint8_t b) const;
+    double probability(std::uint8_t a, std::uint8_t b, std::uint8_t c) const;
     Context2Eval evaluate(const std::vector<std::uint8_t>& data, std::size_t start,
                           std::size_t end) const;
 
