@@ -14,4 +14,8 @@ std::vector<std::int32_t> cyclic_convolution_ntt(const std::vector<std::int32_t>
                                                  const std::vector<std::int32_t>& b);
 std::vector<std::int32_t> cyclic_convolution_naive(const std::vector<std::int32_t>& a,
                                                    const std::vector<std::int32_t>& b);
+std::vector<std::int32_t> cyclic_correlation_ntt(const std::vector<std::int32_t>& a,
+                                                 const std::vector<std::int32_t>& b);
+std::vector<std::int32_t> cyclic_correlation_naive(const std::vector<std::int32_t>& a,
+                                                   const std::vector<std::int32_t>& b);
 } // namespace nanlm

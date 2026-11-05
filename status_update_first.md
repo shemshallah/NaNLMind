@@ -311,6 +311,18 @@ pages they use. The Android constructor is guarded invalid, and the dense map
 test is skipped on Android; only the x86 runner ring maps the 2 GiB region.
 `test_overbootstrap_map` passes on the runner path.
 
+### Slot loss and recovery
+
+Dropping 3/8 learned slots reduces recall to 5/8. Retraining rebuilds eight
+slots but recovers only **7/8**; one transition remains wrong. The test records
+the partial recovery rather than claiming 8/8.
+
+### NTT and reversible memory
+
+NTT cyclic correlation over F257 matches the naive scan on eight real Alice
+windows. Reversible coupling over 256 layers restores exactly with one final
+pair, versus storing every activation. Both tests pass.
+
 ### Semiring inheritance 20k
 
 Boolean reflexive-transitive closure over 256 kinds matches 2,000/2,000 queries

@@ -77,4 +77,30 @@ std::vector<std::int32_t> cyclic_convolution_naive(
     return out;
 }
 
+std::vector<std::int32_t> cyclic_correlation_ntt(
+    const std::vector<std::int32_t>& a, const std::vector<std::int32_t>& b) {
+    std::vector<std::int32_t> reversed(kNttSize, 0);
+    for (int i = 0; i < kNttSize; ++i) {
+        const int src = (i == 0) ? 0 : (kNttSize - i);
+        reversed[i] = (src < static_cast<int>(a.size())) ? a[src] : 0;
+    }
+    return cyclic_convolution_ntt(reversed, b);
+}
+
+std::vector<std::int32_t> cyclic_correlation_naive(
+    const std::vector<std::int32_t>& a, const std::vector<std::int32_t>& b) {
+    std::vector<std::int32_t> out(kNttSize, 0);
+    for (int k = 0; k < kNttSize; ++k) {
+        std::int64_t sum = 0;
+        for (int i = 0; i < kNttSize; ++i) {
+            const int ai = (i < static_cast<int>(a.size())) ? a[i] : 0;
+            const int bi = ((i + k) % kNttSize < static_cast<int>(b.size()))
+                ? b[(i + k) % kNttSize] : 0;
+            sum += static_cast<std::int64_t>(ai) * bi;
+        }
+        out[k] = static_cast<std::int32_t>(sum % kNttPrime);
+    }
+    return out;
+}
+
 } // namespace nanlm

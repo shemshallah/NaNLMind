@@ -110,6 +110,8 @@ public:
     std::int16_t head_bias(std::uint8_t head) const;
     const Slot& slot(std::uint32_t pair) const;
     std::size_t used_slots() const { return used_slots_; }
+    std::vector<std::uint32_t> used_pairs() const;
+    bool drop_slot(std::uint32_t pair);
 
     HopfieldPrediction predict(const Vector& query) const;
     // Returns true when a slot was written or updated.

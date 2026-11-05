@@ -81,6 +81,22 @@ const HopfieldRouter::Slot& HopfieldRouter::slot(std::uint32_t pair) const {
     return slots_[pair];
 }
 
+std::vector<std::uint32_t> HopfieldRouter::used_pairs() const {
+    std::vector<std::uint32_t> out;
+    for (std::uint32_t p = 0; p < slots_.size(); ++p) {
+        if (slots_[p].used) out.push_back(p);
+    }
+    return out;
+}
+
+bool HopfieldRouter::drop_slot(std::uint32_t pair) {
+    if (pair >= slots_.size() || !slots_[pair].used) return false;
+    slots_[pair].used = false;
+    slots_[pair].strength = 0;
+    if (used_slots_ > 0) --used_slots_;
+    return true;
+}
+
 std::int64_t HopfieldRouter::dot(const Vector& a, const Vector& b) const {
     std::int64_t total = 0;
     for (std::size_t i = 0; i < kDim; ++i) {

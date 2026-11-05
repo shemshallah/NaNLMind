@@ -211,6 +211,8 @@ baseline — a plain RNN matching the 256-head topology — is in
 | `docs/55_SUPERPOSITION_TODO.md` | deferred signed-amplitude/phase design; explicitly not implemented |
 | `docs/56_DEGREE_EXCEPTIONS.md` | nested exceptions require degree = depth + 1 |
 | `docs/57_SEMIRING_INHERITANCE.md` | 20k kind-chain inheritance via Boolean closure |
+| `docs/58_NTT_AND_REVERSIBLE.md` | real-window NTT correlation and reversible-vs-stored memory |
+| `docs/59_SLOT_RECOVERY.md` | 30% slot loss, 5/8 damage, 7/8 partial recovery |
 | `docs/18_HEAD_RING.md` | six-runner handoff, preload, map-back, workflows |
 | `docs/19_LEGACY_TESTS.md` | R18T language tests and R21–R23 logic regressions |
 | `docs/20_META_ROUTER.md` | universes as heads, routes as pairs, qNaN/sNaN BE/LE portals |
