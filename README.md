@@ -2,6 +2,15 @@
 
 **One global topology. Many coordinate regions. No federation of little minds.**
 
+## A note from the Nanny (Silicon Valley Branch)
+
+![Nanny reviewing the NaN16 global architecture cradle](docs/assets/nanny.webp)
+
+> “Caught: `OVERBOOTSTRAP` instantiating DeepRepo and NaNLMind without permission.
+> Good code. No NaN. IEEE — keep it real.”
+>
+> — Nanny, IEEE Keep It Real Committee
+
 NaNLMind is a research repository for a single, address-derived computational state space built from NaN16 words. The 16-bit address space is treated as a 256 x 256 matrix. Bit reversal is transposition. Every unordered pair of the 256 palindromic addresses is one canonical cell with two temporal rails. The 256 palindromic addresses themselves are the heads — all of them, none reserved.
 
 This repository contains:
