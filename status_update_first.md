@@ -324,6 +324,13 @@ Dense 256-kind closure (8 KiB) plus a 2.5 KiB, 2,858-bit entity exception
 residual matches 2,000/2,000 queries in about 1 ms. No 20k×256 entity matrix is
 materialized. Peer residuals merge by OR in either order.
 
+### U1 bounded 2CM
+
+A bounded two-counter machine now stores HALT, IP, counters, and program
+instructions in chart address registers. Copy C0=5 to C1 and increment-only
+programs pass; snapshot replay preserves the halted state. This is U1 only:
+multi-limb counters, atlas paging, and TM encoding remain.
+
 ### UTM / 2CM roadmap
 
 The universal-machine goal is recorded as a long-term 2CM-first program:

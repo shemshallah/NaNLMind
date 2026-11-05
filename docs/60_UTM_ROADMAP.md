@@ -1,7 +1,7 @@
 # UTM / 2-counter roadmap — long-term, not implemented
 
-**Status:** architectural goal. Do not claim UTM equivalence until U1–U3
-pass. Existing semiring, NTT, heads, and puzzles are not a transition function.
+**Status:** architectural goal. U1 prototype exists; do not claim UTM
+equivalence until U1–U3 pass. Existing semiring, NTT, heads, and puzzles are not a transition function.
 
 ## 1. Target theorem
 
@@ -45,7 +45,7 @@ Counters are limb lists in chart cells; program/state/IP/HALT are fixed cells.
 - fixed size counters (e.g., 64-bit limbs);
 - programs: add, multiply, copy, gcd loops;
 - pure step; replay from snapshot bit-identical;
-- matches reference 2CM.
+- matches reference 2CM. **Prototype passed in docs/63.**
 
 ### U2 — multi-limb counters in chart
 

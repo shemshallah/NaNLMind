@@ -66,6 +66,7 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 60 | [60_UTM_ROADMAP.md](60_UTM_ROADMAP.md) | What is the honest 2CM/UTM path, and what must not be claimed? |
 | 61 | [61_SPARSE_EXCEPTIONS.md](61_SPARSE_EXCEPTIONS.md) | How do sparse entity exceptions sit on top of dense kind closure? |
 | 62 | [62_SPARSE_DEGREE_20K.md](62_SPARSE_DEGREE_20K.md) | Does the degree rule survive sparse sampling and held-out evaluation? |
+| 63 | [63_TWO_COUNTER_U1.md](63_TWO_COUNTER_U1.md) | Can a bounded 2CM run entirely in chart registers? |
 
 The short version:
 
