@@ -55,6 +55,7 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 49 | [49_BOOLEAN_SPECTRUM.md](49_BOOLEAN_SPECTRUM.md) | What are ANF, Walsh, symmetry classes and the four-NaN transforms? |
 | 50 | [50_LIFT_AND_SCALE.md](50_LIFT_AND_SCALE.md) | Which lift, hypervector and scale-stack forms should we build? |
 | 51 | [51_HYPERVECTOR_TRIPLES.md](51_HYPERVECTOR_TRIPLES.md) | Can XOR hypervectors store and recall merged triples? |
+| 52 | [52_TEACHER_GATE.md](52_TEACHER_GATE.md) | Do Hopfield, Boolean gates, and the triple store agree on cassowary? |
 
 The short version:
 

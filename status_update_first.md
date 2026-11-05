@@ -311,6 +311,13 @@ pages they use. The Android constructor is guarded invalid, and the dense map
 test is skipped on Android; only the x86 runner ring maps the 2 GiB region.
 `test_overbootstrap_map` passes on the runner path.
 
+### Teacher, gate, grader
+
+The cassowary case now runs through all three stages: Hopfield recalls
+`cassowary_cannot -> fly`, a learned Boolean head applies `A AND NOT B`, and the
+symbolic triple store/WordMemory/hypervector stores grade the answer. Test
+`PASS teacher, Boolean gate, and triple-store grader`.
+
 ### Hypervector triple store
 
 A 4096-bit XOR hypervector store binds subject/relation/object, bundles with
