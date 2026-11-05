@@ -1,18 +1,21 @@
 // Compositional inheritance challenge for the current byte structure.
 //
-// The training stream contains true bird facts and a few answered questions.
-// The test entities appear in the facts but never in an answered question. A
-// rule system can answer them by inheritance/exception; the order-2 byte model
-// has to answer from local counts.
+// True facts only:
+//   fish can swim; birds can fly;
+//   penguin/ostrich/kiwi/emu/cassowary cannot fly.
 //
-// This test is deliberately not in `make test`: it is allowed to fail. It is a
-// falsification probe, not a gate that should be made green by weakening it.
+// Training has balanced yes/no answers. Test entities appear in the facts but
+// never in an answered question. The test is repeated with ten shuffled fact
+// orders; the count model should be order-independent.
+//
+// This is deliberately not in `make test`: it is allowed to fail.
 #include "nanlm/context2.hpp"
 #include "test_util.hpp"
 
+#include <algorithm>
 #include <array>
-#include <cctype>
 #include <iostream>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -22,23 +25,63 @@ namespace {
 
 struct Case {
     const char* entity;
+    const char* ability;
     bool expected_yes;
     bool exception_no;
 };
 
 const std::array<Case, 8> kCases{{
-    {"sparrow", true, false},
-    {"ostrich", false, true},
-    {"magpie", true, false},
-    {"kiwi", false, true},
-    {"falcon", true, false},
-    {"emu", false, true},
-    {"cassowary", false, true},
-    {"swallow", true, false},
+    {"sparrow", "fly", true, false},
+    {"magpie", "fly", true, false},
+    {"trout", "swim", true, false},
+    {"cod", "swim", true, false},
+    {"ostrich", "fly", false, true},
+    {"kiwi", "fly", false, true},
+    {"emu", "fly", false, true},
+    {"cassowary", "fly", false, true},
+}};
+
+const std::array<const char*, 16> kFactLines{{
+    "robin is a bird.",
+    "eagle is a bird.",
+    "penguin is a bird.",
+    "penguin cannot fly.",
+    "bird can fly.",
+    "sparrow is a bird.",
+    "magpie is a bird.",
+    "ostrich is a bird.",
+    "ostrich cannot fly.",
+    "kiwi is a bird.",
+    "kiwi cannot fly.",
+    "emu is a bird.",
+    "emu cannot fly.",
+    "cassowary is a bird.",
+    "cassowary cannot fly.",
+    "salmon is a fish.",
+}};
+
+const std::array<const char*, 10> kMoreFacts{{
+    "fish can swim.",
+    "shark is a fish.",
+    "trout is a fish.",
+    "cod is a fish.",
+    "carp is a fish.",
+    "can robin fly? answer robin yes.",
+    "can eagle fly? answer eagle yes.",
+    "can penguin fly? answer penguin no.",
+    "can ostrich fly? answer ostrich no.",
+    "can salmon swim? answer salmon yes.",
+}};
+
+const std::array<const char*, 3> kTailFacts{{
+    "can shark swim? answer shark yes.",
+    "can kiwi fly? answer kiwi no.",
+    "can carp swim? answer carp yes.",
 }};
 
 std::string prompt_for(const Case& c) {
-    return std::string("can ") + c.entity + " fly? answer " + c.entity + " ";
+    return std::string("can ") + c.entity + " " + c.ability + "? answer " +
+           c.entity + " ";
 }
 
 double answer_probability(const Context2Model& model, const std::string& prompt,
@@ -48,37 +91,35 @@ double answer_probability(const Context2Model& model, const std::string& prompt,
     return model.probability(a, b, static_cast<std::uint8_t>(answer));
 }
 
-} // namespace
+struct Run {
+    int seed = 0;
+    std::size_t correct = 0;
+    std::size_t yes_count = 0;
+};
 
-int main() {
-    std::string train =
-        "robin is a bird. "
-        "eagle is a bird. "
-        "penguin is a bird. "
-        "penguin cannot fly. "
-        "bird can fly. "
-        "sparrow is a bird. "
-        "ostrich is a bird. "
-        "ostrich cannot fly. "
-        "magpie is a bird. "
-        "kiwi is a bird. "
-        "kiwi cannot fly. "
-        "falcon is a bird. "
-        "emu is a bird. "
-        "emu cannot fly. "
-        "cassowary is a bird. "
-        "cassowary cannot fly. "
-        "swallow is a bird. "
-        "can robin fly? answer robin yes. "
-        "can eagle fly? answer eagle yes. "
-        "can penguin fly? answer penguin no. ";
+Run run_once(int seed, bool print_cases, std::size_t& symbolic_correct) {
+    std::vector<std::string> lines;
+    for (const char* f : kFactLines) lines.emplace_back(f);
+    for (const char* f : kMoreFacts) lines.emplace_back(f);
+    for (const char* f : kTailFacts) lines.emplace_back(f);
+    std::mt19937 rng(static_cast<std::uint32_t>(seed));
+    std::shuffle(lines.begin(), lines.end(), rng);
+    std::string train;
+    for (const auto& line : lines) {
+        train += line;
+        train += ' ';
+    }
 
     Context2Model model;
     model.train(std::vector<std::uint8_t>(train.begin(), train.end()));
 
-    std::size_t correct = 0;
-    std::size_t symbolic_correct = 0;
-    std::cout << "compositional inheritance challenge (true bird facts)\n";
+    Run run;
+    run.seed = seed;
+    symbolic_correct = 0;
+    if (print_cases) {
+        std::cout << "compositional inheritance challenge (fish + birds, "
+                     "true facts)\n";
+    }
     for (const Case& c : kCases) {
         const std::string prompt = prompt_for(c);
         const double py = answer_probability(model, prompt, 'y');
@@ -87,22 +128,48 @@ int main() {
         const bool ok = predicted_yes == c.expected_yes;
         const bool symbolic_yes = !c.exception_no;
         const bool symbolic_ok = symbolic_yes == c.expected_yes;
-        if (ok) ++correct;
+        if (ok) ++run.correct;
+        if (predicted_yes) ++run.yes_count;
         if (symbolic_ok) ++symbolic_correct;
-        std::cout << "  " << c.entity
-                  << " expected=" << (c.expected_yes ? "yes" : "no")
-                  << " model=" << (predicted_yes ? "yes" : "no")
-                  << " p(yes)=" << py << " p(no)=" << pn
-                  << " symbolic=" << (symbolic_ok ? "ok" : "wrong")
-                  << " -> " << (ok ? "PASS" : "FAIL") << "\n";
+        if (print_cases) {
+            std::cout << "  " << c.entity << " " << c.ability
+                      << " expected=" << (c.expected_yes ? "yes" : "no")
+                      << " model=" << (predicted_yes ? "yes" : "no")
+                      << " p(yes)=" << py << " p(no)=" << pn
+                      << " symbolic=" << (symbolic_ok ? "ok" : "wrong")
+                      << " -> " << (ok ? "PASS" : "FAIL") << "\n";
+        }
+    }
+    return run;
+}
+
+} // namespace
+
+int main() {
+    std::size_t symbolic_correct = 0;
+    Run first = run_once(0, true, symbolic_correct);
+    std::cout << "run seed=" << first.seed << " accuracy="
+              << static_cast<double>(first.correct) / kCases.size()
+              << " yes=" << first.yes_count << "/" << kCases.size() << "\n";
+    bool all_same = true;
+    for (int seed = 1; seed < 10; ++seed) {
+        std::size_t ignored = 0;
+        const Run r = run_once(seed, false, ignored);
+        if (r.correct != first.correct || r.yes_count != first.yes_count) {
+            all_same = false;
+        }
+        std::cout << "run seed=" << seed << " accuracy="
+                  << static_cast<double>(r.correct) / kCases.size()
+                  << " yes=" << r.yes_count << "/" << kCases.size() << "\n";
     }
 
-    const double accuracy = static_cast<double>(correct) / kCases.size();
+    const double accuracy = static_cast<double>(first.correct) / kCases.size();
     const double symbolic_accuracy =
         static_cast<double>(symbolic_correct) / kCases.size();
     std::cout << "model accuracy=" << accuracy
               << " symbolic accuracy=" << symbolic_accuracy
-              << " threshold=0.875\n";
+              << " threshold=0.875 order_independent="
+              << (all_same ? "yes" : "no") << "\n";
 
     if (accuracy >= 0.875) {
         std::cout << "PASS challenge (unexpected: the byte model generalized)\n";

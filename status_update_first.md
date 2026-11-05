@@ -268,10 +268,10 @@ Archived behavior gates run as reproducible targets:
 | current legacy | cog 9/9, hard 8/8, extreme 8/8, formal 9/9, puzzles 7/7, modal 8/8 |
 
 These are host-symbolic rules, not byte-learned behavior. The fixed challenge in
-`tests/test_logic_challenge.cpp` uses held-out birds with balanced yes/no
-labels and true facts only. The current order-2 byte model gets **0.500**; the symbolic baseline gets
-**1.000**. It answers yes to all eight cases, so the failure is structural and
-deterministic, not a flaky test. `make challenge` is intentionally not in
+`tests/test_logic_challenge.cpp` uses fish swimming and birds flying with true
+facts, balanced yes/no labels, and ten shuffled fact orders. The current order-2 byte model gets **0.500**; the symbolic baseline gets
+**1.000**. It answers yes to all eight cases across all ten orders, so the failure is
+structural and deterministic, not a flaky test. `make challenge` is intentionally not in
 `make test`.
 
 Ten process launches of `verify`, `phase`, `clock`, and the challenge produced

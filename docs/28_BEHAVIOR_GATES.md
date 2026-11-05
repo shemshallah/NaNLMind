@@ -37,22 +37,24 @@ structure. It is deliberately **not** in `make test`.
 
 Training stream (all facts are true):
 
-- birds can fly;
+- fish can swim; birds can fly;
 - exceptions: penguin, ostrich, kiwi, emu, cassowary cannot fly;
-- answered questions for `robin`, `eagle`, `penguin`.
+- answered questions for `robin`, `eagle`, `penguin`, `ostrich`, `salmon`,
+  `shark`, `kiwi`, `carp`.
 
-Held-out questions use birds that appear in the facts but never in an answered
-question:
+Held-out questions use entities that appear in the facts but never in an
+answered question:
 
 ```text
-sparrow -> yes     ostrich -> no
-magpie  -> yes     kiwi    -> no
-falcon  -> yes     emu     -> no
-swallow -> yes     cassowary -> no
+sparrow fly -> yes     ostrich fly -> no
+magpie fly  -> yes     kiwi fly    -> no
+trout swim  -> yes     emu fly     -> no
+cod swim    -> yes     cassowary fly -> no
 ```
 
-The prompt ends with the entity immediately before the answer, so the model can
-use the last two bytes of the entity name if it has counts for them.
+The test has four yes and four no labels. The prompt ends with the entity
+immediately before the answer, so the model can use the last two bytes of the
+entity name if it has counts for them.
 
 Run:
 
@@ -64,14 +66,14 @@ Result on the current structure:
 
 | case | expected | model | p(yes) | p(no) |
 |---|---|---|---|---|
-| sparrow fly | yes | yes | 0.00876 | 0.00589 |
-| ostrich fly | no | **yes** | 0.00876 | 0.00589 |
-| magpie fly | yes | yes | 0.00886 | 0.00581 |
-| kiwi fly | no | **yes** | 0.00876 | 0.00589 |
-| falcon fly | yes | yes | 0.00867 | 0.00626 |
-| emu fly | no | **yes** | 0.00876 | 0.00589 |
-| cassowary fly | no | **yes** | 0.00876 | 0.00589 |
-| swallow fly | yes | yes | 0.00876 | 0.00589 |
+| sparrow fly | yes | yes | 0.01556 | 0.01040 |
+| magpie fly | yes | yes | 0.01519 | 0.01003 |
+| trout swim | yes | yes | 0.01451 | 0.00981 |
+| cod swim | yes | yes | 0.01533 | 0.01027 |
+| ostrich fly | no | **yes** | 0.01470 | 0.01027 |
+| kiwi fly | no | **yes** | 0.01490 | 0.01032 |
+| emu fly | no | **yes** | 0.01533 | 0.01027 |
+| cassowary fly | no | **yes** | 0.01533 | 0.01027 |
 
 ```text
 model accuracy = 0.500
@@ -86,7 +88,7 @@ order-2 byte model cannot bind the entity to its fact or the exception, and the
 answer position has almost no entity-specific evidence.
 
 An earlier version used fish exceptions such as “carp cannot swim.” That was
-factually wrong; carp can swim. The challenge now uses only true bird facts.
+factually wrong; carp can swim. The challenge now uses true fish and bird facts.
 
 This is the point of the challenge. It gives the next architecture step a
 concrete thing to beat instead of another suite that is green by construction.

@@ -49,11 +49,12 @@ source of run-to-run nondeterminism.
 literal 32,640 and the identity every run; both pass. There is no alternating
 pair count.
 
-The challenge is also deterministic: the current order-2 byte model answers
-`yes` to all eight held-out cases, so accuracy is 0.5 on the balanced set. The
-symbolic baseline is 1.0. That is a stable failure, not a flaky test. The
-challenge uses true bird facts only; an earlier fish variant incorrectly said
-“carp cannot swim,” which is false and has been removed.
+The challenge is also deterministic. It now covers fish swimming and birds
+flying with true facts, balanced four yes/four no labels, and ten shuffled fact
+orders. Every seed gives accuracy 0.5 and eight yes answers out of eight. The
+symbolic baseline is 1.0. That is a stable failure, not a flaky test. An earlier
+fish variant incorrectly said “carp cannot swim,” which is false and has been
+removed.
 
 ## 5. What was not run to completion
 
