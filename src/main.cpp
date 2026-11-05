@@ -779,6 +779,10 @@ int cmd_ntf() {
     m.suite = CryptoSuite::Nsp8;
     m.signature[0] = 1;
     TranslationFabric fabric;
+    // Demonstration-only verifier; production must install real Ed25519.
+    fabric.set_signature_verifier([](const MappingRecord& record, const Hash256&) {
+        return record.signature[0] == 1;
+    });
     std::string err;
     const bool published = fabric.publish(m, 1793860000, &err);
     const auto r = fabric.route(*a, 1793860000);
@@ -786,6 +790,7 @@ int cmd_ntf() {
     std::cout << "published=" << published << " route_ok=" << r.ok
               << " locators=" << r.locators.size() << "\n";
     for (const auto& l : r.locators) std::cout << "  " << l.to_string() << "\n";
+    std::cout << "verifier demo=1 (not production cryptography)\n";
     std::cout << "mapping digest " << hex(m.digest()) << "\n";
     return (published && r.ok) ? 0 : 1;
 }
