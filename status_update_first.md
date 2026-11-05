@@ -280,6 +280,15 @@ byte model learned the rules. The byte model remains at 0.5.
 `./build/nanlm-universal words` prints the vocabulary/association count and a
 few answers. The layer is documented in `docs/31_WORD_MEMORY.md`.
 
+### Point 128 and over-universe scope
+
+Point 128 is a control portal, not a palindromic head. The bootstrap universe is
+8 MiB with 256 heads and runs on a GitHub runner. The 2 GiB over-universe is
+capacity for 256 system slots: slot 128 is the bootstrap, while the other 255
+are reserved possible systems and are **not instantiated**. There is no
+macrocluster storage yet; route diffs remain local and the macrocluster merge is
+deferred. See `docs/33_POINT_128_ORCHESTRATOR.md`.
+
 ### Hard logic warmup
 
 A nested-exception corpus (`emperor -> penguin -> bird`, `penguin cannot fly`,

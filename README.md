@@ -167,6 +167,7 @@ baseline — a plain RNN matching the 256-head topology — is in
 | `docs/30_VECTOR_BINS.md` | addressable vector bins, point-to-bin portals, macro associations |
 | `docs/31_WORD_MEMORY.md` | word layer over bins, fixed-challenge baseline, honesty note |
 | `docs/32_HARD_LOGIC_WARMUP.md` | nested-exception challenge and ten-pass byte warmup |
+| `docs/33_POINT_128_ORCHESTRATOR.md` | point 128 control plane, 2 GiB over-universe capacity, layer stack |
 | `docs/18_HEAD_RING.md` | six-runner handoff, preload, map-back, workflows |
 | `docs/19_LEGACY_TESTS.md` | R18T language tests and R21–R23 logic regressions |
 | `docs/20_META_ROUTER.md` | universes as heads, routes as pairs, qNaN/sNaN BE/LE portals |
