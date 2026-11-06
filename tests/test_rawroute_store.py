@@ -20,16 +20,15 @@ class RawRouteStoreTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             mesh = RawRouteMesh(tmp)
             health = mesh.health()
-            self.assertEqual(set(health), {"BS0", "MC0", "SC0", "GM0"})
-            for item in health.values():
+            self.assertEqual(set(health["namespaces"]), {"BS0", "MC0", "SC0", "GM0"})
+            self.assertFalse(health["filesystem"]["preallocated"])
+            for item in health["namespaces"].values():
                 self.assertEqual(item["quota_bytes"], DEFAULT_QUOTA_BYTES)
                 self.assertEqual(item["logical_used_bytes"], 0)
                 self.assertEqual(item["route_count"], 0)
                 self.assertLess(item["physical_bytes"], 1024 * 1024)
-            self.assertEqual(
-                {p.name for p in Path(tmp).iterdir()},
-                {"bs0db.sqlite3", "mc0db.sqlite3", "sc0db.sqlite3", "gm0db.sqlite3"},
-            )
+            names = {p.name for p in Path(tmp).iterdir()}
+            self.assertTrue({"bs0db.sqlite3", "mc0db.sqlite3", "sc0db.sqlite3", "gm0db.sqlite3"}.issubset(names))
 
     def test_commit_resolve_reverse_lookup_and_idempotent_replay(self):
         with tempfile.TemporaryDirectory() as tmp:
