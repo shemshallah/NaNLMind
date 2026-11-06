@@ -179,6 +179,7 @@ int relation_train_cli(int argc, char** argv) {
     std::array<std::uint64_t,10> test_pos{}, test_neg{}, tp{}, tn{}, baseline_ok{};
     std::array<std::uint64_t,10> pre_test_n{}, pre_test_ok{}, pre_test_pos{}, pre_test_neg{}, pre_tp{}, pre_tn{};
     std::array<Hash256,256> head_state_before{};
+    std::array<bool,256> decayed{};
     auto head_state_hash = [](HeadView& h) {
         Sha256 digest;
         digest.update(&h.cell(), sizeof(NanCell));
