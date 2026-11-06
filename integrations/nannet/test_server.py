@@ -33,6 +33,11 @@ class NannetTests(unittest.TestCase):
   status,body=self.req("GET","/portal")
   self.assertEqual(status,200);self.assertIn(b"nan://GM0",body)
 
+ def test_admin_training_status_is_read_only(self):
+  status,body=self.req("GET","/admin/training/status",token="a"*48)
+  self.assertEqual(status,200);self.assertEqual(body["node_count"],0);self.assertEqual(body["corpus_receipts"],0)
+  self.assertEqual(self.req("GET","/admin/training/status",token="r"*48)[0],401)
+
  def test_admin_keeper_and_model_status_routes(self):
   status,keeper=self.req("GET","/admin/keeper/status",token="a"*48)
   self.assertEqual(status,200);self.assertEqual(keeper["status"],"disabled")
