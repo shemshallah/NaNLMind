@@ -339,3 +339,22 @@ except Exception:  # pragma: no cover - exercised on Termux/minimal images
                 output += block
                 counter += 1
             return output[:self.length]
+
+
+def rsa_verify_pkcs1v15_sha256(n: int, e: int, signature: bytes, message: bytes) -> bool:
+    """Verify an RSASSA-PKCS1-v1_5/SHA-256 signature without cryptography."""
+    if not isinstance(n, int) or not isinstance(e, int) or n <= 0 or e <= 0:
+        return False
+    size = (n.bit_length() + 7) // 8
+    if len(signature) != size:
+        return False
+    value = int.from_bytes(signature, "big")
+    if value >= n:
+        return False
+    encoded = pow(value, e, n).to_bytes(size, "big")
+    digest_info = bytes.fromhex("3031300d060960864801650304020105000420") + hashlib.sha256(message).digest()
+    padding = size - len(digest_info) - 3
+    if padding < 8:
+        return False
+    expected = b"\x00\x01" + b"\xff" * padding + b"\x00" + digest_info
+    return hmac.compare_digest(encoded, expected)

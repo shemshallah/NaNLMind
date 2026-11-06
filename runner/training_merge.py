@@ -157,8 +157,7 @@ def _verify_github_oidc(jwt: str, expected_repository: str) -> dict[str, Any]:
     """Verify a GitHub Actions OIDC JWT against GitHub's published JWKS."""
     import base64
     import urllib.request
-    from cryptography.hazmat.primitives.asymmetric import padding, rsa
-    from cryptography.hazmat.primitives import hashes
+    from nanlmind_nannet.crypto_compat import rsa_verify_pkcs1v15_sha256
     try:
         head, body, signature = jwt.split(".")
         dec = lambda value: base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
@@ -171,8 +170,9 @@ def _verify_github_oidc(jwt: str, expected_repository: str) -> dict[str, Any]:
         if not jwk or jwk.get("kty") != "RSA":
             raise ValueError("unknown OIDC signing key")
         n, e = int.from_bytes(dec(jwk["n"]), "big"), int.from_bytes(dec(jwk["e"]), "big")
-        public = rsa.RSAPublicNumbers(e, n).public_key()
-        public.verify(dec(signature), (head + "." + body).encode("ascii"), padding.PKCS1v15(), hashes.SHA256())
+        if not rsa_verify_pkcs1v15_sha256(n, e, dec(signature),
+                                          (head + "." + body).encode("ascii")):
+            raise ValueError("OIDC signature does not verify")
         now = int(time.time())
         if claims.get("iss") != "https://token.actions.githubusercontent.com":
             raise ValueError("wrong OIDC issuer")
