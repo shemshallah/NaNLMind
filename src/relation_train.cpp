@@ -190,6 +190,10 @@ int relation_train_cli(int argc, char** argv) {
         head_state_before[i]=head_state_hash(h);
     }
     std::uint64_t accepted=0, duplicates=0, pair_updates=0, edges_added=0;
+    for (const auto& e : examples) if (e.train) {
+        ++train_n[e.resolution];
+        if (e.positive) ++train_pos[e.resolution];
+    }
     // Measure the exact same held-out rows before mutation, then again after
     // training. This makes per-run movement observable instead of reporting
     // only a post-training scalar.
@@ -239,7 +243,6 @@ int relation_train_cli(int argc, char** argv) {
                 o.train_boolean(e.sh[lane]&1u, e.ph[lane]&1u, e.positive);
             }
         }
-        ++train_n[e.resolution]; if (e.positive) ++train_pos[e.resolution];
         const std::uint64_t epoch=topology->ledger().size()+1u;
         BitAddress sb{PageId::root(),heads.at(sh).address().value,0,0};
         BitAddress pb{PageId::root(),heads.at(ph).address().value,0,0};
@@ -262,16 +265,35 @@ int relation_train_cli(int argc, char** argv) {
         topology->temporal().link(Ref::from_bit(ob),so,epoch);
         ++accepted; ++edges_added;
     }
+    auto emit_resolution_metrics = [&]() {
+        for (std::size_t r=0;r<10;++r) if (train_n[r] || test_n[r]) {
+            const double acc=test_n[r]?double(test_ok[r])/test_n[r]:0.0;
+            const double before_acc=pre_test_n[r]?double(pre_test_ok[r])/pre_test_n[r]:0.0;
+            const double baseacc=test_n[r]?double(baseline_ok[r])/test_n[r]:0.0;
+            const double sens=test_pos[r]?double(tp[r])/test_pos[r]:0.0;
+            const double spec=test_neg[r]?double(tn[r])/test_neg[r]:0.0;
+            const double before_sens=pre_test_pos[r]?double(pre_tp[r])/pre_test_pos[r]:0.0;
+            const double before_spec=pre_test_neg[r]?double(pre_tn[r])/pre_test_neg[r]:0.0;
+            std::cout << "resolution_L" << r << " train=" << train_n[r] << " test=" << test_n[r]
+                      << " before_accuracy=" << before_acc << " accuracy=" << acc
+                      << " delta=" << (acc-before_acc)
+                      << " before_balanced_accuracy=" << (before_sens+before_spec)/2.0
+                      << " balanced_accuracy=" << (sens+spec)/2.0
+                      << " majority_baseline=" << baseacc << "\n";
+        }
+    };
     if (!accepted) {
         if (duplicates) {
             const std::uintmax_t existing_bytes = std::filesystem::exists(state_path)
                 ? std::filesystem::file_size(state_path) : 0u;
             const Hash256 current = topology->global_digest();
-            std::cout << "relation_train status=no_op epochs=" << epochs << " train_events=0 duplicate_events=" << duplicates
+            std::cout << "relation_train status=no_op epochs=" << epochs
+                      << " train_events=0 duplicate_events=" << duplicates
                       << " changed_heads=0 mirror_pair_updates=0 hyperedges_added=0"
                       << " state_bytes=" << existing_bytes
                       << " state_digest_before=" << hex(current)
                       << " state_digest_after=" << hex(current) << "\n";
+            emit_resolution_metrics();
             return 0;
         }
         std::cerr << "no new relation events; duplicates=0\n";
@@ -299,21 +321,7 @@ int relation_train_cli(int argc, char** argv) {
               << " mirror_pair_updates=" << pair_updates << " hyperedges_added=" << edges_added
               << " state_bytes=" << bytes.size() << " state_digest_before=" << hex(before)
               << " state_digest_after=" << hex(topology->global_digest()) << "\n";
-    for (std::size_t r=0;r<10;++r) if (train_n[r] || test_n[r]) {
-        const double acc=test_n[r]?double(test_ok[r])/test_n[r]:0.0;
-        const double before_acc=pre_test_n[r]?double(pre_test_ok[r])/pre_test_n[r]:0.0;
-        const double baseacc=test_n[r]?double(baseline_ok[r])/test_n[r]:0.0;
-        const double sens=test_pos[r]?double(tp[r])/test_pos[r]:0.0;
-        const double spec=test_neg[r]?double(tn[r])/test_neg[r]:0.0;
-        const double before_sens=pre_test_pos[r]?double(pre_tp[r])/pre_test_pos[r]:0.0;
-        const double before_spec=pre_test_neg[r]?double(pre_tn[r])/pre_test_neg[r]:0.0;
-        std::cout << "resolution_L" << r << " train=" << train_n[r] << " test=" << test_n[r]
-                  << " before_accuracy=" << before_acc << " accuracy=" << acc
-                  << " delta=" << (acc-before_acc)
-                  << " before_balanced_accuracy=" << (before_sens+before_spec)/2.0
-                  << " balanced_accuracy=" << (sens+spec)/2.0
-                  << " majority_baseline=" << baseacc << "\n";
-    }
+    emit_resolution_metrics();
     return 0;
 }
 
