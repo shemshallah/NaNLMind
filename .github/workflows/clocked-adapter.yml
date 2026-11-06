@@ -21,6 +21,9 @@ on:
       - "include/nanlm/endpoint_evidence.hpp"
       - "src/endpoint_evidence.cpp"
       - "tests/test_endpoint_evidence.cpp"
+      - "include/nanlm/learning_mesh.hpp"
+      - "src/learning_mesh.cpp"
+      - "tests/test_learning_mesh.cpp"
       - "Makefile"
       - "docs/72_CANONICAL_TRAINING_UNIVERSE.md"
 
@@ -45,7 +48,7 @@ jobs:
           /tmp/test_endpoint_evidence
       - name: Compile and run integrated Overbootstrap learning-mesh test
         run: |
-          c++ -std=c++20 -O2 -Wall -Wextra -Wpedantic -Iinclude \\
-            tests/test_learning_mesh.cpp src/learning_mesh.cpp src/endpoint_evidence.cpp \\
+          c++ -std=c++20 -O2 -Wall -Wextra -Wpedantic -Iinclude \
+            tests/test_learning_mesh.cpp src/learning_mesh.cpp src/endpoint_evidence.cpp \
             src/bootstrap_router.cpp src/sha256.cpp -o /tmp/test_learning_mesh
           /tmp/test_learning_mesh
