@@ -100,14 +100,27 @@ bool parse_examples(const std::string& path, std::vector<Example>& examples) {
     return !examples.empty();
 }
 
-std::uint8_t predicate_head(std::uint8_t resolution, const Hash256& hash) {
-    return static_cast<std::uint8_t>(resolution * 25u + hash[0] % 25u);
+std::uint8_t resolution_base(std::uint8_t resolution) {
+    return static_cast<std::uint8_t>((static_cast<unsigned>(resolution) * 256u) / 10u);
 }
 
-std::uint8_t distinct_head(std::uint8_t base, std::uint8_t candidate,
-                           std::uint8_t first, std::uint8_t second) {
-    for (unsigned i = 0; i < 25u && (candidate == first || candidate == second); ++i)
-        candidate = static_cast<std::uint8_t>(base + ((candidate - base + 1u) % 25u));
+std::uint8_t resolution_span(std::uint8_t resolution) {
+    const unsigned begin = (static_cast<unsigned>(resolution) * 256u) / 10u;
+    const unsigned end = (static_cast<unsigned>(resolution + 1u) * 256u) / 10u;
+    return static_cast<std::uint8_t>(end - begin);
+}
+
+std::uint8_t predicate_head(std::uint8_t resolution, const Hash256& hash) {
+    const std::uint8_t base = resolution_base(resolution);
+    const std::uint8_t span = resolution_span(resolution);
+    return static_cast<std::uint8_t>(base + hash[0] % span);
+}
+
+std::uint8_t distinct_head(std::uint8_t base, std::uint8_t span,
+                           std::uint8_t candidate, std::uint8_t first,
+                           std::uint8_t second) {
+    for (unsigned i = 0; i < span && (candidate == first || candidate == second); ++i)
+        candidate = static_cast<std::uint8_t>(base + ((candidate - base + 1u) % span));
     return candidate;
 }
 
@@ -210,7 +223,8 @@ int relation_train_cli(int argc, char** argv) {
         if (prediction == e.positive) ++pre_test_ok[e.resolution];
     }
     for (const auto& e : examples) {
-        const std::uint8_t base = static_cast<std::uint8_t>(e.resolution * 25u);
+        const std::uint8_t base = resolution_base(e.resolution);
+        const std::uint8_t span = resolution_span(e.resolution);
         const std::uint8_t ph = predicate_head(e.resolution, e.ph);
         if (!e.train) {
             const HeadView h = heads.at(ph);
@@ -233,8 +247,8 @@ int relation_train_cli(int argc, char** argv) {
             if (old && old->label == e.label) { duplicate=true; break; }
         }
         if (duplicate) { ++duplicates; continue; }
-        std::uint8_t sh = distinct_head(base, static_cast<std::uint8_t>(base + e.sh[1]%25u), ph, 255u);
-        std::uint8_t oh = distinct_head(base, static_cast<std::uint8_t>(base + e.oh[2]%25u), ph, sh);
+        std::uint8_t sh = distinct_head(base, span, static_cast<std::uint8_t>(base + e.sh[1]%span), ph, 255u);
+        std::uint8_t oh = distinct_head(base, span, static_cast<std::uint8_t>(base + e.oh[2]%span), ph, sh);
         if (sh==ph || oh==ph || oh==sh) { std::cerr << "relation head collision\n"; return 7; }
         HeadView p = heads.at(ph), s = heads.at(sh), o = heads.at(oh);
         if (!decayed[ph]) { p.decay_boolean_scores(1); decayed[ph] = true; }
