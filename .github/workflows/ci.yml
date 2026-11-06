@@ -47,6 +47,28 @@ jobs:
           assert first != second, (first, second)
           print("resume changed the restored global topology digest:", first, "->", second)
           PY
+      - name: Resolution-aware relation train and replay smoke
+        run: |
+          mkdir -p state
+          cat > state/relations.n16rel <<'EOF'
+          N16REL/1
+          train\t5\t+\t60000\t70656e6775696e\t69735f61\t62697264\t1111111111111111111111111111111111111111111111111111111111111111
+          train\t5\t-\t60000\t70656e6775696e\t63616e\t666c79\t2222222222222222222222222222222222222222222222222222222222222222
+          test\t5\t+\t60000\t6f737472696368\t69735f61\t62697264\t3333333333333333333333333333333333333333333333333333333333333333
+          test\t5\t-\t60000\t6f737472696368\t63616e\t666c79\t4444444444444444444444444444444444444444444444444444444444444444
+          train\t7\t+\t50000\t7269766572\t636f6e7461696e73\t7761746572\t5555555555555555555555555555555555555555555555555555555555555555
+          test\t7\t+\t50000\t73747265616d\t636f6e7461696e73\t7761746572\t6666666666666666666666666666666666666666666666666666666666666666
+          EOF
+          ./build/nanlm-universal relation-train state/relations.n16rel state/relation-universe.nmg 2 | tee state/relation-first.log
+          grep -q 'status=updated' state/relation-first.log
+          grep -q 'mirror_pair_updates=9' state/relation-first.log
+          grep -q 'hyperedges_added=3' state/relation-first.log
+          grep -q 'resolution_L5' state/relation-first.log
+          grep -q 'resolution_L7' state/relation-first.log
+          ./build/nanlm-universal relation-train state/relations.n16rel state/relation-universe.nmg 2 | tee state/relation-replay.log
+          grep -q 'status=no_op' state/relation-replay.log
+          grep -q 'resolution_L5' state/relation-replay.log
+          test -s state/relation-universe.nmg
       - name: Test suite
         run: make test
       - name: Install NANNET authority dependency
