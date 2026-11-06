@@ -17,7 +17,7 @@ jobs:
       - name: Hermes native 256-head train and resume smoke
         run: |
           mkdir -p state
-          ./build/nanlm-universal math-train data/alice_full.txt 2 128 state/hermes-universe.nmg state/hermes-discoveries-1.jsonl
+          ./build/nanlm-universal math-train data/alice_full.txt 2 128 state/hermes-universe.nmg state/hermes-discoveries-1.jsonl | tee state/hermes-first.log
           test -s state/hermes-universe.nmg
           python3 - <<'PY'
           import json
@@ -31,7 +31,18 @@ jobs:
           ./build/nanlm-universal math-train data/alice_full.txt 1 64 state/hermes-universe.nmg state/hermes-discoveries-2.jsonl | tee state/hermes-resume.log
           grep -q resumed_state_bytes state/hermes-resume.log
           test -s state/hermes-universe.nmg
-          python3 -c 'import json,pathlib; e=[json.loads(x) for x in pathlib.Path("state/hermes-discoveries-2.jsonl").read_text().splitlines()]; assert len(e)==256 and {x["head"] for x in e}==set(range(256)); print("resume emitted 256 head discoveries")'
+          python3 - <<'PY'
+          import json, pathlib, re
+          events = [json.loads(x) for x in pathlib.Path("state/hermes-discoveries-2.jsonl").read_text().splitlines()]
+          assert len(events) == 256 and {x["head"] for x in events} == set(range(256))
+          def digest(path):
+              match = re.search(r"state_digest=([0-9a-f]+)", pathlib.Path(path).read_text())
+              assert match, path
+              return match.group(1)
+          first, second = digest("state/hermes-first.log"), digest("state/hermes-resume.log")
+          assert first != second, (first, second)
+          print("resume changed the restored global topology digest:", first, "->", second)
+          PY
       - name: Test suite
         run: make test
       - name: Install NANNET authority dependency
