@@ -116,12 +116,18 @@ frame is delivered again. The receiver persists the inbox before sending
 retirement of the original frame are one SQLite transaction, so queue pressure
 cannot silently discard an unacknowledged delivery.
 
-The authority returns both the canonical URI and its six-byte route encoding.
-Runner startup verifies that the text and binary forms agree, and that the
-authority identifies point zero and the `N16B/1` translator. Credential
-rotation repeats those checks. The service health response exposes queued
-frames by destination; each destination mailbox is bounded at 4,096 frames
-and returns HTTP 429 when full.
+Every runner universe now instantiates a `PointZeroTranslator` bound to
+its own BSR route and anchored at `BSR0`. The adapter converts canonical
+`nan://` coordinates to and from the six-byte NaN16DE route representation,
+and validates both frame endpoints on every encode/decode. The Koyeb service
+instantiates the same adapter as its central point-zero translation endpoint;
+hosted ingress and egress pass through that codec rather than bypassing it.
+The authority returns the canonical URI, local route bytes, point-zero URI,
+and point-zero bytes. Runner startup verifies the route translation and
+`N16B/1` descriptor, and credential rotation repeats those checks. The
+service health response exposes the point-zero descriptor and queued frames
+by destination; each destination mailbox is bounded at 4,096 frames and
+returns HTTP 429 when full.
 
 For a Koyeb deployment, mount a persistent volume at `/data` and configure
 `NANLM_MERGE_ROOT=/data`, `NANNET_AUTHORITY_DB=/data/nannet-authority.sqlite`,
