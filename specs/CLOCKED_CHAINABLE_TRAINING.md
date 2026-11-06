@@ -2,7 +2,7 @@
 
 **Status:** Architecture plan; the local native demo is implemented separately  
 **Owner:** NaNLMind canonical six-runner training ring  
-**External service:** Clocked API, accessed only through the authenticated NaNLMind gateway  
+**External service:** CLOCKED API, implemented and operated from [NaNLMind_CLOCKED](https://github.com/shemshallah/NaNLMind_CLOCKED); NaNLMind consumes only the versioned native evidence interface  
 **Endpoint identity:** `nan:/GM0:SC0:MC0:BS0:HW3` (Clocked demo endpoint)  
 **Canonical-state rule:** Clocked is an evaluator/experience provider, never the owner of NaNLMind weights, heads, routes, or generations.
 
