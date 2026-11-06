@@ -5,6 +5,8 @@ import hashlib, json, os, re, secrets, sqlite3, tempfile, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
 
 ROOT=Path(os.environ.get("NANLM_DATA_DIR","/data/nannet"))
 BLOBS=ROOT/"blobs"; DB_PATH=ROOT/"nannet.sqlite3"
@@ -129,11 +131,35 @@ class Handler(BaseHTTPRequestHandler):
   return self.reply(404,{"error":"not_found"})
  def do_POST(self):
   p=urlparse(self.path).path
+  if p=="/n16t":
+   x=self.need()
+   if x is None:return
+   if "n16t" not in x["scopes"] and "*" not in x["scopes"]:return self.reply(403,{"error":"scope_denied"})
+   media=self.headers.get("Content-Type","").split(";",1)[0].strip()
+   if media!="application/vnd.nan16.n16t":return self.reply(415,{"error":"n16t_content_type_required"})
+   try:
+    size=self.length(65572)
+    frame=self.rfile.read(size)
+    if len(frame)<36:return self.reply(400,{"error":"truncated_n16t_frame"})
+   except ValueError as e:return self.reply(400,{"error":str(e)})
+   peer=os.environ.get("NANLM_N16T_PEER_URL","").rstrip("/")
+   peer_token=os.environ.get("NANLM_N16T_PEER_TOKEN","")
+   if not peer or len(peer_token)<32:return self.reply(503,{"error":"n16t_peer_not_configured"})
+   if not peer.startswith("https://"):return self.reply(503,{"error":"n16t_peer_must_use_https"})
+   try:
+    req=Request(peer+"/n16t",data=frame,headers={"Authorization":"Bearer "+peer_token,"Content-Type":"application/vnd.nan16.n16t","Accept":"application/vnd.nan16.n16t"},method="POST")
+    with urlopen(req,timeout=30) as response:
+     response_type=response.headers.get("Content-Type","").split(";",1)[0].strip()
+     reply=response.read(65573)
+    if response_type!="application/vnd.nan16.n16t" or not 36<=len(reply)<=65572:return self.reply(502,{"error":"invalid_n16t_peer_response"})
+    return self.reply(200,reply,"application/vnd.nan16.n16t")
+   except (HTTPError,URLError,OSError,TimeoutError):
+    return self.reply(502,{"error":"n16t_peer_unavailable"})
   if p=="/admin/tokens":
    if self.need("admin") is None:return
    try:
     d=self.json_body(); endpoint=d.get("endpoint_id"); scopes=d.get("scopes",["intake"]); ttl=int(d.get("ttl_seconds",86400)); quota=int(d.get("max_requests",10000))
-    if endpoint not in ENDPOINTS or not isinstance(scopes,list) or not scopes or any(s not in {"intake","dataset","observation","heartbeat","runner","keeper"} for s in scopes):raise ValueError("invalid_endpoint_or_scopes")
+    if endpoint not in ENDPOINTS or not isinstance(scopes,list) or not scopes or any(s not in {"intake","dataset","observation","heartbeat","runner","keeper","n16t"} for s in scopes):raise ValueError("invalid_endpoint_or_scopes")
     if not 60<=ttl<=7776000 or not 1<=quota<=10000000:raise ValueError("token_policy_out_of_range")
    except (ValueError,TypeError) as e:return self.reply(400,{"error":str(e)[:80]})
    token="nnt_"+secrets.token_urlsafe(36); db=connect()
