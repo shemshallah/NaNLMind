@@ -217,6 +217,14 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
             if self.path == "/healthz":
                 health = store.health()
                 health["nannet_authority"] = "ready" if authority else "disabled"
+                if authority:
+                    import sqlite3
+                    with sqlite3.connect(authority.database) as db:
+                        counts = db.execute("SELECT role, COUNT(*) FROM identity_status WHERE revoked_at IS NULL GROUP BY role").fetchall()
+                        recent = db.execute("SELECT COUNT(*) FROM identity_status WHERE role='admin' AND identity LIKE 'github-actions:shemshallah/nanlm-cpu-%' AND revoked_at IS NULL AND last_seen>=?", (int(time.time()) - 1200,)).fetchone()[0]
+                    health["registered_identities"] = {role: count for role, count in counts}
+                    health["bsr_registered"] = health["registered_identities"].get("admin", 0)
+                    health["bsr_recent_20m"] = recent
                 self._json(HTTPStatus.OK, health)
             else:
                 self._json(HTTPStatus.NOT_FOUND, {"error": "not found"})
@@ -240,6 +248,7 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                     if claims.get("role") != "admin" or not identity.startswith("github-actions:shemshallah/nanlm-cpu-"):
                         raise AuthError("BSR identity required")
                     scopes = claims["scope"]
+                    authority.register_identity("admin", identity)
                     authority.revoke_token(bearer)
                     renewed = issue_token(authority._private_key("admin", identity), identity, scopes, 900, role="admin")
                     self._json(HTTPStatus.OK, {"token": renewed, "token_type": "Bearer", "expires_in": 900, "identity": identity})
