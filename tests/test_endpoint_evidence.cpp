@@ -1,17 +1,14 @@
 #include "nanlm/endpoint_evidence.hpp"
 #include "test_util.hpp"
 
+#include <limits>
 #include <string>
 
 using namespace nanlm;
 
 namespace {
-
-std::string event_id(char c) {
-    return std::string(64, c);
+std::string event_id(char c) { return std::string(64, c); }
 }
-
-} // namespace
 
 int main() {
     EndpointEvidenceFold fold;
@@ -38,18 +35,23 @@ int main() {
     android.correct = true;
     CHECK(fold.observe(android) == EndpointIngestResult::Accepted);
     CHECK_EQ(fold.stats(EndpointId::MyAndroid).correct, 1u);
-    CHECK_EQ(fold.feedback()[7], 0); // one verified success, bounded /8
+    CHECK_EQ(fold.feedback()[7], 0);
+
+    for (char id = 'c'; id <= 'i'; ++id) {
+        android.event_id = event_id(id);
+        CHECK(fold.observe(android) == EndpointIngestResult::Accepted);
+    }
+    CHECK_EQ(fold.feedback()[7], 1);
 
     EndpointObservation stale = android;
-    stale.event_id = event_id('c');
+    stale.event_id = event_id('j');
     stale.base_generation = 1;
     CHECK(fold.observe(stale) == EndpointIngestResult::StaleGeneration);
-
     CHECK(!fold.advance_generation(2));
     CHECK(fold.advance_generation(1));
     stale.base_generation = 1;
     CHECK(fold.observe(stale) == EndpointIngestResult::Accepted);
-    CHECK_EQ(fold.stats(EndpointId::MyAndroid).correct, 2u);
+    CHECK_EQ(fold.stats(EndpointId::MyAndroid).correct, 9u);
 
     EndpointObservation bad;
     bad.endpoint = EndpointId::ClockedDemo;
@@ -57,7 +59,22 @@ int main() {
     bad.event_id = "not-a-digest";
     CHECK(fold.observe(bad) == EndpointIngestResult::Invalid);
 
-    CHECK_EQ(fold.unique_events(), 3u);
-    CHECK(fold.digest() == fold.digest());
+    CHECK_EQ(fold.unique_events(), 10u);
+
+    EndpointEvidenceFold equivalent;
+    CHECK(equivalent.observe(clocked) == EndpointIngestResult::Accepted);
+    android.base_generation = 0;
+    android.event_id = event_id('b');
+    CHECK(equivalent.observe(android) == EndpointIngestResult::Accepted);
+    for (char id = 'c'; id <= 'i'; ++id) {
+        android.event_id = event_id(id);
+        CHECK(equivalent.observe(android) == EndpointIngestResult::Accepted);
+    }
+    stale.base_generation = 0;
+    CHECK(equivalent.observe(stale) == EndpointIngestResult::Accepted);
+    CHECK(equivalent.advance_generation(1));
+    CHECK(fold.digest() == equivalent.digest());
+    CHECK(!fold.advance_generation(std::numeric_limits<std::uint64_t>::max()));
+
     return test_done("overbootstrap endpoint evidence fold");
 }
