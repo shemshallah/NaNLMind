@@ -191,7 +191,11 @@ Redis is **not required for the first deployment**. Add Redis only when there ar
 - Keep secrets in Koyeb secret configuration, never in route records or committed files.
 - Expose health fields for each DB: schema version, logical quota, allocated bytes, record count, generation, digest, last checkpoint and read/write status.
 
-## 8. Implementation sequence
+## 8. Persistent registry implementation
+
+The first storage implementation is in `nanlm_nannet/rawroute_store.py`. It creates four independent SQLite-backed files (`bs0db.sqlite3`, `mc0db.sqlite3`, `sc0db.sqlite3`, `gm0db.sqlite3`) with a 10 GiB logical quota each by default. It stores canonical route definitions, current transport instances, append-only commit events, reverse head/object indexes, generation checks, nanclock monotonicity, idempotency receipts and per-namespace health/digests. The files are created sparsely; startup does not preallocate 40 GiB. Logical quota accounting includes both current route records and append-only event records. The N16B/1 transport route is an explicit association and is never inferred from the HW node or target head.
+
+## 9. Implementation sequence
 
 1. Preserve the existing N16B/1 six-runner transport unchanged.
 2. Implement a strict hierarchical rawroute parser/canonicalizer and round-trip tests.
@@ -203,7 +207,7 @@ Redis is **not required for the first deployment**. Add Redis only when there ar
 8. Benchmark; add Redis only if measured need justifies it.
 9. Add bootstrap feedback intake so route observations and training-generated NaN code can propose micro-routing definitions; only validated, committed definitions enter the authoritative route manifest.
 
-## 9. Safety invariants
+## 10. Safety invariants
 
 - One stable address definition can have changing route instances, but no silent identity changes.
 - A cache is never authority.
