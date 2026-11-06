@@ -168,6 +168,8 @@ class TrainingMergeTest(unittest.TestCase):
             status, issued = call("/v1/bootstrap/oidc", {"id_token": "mock", "slot": 0})
             self.assertEqual(status, 200)
             self.assertEqual(issued["role"], "admin")
+            replay_status, _ = call("/v1/bootstrap/oidc", {"id_token": "mock", "slot": 0})
+            self.assertEqual(replay_status, 401)
             identity = issued["identity"]
             status, auth = call("/v1/authorize", {"scope": "training:execute"}, issued["token"])
             self.assertEqual(status, 200)
