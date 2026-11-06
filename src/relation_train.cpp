@@ -171,8 +171,23 @@ int relation_train_cli(int argc, char** argv) {
 
     std::array<std::uint64_t,10> train_n{}, train_pos{}, test_n{}, test_ok{};
     std::array<std::uint64_t,10> test_pos{}, test_neg{}, tp{}, tn{}, baseline_ok{};
+    std::array<std::uint64_t,10> pre_test_n{}, pre_test_ok{}, pre_test_pos{}, pre_test_neg{}, pre_tp{}, pre_tn{};
     std::array<bool,256> touched{};
     std::uint64_t accepted=0, duplicates=0, pair_updates=0, edges_added=0;
+    // Measure the exact same held-out rows before mutation, then again after
+    // training. This makes per-run movement observable instead of reporting
+    // only a post-training scalar.
+    for (const auto& e : examples) if (!e.train) {
+        const HeadView h = heads.at(predicate_head(e.resolution, e.ph));
+        unsigned votes = 0;
+        for (unsigned lane=0; lane<8; ++lane)
+            votes += (NanWord::eval_bool(h.boolean_rule(), e.sh[lane]&1u, e.oh[lane]&1u)&1u) ? 1u : 0u;
+        const bool prediction = votes >= 4u;
+        ++pre_test_n[e.resolution];
+        if (e.positive) { ++pre_test_pos[e.resolution]; if (prediction) ++pre_tp[e.resolution]; }
+        else { ++pre_test_neg[e.resolution]; if (!prediction) ++pre_tn[e.resolution]; }
+        if (prediction == e.positive) ++pre_test_ok[e.resolution];
+    }
     for (const auto& e : examples) {
         const std::uint8_t base = static_cast<std::uint8_t>(e.resolution * 25u);
         const std::uint8_t ph = predicate_head(e.resolution, e.ph);
@@ -265,11 +280,17 @@ int relation_train_cli(int argc, char** argv) {
               << " state_digest_after=" << hex(topology->global_digest()) << "\n";
     for (std::size_t r=0;r<10;++r) if (train_n[r] || test_n[r]) {
         const double acc=test_n[r]?double(test_ok[r])/test_n[r]:0.0;
+        const double before_acc=pre_test_n[r]?double(pre_test_ok[r])/pre_test_n[r]:0.0;
         const double baseacc=test_n[r]?double(baseline_ok[r])/test_n[r]:0.0;
         const double sens=test_pos[r]?double(tp[r])/test_pos[r]:0.0;
         const double spec=test_neg[r]?double(tn[r])/test_neg[r]:0.0;
+        const double before_sens=pre_test_pos[r]?double(pre_tp[r])/pre_test_pos[r]:0.0;
+        const double before_spec=pre_test_neg[r]?double(pre_tn[r])/pre_test_neg[r]:0.0;
         std::cout << "resolution_L" << r << " train=" << train_n[r] << " test=" << test_n[r]
-                  << " accuracy=" << acc << " balanced_accuracy=" << (sens+spec)/2.0
+                  << " before_accuracy=" << before_acc << " accuracy=" << acc
+                  << " delta=" << (acc-before_acc)
+                  << " before_balanced_accuracy=" << (before_sens+before_spec)/2.0
+                  << " balanced_accuracy=" << (sens+spec)/2.0
                   << " majority_baseline=" << baseacc << "\n";
     }
     return 0;
