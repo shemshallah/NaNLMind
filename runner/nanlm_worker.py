@@ -35,11 +35,12 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 if str(REPOSITORY_ROOT) not in sys.path:
     sys.path.insert(0, str(REPOSITORY_ROOT))
 
-from nanlmind_nannet.bridge import BridgeFrame, BridgeMailbox, RunnerRoute
+from nanlmind_nannet.bridge import (BridgeFrame, BridgeMailbox, PointZeroTranslator, RunnerRoute)
 from nanlmind_nannet.nan16de import NanWord
 
 PORTAL_TOKEN = None
 PORTAL_ROUTE = None
+PORTAL_TRANSLATOR = None
 RUNNERS = 6
 HEADS = 256
 SLOT_NAMES = [f"nanlm-cpu-{i}" for i in range(1, RUNNERS + 1)]
@@ -124,6 +125,16 @@ def native_bridge_mailbox():
     configured = os.environ.get("NANNET_NATIVE_MAILBOX", "").strip()
     database = Path(configured) if configured else local_path() / "nannet_native_bridge.sqlite"
     return BridgeMailbox(database)
+
+
+def point_zero_translator():
+    """Return this universe's adapter, always anchored at BSR0."""
+    global PORTAL_TRANSLATOR
+    if PORTAL_ROUTE is None:
+        raise RuntimeError("runner route must be initialized before point-zero translation")
+    if PORTAL_TRANSLATOR is None or PORTAL_TRANSLATOR.local_route != PORTAL_ROUTE:
+        PORTAL_TRANSLATOR = PointZeroTranslator(PORTAL_ROUTE)
+    return PORTAL_TRANSLATOR
 
 
 def run_core(args, check=True):
@@ -472,6 +483,7 @@ def verify_portal_identity(slot):
     base = os.environ.get("NANNET_PORTAL_API", "").rstrip("/")
     token = os.environ.get("NANNET_BSR_TOKEN", "")
     PORTAL_ROUTE = RunnerRoute(bsr=slot)
+    PORTAL_TRANSLATOR = PointZeroTranslator(PORTAL_ROUTE)
     if not base:
         print("nannet-native: route=" + PORTAL_ROUTE.text(), file=sys.stderr)
         return
@@ -518,14 +530,15 @@ def portal_bridge_send(frame):
     if not PORTAL_TOKEN:
         raise RuntimeError("NANNET portal is configured but runner has no portal token")
     request = urllib.request.Request(
-        base + "/v1/nannet/bridge", data=frame.encode(),
+        base + "/v1/nannet/bridge", data=point_zero_translator().encode(frame),
         headers={"Authorization": "Bearer " + PORTAL_TOKEN,
                  "Content-Type": "application/vnd.nan16.n16b"},
         method="POST")
     with urllib.request.urlopen(request, timeout=20) as response:
-        ack = BridgeFrame.decode(response.read())
-    if (ack.source != frame.destination or ack.destination != frame.source or
-            ack.sequence != frame.sequence or ack.payload != b"ACK"):
+        ack = point_zero_translator().decode(
+            response.read(), expected_destination=frame.source,
+            expected_source=frame.destination)
+    if ack.sequence != frame.sequence or ack.payload != b"ACK":
         raise RuntimeError("NANNET bridge acknowledgement mismatch")
     return ack
 
@@ -539,7 +552,7 @@ def portal_bridge_poll():
         return None
     if not base:
         raw = native_bridge_mailbox().claim(PORTAL_ROUTE)
-        return BridgeFrame.decode(raw) if raw else None
+        return point_zero_translator().decode(raw, expected_destination=PORTAL_ROUTE) if raw else None
     if not PORTAL_TOKEN:
         raise RuntimeError("NANNET portal is configured but runner has no portal token")
     query = urllib.parse.urlencode({"route": PORTAL_ROUTE.text()})
@@ -573,8 +586,9 @@ def portal_bridge_drain(epoch, limit=16):
         if frame.payload == b"ACK":
             continue
         payload = b"ACK" if frame.payload == b"BSR_ACK" else b"BSR_ACK"
-        reply = BridgeFrame(PORTAL_ROUTE, frame.source, frame.sequence,
-                            NanWord.from_bits(3, 3, frame.sequence), payload)
+        reply = point_zero_translator().make_frame(
+            frame.source, frame.sequence,
+            NanWord.from_bits(3, 3, frame.sequence), payload)
         portal_bridge_send(reply)
     return len(received)
 
@@ -589,8 +603,8 @@ def portal_bridge_startup(slot, epoch):
     sent = False
     if slot != 0:
         seq = int(epoch) & 0xFFFFFFFF
-        frame = BridgeFrame(PORTAL_ROUTE, root, seq,
-                            NanWord.from_bits(0, 0, seq), b"BSR_ONLINE")
+        frame = point_zero_translator().make_frame(
+            root, seq, NanWord.from_bits(0, 0, seq), b"BSR_ONLINE")
         portal_bridge_send(frame)
         sent = True
     received = portal_bridge_drain(epoch)
