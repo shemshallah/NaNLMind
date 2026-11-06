@@ -65,6 +65,14 @@ class BridgeFrame:
     word: NanWord
     payload: bytes = b""
 
+    @property
+    def direction(self) -> str:
+        return "away" if self.word.far_class in (0, 2) else "toward"
+
+    @property
+    def signaling(self) -> bool:
+        return self.word.far_class in (0, 1)
+
     def encode(self) -> bytes:
         if not 0 <= self.sequence <= 0xFFFFFFFF:
             raise ValueError("sequence must be uint32")
