@@ -16,6 +16,7 @@ DATASET_QUOTA=int(os.environ.get("NANLM_DATASET_QUOTA_BYTES",str(6*1024**3)))
 EVENT_ID=re.compile(r"^[a-f0-9]{64}$"); HEX=EVENT_ID
 ID_RE=re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$")
 ENDPOINTS={f"bootstrap-{i:03d}" for i in range(256)}|{"my_android","hermes_demo","clocked_demo"}
+MERGE_STORE=None
 ROUTES={
  "training.merge":{"audience":["runner","admin"],"description":"Generation-safe evidence merge; runner ring owns commits"},
  "training.validate":{"audience":["validator","admin"],"description":"Validate quarantined corpus packages"},
@@ -51,8 +52,8 @@ class Handler(BaseHTTPRequestHandler):
   x=self.headers.get("Content-Length","")
   if not x.isdigit() or int(x)<1 or int(x)>limit: raise ValueError("body_size_out_of_range")
   return int(x)
- def json_body(self):
-  raw=self.rfile.read(self.length(MAX_JSON))
+ def json_body(self,limit=MAX_JSON):
+  raw=self.rfile.read(self.length(limit))
   try: v=json.loads(raw.decode("utf-8"))
   except (UnicodeDecodeError,json.JSONDecodeError): raise ValueError("invalid_json")
   if not isinstance(v,dict): raise ValueError("json_object_required")
@@ -61,7 +62,7 @@ class Handler(BaseHTTPRequestHandler):
   header=self.headers.get("Authorization","")
   if not header.startswith("Bearer ") or len(header)>512: return None
   tok=header[7:]
-  if role in ("admin","validator","runner"):
+  if role in ("admin","validator","runner","merge"):
    expected=os.environ.get("NANLM_"+role.upper()+"_TOKEN","")
    return {"endpoint_id":role,"scopes":["*"]} if len(expected)>=32 and secrets.compare_digest(tok,expected) else None
   try: th=token_hash(tok)
@@ -131,6 +132,16 @@ class Handler(BaseHTTPRequestHandler):
   return self.reply(404,{"error":"not_found"})
  def do_POST(self):
   p=urlparse(self.path).path
+  if p=="/v1/training/merge":
+   if self.need("merge") is None:return
+   store=get_merge_store()
+   if store is None:return self.reply(503,{"error":"training_merge_not_configured"})
+   try:
+    payload=self.json_body(1_048_576)
+    if payload.get("source_endpoint")!="bootstrap":return self.reply(403,{"error":"only_canonical_runner_may_merge"})
+   except (ValueError,TypeError) as e:return self.reply(400,{"error":str(e)[:80]})
+   status,body=store.merge(payload,self.headers.get("Idempotency-Key",""),"bootstrap")
+   return self.reply(int(status),body)
   if p=="/n16t":
    x=self.need()
    if x is None:return
@@ -322,8 +333,18 @@ def start_deeprepo_keeper():
    print("DeepRepo keeper stopped: "+type(exc).__name__,flush=True)
  threading.Thread(target=run,name="deeprepo-keeper",daemon=True).start()
 
+def get_merge_store():
+ global MERGE_STORE
+ token=os.environ.get("NANLM_MERGE_TOKEN","")
+ if not token:return None
+ if MERGE_STORE is None:
+  from training_merge import MergeStore
+  root=Path(os.environ.get("NANLM_MERGE_ROOT",str(ROOT/"merge")))
+  MERGE_STORE=MergeStore(root,{"bootstrap":token})
+ return MERGE_STORE
+
 def main():
- for name in ("NANLM_ADMIN_TOKEN","NANLM_VALIDATOR_TOKEN","NANLM_RUNNER_TOKEN","NANLM_TOKEN_PEPPER"):
+ for name in ("NANLM_ADMIN_TOKEN","NANLM_VALIDATOR_TOKEN","NANLM_RUNNER_TOKEN","NANLM_TOKEN_PEPPER","NANLM_MERGE_TOKEN"):
   if len(os.environ.get(name,""))<32:raise SystemExit(name+" must be a server-side secret of at least 32 characters")
  ROOT.mkdir(parents=True,exist_ok=True);BLOBS.mkdir(parents=True,exist_ok=True);connect().close()
  start_deeprepo_keeper()
