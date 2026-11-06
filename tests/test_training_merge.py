@@ -369,6 +369,10 @@ class TrainingMergeTest(unittest.TestCase):
                          "nan://GM0:SC0:MC0:BS0:HW0:BSR0")
         self.assertEqual(health["nannet_point_zero"]["point_zero_bytes"],
                          RunnerRoute(bsr=0).bytes().hex())
+        self.assertFalse(health["ready"])
+        with self.assertRaises(urllib.error.HTTPError) as not_ready:
+            urllib.request.urlopen(self.base + "/readyz", timeout=5)
+        self.assertEqual(not_ready.exception.code, 503)
 
 
 if __name__ == "__main__":

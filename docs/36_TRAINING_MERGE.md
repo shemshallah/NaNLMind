@@ -157,3 +157,16 @@ package by using the dependency-free Ed25519/AES-GCM/HKDF fallback. The merge
 tests exercise the signed token, pairing, and device routes with that fallback.
 For production deployments, install the optional `cryptography` extra or use
 an HSM-backed key store.
+
+
+## Liveness and readiness
+
+- `GET /healthz` is the liveness endpoint. It remains HTTP 200 when the process
+  is alive even if the NANNET authority is disabled or its database is unhealthy.
+- `GET /readyz` is the readiness endpoint. It returns HTTP 200 only when the
+  NANNET authority is enabled and its SQLite `PRAGMA quick_check` returns `ok`;
+  otherwise it returns HTTP 503.
+
+Configure Koyeb's readiness probe to use `/readyz`, not `/healthz`. This keeps
+process liveness separate from the service's ability to authenticate and serve
+NANNET requests.

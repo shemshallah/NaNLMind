@@ -337,21 +337,30 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                 self.end_headers()
                 self.wfile.write(page)
                 return
-            if path == "/healthz":
+            if path in ("/healthz", "/readyz"):
                 health = store.health()
                 health["nannet_authority"] = "ready" if authority else "disabled"
                 health["nannet_bridge"] = bridge.stats()
                 health["nannet_point_zero"] = point_zero.descriptor()
                 health["rawroute_mesh"] = rawroute_mesh.health()
+                ready = authority is not None
                 if authority:
-                    import sqlite3
-                    with sqlite3.connect(authority.database) as db:
-                        counts = db.execute("SELECT role, COUNT(*) FROM identity_status WHERE revoked_at IS NULL GROUP BY role").fetchall()
-                        recent = db.execute("SELECT COUNT(*) FROM identity_status WHERE role='admin' AND identity LIKE 'github-actions:shemshallah/nanlm-cpu-%' AND revoked_at IS NULL AND last_seen>=?", (int(time.time()) - 1200,)).fetchone()[0]
-                    health["registered_identities"] = {role: count for role, count in counts}
-                    health["bsr_registered"] = health["registered_identities"].get("admin", 0)
-                    health["bsr_recent_20m"] = recent
-                self._json(HTTPStatus.OK, health)
+                    try:
+                        import sqlite3
+                        with sqlite3.connect(authority.database, timeout=2) as db:
+                            check = db.execute("PRAGMA quick_check").fetchone()
+                            if not check or check[0] != "ok":
+                                ready = False
+                            counts = db.execute("SELECT role, COUNT(*) FROM identity_status WHERE revoked_at IS NULL GROUP BY role").fetchall()
+                            recent = db.execute("SELECT COUNT(*) FROM identity_status WHERE role='admin' AND identity LIKE 'github-actions:shemshallah/nanlm-cpu-%' AND revoked_at IS NULL AND last_seen>=?", (int(time.time()) - 1200,)).fetchone()[0]
+                        health["registered_identities"] = {role: count for role, count in counts}
+                        health["bsr_registered"] = health["registered_identities"].get("admin", 0)
+                        health["bsr_recent_20m"] = recent
+                    except Exception:
+                        ready = False
+                health["ready"] = ready
+                status = HTTPStatus.OK if path == "/healthz" or ready else HTTPStatus.SERVICE_UNAVAILABLE
+                self._json(status, health)
             else:
                 self._json(HTTPStatus.NOT_FOUND, {"error": "not found"})
 
