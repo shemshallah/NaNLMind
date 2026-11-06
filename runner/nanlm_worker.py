@@ -29,7 +29,7 @@ import sys
 import time
 from pathlib import Path
 
-from nanlmind_nannet.bridge import BridgeFrame, RunnerRoute
+from nanlmind_nannet.bridge import BridgeFrame, BridgeMailbox, RunnerRoute
 from nanlmind_nannet.nan16de import NanWord
 
 PORTAL_TOKEN = None
@@ -111,6 +111,13 @@ def local_path():
     p = Path(os.environ.get("NANLM_LOCAL_STATE", "state"))
     p.mkdir(parents=True, exist_ok=True)
     return p
+
+
+def native_bridge_mailbox():
+    """Open the native N16B mailbox; point this at shared storage for cross-host use."""
+    configured = os.environ.get("NANNET_NATIVE_MAILBOX", "").strip()
+    database = Path(configured) if configured else local_path() / "nannet_native_bridge.sqlite"
+    return BridgeMailbox(database)
 
 
 def run_core(args, check=True):
@@ -458,7 +465,9 @@ def verify_portal_identity(slot):
     import urllib.request
     base = os.environ.get("NANNET_PORTAL_API", "").rstrip("/")
     token = os.environ.get("NANNET_BSR_TOKEN", "")
+    PORTAL_ROUTE = RunnerRoute(bsr=slot)
     if not base:
+        print("nannet-native: route=" + PORTAL_ROUTE.text(), file=sys.stderr)
         return
     if not token:
         raise RuntimeError("NANNET portal is configured but no BSR token was issued")
@@ -471,7 +480,6 @@ def verify_portal_identity(slot):
         result = json.load(response)
     if not result.get("authorized") or result.get("scope") != "training:execute":
         raise RuntimeError("NANNET portal rejected BSR identity")
-    PORTAL_ROUTE = RunnerRoute(bsr=slot)
     advertised = result.get("route")
     if advertised and RunnerRoute.parse(advertised) != PORTAL_ROUTE:
         raise RuntimeError("NANNET route does not match this GitHub runner slot")
@@ -485,8 +493,11 @@ def portal_bridge_send(frame):
     """Send one raw NaN16DE bridge frame and validate its reverse-rail ACK."""
     import urllib.request
     base = os.environ.get("NANNET_PORTAL_API", "").rstrip("/")
-    if not base or not PORTAL_TOKEN:
+    if not base:
+        native_bridge_mailbox().put(frame)
         return None
+    if not PORTAL_TOKEN:
+        raise RuntimeError("NANNET portal is configured but runner has no portal token")
     request = urllib.request.Request(
         base + "/v1/nannet/bridge", data=frame.encode(),
         headers={"Authorization": "Bearer " + PORTAL_TOKEN,
@@ -505,8 +516,13 @@ def portal_bridge_poll():
     import urllib.parse
     import urllib.request
     base = os.environ.get("NANNET_PORTAL_API", "").rstrip("/")
-    if not base or not PORTAL_TOKEN or PORTAL_ROUTE is None:
+    if PORTAL_ROUTE is None:
         return None
+    if not base:
+        raw = native_bridge_mailbox().take(PORTAL_ROUTE)
+        return BridgeFrame.decode(raw) if raw else None
+    if not PORTAL_TOKEN:
+        raise RuntimeError("NANNET portal is configured but runner has no portal token")
     query = urllib.parse.urlencode({"route": PORTAL_ROUTE.text()})
     request = urllib.request.Request(
         base + "/v1/nannet/bridge/poll?" + query,
@@ -519,8 +535,10 @@ def portal_bridge_poll():
 
 def portal_bridge_startup(slot, epoch):
     """Announce the runner to BSR0, drain queued frames, and return reverse ACKs."""
-    if not os.environ.get("NANNET_PORTAL_API") or PORTAL_ROUTE is None:
-        return {"enabled": False, "route": None, "received": 0}
+    if PORTAL_ROUTE is None:
+        return {"enabled": False, "transport": "unavailable", "route": None, "received": 0}
+    hosted = bool(os.environ.get("NANNET_PORTAL_API"))
+    transport = "koyeb" if hosted else "native"
     root = RunnerRoute(bsr=0)
     sent = False
     if slot != 0:
@@ -543,7 +561,7 @@ def portal_bridge_startup(slot, epoch):
         path = local_path() / ("nannet_inbox_" + str(epoch) + "_" + str(slot) + ".bin")
         path.write_bytes(b"".join(len(f.encode()).to_bytes(4, "little") + f.encode()
                                   for f in received))
-    return {"enabled": True, "route": PORTAL_ROUTE.text(),
+    return {"enabled": True, "transport": transport, "route": PORTAL_ROUTE.text(),
             "announced_to_root": sent, "received": len(received)}
 
 
