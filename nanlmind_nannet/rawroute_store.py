@@ -469,9 +469,10 @@ class RawRouteMesh:
         if len(existing) > 1:
             raise RouteConflict("duplicate route identity exists across volume shards")
         if existing:
-            shard, current = existing[0]
-            if current["generation"] != base_generation:
-                raise RouteConflict("stale base generation")
+            # Delegate generation/idempotency ordering to the shard transaction.
+            # The shard checks an idempotency receipt before rejecting a stale
+            # base generation, so a lost-response retry remains safe.
+            shard, _current = existing[0]
         else:
             shard = self._placement(route.definition_id, shards)
         result = shard.commit(route, base_generation, nanclock_tick,
