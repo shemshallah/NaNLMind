@@ -11,7 +11,18 @@ Use four independently addressable NaN-native namespaces:
 - `SC0:0::sc0db` — supercluster topology and aggregation.
 - `GM0:0::gm0db` — global mesh registry and cross-domain mapping.
 
-Each namespace receives a **10 GB logical quota**. Do not preallocate 40 GB or create four physical volumes unless Koyeb's actual persistent-volume capacity supports it. Use sparse files / quota-enforced database files on the existing persistent mount. Report logical quota, allocated bytes, and physical free bytes separately.
+The initial Koyeb deployment has **four existing 10 GB persistent volumes**, one mounted at each of the user's established paths:
+
+| NaN layer | Existing mount | Initial physical capacity |
+|---|---|---:|
+| BS0:0 | `/bs0db` | 10 GB |
+| MC0:0 | `/mc0db` | 10 GB |
+| SC0:0 | `/sc0db` | 10 GB |
+| GM0:0 | `/gm0db` | 10 GB |
+
+These are four separate volumes, not four directories on one shared disk. The first implementation uses a **9.5 GB logical quota per 10 GB volume**, retaining 500 MB for SQLite WAL/checkpoint growth and filesystem overhead; a 256 MiB physical-free reserve is checked before every commit. No volume is preallocated by the application. Physical free space, logical quota, and actual database bytes are reported independently.
+
+The mount manifest accepts a list of paths per namespace. This supports later volume additions without changing any public NaN address. The current deployment remains exactly the four mounts above; additional mounts are optional expansion, not a prerequisite.
 
 Koyeb BS0:0 is the always-on bootstrap/network gateway because it has continuous availability and inbound/outbound networking. It is not the owner of all live computation. MC0:0 is runner-controlled and initially exposes six logical execution units.
 
