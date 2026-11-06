@@ -340,7 +340,7 @@ class Handler(BaseHTTPRequestHandler):
    if not ({"intake","dataset"}&set(x["scopes"]) or "*" in x["scopes"]):return self.reply(403,{"error":"scope_denied"})
    try:
     d=self.json_body(); total=int(d.get("total_bytes",-1)); sha=d.get("sha256")
-    if total<1 or not isinstance(sha,str) or not HEX.fullmatch(sha):raise ValueError("invalid_manifest")
+    if total<1 or (sha is not None and (not isinstance(sha,str) or not HEX.fullmatch(sha))):raise ValueError("invalid_manifest")
    except (ValueError,TypeError) as e:return self.reply(400,{"error":str(e)[:80]})
    db=connect()
    try:
@@ -356,10 +356,11 @@ class Handler(BaseHTTPRequestHandler):
        b=f.read(65536)
        if not b:break
        h.update(b)
-    if h.hexdigest()!=sha:return self.reply(422,{"error":"dataset_digest_mismatch"})
-    db.execute("UPDATE datasets SET total_bytes=?,dataset_sha256=?,status='quarantine' WHERE dataset_id=?",(total,sha,m.group(1)));db.commit()
+    actual=h.hexdigest()
+    if sha is not None and actual!=sha:return self.reply(422,{"error":"dataset_digest_mismatch"})
+    db.execute("UPDATE datasets SET total_bytes=?,dataset_sha256=?,status='quarantine' WHERE dataset_id=?",(total,actual,m.group(1)));db.commit()
    finally:db.close()
-   return self.reply(202,{"dataset_id":m.group(1),"state":"quarantine_pending_external_validation","sha256":sha,"bytes":total})
+   return self.reply(202,{"dataset_id":m.group(1),"state":"quarantine_pending_external_validation","sha256":actual,"bytes":total,"digest_computed_by":"nannet"})
   return self.reply(404,{"error":"not_found"})
  def do_PUT(self):
   m=re.fullmatch(r"/v1/datasets/([A-Za-z0-9._-]{1,96})/chunks/(\d+)",urlparse(self.path).path)
