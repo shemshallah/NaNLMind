@@ -18,6 +18,7 @@ MAGIC = b"N16B"
 VERSION = 1
 MEDIA_TYPE = "application/vnd.nan16.n16b"
 MAX_PAYLOAD = 1_048_576
+MAX_PENDING_PER_ROUTE = 4096
 HEADER = struct.Struct("<4sBBHI6B6BI8s")
 CRC = struct.Struct("<I")
 
@@ -140,10 +141,24 @@ class BridgeMailbox:
 
     def put(self, frame: BridgeFrame) -> None:
         raw = frame.encode()
-        with sqlite3.connect(self.database, timeout=15) as db:
+        with sqlite3.connect(self.database, timeout=15, isolation_level="IMMEDIATE") as db:
+            pending = db.execute("SELECT COUNT(*) FROM bridge_messages WHERE destination=?",
+                                 (frame.destination.text(),)).fetchone()[0]
+            if pending >= MAX_PENDING_PER_ROUTE:
+                raise OverflowError("N16B destination mailbox is full")
             db.execute("INSERT INTO bridge_messages(destination,source,frame,created_at) "
                        "VALUES(?,?,?,?)",
                        (frame.destination.text(), frame.source.text(), raw, int(time.time())))
+
+    def stats(self) -> dict:
+        """Return operational counters without exposing frame contents."""
+        with sqlite3.connect(self.database, timeout=15) as db:
+            rows = db.execute("SELECT destination, COUNT(*) FROM bridge_messages "
+                              "GROUP BY destination ORDER BY destination").fetchall()
+        by_destination = {route: count for route, count in rows}
+        return {"queued": sum(by_destination.values()),
+                "by_destination": by_destination,
+                "max_pending_per_route": MAX_PENDING_PER_ROUTE}
 
     def take(self, destination: RunnerRoute) -> bytes | None:
         with sqlite3.connect(self.database, timeout=15, isolation_level="IMMEDIATE") as db:
