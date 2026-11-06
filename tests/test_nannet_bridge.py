@@ -41,7 +41,9 @@ class BridgeTests(unittest.TestCase):
             frame = translator.make_frame(point_zero, 0xA5 + slot,
                                           NanWord.from_bits(0, 0, slot), b"point-zero")
             raw = translator.encode(frame)
-            decoded = translator.decode(raw, expected_destination=point_zero)
+            decoded = PointZeroTranslator().decode(
+                raw, expected_destination=point_zero, expected_source=local
+            )
             self.assertEqual(decoded.source, local)
             self.assertEqual(decoded.destination, point_zero)
             self.assertEqual(decoded.payload, b"point-zero")
