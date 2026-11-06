@@ -4,6 +4,7 @@ from pathlib import Path
 
 from nanlmind_nannet.bridge import RunnerRoute
 from nanlmind_nannet.rawroute import parse_rawroute
+from nanlmind_nannet.volume_address import make_volume_address, parse_volume_path
 from nanlmind_nannet.rawroute_store import (
     DEFAULT_QUOTA_BYTES,
     RawRouteDB,
@@ -157,6 +158,72 @@ class RawRouteStoreTests(unittest.TestCase):
             health = db.health()
             self.assertEqual(health["logical_used_bytes"], 0)
             self.assertLess(health["physical_bytes"], 1024 * 1024)
+
+
+    def test_nan_volume_addresses_roundtrip_and_bind_mount_roots(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mounts = {
+                tier: [root / make_volume_address(tier).path.lstrip("/")]
+                for tier in ("BS0", "MC0", "SC0", "GM0")
+            }
+            mesh = RawRouteMesh(mounts=mounts, require_nan_paths=True,
+                                physical_reserve_bytes=0)
+            expected = {
+                "BS0": "0x7FF14E1100E8F17F",
+                "MC0": "0x7FF14E1200D7F17F",
+                "SC0": "0x7FF14E1300C2F17F",
+                "GM0": "0x7FF14E1400A9F17F",
+            }
+            health = mesh.health()
+            for tier, address in expected.items():
+                shard = health["namespaces"][tier]["shards"][0]
+                self.assertEqual(shard["volume_address"]["raw"], address)
+                self.assertEqual(shard["mount_path"], str(mounts[tier][0]))
+                self.assertTrue((mounts[tier][0] / f"{tier.lower()}db.sqlite3").exists())
+                parsed = parse_volume_path("/" + address)
+                self.assertEqual(parsed.tier, tier)
+                self.assertEqual(parsed.shard, 0)
+
+    def test_nan_mount_path_rejects_wrong_tier_crc_and_legacy_when_required(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wrong_tier = {
+                "BS0": [root / make_volume_address("MC0").path.lstrip("/")],
+                "MC0": [root / make_volume_address("BS0").path.lstrip("/")],
+                "SC0": [root / make_volume_address("SC0").path.lstrip("/")],
+                "GM0": [root / make_volume_address("GM0").path.lstrip("/")],
+            }
+            with self.assertRaisesRegex(ValueError, "does not match"):
+                RawRouteMesh(mounts=wrong_tier, require_nan_paths=True)
+            bad_crc = dict(wrong_tier)
+            bad_crc["BS0"] = [root / "0x7FF14E1100E9F17F"]
+            with self.assertRaisesRegex(ValueError, "CRC"):
+                RawRouteMesh(mounts=bad_crc)
+            legacy = {tier: [root / tier.lower()] for tier in ("BS0", "MC0", "SC0", "GM0")}
+            with self.assertRaisesRegex(ValueError, "canonical /0x"):
+                RawRouteMesh(mounts=legacy, require_nan_paths=True)
+
+    def test_nan_mount_shard_ids_are_explicit_and_unique(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mounts = {
+                "BS0": [root / make_volume_address("BS0").path.lstrip("/")],
+                "MC0": [
+                    root / make_volume_address("MC0", 0).path.lstrip("/"),
+                    root / make_volume_address("MC0", 1).path.lstrip("/"),
+                ],
+                "SC0": [root / make_volume_address("SC0").path.lstrip("/")],
+                "GM0": [root / make_volume_address("GM0").path.lstrip("/")],
+            }
+            mesh = RawRouteMesh(mounts=mounts, require_nan_paths=True,
+                                physical_reserve_bytes=0)
+            shards = mesh.health()["namespaces"]["MC0"]["shards"]
+            self.assertEqual([x["volume_address"]["shard"] for x in shards], [0, 1])
+            duplicate = dict(mounts)
+            duplicate["MC0"] = [mounts["MC0"][0], mounts["MC0"][0]]
+            with self.assertRaises(ValueError):
+                RawRouteMesh(mounts=duplicate, require_nan_paths=True)
 
 
 if __name__ == "__main__":
