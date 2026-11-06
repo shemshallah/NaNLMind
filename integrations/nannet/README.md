@@ -10,7 +10,10 @@ and exposes the canonical runner merge boundary.
 - Canonical address form: `nan://GM0:SC0:MC0:BS0:HW0`.
 - Each GM, SC, MC, BS, and HW coordinate is an unsigned integer from 0 through 255.
 - Initial identities: HW0=NaNLMind runner ring; HW1=Android; HW2=Hermes; HW3=Clocked, all initially under GM0/SC0/MC0/BS0.
+- Fixed HW0–HW3 identities are reserved for the runner ring, Android, Hermes, and Clocked. Community device installations receive the next free HW4–HW255 slot in BS0.
+- A device installation key is generated locally and stored only as a server-side keyed hash. One active lease is allowed per installation key and one installation per active HW slot. Re-registration resumes the same lease; explicit release revokes its tokens and frees the slot only after pending work is committed or rejected.
 - The issued bearer token binds the endpoint to its canonical NaN address; optional `X-NaN-Address` claims are checked against that binding.
+- MAC addresses, IMEI, serial numbers, Android IDs, phone numbers, and email addresses are not collected or used for device identity. Network MAC randomization therefore does not create a second device identity.
 - SQLite WAL stores metadata and bounded observation envelopes only.
 - Corpus bytes stream to disk in 8 MiB chunks; no SQLite BLOBs and no 6 GiB
   in-memory buffers.
@@ -47,14 +50,20 @@ distinct hierarchy levels, not hardware aliases.
 
 ## Operator portal
 
-The same-origin portal is served at `/` and `/portal`. It provides health, authenticated identity/routes, endpoint-token issuance, a separate validator queue with explicit approve/reject actions, corpus upload, and admin-only keeper/model status. Credentials remain in page memory only and are not written to local storage or cookies. Use HTTPS only. The portal never proxies Qwen requests.
+The same-origin portal is served at `/` and `/portal`. It provides device registration and first-free HW allocation, lease heartbeat/release, device/system issue reports, health, authenticated identity/routes, reserved endpoint-token issuance, a separate validator queue with explicit approve/reject actions, corpus upload, and admin-only keeper/model/device status. Credentials remain in page memory only and are not written to local storage or cookies. Use HTTPS only. The portal never proxies Qwen requests.
 
 Corpus upload uses browser SHA-256, sends bounded chunks, and seals the manifest after every chunk is acknowledged. Upload means **quarantined**, not trained. Independent validation and a runner commit receipt are required before staging bytes are released.
 
 ## API
 
 - GET /healthz
-- POST /admin/tokens (NANLM_ADMIN_TOKEN)
+- POST /admin/tokens (NANLM_ADMIN_TOKEN; fixed HW0–HW3 only)
+- POST /v1/devices/register (public HTTPS registration; explicit consent + bounded system report + client-generated 256-bit installation secret; assigns HW4–HW255)
+- GET /v1/devices/me (device bearer; own registration and lease)
+- POST /v1/devices/heartbeat (device bearer; renews lease)
+- POST /v1/devices/release (device bearer; revokes tokens and frees slot only after no pending uploads/observations)
+- POST /v1/devices/report (device bearer; device/system/network/security issue report)
+- GET /admin/devices and GET /admin/device/reports (admin-only operator views)
 - GET /v1/address (endpoint bearer; canonical address, registry slot, and 256-head local universe)
 - GET /v1/routes (endpoint bearer; capability-filtered routes and head count)
 - GET /admin/keeper/status (admin-only; keeper health/action)
@@ -192,3 +201,31 @@ python3 -m unittest -v
 
 Expose only HTTPS at the platform edge. Never print bearer tokens or log
 request bodies.
+
+
+## Device identity, leases, and good-faith registration
+
+A clone does not receive a hard-coded identity. On first run it creates a
+random 256-bit installation secret locally and registers over HTTPS with
+explicit consent and a small system-capability report. The server assigns the
+lowest free community slot, initially HW4, then HW5, through HW255. HW0–HW3
+remain reserved for the runner ring, Android reference endpoint, Hermes, and
+Clocked.
+
+The installation secret is never stored in plaintext by NANNET; only a
+pepper-HMAC digest is retained. Re-registering with the same secret resumes
+the same active lease and rotates the endpoint bearer token. Heartbeats renew
+the lease. Explicit release revokes the endpoint token and returns the HW slot
+to the pool only when no upload, quarantined/validated dataset, or unacknowledged
+observation remains. Expired leases with pending work are retained rather than
+reassigned. This is an installation identity, not a hardware identity: a
+reinstall that loses its secret is a new installation. MAC addresses are
+randomized/spoofable and are not used for authentication; changing Wi-Fi or
+network interfaces does not change the lease.
+
+Registration requires platform, OS version, app version, and CPU ABI. Optional
+capacity fields include CPU cores, RAM, and free storage. Error reports can
+describe device, system, network, or security concerns. Never submit IMEI,
+serial number, Android ID, MAC address, phone number, email, or credentials.
+This is a good-faith admission and scheduling mechanism, not proof of physical
+device uniqueness or a substitute for the future full cryptographic package.
