@@ -23,6 +23,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
+from nanlmind_nannet.auth import AuthError, _unb64
+from nanlmind_nannet.pairing import PairingAuthority
+from nanlmind_nannet.devices import DeviceRegistry
+
 
 def canonical(value: Any) -> bytes:
     return json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
@@ -148,8 +152,9 @@ class MergeStore:
             return HTTPStatus.OK, response
 
 
-def make_server(host: str, port: int, root: Path, token: str) -> ThreadingHTTPServer:
+def make_server(host: str, port: int, root: Path, token: str, authority: PairingAuthority | None = None) -> ThreadingHTTPServer:
     store = MergeStore(root, token)
+    devices = DeviceRegistry(authority.database) if authority else None
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, fmt: str, *args: Any) -> None:
@@ -173,31 +178,62 @@ def make_server(host: str, port: int, root: Path, token: str) -> ThreadingHTTPSe
 
         def do_GET(self) -> None:
             if self.path == "/healthz":
-                self._json(HTTPStatus.OK, store.health())
+                health = store.health()
+                health["nannet_authority"] = "ready" if authority else "disabled"
+                self._json(HTTPStatus.OK, health)
             else:
                 self._json(HTTPStatus.NOT_FOUND, {"error": "not found"})
 
+        def _body(self, limit: int = 1048576) -> dict[str, Any]:
+            try: length = int(self.headers.get('Content-Length', '0'))
+            except ValueError: length = 0
+            if length <= 0 or length > limit: raise ValueError('bad body')
+            payload = json.loads(self.rfile.read(length))
+            if not isinstance(payload, dict): raise ValueError('JSON object required')
+            return payload
+        def _bearer(self) -> str:
+            header = self.headers.get('Authorization', '')
+            return header[7:] if header.startswith('Bearer ') else ''
         def do_POST(self) -> None:
-            if self.path != "/v1/training/merge":
-                self._json(HTTPStatus.NOT_FOUND, {"error": "not found"})
-                return
-            if not self._auth():
-                self._json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
-                return
+            if self.path == '/v1/training/merge':
+                if not self._auth():
+                    self._json(HTTPStatus.UNAUTHORIZED, {'error': 'unauthorized'}); return
+                try: payload = self._body()
+                except (ValueError, UnicodeDecodeError):
+                    self._json(HTTPStatus.BAD_REQUEST, {'error': 'invalid json'}); return
+                status, body = store.merge(payload, self.headers.get('Idempotency-Key', ''))
+                self._json(status, body); return
+            if authority is None or devices is None:
+                self._json(HTTPStatus.SERVICE_UNAVAILABLE, {'error': 'nannet authority disabled'}); return
             try:
-                length = int(self.headers.get("Content-Length", "0"))
-            except ValueError:
-                length = 0
-            if length <= 0 or length > 1_048_576:
-                self._json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {"error": "bad body"})
-                return
-            try:
-                payload = json.loads(self.rfile.read(length))
-            except (ValueError, UnicodeDecodeError):
-                self._json(HTTPStatus.BAD_REQUEST, {"error": "invalid json"})
-                return
-            status, body = store.merge(payload, self.headers.get("Idempotency-Key", ""))
-            self._json(status, body)
+                if self.path == '/v1/devices/register':
+                    self._json(HTTPStatus.CREATED, devices.register(self._body(8192))); return
+                if self.path in ('/v1/devices/heartbeat', '/v1/devices/rotate', '/v1/devices/release', '/v1/devices/report'):
+                    bearer = self._bearer()
+                    if not bearer: self._json(HTTPStatus.UNAUTHORIZED, {'error': 'bearer_required'}); return
+                    payload = self._body(8192) if self.path.endswith('/report') else self._body(1024)
+                    if self.path.endswith('/heartbeat'): result = devices.heartbeat(bearer)
+                    elif self.path.endswith('/rotate'): result = devices.rotate(bearer)
+                    elif self.path.endswith('/release'): result = devices.release(bearer)
+                    else: result = devices.report(bearer, payload)
+                    self._json(HTTPStatus.OK, result); return
+                if self.path == '/v1/pair':
+                    p = self._body(16384)
+                    result = authority.pair(p['pairing_code'], p['installation_id'], p['public_key'])
+                    self._json(HTTPStatus.OK, result); return
+                if self.path == '/v1/authorize':
+                    bearer = self._bearer(); scope = self._body(4096).get('scope')
+                    if not bearer or not isinstance(scope, str):
+                        self._json(HTTPStatus.UNAUTHORIZED, {'error': 'bearer_or_scope_required'}); return
+                    claims = authority.verify_access_token(bearer, required_scope=scope)
+                    self._json(HTTPStatus.OK, {'authorized': True, 'installation_id': claims['sub'], 'scope': scope, 'expires_at': claims['exp']}); return
+                if self.path == '/v1/revoke':
+                    bearer = self._bearer()
+                    if not bearer: self._json(HTTPStatus.UNAUTHORIZED, {'error': 'bearer_required'}); return
+                    self._json(HTTPStatus.OK, authority.revoke_token(bearer)); return
+                self._json(HTTPStatus.NOT_FOUND, {'error': 'not found'})
+            except (ValueError, KeyError, TypeError, UnicodeDecodeError, AuthError) as exc:
+                self._json(HTTPStatus.BAD_REQUEST, {'error': str(exc)[:160]})
 
     return ThreadingHTTPServer((host, port), Handler)
 
@@ -212,8 +248,18 @@ def main() -> int:
     if not token:
         print("NANLM_MERGE_TOKEN is required; DEEPREPO_PAT is never used", flush=True)
         return 2
-    server = make_server(args.host, args.port, Path(args.root), token)
-    print(f"training merge listening on {args.host}:{args.port} root={args.root}", flush=True)
+    root = Path(args.root)
+    authority = None
+    authority_key = os.environ.get('NANNET_AUTHORITY_MASTER_KEY', '')
+    if authority_key:
+        try: raw_key = _unb64(authority_key)
+        except Exception:
+            print('NANNET_AUTHORITY_MASTER_KEY must be base64url encoded', flush=True); return 2
+        if len(raw_key) != 32:
+            print('NANNET_AUTHORITY_MASTER_KEY must decode to exactly 32 bytes', flush=True); return 2
+        authority = PairingAuthority(os.environ.get('NANNET_AUTHORITY_DB', str(root / 'nannet-authority.sqlite')), raw_key)
+    server = make_server(args.host, args.port, root, token, authority)
+    print('training merge + NANNET authority listening on ' + args.host + ':' + str(args.port) + ' root=' + args.root + ' nannet=' + ('enabled' if authority else 'disabled'), flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
