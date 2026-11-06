@@ -193,7 +193,7 @@ def _verify_github_oidc(jwt: str, expected_repository: str) -> dict[str, Any]:
 
 def make_server(host: str, port: int, root: Path, token: str, authority: PairingAuthority | None = None) -> ThreadingHTTPServer:
     store = MergeStore(root, token)
-    devices = DeviceRegistry(authority.database) if authority else None
+    devices = DeviceRegistry(authority.database, authority=authority) if authority else None
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, fmt: str, *args: Any) -> None:
