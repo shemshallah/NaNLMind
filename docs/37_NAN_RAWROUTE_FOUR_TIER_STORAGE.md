@@ -210,7 +210,7 @@ Redis is **not required for the first deployment**. Add Redis only when there ar
 
 - BS0:0 is the 24/7 externally reachable bootstrap endpoint.
 - The initial Koyeb topology is four independent 10 GB volumes: `/bs0db`, `/mc0db`, `/sc0db`, `/gm0db`.
-- `NANLM_RAWROUTE_MOUNTS` maps each logical tier to one or more absolute mount paths; the checked-in example is `config/rawroute.mounts.koyeb.example.json`.
+- `NANLM_RAWROUTE_MOUNTS` maps each logical tier to one or more absolute mount paths; the checked-in example is `config/rawroute.mounts.koyeb.example.json`; copy the non-secret environment values from `config/rawroute.koyeb.env.example` into the Koyeb service settings.
 - Set `NANLM_RAWROUTE_REQUIRE_MOUNTS=1` in production. Startup then refuses to create missing mount directories and requires every configured path to be an active mount, preventing silent writes to ephemeral container storage.
 - Each 10 GB mount defaults to a 9.5 GB logical quota plus a 256 MiB physical-free reserve. Additional volumes increase only the tier to which they are attached.
 - Report each physical mount separately; never aggregate free-space figures across unrelated volumes.
