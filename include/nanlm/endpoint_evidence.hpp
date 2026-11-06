@@ -5,6 +5,7 @@
 #include <array>
 #include <cstdint>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 namespace nanlm {
@@ -41,9 +42,10 @@ struct EndpointEvidenceStats {
     std::uint64_t evidence_only = 0;
 };
 
-// Overbootstrap's cross-endpoint evidence fold. It stores summaries, not
-// endpoint model state. Only independently verified outcomes affect head
-// reliability; unverified observations remain evidence-only.
+// Cross-endpoint evidence fold. It stores summaries, not endpoint model
+// state. Callers must authenticate endpoint identity and independently
+// verify outcome claims before setting outcome_verified=true. This class
+// deliberately does not create head deltas or commit canonical generations.
 class EndpointEvidenceFold {
 public:
     EndpointIngestResult observe(const EndpointObservation& observation);
@@ -62,7 +64,7 @@ private:
     std::uint64_t generation_ = 0;
     std::array<EndpointEvidenceStats, kEndpointCount> stats_{};
     std::array<std::int32_t, 256> head_evidence_{};
-    std::vector<std::string> event_ids_;
+    std::unordered_set<std::string> event_ids_;
 };
 
 } // namespace nanlm
