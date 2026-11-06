@@ -1,4 +1,5 @@
 import json
+import base64
 import sys
 import tempfile
 import threading
@@ -9,6 +10,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "runner"))
 import training_merge  # noqa: E402
+from nanlmind_nannet.auth import _unb64, generate_master_key
+from nanlmind_nannet.pairing import PairingAuthority
+from nanlmind_nannet.devices import TERMS_VERSION
 
 
 class TrainingMergeTest(unittest.TestCase):
@@ -78,6 +82,30 @@ class TrainingMergeTest(unittest.TestCase):
 
         status, bad_key = self.post(self.payload(base=2, tick=12), "k3")
         self.assertEqual(status, 409)
+
+    def test_unified_authority_device_lease_routes(self):
+        db = Path(self.tmp.name) / 'authority.sqlite'
+        authority = PairingAuthority(db, _unb64(generate_master_key()))
+        server = training_merge.make_server('127.0.0.1', 0, Path(self.tmp.name), 'test-token', authority)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        base = 'http://127.0.0.1:' + str(server.server_address[1])
+        try:
+            payload = {'device_secret': 'q' * 43, 'consent': True, 'terms_version': TERMS_VERSION, 'system_report': {'platform': 'test'}}
+            req = urllib.request.Request(base + '/v1/devices/register', data=json.dumps(payload).encode(), method='POST', headers={'Content-Type': 'application/json'})
+            with urllib.request.urlopen(req, timeout=5) as response:
+                enrolled = json.loads(response.read())
+                self.assertEqual(response.status, 201)
+            headers = {'Authorization': 'Bearer ' + enrolled['token'], 'Content-Type': 'application/json'}
+            req = urllib.request.Request(base + '/v1/devices/rotate', data=b'{}', method='POST', headers=headers)
+            with urllib.request.urlopen(req, timeout=5) as response:
+                rotated = json.loads(response.read())
+            self.assertEqual(rotated['address'], enrolled['address'])
+            self.assertNotEqual(rotated['token'], enrolled['token'])
+            health = urllib.request.urlopen(base + '/healthz', timeout=5)
+            self.assertEqual(json.loads(health.read())['nannet_authority'], 'ready')
+        finally:
+            server.shutdown(); server.server_close(); thread.join(timeout=2)
 
     def test_auth_and_health(self):
         status, body = self.post(self.payload(), "auth", token="wrong")
