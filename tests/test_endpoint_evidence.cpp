@@ -37,14 +37,14 @@ int main() {
     CHECK_EQ(fold.stats(EndpointId::MyAndroid).correct, 1u);
     CHECK_EQ(fold.feedback()[7], 0);
 
-    for (char id = 'c'; id <= 'i'; ++id) {
+    for (char id : {'c', 'd', 'e', 'f', '0', '1', '2'}) {
         android.event_id = event_id(id);
         CHECK(fold.observe(android) == EndpointIngestResult::Accepted);
     }
     CHECK_EQ(fold.feedback()[7], 1);
 
     EndpointObservation stale = android;
-    stale.event_id = event_id('j');
+    stale.event_id = event_id('3');
     stale.base_generation = 1;
     CHECK(fold.observe(stale) == EndpointIngestResult::StaleGeneration);
     CHECK(!fold.advance_generation(2));
