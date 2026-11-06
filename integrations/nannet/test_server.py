@@ -29,7 +29,7 @@ class NannetTests(unittest.TestCase):
   self.assertEqual(server.address_node_point("nan://GM255:SC255:MC255:BS255:HW255"),256)
  def test_portal_served_without_credentials(self):
   status,body=self.req("GET","/")
-  self.assertEqual(status,200);self.assertIn(b"NANNET",body);self.assertIn(b"connectToken",body)
+  self.assertEqual(status,200);self.assertIn(b"NANNET",body);self.assertIn(b"connectEndpoint",body)
   status,body=self.req("GET","/portal")
   self.assertEqual(status,200);self.assertIn(b"nan://GM0",body)
 
@@ -68,6 +68,18 @@ class NannetTests(unittest.TestCase):
  def test_bad_chunk_digest(self):
   t=self.issue();self.req("POST","/v1/datasets/bad/begin",{"chunk_count":1,"metadata":{"protocol":"nanlm.dataset","version":1,"content_type":"text/plain","encoding":"utf-8","license":"CC0-1.0","provenance":"synthetic unit-test corpus","split":"train"}},t)
   s,_=self.req("PUT","/v1/datasets/bad/chunks/0",b"abc",t,{"Content-Type":"application/octet-stream","X-Chunk-SHA256":"0"*64});self.assertEqual(s,400)
+
+ def test_training_state_and_durable_receipt_lookup(self):
+  status,state=self.req("GET","/v1/training/state/1",token="m"*48)
+  self.assertEqual(status,200);self.assertEqual(state["generation"],0)
+  payload={"source_endpoint":"bootstrap","node":1,"base_generation":0,"nanclock_tick":1,"updates":[{"head":3,"layer":0,"epoch":1,"vector":[1]*16,"strength_delta":4}]}
+  key=hashlib.sha256(b"dataset-a\\0"+b"f"*64).hexdigest()
+  status,merged=self.req("POST","/v1/training/merge",payload,token="m"*48,headers={"Idempotency-Key":key})
+  self.assertEqual(status,200);self.assertEqual(merged["generation"],1)
+  status,receipt=self.req("GET","/v1/training/receipts/"+key,token="m"*48)
+  self.assertEqual(status,200);self.assertEqual(receipt,merged)
+  status,state=self.req("GET","/v1/training/state/1",token="m"*48)
+  self.assertEqual(status,200);self.assertEqual(state["generation"],1)
 
  def test_training_merge_is_runner_only_and_idempotent(self):
   payload={"source_endpoint":"bootstrap","node":1,"base_generation":0,"nanclock_tick":7,"updates":[{"head":9,"strength_delta":2}]}
