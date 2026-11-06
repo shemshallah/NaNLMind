@@ -31,6 +31,13 @@
 - Explicit U6,4 reference check.
 - Minsky Python reference check.
 - Encoded-description reference check.
+- A 23x8 -> 505-state binary TM compiler reproducing 20 source steps.
+
+### Binary compiler
+
+`compile_tm_to_binary` turns the Minsky 23-state/8-symbol table into a
+505-state, 3-bit-block binary TM. The compiled machine reproduces 20 checked
+Minsky steps exactly; see `docs/74_TM_TO_BINARY_COMPILER.md`.
 
 ## One remaining limitation
 
