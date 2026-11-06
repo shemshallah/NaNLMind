@@ -24,6 +24,7 @@ class NannetTests(unittest.TestCase):
  def test_256_and_route_scoping(self):
   s,d=self.req("GET","/healthz");self.assertEqual(s,200);self.assertEqual(d["bootstrap_endpoints"],256);self.assertIn("bootstrap-255",server.ENDPOINTS)
   t=self.issue("my_android",["intake"]);s,r=self.req("GET","/v1/routes",token=t);self.assertEqual(s,200);self.assertIn("n16t.peer",r["routes"]);self.assertNotIn("deeprepo.keeper",r["routes"])
+  self.assertEqual(self.req("POST","/admin/tokens",{"endpoint_id":"bootstrap-000","scopes":["runner"]},token="a"*48)[0],400)
  def test_observation_unverified_and_idempotent(self):
   t=self.issue("bootstrap-007",["intake","observation"]);e={"protocol":"nanlm.endpoint-observation","version":1,"event_id":"b"*64,"base_generation":4,"active_heads":[1,1,255],"outcome_verified":False}
   s,a=self.req("POST","/v1/observations",e,t);self.assertEqual(s,202);self.assertEqual(a["endpoint_id"],"bootstrap-007");self.assertFalse(a["outcome_verified"])
