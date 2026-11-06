@@ -71,6 +71,19 @@ class BridgeTests(unittest.TestCase):
             self.assertEqual(box.stats()["queued"], 0)
             self.assertEqual(box.stats()["max_pending_per_route"], 4096)
 
+    def test_mailbox_applies_per_runner_backpressure(self):
+        from nanlmind_nannet.bridge import MAX_PENDING_PER_ROUTE
+        with tempfile.TemporaryDirectory() as tmp:
+            box = BridgeMailbox(Path(tmp) / "bounded.sqlite")
+            source, destination = RunnerRoute(bsr=0), RunnerRoute(bsr=5)
+            for sequence in range(MAX_PENDING_PER_ROUTE):
+                box.put(BridgeFrame(source, destination, sequence,
+                                    NanWord.from_bits(0, 0, sequence), b"x"))
+            self.assertEqual(box.stats()["queued"], MAX_PENDING_PER_ROUTE)
+            with self.assertRaises(OverflowError):
+                box.put(BridgeFrame(source, destination, MAX_PENDING_PER_ROUTE,
+                                    NanWord.from_bits(0, 0, 0), b"overflow"))
+
     def test_six_runner_identities(self):
         from nanlmind_nannet.bridge import route_for_identity
         for n in range(1, 7):
