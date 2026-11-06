@@ -4,7 +4,7 @@
 
 ## 1. Canonical universe
 
-NaNLMind owns one global topology and one canonical generation. The six nanlm-cpu-1..6 runners divide the 256 heads using the existing deterministic owner(head) = head mod 6 map. The ring's prepare/barrier/commit cycle verifies all 256 head packets and publishes one ledger event and next manifest generation.
+NaNLMind owns one global topology and one canonical generation. The six runner slots (0 through 5) divide the 256 heads using the existing deterministic owner(head) = head mod 6 map. The ring's prepare/barrier/commit cycle verifies all 256 head packets and publishes one ledger event and next manifest generation.
 
 This is the primary bootstrap and training loop. The ring trains the canonical 256-head state; it is not a fifth endpoint and is not replaced by an external service.
 
