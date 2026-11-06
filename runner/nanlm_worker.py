@@ -41,6 +41,8 @@ from nanlmind_nannet.nan16de import NanWord
 PORTAL_TOKEN = None
 PORTAL_ROUTE = None
 PORTAL_TRANSLATOR = None
+_ROUTER_RING_ANCHOR = None
+_ROUTER_RING_MONO = None
 RUNNERS = 6
 HEADS = 256
 SLOT_NAMES = [f"nanlm-cpu-{i}" for i in range(1, RUNNERS + 1)]
@@ -624,6 +626,33 @@ def portal_bridge_startup(slot, epoch):
             "announced_to_root": sent, "received": received}
 
 
+def router_ring_heartbeat():
+    """Acknowledge the current signed Koyeb registry from this runner slot.
+
+    The anchored wall-clock sample is cached once per worker process and
+    advanced with monotonic elapsed time, so repeated loop heartbeats remain
+    ordered without repeatedly contacting external time sources.
+    """
+    global _ROUTER_RING_ANCHOR, _ROUTER_RING_MONO
+    base = os.environ.get("NANLM_ROUTER_URL", "").rstrip("/")
+    token = os.environ.get("NANLM_ROUTER_WORKER_TOKEN", "")
+    if not base and not token:
+        return None
+    if not base or not token:
+        raise RuntimeError("NANLM_ROUTER_URL and NANLM_ROUTER_WORKER_TOKEN must be configured together")
+    if PORTAL_ROUTE is None:
+        raise RuntimeError("runner route must be initialized before router-ring heartbeat")
+    if _ROUTER_RING_ANCHOR is None:
+        from atomic_clock import collect
+        _ROUTER_RING_ANCHOR = collect(timeout=float(os.environ.get("NANLM_ROUTER_CLOCK_TIMEOUT", "5")))
+        if not _ROUTER_RING_ANCHOR.get("ok") or _ROUTER_RING_ANCHOR.get("uncertainty_s", 999) > 5:
+            raise RuntimeError("atomic wall-clock anchor is unavailable or too uncertain")
+        _ROUTER_RING_MONO = time.monotonic()
+    tick = int(_ROUTER_RING_ANCHOR["wall_unix"] + (time.monotonic() - _ROUTER_RING_MONO))
+    from router_ring_client import submit_heartbeat
+    return submit_heartbeat(base, token, PORTAL_ROUTE.bsr, tick)
+
+
 def portal_heartbeat():
     global PORTAL_TOKEN
     base = os.environ.get("NANNET_PORTAL_API", "").rstrip("/")
@@ -645,6 +674,9 @@ def portal_heartbeat():
         verify_point_zero_descriptor(renewed)
         PORTAL_TOKEN = renewed["token"]
     portal_bridge_drain(int(time.time()))
+    ring = router_ring_heartbeat()
+    if ring is not None:
+        print("router-ring: " + json.dumps(ring, sort_keys=True), file=sys.stderr)
 
 
 def main():
@@ -667,6 +699,9 @@ def main():
     args.slot = parse_slot(args.slot)
     args.slot_name = SLOT_NAMES[args.slot]
     verify_portal_identity(args.slot)
+    ring_status = router_ring_heartbeat()
+    if ring_status is not None:
+        print("router-ring: " + json.dumps(ring_status, sort_keys=True), file=sys.stderr)
     bridge_status = portal_bridge_startup(args.slot, args.epoch)
     if bridge_status.get("enabled"):
         print("nannet-bridge: " + json.dumps(bridge_status, sort_keys=True), file=sys.stderr)
