@@ -73,6 +73,42 @@ curl --fail-with-body https://YOUR_GATEWAY/v1/experience \
 
 The gateway defaults to 25 requests per token, six hours' lifetime, a 64 KiB request limit, and a maximum issuance policy of 500 requests/24 hours. It consumes quota before upstream processing to prevent retries from bypassing limits. Use a production WSGI server, HTTPS termination, persistent protected storage, and monitoring for a public deployment; the built-in server is for local/demo use.
 
+## Shared endpoint observation intake
+
+Android and Hermes submit observations to the same gateway without invoking
+Clocked. The server assigns endpoint identity from each scoped token:
+
+- `my_android` → `NANLM_DEVICE_TOKEN`
+- `hermes_demo` → `HERMES_DEMO_API`
+- `clocked_demo` → `CLOCKED_USER_API`
+
+Issue a token with an admin-authenticated `POST /admin/tokens` body such as
+`{"tenant_id":"android-demo","endpoint_id":"my_android","max_requests":100,"ttl_seconds":21600}`.
+The gateway returns the corresponding scoped token once and stores only its
+peppered digest.
+
+The common `POST /v1/observations` contract is documented in
+[endpoint-observation.schema.json](endpoint-observation.schema.json). It is
+hardware-neutral version-1 JSON: event digest, base generation, active-head
+indices, and an explicit unverified outcome. The caller cannot provide a
+trusted source identity or assert correctness.
+
+Accepted events enter a durable SQLite inbox. Admin-only
+`GET /internal/observations` retrieves pending events and
+`POST /internal/observations/ack` acknowledges them after the runner service
+has durably accepted them. This queue is not yet wired to the live runner's
+canonical commit; queued observations remain
+`awaiting_runner_ring_ingest`.
+
+The standard-library publisher is `endpoint_client.py`. It reads
+`NANLM_INTAKE_URL` and a scoped token from `NANLM_DEVICE_TOKEN`,
+`HERMES_DEMO_API`, or `CLOCKED_USER_API`; it never reads
+`CLOCKED_API_KEY`. Provide a JSON event file and run:
+
+```sh
+python integrations/clocked/endpoint_client.py observation.json
+```
+
 ## Direct adapter (server-side only)
 
 For a single trusted runner, the direct adapter remains available:
@@ -103,4 +139,4 @@ The Clocked SDK sends an idempotency key and reuses it for retries. The direct a
 
 ## Current integration boundary
 
-This adds the server-side gateway, participant-token issuance, quota enforcement, an architecture-neutral protocol envelope, a standard-library participant client, a normative JSON schema, and offline tests. Native ingestion into the runner ring's Overbootstrap evidence fold, durable ledger commits, Android/Hermes endpoint adapters, and held-out cross-endpoint learning benchmarks remain subsequent integration steps. No claim of end-to-end training is made by this adapter.
+This adds the server-side gateway, participant-token issuance, quota enforcement, an architecture-neutral protocol envelope, a standard-library participant client, a normative JSON schema, and offline tests. Native ingestion into the runner ring's Overbootstrap evidence fold, the durable inbox is implemented, but a live runner queue consumer and canonical ledger commit, native Android/Hermes app wiring, and held-out cross-endpoint learning benchmarks remain subsequent integration steps. No claim of end-to-end training is made by this adapter.
