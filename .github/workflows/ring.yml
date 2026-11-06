@@ -104,6 +104,19 @@ jobs:
           next=$(python -c "import json; print(json.load(open('ring.json')).get('next_epoch', ${{ inputs.epoch }} + ${{ inputs.epochs }}))")
           echo "next=$next" >> "$GITHUB_OUTPUT"
 
+      - name: Fold validated NANNET corpus into bootstrap head bank
+        if: success() && vars.NANNET_URL != ''
+        env:
+          NANNET_URL: ${{ vars.NANNET_URL }}
+          NANLM_RUNNER_TOKEN: ${{ secrets.NANLM_RUNNER_TOKEN }}
+          NANLM_BOOTSTRAP_TOKEN: ${{ secrets.NANLM_BOOTSTRAP_TOKEN }}
+        run: |
+          if [ -n "$NANLM_RUNNER_TOKEN" ] && [ -n "$NANLM_BOOTSTRAP_TOKEN" ]; then
+            python3 runner/nannet_consumer.py
+          else
+            echo "NANNET credentials are not configured; validated datasets remain queued."
+          fi
+
       - name: Continue to next epoch
         if: ${{ inputs.loop && success() }}
         run: |
