@@ -455,7 +455,7 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                     response = {"token": token, "token_type": "Bearer",
                         "expires_in": 900, "identity": identity, "route": route.text(),
                         "route_bytes": route.bytes().hex(), "role": "admin", "scopes": scopes}
-                    response.update(point_zero.descriptor())
+                    response.update(point_zero_identity_descriptor(route))
                     self._json(HTTPStatus.OK, response)
                 except (ValueError, KeyError, TypeError, AuthError) as exc:
                     self._json(HTTPStatus.UNAUTHORIZED, {"error": str(exc)[:160]})
