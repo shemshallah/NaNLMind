@@ -20,6 +20,7 @@ class PairingAuthority:
             if "role" not in columns:
                 db.execute("ALTER TABLE pairing_codes ADD COLUMN role TEXT NOT NULL DEFAULT 'guest'")
             db.execute("CREATE TABLE IF NOT EXISTS installations (installation_id TEXT PRIMARY KEY,public_key TEXT NOT NULL,paired_at INTEGER NOT NULL)")
+            db.execute("CREATE TABLE IF NOT EXISTS identity_status (identity TEXT NOT NULL,role TEXT NOT NULL,created_at INTEGER NOT NULL,revoked_at INTEGER,PRIMARY KEY(identity,role))")
         try: os.chmod(self.database,0o600)
         except OSError: pass
         self._ensure_signer()
@@ -56,6 +57,25 @@ class PairingAuthority:
     def issuer_public_key(self, role="guest", identity="legacy") -> str:
         return _b64(self._private_key(role, identity).public_key().public_bytes(serialization.Encoding.Raw,serialization.PublicFormat.Raw))
 
+    def register_identity(self, role: str, identity: str, now=None) -> None:
+        from .auth import IDENTITY_DOMAINS
+        if role not in IDENTITY_DOMAINS or not isinstance(identity, str) or not identity or len(identity) > 256:
+            raise AuthError("invalid identity")
+        stamp = int(time.time()) if now is None else int(now)
+        with sqlite3.connect(self.database) as db:
+            db.execute("INSERT OR IGNORE INTO identity_status VALUES (?,?,?,NULL)", (identity, role, stamp))
+            row = db.execute("SELECT revoked_at FROM identity_status WHERE identity=? AND role=?", (identity, role)).fetchone()
+            if row and row[0] is not None:
+                raise AuthError("identity has been revoked")
+
+    def revoke_identity(self, role: str, identity: str, now=None) -> dict:
+        stamp = int(time.time()) if now is None else int(now)
+        with sqlite3.connect(self.database) as db:
+            cur = db.execute("UPDATE identity_status SET revoked_at=? WHERE identity=? AND role=? AND revoked_at IS NULL", (stamp, identity, role))
+            if cur.rowcount != 1:
+                raise AuthError("identity not found or already revoked")
+        return {"revoked": True, "identity": identity, "role": role}
+
     def create_pairing_code(self, scopes, ttl_seconds=600, now=None, role="guest") -> dict:
         from .auth import identity_scope_ceiling
         scopes=sorted(set(scopes))
@@ -85,6 +105,7 @@ class PairingAuthority:
             if db.total_changes<1: raise AuthError("pairing code was already consumed")
             db.execute("INSERT OR REPLACE INTO installations VALUES (?,?,?)",(installation_id,public_key,now))
             scopes=json.loads(row[0]); role=row[3]
+        self.register_identity(role, installation_id, now)
         token=issue_token(self._private_key(role, installation_id),installation_id,scopes,token_ttl_seconds,now,role=role)
         return {"token":token,"issuer_public_key":self.issuer_public_key(role, installation_id),"installation_id":installation_id,"scopes":scopes,"role":role,"expires_at":now+token_ttl_seconds}
 
@@ -111,6 +132,10 @@ class PairingAuthority:
             verified = verify_token(token, self._private_key(role, claims["sub"]).public_key(), required_scope, now, revoked)
         except AuthError:
             verified = verify_token(token, self._legacy_private_key().public_key(), required_scope, now, revoked)
+        with sqlite3.connect(self.database) as db:
+            status = db.execute("SELECT revoked_at FROM identity_status WHERE identity=? AND role=?", (verified["sub"], verified.get("role", "guest"))).fetchone()
+        if status and status[0] is not None:
+            raise AuthError("identity has been revoked")
         return verified
 
     @staticmethod
