@@ -291,7 +291,17 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
         def do_POST(self) -> None:
             if self.path in ("/portal", "/n16t"):
                 try:
-                    raw = self.rfile.read(int(self.headers.get("Content-Length", "0")))
+                    if self.headers.get("Content-Type", "").split(";", 1)[0].strip() != N16T_MEDIA_TYPE:
+                        self._json(HTTPStatus.UNSUPPORTED_MEDIA_TYPE, {"error": "N16T media type required"})
+                        return
+                    length = int(self.headers.get("Content-Length", "0"))
+                    if length < 36 or length > 36 + N16T_MAX_PAYLOAD:
+                        self._json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {"error": "N16T frame size rejected"})
+                        return
+                    raw = self.rfile.read(length)
+                    if len(raw) != length:
+                        self._json(HTTPStatus.BAD_REQUEST, {"error": "truncated N16T request"})
+                        return
                     kind, session, payload, sequence = _n16t_decode(raw)
                     if kind != 1 or len(payload) != 2 or sequence != 1:
                         self._json(HTTPStatus.BAD_REQUEST, {"error": "initial N16T message must be HELLO(type=1, seq=1, payload=2)"})
