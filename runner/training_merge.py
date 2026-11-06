@@ -348,6 +348,8 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                     self.send_header('Content-Length', str(len(ack)))
                     self.send_header('Cache-Control', 'no-store')
                     self.end_headers(); self.wfile.write(ack)
+                except OverflowError as exc:
+                    self._json(HTTPStatus.TOO_MANY_REQUESTS, {'error': str(exc)[:160]})
                 except (ValueError, TypeError, AuthError) as exc:
                     self._json(HTTPStatus.UNAUTHORIZED, {'error': str(exc)[:160]})
                 return
