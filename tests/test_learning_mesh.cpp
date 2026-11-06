@@ -61,7 +61,7 @@ int main() {
     android.outcome_verified = true;
     android.correct = true;
     android.active_heads = {200, 200};
-    for (char id = 'b'; id <= 'i'; ++id) {
+    for (char id : {'b', 'c', 'd', 'e', 'f', '0', '1', '2'}) {
         android.event_id = std::string(64, id);
         CHECK(endpoint_mind.observe_endpoint(android) == EndpointIngestResult::Accepted);
     }
