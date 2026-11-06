@@ -239,10 +239,10 @@ int relation_train_cli(int argc, char** argv) {
                       << " changed_heads=0 mirror_pair_updates=0 hyperedges_added=0"
                       << " state_bytes=" << existing_bytes
                       << " state_digest_before=" << hex(current)
-                      << " state_digest_after=" << hex(current) << "\\n";
+                      << " state_digest_after=" << hex(current) << "\n";
             return 0;
         }
-        std::cerr << "no new relation events; duplicates=0\\n";
+        std::cerr << "no new relation events; duplicates=0\n";
         return 8;
     }
     topology->commit(0x48u,0x41u,0,before,topology->global_digest(),
