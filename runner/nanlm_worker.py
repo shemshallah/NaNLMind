@@ -28,6 +28,7 @@ import sys
 import time
 from pathlib import Path
 
+PORTAL_TOKEN = None
 RUNNERS = 6
 HEADS = 256
 SLOT_NAMES = [f"nanlm-cpu-{i}" for i in range(1, RUNNERS + 1)]
@@ -296,6 +297,7 @@ def op_loop(args):
             partial = True
             break
         for slot in range(RUNNERS):
+            portal_heartbeat()
             args.slot = slot
             packets = core_packets(args)
             if packets is None:
@@ -359,6 +361,7 @@ def op_status(args):
 
 def verify_portal_identity():
     """Require a short-lived, portal-issued BSR credential when portal mode is configured."""
+    global PORTAL_TOKEN
     import urllib.request
     base = os.environ.get("NANNET_PORTAL_API", "").rstrip("/")
     token = os.environ.get("NANNET_BSR_TOKEN", "")
@@ -375,7 +378,28 @@ def verify_portal_identity():
         result = json.load(response)
     if not result.get("authorized") or result.get("scope") != "training:execute":
         raise RuntimeError("NANNET portal rejected BSR identity")
+    PORTAL_TOKEN = token
     print("nannet-authenticated: " + result.get("installation_id", "unknown"), file=sys.stderr)
+
+
+def portal_heartbeat():
+    global PORTAL_TOKEN
+    base = os.environ.get("NANNET_PORTAL_API", "").rstrip("/")
+    if not base:
+        return
+    if not PORTAL_TOKEN:
+        raise RuntimeError("NANNET BSR identity is not initialized")
+    import urllib.request
+    request = urllib.request.Request(
+        base + "/v1/bootstrap/heartbeat", data=b"{}",
+        headers={"Authorization": "Bearer " + PORTAL_TOKEN, "Content-Type": "application/json"},
+        method="POST")
+    with urllib.request.urlopen(request, timeout=20) as response:
+        renewed = json.load(response)
+    if not renewed.get("token"):
+        raise RuntimeError("NANNET BSR heartbeat did not rotate the credential")
+    PORTAL_TOKEN = renewed["token"]
+
 
 def main():
     ap = argparse.ArgumentParser()
