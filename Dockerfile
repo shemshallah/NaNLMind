@@ -9,8 +9,11 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends git ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /opt
-RUN git clone --depth 1 https://github.com/shemshallah/deeprepo.git /opt/deeprepo \
+RUN mkdir -p /opt/deeprepo \
+ && git -C /opt/deeprepo init \
+ && git -C /opt/deeprepo remote add origin https://github.com/shemshallah/deeprepo.git \
+ && git -C /opt/deeprepo fetch --depth 1 origin 4c6bd84d1b13498ff1b8107a024725bc5c6a389a \
+ && git -C /opt/deeprepo checkout --detach FETCH_HEAD \
  && pip install --no-cache-dir -r /opt/deeprepo/requirements-core.txt
 
 WORKDIR /app
