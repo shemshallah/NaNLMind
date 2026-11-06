@@ -287,6 +287,7 @@ def op_logic(args):
            "--slot", str(args.slot + 1),
            "--epoch", str(args.epoch),
            "--rounds", str(args.rounds),
+           "--session-rounds", str(args.session_rounds),
            "--start-level", str(args.start_level),
            "--out", str(out)]
     result = subprocess.run(cmd, text=True, capture_output=True)
@@ -441,6 +442,7 @@ def main():
     ap.add_argument("--minutes", type=int, default=20)
     ap.add_argument("--epochs", type=int, default=10)
     ap.add_argument("--rounds", type=int, default=4)
+    ap.add_argument("--session-rounds", type=int, default=0)
     ap.add_argument("--start-level", type=int, default=0)
     args = ap.parse_args()
     verify_portal_identity()

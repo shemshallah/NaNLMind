@@ -201,8 +201,8 @@ def evaluate(memory: LogicMemory, queries: Iterable[Query]) -> tuple[int, int]:
     return correct, total
 
 
-def train_level(level: PuzzleLevel, rounds: int) -> dict:
-    memory = LogicMemory()
+def train_level(level: PuzzleLevel, rounds: int, memory: LogicMemory | None = None) -> dict:
+    memory = memory or LogicMemory()
     memory.learn(level.facts)
     # Support examples teach the first useful ancestry depth.
     for q in level.support_queries:
@@ -241,6 +241,50 @@ def train_level(level: PuzzleLevel, rounds: int) -> dict:
         "history": history,
         "best_accuracy": max((h["accuracy"] for h in history), default=0.0),
         "improved": any(h["improved"] for h in history[1:]),
+    }
+
+
+def run_session(rounds: int = 5, start_level: int = 0) -> dict:
+    """Cumulative rounds across increasing difficulty levels.
+
+    The relation memory persists between rounds. Each round evaluates before
+    applying corrections, so the next round's score reflects prior learning.
+    """
+    memory = LogicMemory()
+    history = []
+    best = -1.0
+    for round_index in range(1, rounds + 1):
+        level_index = min(4, start_level + round_index - 1)
+        level = make_level(level_index)
+        memory.learn(level.facts)
+        for q in level.support_queries:
+            if memory.answer(q.entity, q.ability) is None:
+                memory.feedback(q)
+        correct, total = evaluate(memory, level.test_queries)
+        accuracy = correct / total if total else 0.0
+        improved = accuracy > best
+        history.append({
+            "round": round_index,
+            "level": level_index,
+            "name": level.name,
+            "correct": correct,
+            "total": total,
+            "accuracy": accuracy,
+            "depth": memory.learned_depth,
+            "corrections": memory.corrections,
+            "improved": improved,
+        })
+        if improved:
+            best = accuracy
+        for q in level.test_queries:
+            got = memory.answer(q.entity, q.ability)
+            if got is None or got != q.expected:
+                memory.feedback(q)
+    return {
+        "ok": True,
+        "session": history,
+        "improved": any(item["improved"] for item in history[1:]),
+        "rounds": rounds,
     }
 
 
@@ -292,13 +336,20 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--slot", type=int, default=1)
     parser.add_argument("--epoch", type=int, default=0)
     parser.add_argument("--rounds", type=int, default=4)
+    parser.add_argument("--session-rounds", type=int, default=0,
+                        help="run a cumulative difficulty session instead")
     parser.add_argument("--start-level", type=int, default=0)
     parser.add_argument("--out", default="")
     parser.add_argument("--merge-url", default=os.environ.get("NANLM_MERGE_URL", ""))
     parser.add_argument("--merge-token", default=os.environ.get("NANLM_MERGE_TOKEN", ""))
     args = parser.parse_args(argv)
 
-    result = run_curriculum(max(1, args.rounds), max(0, min(4, args.start_level)))
+    if args.session_rounds > 0:
+        result = run_session(max(1, args.session_rounds),
+                             max(0, min(4, args.start_level)))
+    else:
+        result = run_curriculum(max(1, args.rounds),
+                                max(0, min(4, args.start_level)))
     result.update({"slot": args.slot, "epoch": args.epoch, "at": int(time.time())})
     merged = None
     try:

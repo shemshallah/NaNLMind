@@ -32,6 +32,10 @@ on:
         description: first logic level 0..4
         type: string
         default: "0"
+      session_rounds:
+        description: cumulative logic rounds; 0 uses per-level rounds
+        type: string
+        default: "5"
 
 permissions:
   contents: read
@@ -96,6 +100,7 @@ jobs:
             --minutes "${{ inputs.minutes }}" \
             --epochs "${{ inputs.epochs }}" \
             --rounds "${{ inputs.rounds }}" \
+            --session-rounds "${{ inputs.session_rounds }}" \
             --start-level "${{ inputs.start_level }}"
 
       - name: Summary

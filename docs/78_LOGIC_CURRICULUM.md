@@ -58,9 +58,15 @@ improve.
 
 ```sh
 python3 runner/logic_curriculum.py --slot 1 --epoch 0 --rounds 5
+python3 runner/logic_curriculum.py --slot 1 --epoch 0 --session-rounds 5 --start-level 1
 python3 runner/logic_local_ring.py --slots 6 --rounds 4
+python3 runner/logic_local_ring.py --slots 1 --session-rounds 5 --start-level 1
 make logic-test
 ```
+
+The session mode reports five cumulative rounds. Difficulty rises across the
+rounds, so accuracy can dip when the next level is introduced; the last column
+shows whether the overall best score improved.
 
 `logic_local_ring.py` launches six worker processes in parallel. Slots start at
 levels 0 through 4 so one pass exercises different difficulties at once.

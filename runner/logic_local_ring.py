@@ -22,16 +22,18 @@ WORKER = ROOT / "runner" / "nanlm_worker.py"
 LEVELS = 5
 
 
-def run_slot(slot: int, epoch: int, rounds: int, state_root: Path) -> dict:
+def run_slot(slot: int, epoch: int, rounds: int, session_rounds: int,
+             start_override: int, state_root: Path) -> dict:
     state = state_root / f"slot{slot}"
     state.mkdir(parents=True, exist_ok=True)
     env = dict(os.environ)
     env["NANLM_LOCAL_STATE"] = str(state)
-    start = (slot - 1) % LEVELS
+    start = start_override if start_override >= 0 else (slot - 1) % LEVELS
     cmd = [
         sys.executable, str(WORKER), "--op", "logic",
         "--slot", str(slot), "--epoch", str(epoch),
-        "--rounds", str(rounds), "--start-level", str(start),
+        "--rounds", str(rounds), "--session-rounds", str(session_rounds),
+        "--start-level", str(start),
     ]
     result = subprocess.run(cmd, text=True, capture_output=True, env=env)
     out = state / f"logic_{epoch}_{slot - 1}.json"
@@ -56,6 +58,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--slots", type=int, default=6)
     parser.add_argument("--epoch", type=int, default=0)
     parser.add_argument("--rounds", type=int, default=4)
+    parser.add_argument("--session-rounds", type=int, default=0)
+    parser.add_argument("--start-level", type=int, default=-1,
+                        help="override the per-slot start level")
     parser.add_argument("--state-root", default="state/logic_ring")
     parser.add_argument("--out", default="")
     args = parser.parse_args(argv)
@@ -65,7 +70,8 @@ def main(argv: list[str] | None = None) -> int:
     results = []
     with ThreadPoolExecutor(max_workers=slots) as pool:
         futures = {
-            pool.submit(run_slot, slot, args.epoch, args.rounds, root): slot
+            pool.submit(run_slot, slot, args.epoch, args.rounds,
+                        args.session_rounds, args.start_level, root): slot
             for slot in range(1, slots + 1)
         }
         for future in as_completed(futures):
@@ -75,6 +81,7 @@ def main(argv: list[str] | None = None) -> int:
         "ok": all(item["ok"] for item in results),
         "epoch": args.epoch,
         "slots": slots,
+        "start_level": args.start_level,
         "improved": any(
             item["record"] and item["record"].get("improved")
             for item in results

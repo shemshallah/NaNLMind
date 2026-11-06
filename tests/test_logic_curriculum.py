@@ -38,6 +38,14 @@ class LogicCurriculumTests(unittest.TestCase):
         self.assertGreaterEqual(memory.learned_depth, 2)
         self.assertTrue(memory.answer("emperor", "swim"))
 
+    def test_five_round_session_reaches_full_accuracy(self):
+        result = lc.run_session(rounds=5, start_level=1)
+        self.assertTrue(result["ok"])
+        self.assertTrue(result["improved"])
+        self.assertEqual(len(result["session"]), 5)
+        self.assertLess(result["session"][0]["accuracy"], 1.0)
+        self.assertEqual(result["session"][-1]["accuracy"], 1.0)
+
     def test_merge_post_uses_scoped_delta(self):
         captured = {}
 
