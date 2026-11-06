@@ -213,6 +213,8 @@ class Gateway:
             return json_response(start_response, "400 Bad Request", {"error": str(exc)[:64]})
         try:
             if self.clocked_client is None:
+                if not os.environ.get("CLOCKED_API_KEY"):
+                    return json_response(start_response, "503 Service Unavailable", {"error": "clocked_upstream_not_configured"})
                 from clocked_sdk import Clocked
                 with Clocked() as client:
                     response = client.pipeline(text=source_text, steps=build_pipeline(source_text),
@@ -324,7 +326,7 @@ class Gateway:
         return json_response(start_response, "200 OK", {"acknowledged": changed})
 
 def main():
-    for name in ("CLOCKED_API_KEY", "CLOCKED_GATEWAY_ADMIN_TOKEN", "CLOCKED_TOKEN_PEPPER"):
+    for name in ("CLOCKED_GATEWAY_ADMIN_TOKEN", "CLOCKED_TOKEN_PEPPER"):
         if not os.environ.get(name):
             raise SystemExit(name + " must be configured in the server secret manager")
     host = os.environ.get("CLOCKED_GATEWAY_HOST", "127.0.0.1")
