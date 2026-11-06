@@ -20,10 +20,12 @@ Evidence:
 
 ### O1 — explicit finite control
 
-The interpreter loop is fixed C++ code. It is finite control with bounded
-description counters, but it has not been compiled into an explicit finite TM
-transition table. Until it is, “fixed step” is not the same as “finite
-transition table in ROM.”
+A literature-backed 6-state, 4-symbol U6,4 transition table (23 defined
+transitions) now loads into the table-driven runtime and matches an independent
+reference for 200 steps on a blank tape. That is an explicit finite table, but
+it is not yet the fixed interpreter loop and it is not the Neary-Woods tape
+compiler. The host `UniversalTuringMachine::step()` remains the interpreter
+under proof.
 
 ### O2 — universal symbol/state encoding
 

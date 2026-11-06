@@ -61,6 +61,7 @@ public:
     bool halted() const;
     std::uint8_t state() const;
     std::int64_t head() const;
+    std::uint8_t symbol(std::int64_t position) const { return tape_.read(position); }
     std::string tape(std::int64_t begin, std::int64_t end) const;
     std::size_t tape_pages() const { return tape_.pages(); }
 

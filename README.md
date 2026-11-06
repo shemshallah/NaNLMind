@@ -223,6 +223,7 @@ baseline — a plain RNN matching the 256-head topology — is in
 | `docs/67_UTM_PROOF_HARNESS.md` | versioned grammar, randomized cross-check, ledger checkpoint |
 | `docs/68_TAPE_LEDGER_LINK.md` | tape page root, atlas allocation, sharded-journal commit, restore boundary |
 | `docs/69_UTM_PROOF_OBLIGATIONS.md` | explicit finite-control/self-encoding/equivalence obligations |
+| `docs/70_SMALL_UTM_TABLE.md` | Neary-Woods U6,4 explicit 6-state/4-symbol table |
 | `docs/18_HEAD_RING.md` | six-runner handoff, preload, map-back, workflows |
 | `docs/19_LEGACY_TESTS.md` | R18T language tests and R21–R23 logic regressions |
 | `docs/20_META_ROUTER.md` | universes as heads, routes as pairs, qNaN/sNaN BE/LE portals |

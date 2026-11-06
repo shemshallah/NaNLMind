@@ -73,6 +73,7 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 67 | [67_UTM_PROOF_HARNESS.md](67_UTM_PROOF_HARNESS.md) | What is checked so far toward a UTM proof? |
 | 68 | [68_TAPE_LEDGER_LINK.md](68_TAPE_LEDGER_LINK.md) | How are tape pages checkpointed and committed? |
 | 69 | [69_UTM_PROOF_OBLIGATIONS.md](69_UTM_PROOF_OBLIGATIONS.md) | What is still missing before a formal UTM proof? |
+| 70 | [70_SMALL_UTM_TABLE.md](70_SMALL_UTM_TABLE.md) | What explicit small universal transition table fits the runtime? |
 
 The short version:
 

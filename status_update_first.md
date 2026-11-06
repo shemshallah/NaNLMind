@@ -332,6 +332,13 @@ verifies restore into a fresh UTM. Tapes can allocate new pages through an
 attached `Atlas`. The journal stores page hashes, not the mutable page map; the
 formal finite-control/self-encoding proof is still open (doc 69).
 
+### UTM explicit table
+
+The Neary-Woods U6,4 6-state/4-symbol table is now loaded as ordinary chart
+transitions and cross-checked against an independent map-based reference for
+200 steps. This is an explicit finite universal table, but its bi-tag tape
+compiler/decoder and the self-encoded universal description remain open.
+
 ### UTM proof harness
 
 `TmDescription` has a versioned, checksummed grammar. 20 randomized 4-state,
