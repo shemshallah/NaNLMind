@@ -356,6 +356,27 @@ def op_status(args):
     return 0
 
 
+
+def verify_portal_identity():
+    """Require a short-lived, portal-issued BSR credential when portal mode is configured."""
+    import urllib.request
+    base = os.environ.get("NANNET_PORTAL_API", "").rstrip("/")
+    token = os.environ.get("NANNET_BSR_TOKEN", "")
+    if not base:
+        return
+    if not token:
+        raise RuntimeError("NANNET portal is configured but no BSR token was issued")
+    body = json.dumps({"scope": "training:execute"}).encode()
+    request = urllib.request.Request(
+        base + "/v1/authorize", data=body,
+        headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
+        method="POST")
+    with urllib.request.urlopen(request, timeout=20) as response:
+        result = json.load(response)
+    if not result.get("authorized") or result.get("scope") != "training:execute":
+        raise RuntimeError("NANNET portal rejected BSR identity")
+    print("nannet-authenticated: " + result.get("installation_id", "unknown"), file=sys.stderr)
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--op", choices=["selftest", "prewarm", "headshift", "handoff", "loop", "finalize", "unlock", "status"],
@@ -365,6 +386,7 @@ def main():
     ap.add_argument("--minutes", type=int, default=20)
     ap.add_argument("--epochs", type=int, default=10)
     args = ap.parse_args()
+    verify_portal_identity()
     args.slot = parse_slot(args.slot)
     args.slot_name = SLOT_NAMES[args.slot]
     if args.op == "selftest":
