@@ -1,5 +1,7 @@
 import json
+import os
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from demo import fixture_classify, load_samples, run_demo
@@ -25,6 +27,31 @@ class ClockedDemoTests(unittest.TestCase):
         self.assertEqual(len(samples), 60)
         self.assertEqual(sum(x["split"] == "train" for x in samples), 48)
         self.assertEqual(sum(x["split"] == "test" for x in samples), 12)
+
+
+    def test_live_demo_calls_teacher_only_for_training_split(self):
+        root = Path(__file__).resolve().parents[2]
+        binary = root / "build" / "clocked-demo"
+        if not binary.exists():
+            self.skipTest("native demo binary is built by the CI workflow")
+        samples = load_samples(Path(__file__).with_name("demo_samples.jsonl"))
+        calls = []
+        def fake_live(sample, endpoint, token):
+            calls.append(sample["id"])
+            label = sample["expected_task_family"]
+            return label, {
+                "schema": "nanlm.clocked-experience",
+                "event_id": sample["id"] * 64,
+            }
+        with patch.dict(os.environ, {
+            "CLOCKED_INTAKE_URL": "https://gateway.example.test/v1/experience",
+            "CLOCKED_USER_API": "scoped-test-token",
+        }), patch("demo.live_classify", side_effect=fake_live):
+            result = run_demo(samples, "live", binary, root / "build" / "clocked-demo-live-unit")
+        self.assertEqual(len(calls), 48)
+        self.assertEqual(result["clocked_samples"], 48)
+        self.assertEqual(result["heldout_examples"], 12)
+        self.assertEqual(result["verified_training_examples"], 48)
 
     def test_fixture_demo_runs_native_learning_and_heldout_replay(self):
         root = Path(__file__).resolve().parents[2]
