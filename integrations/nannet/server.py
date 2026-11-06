@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """NANNET universal, disk-backed intake/control plane. Standard library only."""
 from __future__ import annotations
-import hashlib, json, os, re, secrets, sqlite3, tempfile, threading, time, sys
+import hashlib, hmac, json, os, re, secrets, sqlite3, tempfile, threading, time, sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
@@ -39,7 +39,7 @@ def connect():
 def token_hash(token):
  pepper=os.environ.get("NANLM_TOKEN_PEPPER","")
  if len(pepper)<32: raise RuntimeError("token pepper missing")
- return hashlib.sha256((pepper+token).encode()).hexdigest()
+ return hmac.new(pepper.encode(),token.encode(),hashlib.sha256).hexdigest()
 def jbytes(v): return json.dumps(v,sort_keys=True,separators=(",",":")).encode()
 
 class Handler(BaseHTTPRequestHandler):
@@ -226,6 +226,7 @@ class Handler(BaseHTTPRequestHandler):
   if m:
    x=self.need()
    if x is None:return
+   if not ({"intake","dataset"}&set(x["scopes"]) or "*" in x["scopes"]):return self.reply(403,{"error":"scope_denied"})
    try:
     d=self.json_body(); total=int(d.get("total_bytes",-1)); sha=d.get("sha256")
     if total<1 or not isinstance(sha,str) or not HEX.fullmatch(sha):raise ValueError("invalid_manifest")
