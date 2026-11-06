@@ -69,6 +69,7 @@ class GatewayTests(unittest.TestCase):
         self.env = patch.dict(os.environ, {
             "CLOCKED_TOKEN_PEPPER": "test-only-pepper",
             "CLOCKED_GATEWAY_ADMIN_TOKEN": "admin-test-token",
+            "NANLM_RUNNER_INGEST_TOKEN": "runner-test-token",
         })
         self.env.start()
         self.addCleanup(self.env.stop)
@@ -157,13 +158,40 @@ class GatewayTests(unittest.TestCase):
         status, duplicate = invoke(self.app, "/v1/observations", "POST", payload, token)
         self.assertEqual(status, "200 OK")
         self.assertEqual(duplicate["learning_state"], "duplicate_noop")
-        status, queued = invoke(self.app, "/internal/observations", bearer="admin-test-token")
+        status, denied = invoke(self.app, "/internal/observations", bearer="admin-test-token")
+        self.assertEqual(status, "401 Unauthorized")
+        status, queued = invoke(self.app, "/internal/observations", bearer="runner-test-token")
         self.assertEqual(status, "200 OK")
         self.assertEqual(queued["count"], 1)
         event = queued["events"][0]
         self.assertEqual(event["source_endpoint"], "my_android")
         self.assertEqual(event["active_heads"], [3, 255])
         self.assertFalse(event["outcome_verified"])
+        self.assertEqual(queued["lease_seconds"], 120)
+        status, ack = invoke(self.app, "/internal/observations/ack", "POST",
+            {"lease_id": queued["lease_id"], "event_ids": [event["event_id"]]}, "runner-test-token")
+        self.assertEqual(status, "200 OK")
+        self.assertTrue(ack["complete"])
+
+    def test_expired_lease_is_reclaimed_and_stale_ack_is_rejected(self):
+        token = self.issue(endpoint_id="my_android")
+        payload = {"protocol":"nanlm.endpoint-observation","version":1,"event_id":"e"*64,
+                   "base_generation":0,"active_heads":[],"outcome_verified":False}
+        status, _ = invoke(self.app, "/v1/observations", "POST", payload, token)
+        self.assertEqual(status, "202 Accepted")
+        _, first = invoke(self.app, "/internal/observations", bearer="runner-test-token")
+        db = connect_db(self.db_path)
+        db.execute("UPDATE endpoint_inbox SET lease_until=0 WHERE event_id=?", ("e"*64,))
+        db.commit()
+        db.close()
+        _, second = invoke(self.app, "/internal/observations", bearer="runner-test-token")
+        self.assertEqual(second["count"], 1)
+        _, stale = invoke(self.app, "/internal/observations/ack", "POST",
+            {"lease_id":first["lease_id"],"event_ids":["e"*64]},"runner-test-token")
+        self.assertFalse(stale["complete"])
+        _, fresh = invoke(self.app, "/internal/observations/ack", "POST",
+            {"lease_id":second["lease_id"],"event_ids":["e"*64]},"runner-test-token")
+        self.assertTrue(fresh["complete"])
 
     def test_observation_rejects_fields_outside_the_published_schema(self):
         token = self.issue(endpoint_id="hermes_demo")
@@ -198,10 +226,13 @@ class GatewayTests(unittest.TestCase):
         self.assertEqual(status, "202 Accepted")
         self.assertEqual(result["source_endpoint"], "clocked_demo")
 
-    def test_internal_poll_requires_admin_token(self):
+    def test_internal_poll_requires_runner_token_not_admin(self):
         status, result = invoke(self.app, "/internal/observations")
         self.assertEqual(status, "401 Unauthorized")
-        self.assertEqual(result["error"], "unauthorized")
+        self.assertEqual(result["error"], "runner_unauthorized")
+        status, result = invoke(self.app, "/internal/observations", bearer="admin-test-token")
+        self.assertEqual(status, "401 Unauthorized")
+        self.assertEqual(result["error"], "runner_unauthorized")
 
 if __name__ == "__main__":
     unittest.main()
