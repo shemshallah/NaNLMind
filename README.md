@@ -83,6 +83,32 @@ The 256 fixed points are the **present** / synchronization anchors. A mirror pai
 
 See [docs/03_MATHEMATICAL_STRUCTURE.md](docs/03_MATHEMATICAL_STRUCTURE.md).
 
+## NaNNet runner routes and point-zero translation
+
+The six GitHub Actions runners use one canonical route form:
+
+`nan://GM0:SC0:MC0:BS0:HW0:BSR0` through
+`nan://GM0:SC0:MC0:BS0:HW0:BSR5`.
+
+The runner repositories `nanlm-cpu-1` through `nanlm-cpu-6` map to
+`BSR0` through `BSR5`. Route parsing rejects aliases, leading zeroes,
+parentheses, wildcards, and out-of-range runner identifiers.
+
+Every runner assigns its route before selecting a transport. With
+`NANNET_PORTAL_API` and a portal-issued `NANNET_BSR_TOKEN`, it uses the
+Koyeb-hosted N16B bridge. Without a portal URL, it uses the native
+`BridgeMailbox` implementation with the same N16B frame and NaN16DE word
+encoding. Set `NANNET_NATIVE_MAILBOX` to a shared SQLite path when native
+runners on separate processes or hosts must communicate; the default
+`state/nannet_native_bridge.sqlite` is local to that runner's filesystem and
+does not create cross-host connectivity by itself.
+
+Point zero (`BSR0`) is the rendezvous/translation endpoint. Other runners
+announce to point zero; received frames are persisted to the runner inbox and
+answered on the reverse rail. The persistent runner loop drains the mailbox
+during heartbeats. Both transports use the same canonical route and frame
+contract.
+
 ### The 256-Head Array
 
 There is one canonical head implementation, instantiated exactly 256 times,
