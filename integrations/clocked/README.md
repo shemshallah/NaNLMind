@@ -39,7 +39,7 @@ python -m pip install -r integrations/clocked/requirements.txt
 
 ## Run the gateway
 
-Configure all four server-side environment values: `CLOCKED_API_KEY`, `CLOCKED_GATEWAY_ADMIN_TOKEN`, `CLOCKED_TOKEN_PEPPER`, and optionally `CLOCKED_GATEWAY_DB`, `CLOCKED_GATEWAY_HOST`, `CLOCKED_GATEWAY_PORT`.
+Configure `CLOCKED_GATEWAY_ADMIN_TOKEN` and `CLOCKED_TOKEN_PEPPER` in the server secret manager. `CLOCKED_API_KEY` is optional for the generic Android/Hermes intake and is required only to enable the Clocked `/v1/experience` route. Also configure `CLOCKED_GATEWAY_DB`, `CLOCKED_GATEWAY_HOST`, and `CLOCKED_GATEWAY_PORT` as needed.
 
 ```sh
 python integrations/clocked/gateway.py
