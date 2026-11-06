@@ -27,6 +27,12 @@ class NannetTests(unittest.TestCase):
   self.assertEqual(status,200);self.assertEqual(identity["node_point"],4);self.assertEqual(identity["coordinates"],{"gm":0,"sc":0,"mc":0,"bs":0,"hw":3})
   self.assertEqual(self.req("GET","/v1/address",token=t,headers={"X-NaN-Address":"nan://GM0:SC0:MC0:BS0:HW2"})[0],401)
   self.assertEqual(server.address_node_point("nan://GM255:SC255:MC255:BS255:HW255"),256)
+ def test_portal_served_without_credentials(self):
+  status,body=self.req("GET","/")
+  self.assertEqual(status,200);self.assertIn(b"NANNET",body);self.assertIn(b"connectToken",body)
+  status,body=self.req("GET","/portal")
+  self.assertEqual(status,200);self.assertIn(b"nan://GM0",body)
+
  def test_admin_keeper_and_model_status_routes(self):
   status,keeper=self.req("GET","/admin/keeper/status",token="a"*48)
   self.assertEqual(status,200);self.assertEqual(keeper["status"],"disabled")
