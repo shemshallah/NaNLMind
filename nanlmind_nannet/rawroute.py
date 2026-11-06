@@ -73,13 +73,13 @@ class RawRoute:
     bs: int
     bs_node: int
     hw: int
-    ring: int
+    hw_node: int
     target: RawTarget
     object_ref: Optional[TypedObjectRef] = None
 
     def __post_init__(self) -> None:
         coordinates = (self.gm, self.sc, self.mc, self.bs, self.bs_node,
-                       self.hw, self.ring)
+                       self.hw, self.hw_node)
         if any(isinstance(v, bool) or not isinstance(v, int) or not 0 <= v <= 255
                for v in coordinates):
             raise ValueError("rawroute hierarchy coordinates must be bytes")
@@ -92,7 +92,7 @@ class RawRoute:
 
     def text(self) -> str:
         value = (f"nan://GM{self.gm}:SC{self.sc}:MC{self.mc}:"
-                 f"BS{self.bs}:{self.bs_node}:HW{self.hw}:{self.ring}"
+                 f"BS{self.bs}:{self.bs_node}:HW{self.hw}:{self.hw_node}"
                  f"::{self.target.text()}")
         if self.object_ref is not None:
             value += "::" + self.object_ref.text()
@@ -102,11 +102,6 @@ class RawRoute:
     def definition_id(self) -> str:
         """Stable ID for this exact canonical route definition."""
         return hashlib.sha256(self.text().encode("ascii")).hexdigest()
-
-    @property
-    def transport_coordinates(self) -> tuple[int, int, int, int, int, int]:
-        """Legacy N16B/1 leaf: GM, SC, MC, BS, HW, runner index (ring)."""
-        return (self.gm, self.sc, self.mc, self.bs, self.hw, self.ring)
 
     @classmethod
     def parse(cls, value: str) -> "RawRoute":
@@ -124,7 +119,7 @@ class RawRoute:
         bs_i = _byte(bs, "BS")
         bs_node_i = _byte(bs_node, "BS node")
         hw_i = _byte(hw, "HW")
-        ring_i = _byte(ring, "runner ring")
+        hw_node_i = _byte(ring, "HW network node")
         target_hw_i = _byte(target_hw, "target HW")
         if target_hw_i != hw_i:
             raise ValueError("local target hardware kind must match network HW")
@@ -141,7 +136,7 @@ class RawRoute:
                 raise ValueError("object id must be uint32")
             object_ref = TypedObjectRef(object_kind, object_number)
 
-        route = cls(gm_i, sc_i, mc_i, bs_i, bs_node_i, hw_i, ring_i,
+        route = cls(gm_i, sc_i, mc_i, bs_i, bs_node_i, hw_i, hw_node_i,
                     target, object_ref)
         if route.text() != value:
             raise ValueError("rawroute is not in canonical form")
