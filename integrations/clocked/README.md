@@ -73,6 +73,41 @@ curl --fail-with-body https://YOUR_GATEWAY/v1/experience \
 
 The gateway defaults to 25 requests per token, six hours' lifetime, a 64 KiB request limit, and a maximum issuance policy of 500 requests/24 hours. It consumes quota before upstream processing to prevent retries from bypassing limits. Use a production WSGI server, HTTPS termination, persistent protected storage, and monitoring for a public deployment; the built-in server is for local/demo use.
 
+## Native hackathon demo: Clocked labels to NaNLMind routing replay
+
+The demo is intentionally two-mode:
+
+- **Fixture mode** is offline and deterministic. It does not call Clocked or consume credits. It is used by CI to prove the complete local native-learning path.
+- **Live mode** sends the labelled synthetic curriculum through the authenticated gateway and uses the actual Clocked response. Only training examples whose Clocked `task_family` matches the independent gold label are admitted to native training. Mismatches are skipped.
+
+Build and run the offline demo:
+
+```sh
+make -j2 build/clocked-demo
+make clocked-demo-test
+```
+
+The native C++ program uses transparent lexical anchor features for six task families. It reports the untrained baseline, verified sample count, Overbootstrap Clocked evidence, bounded routing feedback and held-out replay. This is a small routing-memory demonstration, not a general language-model benchmark and not a canonical six-runner generation commit.
+
+For a live Clocked run, first deploy the gateway with these secrets configured server-side:
+
+- `CLOCKED_API_KEY` — upstream Clocked key; never give this to participants.
+- `CLOCKED_GATEWAY_ADMIN_TOKEN` — separate gateway administrator secret.
+- `CLOCKED_TOKEN_PEPPER` — separate high-entropy token-hashing pepper.
+
+Start the gateway behind HTTPS, issue a scoped token using the admin route shown above, then run:
+
+```sh
+export CLOCKED_INTAKE_URL="https://YOUR_GATEWAY/v1/experience"
+export CLOCKED_USER_API="(scoped participant token)"
+make -j2 build/clocked-demo
+python integrations/clocked/demo.py --native-binary build/clocked-demo
+```
+
+The demo sends an `Idempotency-Key` for each sample. The gateway stores the request-body digest and minimized response under the participant token scope. A retry with the same key and body replays the response without another Clocked call or quota charge; reusing a key with a different body returns conflict. The short-lived native TSV is deleted after the learner exits. The durable event log contains sample IDs, labels, digests and outcome status, not source text.
+
+The labelled curriculum is synthetic and intended for demonstration. For a real training chain, use independently reviewed labels, provenance/license metadata and source-separated held-out evaluation. See [the chainable training architecture](../../specs/CLOCKED_CHAINABLE_TRAINING.md).
+
 ## Shared endpoint observation intake
 
 Android and Hermes submit observations to the same gateway without invoking
