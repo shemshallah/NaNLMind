@@ -117,7 +117,7 @@ Higher layers should reference lower-layer records by stable IDs and digests rat
 
 ## 4. Initial logical quota plans
 
-These are planning ceilings inside each 10 GB namespace, not preallocated files. Adjust after measuring real record sizes and access patterns.
+These are planning targets within the 9.5 GB logical quota on each currently mounted 10 GB volume; they are not preallocated files. The tables reserve at least 500 MB of each physical volume for WAL/checkpoint growth and filesystem overhead. Adjust after measuring real record sizes and access patterns.
 
 | BS0DB allocation | Logical budget |
 |---|---:|
@@ -127,7 +127,7 @@ These are planning ceilings inside each 10 GB namespace, not preallocated files.
 | Merge receipts, nanclock and provenance | 1.5 GB |
 | Training-intake routing metadata | 1.0 GB |
 | Indexes and operational metadata | 1.0 GB |
-| Growth reserve | 1.0 GB |
+| Growth reserve | 0.5 GB |
 
 | MC0DB allocation | Logical budget |
 |---|---:|
@@ -137,7 +137,7 @@ These are planning ceilings inside each 10 GB namespace, not preallocated files.
 | Execution / scheduling history | 1.5 GB |
 | Local route snapshots and recovery | 1.5 GB |
 | Reverse indexes and lookup metadata | 1.5 GB |
-| Growth reserve | 1.0 GB |
+| Growth reserve | 0.5 GB |
 
 | SC0DB allocation | Logical budget |
 |---|---:|
@@ -146,7 +146,7 @@ These are planning ceilings inside each 10 GB namespace, not preallocated files.
 | Aggregated route snapshots | 2.0 GB |
 | Vector / hyperedge association metadata | 1.5 GB |
 | Transform definitions and versions | 1.0 GB |
-| Provenance, indexes and reserve | 1.5 GB |
+| Provenance, indexes and reserve | 1.0 GB |
 
 | GM0DB allocation | Logical budget |
 |---|---:|
@@ -155,7 +155,7 @@ These are planning ceilings inside each 10 GB namespace, not preallocated files.
 | Global discovery and reverse indexes | 2.0 GB |
 | Mathematical transform registry | 1.5 GB |
 | Global topology snapshots / checkpoints | 1.0 GB |
-| Provenance and growth reserve | 1.5 GB |
+| Provenance and growth reserve | 1.0 GB |
 
 The initial software milestone is to create the schemas, quotas, indexes, migration/version metadata and health reporting. Empty future-layer databases are valid; they must report uninitialized/empty rather than pretend a supercluster or global mesh is populated.
 
@@ -195,9 +195,10 @@ Redis is **not required for the first deployment**. Add Redis only when there ar
 ## 7. Koyeb deployment constraints
 
 - BS0:0 is the 24/7 externally reachable bootstrap endpoint.
-- All four namespaces can initially live as separate database files under the same persistent mount, subject to actual volume capacity.
-- Enforce independent per-namespace logical quotas and expose allocated/available counters.
-- Do not claim 10 GB physical allocation per layer unless the volume has at least 40 GB usable capacity.
+- The initial Koyeb topology is four independent 10 GB volumes: `/bs0db`, `/mc0db`, `/sc0db`, `/gm0db`.
+- `NANLM_RAWROUTE_MOUNTS` maps each logical tier to one or more absolute mount paths; the checked-in example is `config/rawroute.mounts.koyeb.example.json`.
+- Each 10 GB mount defaults to a 9.5 GB logical quota plus a 256 MiB physical-free reserve. Additional volumes increase only the tier to which they are attached.
+- Report each physical mount separately; never aggregate free-space figures across unrelated volumes.
 - Use transactional writes, checksums, atomic checkpoint replacement and startup recovery.
 - Keep secrets in Koyeb secret configuration, never in route records or committed files.
 - Expose health fields for each DB: schema version, logical quota, allocated bytes, record count, generation, digest, last checkpoint and read/write status.
