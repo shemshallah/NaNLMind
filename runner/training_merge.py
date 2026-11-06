@@ -184,6 +184,8 @@ def _verify_github_oidc(jwt: str, expected_repository: str) -> dict[str, Any]:
             raise ValueError("runner repository or ref is not authorized")
         if claims.get("workflow_ref") != expected_repository + "/.github/workflows/runner.yml@refs/heads/main":
             raise ValueError("workflow identity is not authorized")
+        if claims.get("event_name") != "workflow_dispatch":
+            raise ValueError("only the trusted workflow_dispatch event is authorized")
         return claims
     except Exception as exc:
         raise AuthError("GitHub Actions identity rejected") from exc
@@ -280,8 +282,9 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                     if isinstance(slot, bool) or not isinstance(slot, int) or not 0 <= slot < 6:
                         raise AuthError("invalid bootstrap slot")
                     repository = f"shemshallah/nanlm-cpu-{slot + 1}"
-                    _verify_github_oidc(payload.get("id_token", ""), repository)
+                    oidc_claims = _verify_github_oidc(payload.get("id_token", ""), repository)
                     identity = "github-actions:" + repository
+                    authority.consume_oidc_jti(oidc_claims.get("jti"), identity, int(oidc_claims.get("exp", 0)))
                     authority.register_identity("admin", identity)
                     scopes = ["training:execute", "universe:read", "universe:register", "snapshot:read", "snapshot:write", "corpus:write", "installation:admin"]
                     token = issue_token(authority._private_key("admin", identity), identity, scopes, 900, role="admin")
