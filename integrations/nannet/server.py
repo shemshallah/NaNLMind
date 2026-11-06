@@ -286,6 +286,7 @@ class Handler(BaseHTTPRequestHandler):
       db.execute("UPDATE device_leases SET expires_at=? WHERE lease_id=?",(timestamp+lease_seconds,lease["lease_id"]))
      else:
       db.execute("UPDATE device_leases SET status='expired',released_at=? WHERE lease_id=?",(timestamp,lease["lease_id"]))
+      db.execute("UPDATE devices SET status='expired',last_seen=? WHERE device_id=?",(timestamp,device_id))
       db.execute("UPDATE tokens SET revoked=1 WHERE owner_device_id=?",(device_id,))
       lease=None
     if lease:
@@ -299,6 +300,7 @@ class Handler(BaseHTTPRequestHandler):
        pending=db.execute("SELECT 1 FROM datasets WHERE endpoint_id=? AND status IN ('uploading','quarantine','validated') LIMIT 1",(candidate,)).fetchone() or db.execute("SELECT 1 FROM observations WHERE endpoint_id=? AND status='pending' LIMIT 1",(candidate,)).fetchone()
        if not pending:
         db.execute("UPDATE device_leases SET status='expired',released_at=? WHERE lease_id=?",(timestamp,active["lease_id"]))
+        db.execute("UPDATE devices SET status='expired',last_seen=? WHERE device_id=?",(timestamp,active["device_id"]))
         db.execute("UPDATE tokens SET revoked=1 WHERE endpoint_id=?",(candidate,))
         active=None
       if not active:
