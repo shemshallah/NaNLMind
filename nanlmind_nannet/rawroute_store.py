@@ -135,6 +135,10 @@ class RawRouteDB:
                 "SELECT value FROM namespace_meta WHERE key='schema_version'").fetchone()[0])
             if stored_version != SCHEMA_VERSION:
                 raise ValueError("unsupported rawroute database schema version")
+            used = int(db.execute(
+                "SELECT value FROM namespace_meta WHERE key='used_bytes'").fetchone()[0])
+            if used > self.quota_bytes:
+                raise RouteQuotaExceeded("configured quota is below existing logical usage")
             db.execute("UPDATE namespace_meta SET value=? WHERE key='quota_bytes'",
                        (str(self.quota_bytes),))
 
@@ -219,7 +223,8 @@ class RawRouteDB:
                 raise RouteConflict("nanclock tick moved backwards")
 
             used = int(self._meta(db, "used_bytes"))
-            next_used = used - old_bytes + record_bytes
+            event_bytes = len(payload_json.encode("utf-8")) + 128
+            next_used = used - old_bytes + record_bytes + event_bytes
             if next_used > self.quota_bytes:
                 raise RouteQuotaExceeded("namespace logical quota exceeded")
             generation = current_generation + 1
