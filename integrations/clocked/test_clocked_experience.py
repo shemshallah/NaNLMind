@@ -17,6 +17,22 @@ class ClockedExperienceTests(unittest.TestCase):
         self.assertNotIn("secret@example.test", repr(summary))
         self.assertNotIn("$42", repr(summary))
 
+    def test_decision_output_is_allowlisted(self):
+        summary = summarize_step({
+            "endpoint": "decide",
+            "result": {"answers": {
+                "task_family": "technical_document",
+                "contains_claims": True,
+                "freeform_echo": "private text must not persist",
+                "unexpected": "untrusted model output",
+            }},
+        })
+        self.assertEqual(summary["decisions"], {
+            "task_family": "technical_document", "contains_claims": True
+        })
+        self.assertNotIn("private text", repr(summary))
+        self.assertNotIn("untrusted model output", repr(summary))
+
     def test_event_is_explicitly_not_native_training_commit(self):
         event = make_event("hello", {"steps": []}, object())
         self.assertEqual(event["learning_state"], "awaiting_nanlmind_ingest")
