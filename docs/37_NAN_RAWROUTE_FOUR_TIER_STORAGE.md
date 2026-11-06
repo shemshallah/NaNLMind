@@ -24,6 +24,20 @@ These are four separate volumes, not four directories on one shared disk. The fi
 
 The mount manifest accepts a list of paths per namespace. This supports later volume additions without changing any public NaN address. The current deployment remains exactly the four mounts above; additional mounts are optional expansion, not a prerequisite.
 
+### Capacity expansion target (proposal, not yet attached)
+
+The four current volumes provide 40 GB. A possible ten-volume/100 GB layout keeps BS0 at one volume and grows the higher mapping tiers:
+
+| Tier | Current | Expansion target | Additional volumes |
+|---|---:|---:|---:|
+| BS0 | 10 GB | 10 GB | 0 |
+| MC0 | 10 GB | 20 GB | 1 |
+| SC0 | 10 GB | 30 GB | 2 |
+| GM0 | 10 GB | 40 GB | 3 |
+| **Total** | **40 GB** | **100 GB** | **6** |
+
+The extra six mounts are not assumed to exist. Attach them when provisioned, then add their absolute mount paths to the matching namespace array in `NANLM_RAWROUTE_MOUNTS`. Public route coordinates do not encode volume numbers and remain unchanged.
+
 Koyeb BS0:0 is the always-on bootstrap/network gateway because it has continuous availability and inbound/outbound networking. It is not the owner of all live computation. MC0:0 is runner-controlled and initially exposes six logical execution units.
 
 ## 2. Address grammar
