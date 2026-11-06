@@ -78,8 +78,8 @@ class Handler(BaseHTTPRequestHandler):
   header=self.headers.get("Authorization","")
   if not header.startswith("Bearer ") or len(header)>512: return None
   tok=header[7:]
-  if role in ("admin","validator","runner","merge"):
-   expected=os.environ.get("NANLM_"+role.upper()+"_TOKEN","")
+  if role in ("admin","validator","runner","canonical"):
+   expected=os.environ.get({"admin":"NANLM_ADMIN_TOKEN","validator":"NANLM_VALIDATOR_TOKEN","runner":"NANLM_RUNNER_TOKEN","canonical":"NANLM_BOOTSTRAP_TOKEN"}[role],"")
    return {"endpoint_id":role,"scopes":["*"]} if len(expected)>=32 and secrets.compare_digest(tok,expected) else None
   try: th=token_hash(tok)
   except RuntimeError: return None
@@ -96,7 +96,7 @@ class Handler(BaseHTTPRequestHandler):
   return ident
  def do_GET(self):
   p=urlparse(self.path).path
-  if p=="/healthz": return self.reply(200,{"status":"ok","service":"nannet","protocol":"nanlm.universal-intake","version":1,"bootstrap_endpoints":256,"dataset_quota_bytes":DATASET_QUOTA,"chunk_limit_bytes":CHUNK_BYTES,"training_merge_enabled":bool(os.environ.get("NANLM_MERGE_TOKEN"))})
+  if p=="/healthz": return self.reply(200,{"status":"ok","service":"nannet","protocol":"nanlm.universal-intake","version":1,"bootstrap_endpoints":256,"dataset_quota_bytes":DATASET_QUOTA,"chunk_limit_bytes":CHUNK_BYTES,"training_merge_enabled":bool(os.environ.get("NANLM_BOOTSTRAP_TOKEN"))})
   if p=="/v1/routes":
    x=self.need()
    if x is None:return
@@ -149,7 +149,7 @@ class Handler(BaseHTTPRequestHandler):
  def do_POST(self):
   p=urlparse(self.path).path
   if p=="/v1/training/merge":
-   if self.need("merge") is None:return
+   if self.need("canonical") is None:return
    store=get_merge_store()
    if store is None:return self.reply(503,{"error":"training_merge_not_configured"})
    try:
@@ -352,7 +352,7 @@ def start_deeprepo_keeper():
 
 def get_merge_store():
  global MERGE_STORE
- token=os.environ.get("NANLM_MERGE_TOKEN","")
+ token=os.environ.get("NANLM_BOOTSTRAP_TOKEN","")
  if not token:return None
  if MERGE_STORE is None:
   from training_merge import MergeStore
@@ -361,7 +361,7 @@ def get_merge_store():
  return MERGE_STORE
 
 def main():
- for name in ("NANLM_ADMIN_TOKEN","NANLM_VALIDATOR_TOKEN","NANLM_RUNNER_TOKEN","NANLM_TOKEN_PEPPER","NANLM_MERGE_TOKEN"):
+ for name in ("NANLM_ADMIN_TOKEN","NANLM_VALIDATOR_TOKEN","NANLM_RUNNER_TOKEN","NANLM_TOKEN_PEPPER","NANLM_BOOTSTRAP_TOKEN"):
   if len(os.environ.get(name,""))<32:raise SystemExit(name+" must be a server-side secret of at least 32 characters")
  ROOT.mkdir(parents=True,exist_ok=True);BLOBS.mkdir(parents=True,exist_ok=True);connect().close()
  start_deeprepo_keeper()
