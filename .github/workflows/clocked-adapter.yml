@@ -5,11 +5,21 @@ on:
     paths:
       - "integrations/clocked/**"
       - ".github/workflows/clocked-adapter.yml"
+      - "include/nanlm/endpoint_evidence.hpp"
+      - "src/endpoint_evidence.cpp"
+      - "tests/test_endpoint_evidence.cpp"
+      - "Makefile"
+      - "docs/72_CANONICAL_TRAINING_UNIVERSE.md"
   push:
     branches: [main, clocked-universe]
     paths:
       - "integrations/clocked/**"
       - ".github/workflows/clocked-adapter.yml"
+      - "include/nanlm/endpoint_evidence.hpp"
+      - "src/endpoint_evidence.cpp"
+      - "tests/test_endpoint_evidence.cpp"
+      - "Makefile"
+      - "docs/72_CANONICAL_TRAINING_UNIVERSE.md"
 
 permissions:
   contents: read
@@ -24,3 +34,9 @@ jobs:
           python-version: "3.11"
       - name: Run offline adapter and gateway tests
         run: python -m unittest discover -s integrations/clocked -p "test_*.py" -v
+      - name: Compile and run native Overbootstrap endpoint fold test
+        run: |
+          c++ -std=c++20 -O2 -Wall -Wextra -Wpedantic -Iinclude \
+            tests/test_endpoint_evidence.cpp src/endpoint_evidence.cpp src/sha256.cpp \
+            -o /tmp/test_endpoint_evidence
+          /tmp/test_endpoint_evidence
