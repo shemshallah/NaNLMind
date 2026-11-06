@@ -21,14 +21,61 @@ class RawRouteStoreTests(unittest.TestCase):
             mesh = RawRouteMesh(tmp)
             health = mesh.health()
             self.assertEqual(set(health["namespaces"]), {"BS0", "MC0", "SC0", "GM0"})
-            self.assertFalse(health["filesystem"]["preallocated"])
+            self.assertFalse(health["preallocated"])
+            self.assertEqual(len(health["filesystems"]), 4)
             for item in health["namespaces"].values():
                 self.assertEqual(item["quota_bytes"], DEFAULT_QUOTA_BYTES)
                 self.assertEqual(item["logical_used_bytes"], 0)
                 self.assertEqual(item["route_count"], 0)
-                self.assertLess(item["physical_bytes"], 1024 * 1024)
+                self.assertEqual(len(item["shards"]), 1)
+                self.assertLess(item["shards"][0]["physical_bytes"], 1024 * 1024)
             names = {p.name for p in Path(tmp).iterdir()}
             self.assertTrue({"bs0db.sqlite3", "mc0db.sqlite3", "sc0db.sqlite3", "gm0db.sqlite3"}.issubset(names))
+
+
+    def test_mount_manifest_and_volume_expansion_preserve_route_identity(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mounts = {
+                "BS0": [root / "bs0db"],
+                "MC0": [root / "mc0db-a", root / "mc0db-b"],
+                "SC0": [root / "sc0db"],
+                "GM0": [root / "gm0db"],
+            }
+            mesh = RawRouteMesh(mounts=mounts, physical_reserve_bytes=0)
+            route = parse_rawroute(self.ROUTE)
+            first = mesh.commit("MC0", route, 0, 100,
+                                idempotency_key="stable-route-1")
+            self.assertEqual(first["generation"], 1)
+            self.assertIn(first["shard"], {str(p) for p in mounts["MC0"]})
+
+            expanded = dict(mounts)
+            expanded["MC0"] = [*mounts["MC0"], root / "mc0db-c"]
+            mesh2 = RawRouteMesh(mounts=expanded, physical_reserve_bytes=0)
+            resolved = mesh2.resolve("MC0", route)
+            self.assertIsNotNone(resolved)
+            self.assertEqual(resolved["generation"], 1)
+            second = mesh2.commit("MC0", route, 1, 101,
+                                  idempotency_key="stable-route-2")
+            self.assertEqual(second["generation"], 2)
+            self.assertEqual(second["shard"], first["shard"])
+            health = mesh2.health()["namespaces"]["MC0"]
+            self.assertEqual(health["route_count"], 1)
+            self.assertEqual(len(health["shards"]), 3)
+
+    def test_mount_manifest_rejects_shared_or_relative_paths(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            shared = root / "shared"
+            mounts = {ns: [shared] for ns in ("BS0", "MC0", "SC0", "GM0")}
+            with self.assertRaises(ValueError):
+                RawRouteMesh(mounts=mounts)
+            mounts = {
+                "BS0": ["relative-bs"], "MC0": [root / "mc"],
+                "SC0": [root / "sc"], "GM0": [root / "gm"],
+            }
+            with self.assertRaises(ValueError):
+                RawRouteMesh(mounts=mounts)
 
     def test_commit_resolve_reverse_lookup_and_idempotent_replay(self):
         with tempfile.TemporaryDirectory() as tmp:
