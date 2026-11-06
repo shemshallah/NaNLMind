@@ -526,7 +526,7 @@ def portal_bridge_startup(slot, epoch):
     if slot != 0:
         seq = int(epoch) & 0xFFFFFFFF
         frame = BridgeFrame(PORTAL_ROUTE, root, seq,
-                            NanWord.from_bits(2, 2, seq), b"BSR_ONLINE")
+                            NanWord.from_bits(0, 0, seq), b"BSR_ONLINE")
         portal_bridge_send(frame)
         sent = True
     received = []
