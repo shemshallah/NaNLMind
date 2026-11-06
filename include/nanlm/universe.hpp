@@ -133,7 +133,6 @@ public:
     static constexpr std::uint8_t kProtocolVersion = 1;
 
     constexpr PointZeroTranslator() = default;
-    constexpr explicit PointZeroTranslator(NannetRoute route) : local_route_(route) {}
 
     constexpr bool bind(NannetRoute route) {
         if (!route.valid()) return false;
