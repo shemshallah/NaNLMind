@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""Hardware-neutral, quota-limited gateway for Clocked-backed NaNLMind demos.
-
-The upstream Clocked credential never leaves this process. Participants receive
-short-lived CLOCKED_USER_API tokens that authenticate only to this gateway.
-"""
+"""Hardware-neutral Clocked demo gateway; upstream key stays server-side."""
 from __future__ import annotations
 
 import hashlib
@@ -12,7 +8,6 @@ import os
 import secrets
 import sqlite3
 import time
-from pathlib import Path
 from typing import Any, Dict
 from wsgiref.simple_server import make_server
 
@@ -20,6 +15,7 @@ from clocked_experience import build_pipeline, make_event
 
 MAX_BODY = 64 * 1024
 SCHEMA_VERSION = 1
+SOURCE_ENDPOINT = "clocked_demo"
 
 
 def token_hash(token: str, pepper: str) -> str:
@@ -66,7 +62,7 @@ class Gateway:
         if method == "GET" and path == "/healthz":
             return json_response(start_response, "200 OK", {
                 "status": "ok", "protocol": "nanlm.clocked-experience",
-                "protocol_version": SCHEMA_VERSION,
+                "protocol_version": SCHEMA_VERSION, "source_endpoint": SOURCE_ENDPOINT,
             })
         if method == "POST" and path == "/admin/tokens":
             return self.issue_token(environ, start_response)
@@ -94,9 +90,7 @@ class Gateway:
         admin = os.environ.get("CLOCKED_GATEWAY_ADMIN_TOKEN", "")
         pepper = os.environ.get("CLOCKED_TOKEN_PEPPER", "")
         supplied = environ.get("HTTP_AUTHORIZATION", "")
-        if not admin or not pepper or not secrets.compare_digest(
-            supplied, "Bearer " + admin
-        ):
+        if not admin or not pepper or not secrets.compare_digest(supplied, "Bearer " + admin):
             return json_response(start_response, "401 Unauthorized", {"error": "unauthorized"})
         try:
             data = self.read_body(environ)
@@ -118,12 +112,9 @@ class Gateway:
             db.commit()
         finally:
             db.close()
-        # Returned exactly once. Store only the peppered digest.
         return json_response(start_response, "201 Created", {
-            "token_type": "CLOCKED_USER_API",
-            "token": token,
-            "tenant_id": tenant_id,
-            "expires_at": now + ttl_seconds,
+            "token_type": "CLOCKED_USER_API", "token": token, "tenant_id": tenant_id,
+            "source_endpoint": SOURCE_ENDPOINT, "expires_at": now + ttl_seconds,
             "max_requests": max_requests,
         })
 
@@ -145,12 +136,11 @@ class Gateway:
             if row["used_requests"] >= row["max_requests"]:
                 db.rollback()
                 return None, "quota_exceeded"
-            db.execute(
-                "UPDATE demo_tokens SET used_requests=used_requests+1 WHERE token_hash=?",
-                (row["token_hash"],),
-            )
+            db.execute("UPDATE demo_tokens SET used_requests=used_requests+1 WHERE token_hash=?",
+                       (row["token_hash"],))
             db.commit()
-            return {"tenant_id": row["tenant_id"], "remaining": row["max_requests"] - row["used_requests"] - 1}, None
+            return {"tenant_id": row["tenant_id"],
+                    "remaining": row["max_requests"] - row["used_requests"] - 1}, None
         finally:
             db.close()
 
@@ -161,8 +151,7 @@ class Gateway:
         identity, error = self.reserve_request(auth[7:])
         if error:
             status = "429 Too Many Requests" if error == "quota_exceeded" else (
-                "503 Service Unavailable" if error == "gateway_misconfigured" else "401 Unauthorized"
-            )
+                "503 Service Unavailable" if error == "gateway_misconfigured" else "401 Unauthorized")
             return json_response(start_response, status, {"error": error})
         try:
             data = self.read_body(environ)
@@ -180,41 +169,32 @@ class Gateway:
             if self.clocked_client is None:
                 from clocked_sdk import Clocked
                 with Clocked() as client:
-                    response = client.pipeline(
-                        text=source_text, steps=build_pipeline(source_text), on_error="continue"
-                    )
+                    response = client.pipeline(text=source_text, steps=build_pipeline(source_text),
+                                                on_error="continue")
                     event = make_event(source_text, dict(response), response)
             else:
-                response = self.clocked_client.pipeline(
-                    text=source_text, steps=build_pipeline(source_text), on_error="continue"
-                )
+                response = self.clocked_client.pipeline(text=source_text,
+                    steps=build_pipeline(source_text), on_error="continue")
                 event = make_event(source_text, dict(response), response)
-            # Protocol envelope is independent of CPU architecture, OS, and runner.
+            event["source_endpoint"] = SOURCE_ENDPOINT
             event["tenant_id"] = identity["tenant_id"]
             event["protocol_version"] = SCHEMA_VERSION
             event["learning_state"] = "awaiting_nanlmind_ingest"
             return json_response(start_response, "200 OK", {
-                "protocol": "nanlm.clocked-experience",
-                "protocol_version": SCHEMA_VERSION,
-                "event": event,
-                "quota_remaining": identity["remaining"],
+                "protocol": "nanlm.clocked-experience", "protocol_version": SCHEMA_VERSION,
+                "event": event, "quota_remaining": identity["remaining"],
             })
         except Exception:
-            # Never return upstream bodies, headers, exception text, or credentials.
             return json_response(start_response, "502 Bad Gateway", {"error": "upstream_unavailable"})
 
 
 def main():
-    if not os.environ.get("CLOCKED_API_KEY"):
-        raise SystemExit("CLOCKED_API_KEY must be configured in the server secret manager")
-    if not os.environ.get("CLOCKED_GATEWAY_ADMIN_TOKEN"):
-        raise SystemExit("CLOCKED_GATEWAY_ADMIN_TOKEN must be configured")
-    if not os.environ.get("CLOCKED_TOKEN_PEPPER"):
-        raise SystemExit("CLOCKED_TOKEN_PEPPER must be configured")
+    for name in ("CLOCKED_API_KEY", "CLOCKED_GATEWAY_ADMIN_TOKEN", "CLOCKED_TOKEN_PEPPER"):
+        if not os.environ.get(name):
+            raise SystemExit(name + " must be configured in the server secret manager")
     host = os.environ.get("CLOCKED_GATEWAY_HOST", "127.0.0.1")
     port = int(os.environ.get("CLOCKED_GATEWAY_PORT", "8787"))
     db_path = os.environ.get("CLOCKED_GATEWAY_DB", "clocked_gateway.sqlite3")
-    # Clocked SDK reads CLOCKED_API_KEY from this server process only.
     app = Gateway(db_path)
     with make_server(host, port, app) as server:
         print("Clocked demo gateway listening on %s:%d" % (host, port), flush=True)
