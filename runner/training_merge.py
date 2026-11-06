@@ -557,7 +557,7 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                         'route': route.text() if route else None,
                         'route_bytes': route.bytes().hex() if route else None}
                     if route:
-                        response.update(point_zero.descriptor())
+                        response.update(point_zero_identity_descriptor(route))
                     self._json(HTTPStatus.OK, response); return
                 if path == '/v1/revoke':
                     bearer = self._bearer()
