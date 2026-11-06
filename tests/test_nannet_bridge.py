@@ -71,6 +71,21 @@ class BridgeTests(unittest.TestCase):
             self.assertEqual(box.stats()["queued"], 0)
             self.assertEqual(box.stats()["max_pending_per_route"], 4096)
 
+    def test_leased_delivery_retries_until_reverse_ack(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            box = BridgeMailbox(Path(tmp) / "leased.sqlite")
+            source, destination = RunnerRoute(bsr=2), RunnerRoute(bsr=0)
+            frame = BridgeFrame(source, destination, 123,
+                                NanWord.from_bits(0, 0, 123), b"deliver-me")
+            box.put(frame)
+            first = BridgeFrame.decode(box.claim(destination, lease_seconds=0))
+            second = BridgeFrame.decode(box.claim(destination, lease_seconds=0))
+            self.assertEqual(first.payload, b"deliver-me")
+            self.assertEqual(second.sequence, 123)
+            self.assertTrue(box.acknowledge(source, destination, 123))
+            self.assertFalse(box.acknowledge(source, destination, 123))
+            self.assertIsNone(box.claim(destination, lease_seconds=0))
+
     def test_mailbox_applies_per_runner_backpressure(self):
         from nanlmind_nannet.bridge import MAX_PENDING_PER_ROUTE
         with tempfile.TemporaryDirectory() as tmp:
