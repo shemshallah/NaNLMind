@@ -33,9 +33,12 @@ def connect():
  db.executescript("""
  CREATE TABLE IF NOT EXISTS tokens(token_hash TEXT PRIMARY KEY,endpoint_id TEXT NOT NULL,scopes_json TEXT NOT NULL,expires_at INTEGER NOT NULL,max_requests INTEGER NOT NULL,used_requests INTEGER NOT NULL DEFAULT 0,revoked INTEGER NOT NULL DEFAULT 0,created_at INTEGER NOT NULL);
  CREATE TABLE IF NOT EXISTS observations(event_id TEXT PRIMARY KEY,endpoint_id TEXT NOT NULL,received_at INTEGER NOT NULL,payload_json TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'pending');
- CREATE TABLE IF NOT EXISTS datasets(dataset_id TEXT PRIMARY KEY,endpoint_id TEXT NOT NULL,created_at INTEGER NOT NULL,expected_chunks INTEGER NOT NULL,total_bytes INTEGER NOT NULL DEFAULT 0,dataset_sha256 TEXT,status TEXT NOT NULL DEFAULT 'uploading',validation_json TEXT,last_error TEXT);
+ CREATE TABLE IF NOT EXISTS datasets(dataset_id TEXT PRIMARY KEY,endpoint_id TEXT NOT NULL,created_at INTEGER NOT NULL,expected_chunks INTEGER NOT NULL,total_bytes INTEGER NOT NULL DEFAULT 0,dataset_sha256 TEXT,status TEXT NOT NULL DEFAULT 'uploading',validation_json TEXT,last_error TEXT,metadata_json TEXT NOT NULL DEFAULT '{}');
  CREATE TABLE IF NOT EXISTS chunks(dataset_id TEXT NOT NULL,chunk_index INTEGER NOT NULL,sha256 TEXT NOT NULL,size_bytes INTEGER NOT NULL,blob_path TEXT NOT NULL,status TEXT NOT NULL,PRIMARY KEY(dataset_id,chunk_index));
- """); db.commit(); return db
+ """)
+ columns={r[1] for r in db.execute("PRAGMA table_info(datasets)").fetchall()}
+ if "metadata_json" not in columns:db.execute("ALTER TABLE datasets ADD COLUMN metadata_json TEXT NOT NULL DEFAULT '{}'")
+ db.commit(); return db
 
 def token_hash(token):
  pepper=os.environ.get("NANLM_TOKEN_PEPPER","")
@@ -114,15 +117,15 @@ class Handler(BaseHTTPRequestHandler):
    if self.need("validator") is None:return
    db=connect()
    try:
-    rows=db.execute("SELECT dataset_id,endpoint_id,created_at,expected_chunks,total_bytes,dataset_sha256,status FROM datasets WHERE status='quarantine' ORDER BY created_at LIMIT 32").fetchall()
-    return self.reply(200,{"datasets":[dict(r) for r in rows]})
+    rows=db.execute("SELECT dataset_id,endpoint_id,created_at,expected_chunks,total_bytes,dataset_sha256,status,metadata_json FROM datasets WHERE status='quarantine' ORDER BY created_at LIMIT 32").fetchall()
+    return self.reply(200,{"datasets":[{**dict(r),"metadata":json.loads(r["metadata_json"])} for r in rows]})
    finally: db.close()
   if p=="/internal/datasets/validated":
    if self.need("runner") is None:return
    db=connect()
    try:
-    rows=db.execute("SELECT dataset_id,endpoint_id,created_at,expected_chunks,total_bytes,dataset_sha256,status,validation_json FROM datasets WHERE status='validated' ORDER BY created_at LIMIT 32").fetchall()
-    return self.reply(200,{"datasets":[dict(r) for r in rows]})
+    rows=db.execute("SELECT dataset_id,endpoint_id,created_at,expected_chunks,total_bytes,dataset_sha256,status,validation_json,metadata_json FROM datasets WHERE status='validated' ORDER BY created_at LIMIT 32").fetchall()
+    return self.reply(200,{"datasets":[{**dict(r),"metadata":json.loads(r["metadata_json"]),"validation":json.loads(r["validation_json"] or "{}")} for r in rows]})
    finally: db.close()
   m=re.fullmatch(r"/internal/datasets/([A-Za-z0-9._-]{1,96})/chunks/(\d+)",p)
   if m:
@@ -237,11 +240,18 @@ class Handler(BaseHTTPRequestHandler):
    if x is None:return
    if not ({"intake","dataset"}&set(x["scopes"]) or "*" in x["scopes"]):return self.reply(403,{"error":"scope_denied"})
    try:
-    count=int(self.json_body().get("chunk_count",0))
+    data=self.json_body();count=int(data.get("chunk_count",0));meta=data.get("metadata")
     if not 1<=count<=100000:raise ValueError("invalid_chunk_count")
+    if not isinstance(meta,dict) or meta.get("protocol")!="nanlm.dataset" or meta.get("version")!=1:raise ValueError("dataset_metadata_protocol_required")
+    content_type=meta.get("content_type");encoding=meta.get("encoding");license_name=meta.get("license");provenance=meta.get("provenance")
+    if not isinstance(content_type,str) or not 1<=len(content_type)<=128:raise ValueError("content_type_required")
+    if not isinstance(encoding,str) or not 1<=len(encoding)<=64:raise ValueError("encoding_required")
+    if not isinstance(license_name,str) or not 1<=len(license_name.strip())<=256:raise ValueError("license_required")
+    if not isinstance(provenance,str) or not 1<=len(provenance.strip())<=512:raise ValueError("provenance_required")
+    clean={"protocol":"nanlm.dataset","version":1,"content_type":content_type,"encoding":encoding,"license":license_name.strip(),"provenance":provenance.strip(),"split":str(meta.get("split","unassigned"))[:32],"source":str(meta.get("source",""))[:1024]}
    except (ValueError,TypeError) as e:return self.reply(400,{"error":str(e)[:80]})
    db=connect()
-   try:db.execute("INSERT INTO datasets(dataset_id,endpoint_id,created_at,expected_chunks) VALUES(?,?,?,?)",(m.group(1),x["endpoint_id"],now(),count));db.commit()
+   try:db.execute("INSERT INTO datasets(dataset_id,endpoint_id,created_at,expected_chunks,metadata_json) VALUES(?,?,?,?,?)",(m.group(1),x["endpoint_id"],now(),count,json.dumps(clean,sort_keys=True)));db.commit()
    except sqlite3.IntegrityError:return self.reply(409,{"error":"dataset_id_exists"})
    finally:db.close()
    return self.reply(201,{"dataset_id":m.group(1),"state":"uploading","chunk_limit_bytes":CHUNK_BYTES,"dataset_quota_bytes":DATASET_QUOTA})
