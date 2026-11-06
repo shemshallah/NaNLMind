@@ -19,8 +19,8 @@ class NannetTests(unittest.TestCase):
   try:v=json.loads(raw.decode())
   except Exception:v=raw
   return r.status,v
- def issue(self,endpoint="bootstrap-000",scopes=None):
-  s,d=self.req("POST","/admin/tokens",{"endpoint_id":endpoint,"scopes":scopes or ["intake","dataset"],"ttl_seconds":3600}, "a"*48);self.assertEqual(s,201);return d["token"]
+ def issue(self,endpoint="nan://GM0:SC0:MC0:BS0:HW0",scopes=None):
+  s,d=self.req("POST","/admin/tokens",{"address":endpoint,"scopes":scopes or ["intake","dataset"],"ttl_seconds":3600}, "a"*48);self.assertEqual(s,201);return d["token"]
  def test_admin_keeper_and_model_status_routes(self):
   status,keeper=self.req("GET","/admin/keeper/status",token="a"*48)
   self.assertEqual(status,200);self.assertEqual(keeper["status"],"disabled")
@@ -28,16 +28,16 @@ class NannetTests(unittest.TestCase):
   self.assertEqual(status,200);self.assertEqual(models["keeper_action"],"not_started")
   self.assertEqual(self.req("GET","/admin/keeper/status",token="p"*48)[0],401)
  def test_256_and_route_scoping(self):
-  s,d=self.req("GET","/healthz");self.assertEqual(s,200);self.assertEqual(d["bootstrap_endpoints"],256);self.assertIn("bootstrap-255",server.ENDPOINTS)
-  t=self.issue("my_android",["intake"]);s,r=self.req("GET","/v1/routes",token=t);self.assertEqual(s,200);self.assertIn("n16t.peer",r["routes"]);self.assertNotIn("deeprepo.keeper",r["routes"])
-  self.assertEqual(self.req("POST","/admin/tokens",{"endpoint_id":"bootstrap-000","scopes":["runner"]},token="a"*48)[0],400)
+  s,d=self.req("GET","/healthz");self.assertEqual(s,200);self.assertEqual(d["bootstrap_endpoints"],256);self.assertEqual(len(server.ENDPOINTS),4);self.assertIn("nan://GM0:SC0:MC0:BS0:HW0",server.ENDPOINTS);self.assertTrue(server.valid_nan_address("nan://GM255:SC255:MC255:BS255:HW255"));self.assertFalse(server.valid_nan_address("nan://GM256:SC0:MC0:BS0:HW0"))
+  t=self.issue("nan://GM0:SC0:MC0:BS0:HW1",["intake"]);s,r=self.req("GET","/v1/routes",token=t);self.assertEqual(s,200);self.assertIn("n16t.peer",r["routes"]);self.assertNotIn("deeprepo.keeper",r["routes"])
+  self.assertEqual(self.req("POST","/admin/tokens",{"address":"nan://GM0:SC0:MC0:BS0:HW1","scopes":["runner"]},token="a"*48)[0],400)
  def test_observation_unverified_and_idempotent(self):
-  t=self.issue("bootstrap-007",["intake","observation"]);e={"protocol":"nanlm.endpoint-observation","version":1,"event_id":"b"*64,"base_generation":4,"active_heads":[1,1,255],"outcome_verified":False}
-  s,a=self.req("POST","/v1/observations",e,t);self.assertEqual(s,202);self.assertEqual(a["endpoint_id"],"bootstrap-007");self.assertFalse(a["outcome_verified"])
+  t=self.issue("nan://GM0:SC0:MC0:BS0:HW7",["intake","observation"]);e={"protocol":"nanlm.endpoint-observation","version":1,"event_id":"b"*64,"base_generation":4,"active_heads":[1,1,255],"outcome_verified":False}
+  s,a=self.req("POST","/v1/observations",e,t);self.assertEqual(s,202);self.assertEqual(a["endpoint_id"],"nan://GM0:SC0:MC0:BS0:HW7");self.assertFalse(a["outcome_verified"])
   s,b=self.req("POST","/v1/observations",e,t);self.assertEqual(s,200);self.assertEqual(b["state"],"duplicate_noop")
   self.assertEqual(self.req("POST","/v1/observations",dict(e,event_id="c"*64,correct=True),t)[0],400)
  def test_dataset_quarantine_external_validation(self):
-  t=self.issue("hermes_demo");raw=[b"abc",b"defg"];full=b"".join(raw)
+  t=self.issue("nan://GM0:SC0:MC0:BS0:HW2");raw=[b"abc",b"defg"];full=b"".join(raw)
   self.assertEqual(self.req("POST","/v1/datasets/demo-1/begin",{"chunk_count":2,"metadata":{"protocol":"nanlm.dataset","version":1,"content_type":"text/plain","encoding":"utf-8","license":"CC0-1.0","provenance":"synthetic unit-test corpus","split":"train"}},t)[0],201)
   for i,b in enumerate(raw):
    self.assertEqual(self.req("PUT",f"/v1/datasets/demo-1/chunks/{i}",b,t,{"Content-Type":"application/octet-stream","X-Chunk-SHA256":hashlib.sha256(b).hexdigest()})[0],201)
@@ -62,7 +62,7 @@ class NannetTests(unittest.TestCase):
   self.assertEqual(self.req("POST","/v1/training/merge",payload,token="p"*48,headers={"Idempotency-Key":"runner-commit-2"})[0],401)
   self.assertEqual(self.req("POST","/v1/training/merge",dict(payload,source_endpoint="my_android"),token="m"*48,headers={"Idempotency-Key":"runner-commit-3"})[0],403)
  def test_n16t_is_scoped_and_fails_closed_without_peer(self):
-  t=self.issue("my_android",["n16t"])
+  t=self.issue("nan://GM0:SC0:MC0:BS0:HW1",["n16t"])
   frame=b"x"*36
   status,body=self.req("POST","/n16t",frame,t,{"Content-Type":"application/vnd.nan16.n16t"})
   self.assertEqual(status,503)
