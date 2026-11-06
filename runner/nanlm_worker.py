@@ -29,6 +29,12 @@ import sys
 import time
 from pathlib import Path
 
+# Worker subprocesses may be launched with PYTHONPATH=runner; add the
+# repository root so the shared NaN16DE/N16B implementation remains importable.
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+if str(REPOSITORY_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPOSITORY_ROOT))
+
 from nanlmind_nannet.bridge import BridgeFrame, BridgeMailbox, RunnerRoute
 from nanlmind_nannet.nan16de import NanWord
 
