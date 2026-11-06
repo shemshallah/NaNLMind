@@ -83,7 +83,10 @@ The 256 fixed points are the **present** / synchronization anchors. A mirror pai
 
 See [docs/03_MATHEMATICAL_STRUCTURE.md](docs/03_MATHEMATICAL_STRUCTURE.md).
 
-## NaNNet runner routes and point-zero translation
+## NaNNet
+
+Native runner-to-BS0 loopback validation uses the service-side point-zero decoder for outbound frames; runner-local decoding remains destination-bound for inbound traffic.
+ runner routes and point-zero translation
 
 The six GitHub Actions runners use one canonical route form:
 
