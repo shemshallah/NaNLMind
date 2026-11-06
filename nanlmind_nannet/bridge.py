@@ -50,8 +50,8 @@ class RunnerRoute:
     def parse(cls, value: str) -> "RunnerRoute":
         import re
         m = re.fullmatch(
-            r"nan://GM(\\d{1,3}):SC(\\d{1,3}):MC(\\d{1,3}):"
-            r"BS(\\d{1,3}):HW(\\d{1,3}):BSR([0-5])", value or "")
+            r"nan://GM(\d{1,3}):SC(\d{1,3}):MC(\d{1,3}):"
+            r"BS(\d{1,3}):HW(\d{1,3}):BSR([0-5])", value or "")
         if not m:
             raise ValueError("runner route must be nan://GM:SC:MC:BS:HW:BSR0..5")
         return cls(*(int(x) for x in m.groups()))
