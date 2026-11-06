@@ -159,6 +159,14 @@ for sequence order and an optional teacher for distillation. The honest R18T
 baseline — a plain RNN matching the 256-head topology — is in
 [docs/17_TRAINING_HEADS.md](docs/17_TRAINING_HEADS.md).
 
+The six-runner ring is the **primary NaNLMind training universe**: it owns and
+trains the single canonical 256-head state. Overbootstrap aggregates verified,
+mergeable evidence from four endpoint environments — the bootstrap ring, MY
+Android, Hermes demo, and Clocked demo — and returns bounded meta-policy to the
+ring. These are not four independent minds. See
+[docs/72_CANONICAL_TRAINING_UNIVERSE.md](docs/72_CANONICAL_TRAINING_UNIVERSE.md)
+and `integrations/clocked/training_endpoints.json`.
+
 ## Repository map
 
 | path | contents |
