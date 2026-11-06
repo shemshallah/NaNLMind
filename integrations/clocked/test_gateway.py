@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import patch
 
 from clocked_experience import digest, make_event, summarize_step
-from gateway import Gateway
+from gateway import Gateway, connect_db
 
 
 class FakeClocked:
