@@ -90,6 +90,7 @@ warmup: $(CLI)
 
 merge-test:
 	PYTHONPATH=runner python3 -m unittest discover -s tests -p 'test_training_merge.py' -v
+	PYTHONPATH=runner python3 -m unittest discover -s tests -p 'test_nannet_bridge.py' -v
 
 logic-test:
 	PYTHONPATH=runner python3 -m unittest discover -s tests -p 'test_logic*.py' -v
