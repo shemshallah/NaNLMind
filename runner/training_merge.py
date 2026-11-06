@@ -267,7 +267,7 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                     requested = RunnerRoute.parse(query['route'][0]) if query.get('route') else expected
                     if requested != expected:
                         raise AuthError('poll route does not match authenticated BSR identity')
-                    raw = bridge.take(requested)
+                    raw = bridge.claim(requested)
                     if raw is None:
                         self.send_response(HTTPStatus.NO_CONTENT); self.send_header('Cache-Control', 'no-store'); self.end_headers(); return
                     self.send_response(HTTPStatus.OK)
@@ -341,7 +341,10 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                     frame = BridgeFrame.decode(raw)
                     if frame.source != expected:
                         raise AuthError('source route does not match authenticated BSR identity')
-                    bridge.put(frame)
+                    if frame.payload in (b"BSR_ACK", b"ACK"):
+                        bridge.acknowledge(frame.destination, frame.source, frame.sequence)
+                    if frame.payload != b"ACK":
+                        bridge.put(frame)
                     ack = BridgeFrame.acknowledgement(frame).encode()
                     self.send_response(HTTPStatus.ACCEPTED)
                     self.send_header('Content-Type', N16B_MEDIA_TYPE)
