@@ -411,6 +411,17 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                     self._json(HTTPStatus.BAD_REQUEST, {'error': 'invalid json'}); return
                 status, body = store.merge(payload, self.headers.get('Idempotency-Key', ''))
                 self._json(status, body); return
+            if path == '/v1/admin/leases/release':
+                if not self._auth():
+                    self._json(HTTPStatus.UNAUTHORIZED, {'error': 'merge service token required'}); return
+                payload = self._body(4096)
+                if devices is None:
+                    self._json(HTTPStatus.SERVICE_UNAVAILABLE, {'error': 'device authority disabled'}); return
+                try:
+                    self._json(HTTPStatus.OK, devices.release_slot(payload.get('slot')))
+                except ValueError as exc:
+                    self._json(HTTPStatus.BAD_REQUEST, {'error': str(exc)[:160]})
+                return
             if authority is None or devices is None:
                 self._json(HTTPStatus.SERVICE_UNAVAILABLE, {'error': 'nannet authority disabled'}); return
             try:

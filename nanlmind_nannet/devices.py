@@ -192,6 +192,26 @@ class DeviceRegistry:
         return {"lease_id": lease_id, "lease_expires_at": expires,
                 "address": f"nan://GM0:SC0:MC0:BS0:HW{slot}", "token": replacement}
 
+    def release_slot(self, slot: int | None = None, now: int | None = None) -> dict:
+        """Admin/operator cleanup: release one slot or all active demo leases."""
+        now = int(time.time()) if now is None else int(now)
+        with self._connect() as db:
+            if slot is None:
+                rows = db.execute("SELECT lease_id,hw_slot FROM device_leases "
+                                  "WHERE released_at IS NULL AND expires_at>?", (now,)).fetchall()
+                db.execute("UPDATE device_leases SET hw_slot=NULL,released_at=? "
+                           "WHERE released_at IS NULL AND expires_at>?", (now, now))
+            else:
+                if isinstance(slot, bool) or not isinstance(slot, int) or not 0 <= slot <= 255:
+                    raise ValueError("slot must be 0..255")
+                rows = db.execute("SELECT lease_id,hw_slot FROM device_leases "
+                                  "WHERE hw_slot=? AND released_at IS NULL AND expires_at>?",
+                                  (slot, now)).fetchall()
+                db.execute("UPDATE device_leases SET hw_slot=NULL,released_at=? "
+                           "WHERE hw_slot=? AND released_at IS NULL AND expires_at>?",
+                           (now, slot, now))
+        return {"released": len(rows), "slots": [row["hw_slot"] for row in rows]}
+
     def report(self, token: str, payload: dict, now: int | None = None) -> dict:
         now = int(time.time()) if now is None else int(now)
         if not isinstance(payload, dict): raise ValueError("invalid report")
