@@ -590,3 +590,63 @@ with a **bootstrap-only 2 GiB map of 256 node points**; point 1 is
 NaNLMind/runner ring, point 2 is Android, points 3..256 are 254 other inputs,
 and every deployment/abstraction layer gets its own math, storage format, and
 NaN route payload.
+
+
+## 7. Global mesh address versus local node point
+
+The hierarchical network identity is now defined independently of the old
+bootstrap-map point number:
+
+```text
+nan://GM0:SC0:MC0:BS0:HW0
+        |   |   |   |   |
+        |   |   |   |   +-- hardware endpoint (0..255)
+        |   |   |   +------ bootstrap universe (0..255)
+        |   |   +---------- macrocluster (0..255)
+        |   +-------------- supercluster (0..255)
+        +------------------ global mesh (0..255)
+```
+
+Every coordinate is an unsigned decimal integer in the inclusive range 0..255.
+The canonical initial assignments are:
+
+| Address | Endpoint |
+|---|---|
+| `nan://GM0:SC0:MC0:BS0:HW0` | NaNLMind six-runner GitHub ring |
+| `nan://GM0:SC0:MC0:BS0:HW1` | Android / NaNLMind_android |
+| `nan://GM0:SC0:MC0:BS0:HW2` | Hermes |
+| `nan://GM0:SC0:MC0:BS0:HW3` | Clocked |
+
+Clocked remains HW3 for the initial deployment. Its future promotion to a
+macrocluster is a topology change, not a reason to rewrite its historical
+endpoint identity or training evidence. A node may participate in cooperative
+corpus work with Android/Hermes while retaining its own address.
+
+The previous 1..256 overbootstrap point is retained as a **local slot index**,
+not a global address. Within a bootstrap universe, `HWn` maps to node point
+`n+1`: HW0 -> point 1 (runner ring), HW1 -> point 2 (Android), HW2 -> point 3,
+HW3 -> point 4, and HW255 -> point 256. The full five-coordinate address
+disambiguates identical local slot numbers in different BS/MC/SC/GM domains.
+The NaNLMind C++ `LayerRef.node` and NaN0S `ob_point_to_page` continue to use
+this local 1..256 number.
+
+NANNET is the physical transport ingress and authentication authority:
+
+```text
+https://<Koyeb NANNET public origin>
+  + bearer token bound to nan://GM0:SC0:MC0:BS0:HW0
+  -> NANNET route/capability lookup
+  -> local bootstrap node point 1
+  -> six-runner ring / 256-head universe
+```
+
+The Koyeb hostname is a transport authority, not part of the NaN identity.
+Do not hard-code a Koyeb IP: ingress addresses may change. The bearer token
+binds the canonical address; an optional `X-NaN-Address` header is only a
+consistency claim and is rejected if it differs from the token-bound address.
+An address string alone never grants authority.
+
+NANNET exposes `GET /v1/address` and `GET /v1/routes` for authenticated
+endpoints. The address response includes the canonical address, all five
+coordinates, and the local node-point mapping. The runner ring's privileged
+runner credential remains separate from endpoint credentials.
