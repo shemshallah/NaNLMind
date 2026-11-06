@@ -1,0 +1,29 @@
+name: NANNET universal intake
+on:
+  pull_request:
+    paths: ["integrations/nannet/**", "runner/nannet_consumer.py", "runner/test_nannet_consumer.py", ".github/workflows/nannet-universal.yml", ".github/workflows/nannet-consume.yml", ".github/workflows/ring.yml", "Dockerfile"]
+  push:
+    branches: [main, nannet-universal-intake]
+    paths: ["integrations/nannet/**", "runner/nannet_consumer.py", "runner/test_nannet_consumer.py", ".github/workflows/nannet-universal.yml", ".github/workflows/nannet-consume.yml", ".github/workflows/ring.yml", "Dockerfile"]
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m py_compile integrations/nannet/server.py integrations/nannet/test_server.py
+      - run: python -m unittest -v
+        working-directory: integrations/nannet
+      - run: python -m unittest -v runner.test_nannet_consumer
+      - run: python -m unittest discover -s tests -p "test_training_merge.py" -v
+
+  container-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build combined NANNET + DeepRepo keeper image
+        run: docker build --pull -t nannet-universal:test .

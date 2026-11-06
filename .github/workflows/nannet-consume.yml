@@ -1,0 +1,32 @@
+name: NANNET validated corpus consumer
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
+permissions:
+  contents: read
+concurrency:
+  group: nanlm-canonical-training-fold
+  cancel-in-progress: false
+jobs:
+  consume:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install vectorized corpus fold
+        run: pip install --disable-pip-version-check numpy
+      - name: Drain validated datasets into bootstrap head bank
+        env:
+          NANNET_URL: ${{ vars.NANNET_URL }}
+          NANLM_RUNNER_TOKEN: ${{ secrets.NANLM_RUNNER_TOKEN }}
+          NANLM_BOOTSTRAP_TOKEN: ${{ secrets.NANLM_BOOTSTRAP_TOKEN }}
+        run: |
+          if [ -z "$NANNET_URL" ] || [ -z "$NANLM_RUNNER_TOKEN" ] || [ -z "$NANLM_BOOTSTRAP_TOKEN" ]; then
+            echo "NANNET credentials are not configured; queue is unchanged."
+            exit 0
+          fi
+          python3 runner/nannet_consumer.py
