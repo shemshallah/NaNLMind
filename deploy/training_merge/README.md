@@ -25,9 +25,13 @@ ephemeral until one is added. `NANLM_MERGE_TOKEN` is a Koyeb secret.
 2. Attach a persistent volume at `/data` (free Koyeb instances are ephemeral).
 3. Set `NANLM_MERGE_TOKEN` to a scoped, revocable service credential and `NANNET_AUTHORITY_MASTER_KEY` to an independent random 32-byte base64url secret. Store both as Koyeb secrets. Set `NANNET_AUTHORITY_DB=/data/nannet-authority.sqlite`. Do **not** set or use `DEEPREPO_PAT`.
 4. Expose port `8080` over HTTPS.
-5. Configure each `nanlm-cpu-N` repository with its matching `BSR(N-1)_PORTAL_API` Actions variable set to the portal HTTPS base URL. Point training clients at `https://<service-host>/v1/training/merge` and guest clients at the `/v1/devices/*` routes. The hostname must be taken from the actual Koyeb deployment, not guessed.
+5. Configure each `nanlm-cpu-N` repository with its matching `BSR(N-1)_PORTAL_API` Actions variable set to the portal HTTPS base URL. Point N16T protocol clients at `https://<service-host>/n16t` (or the `/portal` compatibility alias), training merge clients at `https://<service-host>/v1/training/merge`, and guest clients at the `/v1/devices/*` routes. The hostname must be taken from the actual Koyeb deployment, not guessed.
 
-## NANNET routes on the same service
+## N16T transport and NANNET routes on the same service
+
+- `POST /n16t` — bounded binary N16T v1 HELLO/CAPABILITIES handshake (`application/vnd.nan16.n16t`).
+- `POST /portal` — compatibility alias for the same N16T handshake; `GET /portal` serves this service guide. This is not the training merge API.
+- `GET /healthz` — health and authority status.
 
 - `POST /v1/devices/register` — explicit-consent enrollment, next free HW4–HW255 slot; issues a signed guest bearer using a per-device key derived from the authority master.
 - `POST /v1/devices/heartbeat` — renew lease, rotate the guest bearer, and revoke its predecessor.
