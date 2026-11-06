@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -11,11 +12,16 @@ ROOT = Path(__file__).resolve().parents[1]
 class LogicLocalRingTests(unittest.TestCase):
     def test_parallel_slots_use_different_levels(self):
         with tempfile.TemporaryDirectory() as tmp:
+            env = os.environ.copy()
+            # This is a local worker-ring unit test, not a portal integration
+            # test. Prevent ambient CI secrets from forcing remote auth.
+            env.pop("NANNET_PORTAL_API", None)
+            env.pop("NANNET_BSR_TOKEN", None)
             proc = subprocess.run(
                 [sys.executable, str(ROOT / "runner" / "logic_local_ring.py"),
                  "--slots", "3", "--rounds", "3",
                  "--state-root", str(Path(tmp) / "ring")],
-                text=True, capture_output=True, check=True)
+                text=True, capture_output=True, check=True, env=env)
             payload = json.loads(proc.stdout)
             self.assertTrue(payload["ok"])
             self.assertTrue(payload["improved"])
