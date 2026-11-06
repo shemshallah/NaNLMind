@@ -221,7 +221,7 @@ class TrainingMergeTest(unittest.TestCase):
                 "<4sHH16sII", peer)
             self.assertEqual((magic, version, kind, peer_session, sequence, length),
                              (b"N16T", 1, 2, session, 1, 8))
-            self.assertEqual(peer[32:34], b"\x01\x00")
+            self.assertEqual(peer[32:34], b"\x0f\x00")
             self.assertEqual(struct.unpack_from("<I", peer, 40)[0],
                              zlib.crc32(peer[:40]) & 0xFFFFFFFF)
 
