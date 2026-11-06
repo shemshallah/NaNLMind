@@ -256,3 +256,82 @@ def route_for_identity(identity: str) -> RunnerRoute:
     if not match:
         raise ValueError("identity is not one of the six authorized BSR runners")
     return RunnerRoute(bsr=int(match.group(1)) - 1)
+
+
+class PointZeroTranslator:
+    """Per-universe NaNNet adapter anchored at universe point zero.
+
+    Every runner owns an adapter bound to its local BSR identity. The adapter
+    uses point zero as the shared translation authority and enforces a
+    lossless six-byte route <-> canonical URI round trip on every frame.
+    A service-side instance may omit local_route and authenticate the source
+    separately before forwarding frames.
+    """
+    PROTOCOL = "N16B/1"
+
+    def __init__(self, local_route: RunnerRoute | None = None):
+        if local_route is not None and not isinstance(local_route, RunnerRoute):
+            raise ValueError("local translator route must be a canonical runner route")
+        self.local_route = local_route
+        self.point_route = RunnerRoute(bsr=0)
+
+    @staticmethod
+    def route_to_wire(route: RunnerRoute) -> bytes:
+        if not isinstance(route, RunnerRoute):
+            raise ValueError("translator accepts only canonical runner routes")
+        encoded = route.bytes()
+        if RunnerRoute(*encoded) != route:
+            raise ValueError("route coordinate translation is not lossless")
+        return encoded
+
+    @staticmethod
+    def route_from_wire(raw: bytes) -> RunnerRoute:
+        if not isinstance(raw, bytes) or len(raw) != 6:
+            raise ValueError("NaNNet route coordinate must contain exactly six bytes")
+        route = RunnerRoute(*raw)
+        if PointZeroTranslator.route_to_wire(route) != raw:
+            raise ValueError("NaNNet route coordinate translation is not canonical")
+        return route
+
+    def descriptor(self) -> dict:
+        return {
+            "universe_point": 0,
+            "translator": self.PROTOCOL,
+            "point_zero_route": self.point_route.text(),
+            "point_zero_bytes": self.route_to_wire(self.point_route).hex(),
+            "local_route": self.local_route.text() if self.local_route else None,
+            "local_route_bytes": self.route_to_wire(self.local_route).hex()
+                if self.local_route else None,
+        }
+
+    def make_frame(self, destination: RunnerRoute, sequence: int,
+                   word: NanWord, payload: bytes = b"") -> BridgeFrame:
+        if self.local_route is None:
+            raise ValueError("service translator cannot originate runner frames")
+        # Force both endpoints through point-zero's binary coordinate codec.
+        source = self.route_from_wire(self.route_to_wire(self.local_route))
+        target = self.route_from_wire(self.route_to_wire(destination))
+        return BridgeFrame(source, target, sequence, word, payload)
+
+    def encode(self, frame: BridgeFrame) -> bytes:
+        if not isinstance(frame, BridgeFrame):
+            raise ValueError("point-zero translator requires an N16B frame")
+        if self.local_route is not None and frame.source != self.local_route:
+            raise ValueError("outbound N16B source does not match this universe route")
+        source = self.route_from_wire(self.route_to_wire(frame.source))
+        destination = self.route_from_wire(self.route_to_wire(frame.destination))
+        translated = BridgeFrame(source, destination, frame.sequence, frame.word, frame.payload)
+        return translated.encode()
+
+    def decode(self, raw: bytes, expected_destination: RunnerRoute | None = None,
+               expected_source: RunnerRoute | None = None) -> BridgeFrame:
+        frame = BridgeFrame.decode(raw)
+        source = self.route_from_wire(self.route_to_wire(frame.source))
+        destination = self.route_from_wire(self.route_to_wire(frame.destination))
+        if self.local_route is not None and destination != self.local_route:
+            raise ValueError("inbound N16B destination does not match this universe route")
+        if expected_destination is not None and destination != expected_destination:
+            raise ValueError("N16B destination does not match requested route")
+        if expected_source is not None and source != expected_source:
+            raise ValueError("N16B source does not match authenticated route")
+        return frame
