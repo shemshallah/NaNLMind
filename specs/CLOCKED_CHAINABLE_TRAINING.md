@@ -22,7 +22,7 @@ The chainable design must preserve these invariants:
 
 ## 2. What the working demo proves
 
-The companion demo in `integrations/clocked/demo.py` exercises a deliberately small path:
+The companion demo in `NaNLMind_CLOCKED/integrations/clocked/demo.py` exercises a deliberately small path:
 
 1. Read a versioned, labelled synthetic task-family curriculum with separate train and held-out splits.
 2. In live mode, submit each sample to the authenticated Clocked gateway, which invokes the server-side Clocked SDK. In fixture mode, use a deterministic local stand-in and label the result as simulated.
@@ -306,3 +306,8 @@ The current Python SDK package is `clocked-sdk` (not the unrelated `clocked` pac
 - NaNLMind Clocked adapter: `integrations/clocked/`
 - Canonical topology: `docs/72_CANONICAL_TRAINING_UNIVERSE.md`
 - NANNET universal intake: `integrations/nannet/` (separate companion integration)
+
+
+## Repository ownership boundary
+
+The upstream CLOCKED SDK adapter, gateway, participant client, demo harness, sample corpus, SDK requirements and service tests live in [NaNLMind_CLOCKED](https://github.com/shemshallah/NaNLMind_CLOCKED). This repository retains only the NaNLMind receiving contract, endpoint publisher, native head demo, durable evidence consumer and canonical training topology. The CLOCKED service cannot mutate NaNLMind heads or commit a generation. See the [autonomous HERMES/head-cortex design](https://github.com/shemshallah/NaNLMind_CLOCKED/blob/main/docs/HERMES_AUTONOMOUS_CLOCKED_HEAD_CORTEX.md).
