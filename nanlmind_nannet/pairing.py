@@ -16,6 +16,9 @@ class PairingAuthority:
         with sqlite3.connect(self.database) as db:
             db.execute("CREATE TABLE IF NOT EXISTS authority_meta (key TEXT PRIMARY KEY,value TEXT NOT NULL)")
             db.execute("CREATE TABLE IF NOT EXISTS pairing_codes (code_hash TEXT PRIMARY KEY,scopes TEXT NOT NULL,expires_at INTEGER NOT NULL,used_at INTEGER)")
+            columns = {row[1] for row in db.execute("PRAGMA table_info(pairing_codes)")}
+            if "role" not in columns:
+                db.execute("ALTER TABLE pairing_codes ADD COLUMN role TEXT NOT NULL DEFAULT 'guest'")
             db.execute("CREATE TABLE IF NOT EXISTS installations (installation_id TEXT PRIMARY KEY,public_key TEXT NOT NULL,paired_at INTEGER NOT NULL)")
         try: os.chmod(self.database,0o600)
         except OSError: pass
@@ -48,16 +51,18 @@ class PairingAuthority:
     def issuer_public_key(self) -> str:
         return _b64(self._private_key().public_key().public_bytes(serialization.Encoding.Raw,serialization.PublicFormat.Raw))
 
-    def create_pairing_code(self, scopes, ttl_seconds=600, now=None) -> dict:
+    def create_pairing_code(self, scopes, ttl_seconds=600, now=None, role="guest") -> dict:
+        from .auth import identity_scope_ceiling
         scopes=sorted(set(scopes))
-        if not scopes or not set(scopes)<=ALLOWED_SCOPES: raise AuthError("invalid pairing scopes")
+        if role not in ("admin", "guest") or not scopes or not set(scopes)<=identity_scope_ceiling(role):
+            raise AuthError("pairing scopes exceed role ceiling")
         if isinstance(ttl_seconds,bool) or not isinstance(ttl_seconds,int) or not 60<=ttl_seconds<=3600: raise AuthError("pairing code lifetime must be 60–3600 seconds")
         now=int(time.time()) if now is None else int(now)
         code="nnh_"+secrets.token_urlsafe(24)
         digest=hashlib.sha256(code.encode()).hexdigest()
         with sqlite3.connect(self.database) as db:
-            db.execute("INSERT INTO pairing_codes VALUES (?,?,?,NULL)",(digest,json.dumps(scopes),now+ttl_seconds))
-        return {"pairing_code":code,"expires_at":now+ttl_seconds,"scopes":scopes}
+            db.execute("INSERT INTO pairing_codes (code_hash,scopes,expires_at,used_at,role) VALUES (?,?,?,NULL,?)",(digest,json.dumps(scopes),now+ttl_seconds,role))
+        return {"pairing_code":code,"expires_at":now+ttl_seconds,"scopes":scopes,"role":role}
 
     def pair(self, code: str, installation_id: str, public_key: str, token_ttl_seconds=900, now=None) -> dict:
         now=int(time.time()) if now is None else int(now)
@@ -67,16 +72,16 @@ class PairingAuthority:
         if len(raw)!=32: raise AuthError("installation public key must be 32 bytes")
         digest=hashlib.sha256(code.encode()).hexdigest()
         with sqlite3.connect(self.database,timeout=10,isolation_level="IMMEDIATE") as db:
-            row=db.execute("SELECT scopes,expires_at,used_at FROM pairing_codes WHERE code_hash=?",(digest,)).fetchone()
+            row=db.execute("SELECT scopes,expires_at,used_at,role FROM pairing_codes WHERE code_hash=?",(digest,)).fetchone()
             if not row or row[2] is not None or now>=row[1]: raise AuthError("pairing code is invalid, expired, or already used")
             existing=db.execute("SELECT public_key FROM installations WHERE installation_id=?",(installation_id,)).fetchone()
             if existing and existing[0]!=public_key: raise AuthError("installation ID is already bound to another key")
             db.execute("UPDATE pairing_codes SET used_at=? WHERE code_hash=? AND used_at IS NULL",(now,digest))
             if db.total_changes<1: raise AuthError("pairing code was already consumed")
             db.execute("INSERT OR REPLACE INTO installations VALUES (?,?,?)",(installation_id,public_key,now))
-            scopes=json.loads(row[0])
-        token=issue_token(self._private_key(),installation_id,scopes,token_ttl_seconds,now)
-        return {"token":token,"issuer_public_key":self.issuer_public_key(),"installation_id":installation_id,"scopes":scopes,"expires_at":now+token_ttl_seconds}
+            scopes=json.loads(row[0]); role=row[3]
+        token=issue_token(self._private_key(),installation_id,scopes,token_ttl_seconds,now,role=role)
+        return {"token":token,"issuer_public_key":self.issuer_public_key(),"installation_id":installation_id,"scopes":scopes,"role":role,"expires_at":now+token_ttl_seconds}
 
     def revoke_token(self, token: str, now=None) -> dict:
         from .auth import verify_token
