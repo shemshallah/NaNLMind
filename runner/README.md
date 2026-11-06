@@ -75,6 +75,7 @@ For logic training:
 
 ```sh
 python3 runner/nanlm_worker.py --op logic --slot 1 --epoch 0 --rounds 4
+python3 runner/logic_local_ring.py --slots 6 --rounds 4
 ```
 
 The curriculum writes `state/logic_<epoch>_<slot>.json` and publishes the same

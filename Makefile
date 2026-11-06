@@ -92,7 +92,7 @@ merge-test:
 	PYTHONPATH=runner python3 -m unittest discover -s tests -p 'test_training_merge.py' -v
 
 logic-test:
-	PYTHONPATH=runner python3 -m unittest discover -s tests -p 'test_logic_curriculum.py' -v
+	PYTHONPATH=runner python3 -m unittest discover -s tests -p 'test_logic*.py' -v
 
 byte-mesh: $(BUILD)/test_byte_stream_learning
 	./$(BUILD)/test_byte_stream_learning
