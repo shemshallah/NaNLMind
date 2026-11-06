@@ -32,10 +32,14 @@ Canonical mount path removes separators and adds a slash:
 /0x7FF1PPPPPPPPF17F
 ```
 
-This agrees with the actual `NanWord` byte placement: the 64-bit raw value
-has the near head in the high 16 bits and the far-head bytes in the low 16
-bits. The existing `.nan` display convention is a separate presentation
-convention and must not be confused with the raw integer/path spelling.
+This agrees with the actual `NanWord` byte placement: in the raw integer
+spelling, the **prefix `7FF1` is the near head in the high 16 bits**, and the
+**suffix `F17F` is the far head stored byte-swapped in the low 16 bits**.
+When viewed as the actual eight memory bytes on the specified little-endian
+representation, the order is far-head bytes `7F F1`, four payload bytes in
+little-endian order, then near-head bytes `F1 7F`. The existing `.nan`
+display convention is a separate presentation convention and must not be
+confused with the raw integer/path spelling.
 
 ## 32-bit payload
 
