@@ -332,6 +332,13 @@ verifies restore into a fresh UTM. Tapes can allocate new pages through an
 attached `Atlas`. The journal stores page hashes, not the mutable page map; the
 formal finite-control/self-encoding proof is still open (doc 69).
 
+### TM-to-binary compiler
+
+The 23-state/8-symbol Minsky table now compiles to a 505-state binary TM with
+3-bit symbol blocks. The binary machine reproduces 20 source steps exactly.
+This provides the binary bridge needed for self-simulation; encoding and running
+the full binary machine through the Minsky input format remains open.
+
 ### UTM implementation status
 
 The fixed Minsky universal table, encoded universal description, normal binary

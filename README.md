@@ -227,6 +227,7 @@ baseline — a plain RNN matching the 256-head topology — is in
 | `docs/71_MINSKY_UTM.md` | Minsky 23-state/8-symbol universal table and trace check |
 | `docs/72_UTM_TRACE_INVARIANT.md` | configuration relation, tested traces, proof gaps |
 | `docs/73_UTM_IMPLEMENTATION_STATUS.md` | what is implemented and the one remaining proof limitation |
+| `docs/74_TM_TO_BINARY_COMPILER.md` | 23×8 table compiled to a 505-state binary TM |
 | `docs/18_HEAD_RING.md` | six-runner handoff, preload, map-back, workflows |
 | `docs/19_LEGACY_TESTS.md` | R18T language tests and R21–R23 logic regressions |
 | `docs/20_META_ROUTER.md` | universes as heads, routes as pairs, qNaN/sNaN BE/LE portals |

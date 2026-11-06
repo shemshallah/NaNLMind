@@ -77,6 +77,7 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 71 | [71_MINSKY_UTM.md](71_MINSKY_UTM.md) | Can a 23-state/8-symbol universal table be loaded and trace-checked? |
 | 72 | [72_UTM_TRACE_INVARIANT.md](72_UTM_TRACE_INVARIANT.md) | What is the exact trace relation and what remains unproved? |
 | 73 | [73_UTM_IMPLEMENTATION_STATUS.md](73_UTM_IMPLEMENTATION_STATUS.md) | What is complete, and what is the remaining proof limitation? |
+| 74 | [74_TM_TO_BINARY_COMPILER.md](74_TM_TO_BINARY_COMPILER.md) | How does the 23×8 table compile to a 505-state binary TM? |
 
 The short version:
 
