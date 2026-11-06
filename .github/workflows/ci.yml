@@ -50,7 +50,7 @@ jobs:
       - name: Resolution-aware relation train and replay smoke
         run: |
           mkdir -p state
-          printf '%b\\n' \
+          printf '%b\n' \
             'N16REL/1' \
             'train\t5\t+\t60000\t70656e6775696e\t69735f61\t62697264\t1111111111111111111111111111111111111111111111111111111111111111' \
             'train\t5\t-\t60000\t70656e6775696e\t63616e\t666c79\t2222222222222222222222222222222222222222222222222222222222222222' \
