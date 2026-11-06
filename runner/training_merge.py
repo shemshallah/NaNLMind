@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import hmac
+import http.client
 import json
 import os
 import struct
@@ -246,6 +247,36 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
             # Never log authorization headers or bodies.
             print(f"merge {self.address_string()} {fmt % args}", flush=True)
 
+        def _proxy_router(self) -> None:
+            """Forward runner-ring control-plane calls to the loopback service.
+
+            The public portal remains the only exposed service; the router
+            process runs inside the same container and never gets a public port.
+            """
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                body = self.rfile.read(length) if length > 0 else None
+                headers = {}
+                for key in ("Authorization", "Content-Type", "Accept"):
+                    if self.headers.get(key):
+                        headers[key] = self.headers[key]
+                connection = http.client.HTTPConnection("127.0.0.1", 18081, timeout=20)
+                connection.request(self.command, self.path, body=body, headers=headers)
+                response = connection.getresponse()
+                payload = response.read()
+                connection.close()
+                self.send_response(response.status)
+                content_type = response.getheader("Content-Type")
+                if content_type:
+                    self.send_header("Content-Type", content_type)
+                self.send_header("Content-Length", str(len(payload)))
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                if payload:
+                    self.wfile.write(payload)
+            except (OSError, http.client.HTTPException) as exc:
+                self._json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "router unavailable: " + type(exc).__name__})
+
         def _json(self, status: int, body: dict[str, Any]) -> None:
             raw = (json.dumps(body, sort_keys=True) + "\n").encode()
             self.send_response(status)
@@ -376,6 +407,8 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
             return header[7:] if header.startswith('Bearer ') else ''
         def do_POST(self) -> None:
             path = self.path.split('?', 1)[0].rstrip('/') or '/'
+            if path == '/v1/riddle' or path.startswith('/v1/riddle/'):
+                self._proxy_router(); return
             if path == '/v1/rawroute/commit':
                 if not self._auth():
                     self._json(HTTPStatus.UNAUTHORIZED, {'error': 'unauthorized'}); return
