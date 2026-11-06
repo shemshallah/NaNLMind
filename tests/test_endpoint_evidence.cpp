@@ -66,7 +66,7 @@ int main() {
     android.base_generation = 0;
     android.event_id = event_id('b');
     CHECK(equivalent.observe(android) == EndpointIngestResult::Accepted);
-    for (char id = 'c'; id <= 'i'; ++id) {
+    for (char id : {'c', 'd', 'e', 'f', '0', '1', '2'}) {
         android.event_id = event_id(id);
         CHECK(equivalent.observe(android) == EndpointIngestResult::Accepted);
     }
