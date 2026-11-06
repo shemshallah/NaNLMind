@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, "runner")
 import nanlm_worker
-from nanlmind_nannet.bridge import BridgeFrame, BridgeMailbox, RunnerRoute
+from nanlmind_nannet.bridge import BridgeFrame, BridgeMailbox, PointZeroTranslator, RunnerRoute
 from nanlmind_nannet.nan16de import NanWord
 
 
@@ -45,6 +45,23 @@ class RunnerBridgeIntegrationTests(unittest.TestCase):
                                        NanWord.from_bits(3, 3, 901), b"ACK")
                 nanlm_worker.portal_bridge_send(consumed)
                 self.assertIsNone(mailbox.claim(source, lease_seconds=0))
+
+    def test_runner_rejects_missing_or_mismatched_point_zero_descriptor(self):
+        for slot in range(6):
+            nanlm_worker.PORTAL_ROUTE = RunnerRoute(bsr=slot)
+            nanlm_worker.PORTAL_TRANSLATOR = PointZeroTranslator(RunnerRoute(bsr=slot))
+            payload = nanlm_worker.point_zero_translator().descriptor()
+            payload["route"] = RunnerRoute(bsr=slot).text()
+            payload["route_bytes"] = RunnerRoute(bsr=slot).bytes().hex()
+            nanlm_worker.verify_point_zero_descriptor(payload)
+            bad = dict(payload)
+            bad["point_zero_bytes"] = "000000000001"
+            with self.assertRaises(RuntimeError):
+                nanlm_worker.verify_point_zero_descriptor(bad)
+            missing = dict(payload)
+            del missing["point_zero_route"]
+            with self.assertRaises(RuntimeError):
+                nanlm_worker.verify_point_zero_descriptor(missing)
 
     def test_native_transport_assigns_route_and_queues_to_point_zero(self):
         with tempfile.TemporaryDirectory() as tmp:
