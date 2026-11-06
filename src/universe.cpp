@@ -33,6 +33,20 @@ Universe::Universe(std::uint64_t genome) : genome_(genome) {
     build_genesis(genome);
 }
 
+bool Universe::bind_point_zero_route(NannetRoute route) {
+    if (!point_zero_translator_.bind(route)) return false;
+    const std::uint32_t idx = index_[canonical16(matrix_addr(0, 0))];
+    NanCell& cell = cells_[idx];
+    cell.meta[2] = PointZeroTranslator::kPointIndex;
+    cell.meta[3] = PointZeroTranslator::kProtocolVersion;
+    const auto raw = PointZeroTranslator::encode_route(route);
+    for (std::size_t i = 0; i < raw.size(); ++i) {
+        cell.meta[4 + i] = raw[i];
+    }
+    desc_[idx].checksum = cell_checksum(cell);
+    return true;
+}
+
 void Universe::build_index() {
     index_.fill(0xFFFFu);
     canon_.fill(0);
@@ -181,6 +195,9 @@ void Universe::build_genesis(std::uint64_t genome) {
 
     for (std::uint32_t idx = 0; idx < kCanonicalCount; ++idx) {
         desc_[idx].checksum = cell_checksum(cells_[idx]);
+    }
+    if (!bind_point_zero_route(point_zero_translator_.local_route())) {
+        throw std::runtime_error("invalid point-zero route at universe genesis");
     }
 }
 
@@ -440,6 +457,23 @@ std::unique_ptr<Universe> Universe::from_bytes(const std::uint8_t* data, std::si
     if (!take(u->pair_to_index_.data(),
               u->pair_to_index_.size() * sizeof(u->pair_to_index_[0]))) return nullptr;
 
+    const NanCell& point_zero_cell = u->head_cell(PointZeroTranslator::kPointIndex);
+    NannetRoute local_route{};
+    if (point_zero_cell.meta[2] == 0 && point_zero_cell.meta[3] == 0) {
+        // Upgrade pre-PointZero snapshots in memory; the original schema left
+        // these reserved metadata bytes zeroed.
+        local_route = NannetRoute{};
+    } else {
+        if (point_zero_cell.meta[2] != PointZeroTranslator::kPointIndex ||
+            point_zero_cell.meta[3] != PointZeroTranslator::kProtocolVersion) return nullptr;
+        std::array<std::uint8_t, 6> point_route_bytes{};
+        for (std::size_t i = 0; i < point_route_bytes.size(); ++i) {
+            point_route_bytes[i] = point_zero_cell.meta[4 + i];
+        }
+        if (!PointZeroTranslator::decode_route(point_route_bytes, local_route)) return nullptr;
+    }
+    if (!u->bind_point_zero_route(local_route)) return nullptr;
+
     // Rebuild the address->canonical index from the canonical table.
     u->index_.fill(0xFFFFu);
     for (std::uint32_t i = 0; i < kCanonicalCount; ++i) {
@@ -460,6 +494,16 @@ bool Universe::verify(std::string* error) const {
 
     if (cells_.size() != kCanonicalCount) return fail("cell count");
     if (desc_.size() != kCanonicalCount) return fail("descriptor count");
+    const NanCell& point_zero_cell = head_cell(PointZeroTranslator::kPointIndex);
+    if (!point_zero_cell.is_portal()) return fail("point-zero portal cell");
+    if (point_zero_cell.meta[2] != PointZeroTranslator::kPointIndex ||
+        point_zero_cell.meta[3] != PointZeroTranslator::kProtocolVersion)
+        return fail("point-zero translator descriptor");
+    const auto point_route = point_zero_translator_.local_route().bytes();
+    for (std::size_t i = 0; i < point_route.size(); ++i) {
+        if (point_zero_cell.meta[4 + i] != point_route[i])
+            return fail("point-zero route binding");
+    }
 
     std::uint32_t heads = 0;
     std::uint32_t pairs = 0;

@@ -29,11 +29,18 @@ import sys
 import time
 from pathlib import Path
 
-from nanlmind_nannet.bridge import BridgeFrame, RunnerRoute
+# Worker subprocesses may be launched with PYTHONPATH=runner; add the
+# repository root so the shared NaN16DE/N16B implementation remains importable.
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+if str(REPOSITORY_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPOSITORY_ROOT))
+
+from nanlmind_nannet.bridge import (BridgeFrame, BridgeMailbox, PointZeroTranslator, RunnerRoute)
 from nanlmind_nannet.nan16de import NanWord
 
 PORTAL_TOKEN = None
 PORTAL_ROUTE = None
+PORTAL_TRANSLATOR = None
 RUNNERS = 6
 HEADS = 256
 SLOT_NAMES = [f"nanlm-cpu-{i}" for i in range(1, RUNNERS + 1)]
@@ -111,6 +118,36 @@ def local_path():
     p = Path(os.environ.get("NANLM_LOCAL_STATE", "state"))
     p.mkdir(parents=True, exist_ok=True)
     return p
+
+
+def native_bridge_mailbox():
+    """Open the native N16B mailbox; point this at shared storage for cross-host use."""
+    configured = os.environ.get("NANNET_NATIVE_MAILBOX", "").strip()
+    database = Path(configured) if configured else local_path() / "nannet_native_bridge.sqlite"
+    return BridgeMailbox(database)
+
+
+def point_zero_translator():
+    """Return this universe's adapter, always anchored at BSR0."""
+    global PORTAL_TRANSLATOR
+    if PORTAL_ROUTE is None:
+        raise RuntimeError("runner route must be initialized before point-zero translation")
+    if PORTAL_TRANSLATOR is None or PORTAL_TRANSLATOR.local_route != PORTAL_ROUTE:
+        PORTAL_TRANSLATOR = PointZeroTranslator(PORTAL_ROUTE)
+    return PORTAL_TRANSLATOR
+
+
+def verify_point_zero_descriptor(payload):
+    """Require the full text/binary identity and point-zero contract from authority."""
+    route = PORTAL_ROUTE
+    if route is None:
+        raise RuntimeError("runner route is not initialized")
+    expected = point_zero_translator().descriptor()
+    expected["route"] = route.text()
+    expected["route_bytes"] = route.bytes().hex()
+    for key, value in expected.items():
+        if payload.get(key) != value:
+            raise RuntimeError("NANNET authority point-zero descriptor mismatch: " + key)
 
 
 def run_core(args, check=True):
@@ -453,49 +490,67 @@ def op_status(args):
 
 
 def verify_portal_identity(slot):
-    """Require a short-lived, portal-issued BSR credential when portal mode is configured."""
-    global PORTAL_TOKEN, PORTAL_ROUTE
+    """Verify both execution and binary-bridge scopes for the assigned BSR route."""
+    global PORTAL_TOKEN, PORTAL_ROUTE, PORTAL_TRANSLATOR
     import urllib.request
     base = os.environ.get("NANNET_PORTAL_API", "").rstrip("/")
     token = os.environ.get("NANNET_BSR_TOKEN", "")
+    PORTAL_ROUTE = RunnerRoute(bsr=slot)
+    PORTAL_TRANSLATOR = PointZeroTranslator(PORTAL_ROUTE)
     if not base:
+        print("nannet-native: route=" + PORTAL_ROUTE.text(), file=sys.stderr)
         return
     if not token:
         raise RuntimeError("NANNET portal is configured but no BSR token was issued")
-    body = json.dumps({"scope": "training:execute"}).encode()
-    request = urllib.request.Request(
-        base + "/v1/authorize", data=body,
-        headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
-        method="POST")
-    with urllib.request.urlopen(request, timeout=20) as response:
-        result = json.load(response)
-    if not result.get("authorized") or result.get("scope") != "training:execute":
-        raise RuntimeError("NANNET portal rejected BSR identity")
-    PORTAL_ROUTE = RunnerRoute(bsr=slot)
-    advertised = result.get("route")
-    if advertised and RunnerRoute.parse(advertised) != PORTAL_ROUTE:
-        raise RuntimeError("NANNET route does not match this GitHub runner slot")
+    for scope in ("training:execute", "universe:register"):
+        body = json.dumps({"scope": scope}).encode()
+        request = urllib.request.Request(
+            base + "/v1/authorize", data=body,
+            headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
+            method="POST")
+        with urllib.request.urlopen(request, timeout=20) as response:
+            result = json.load(response)
+        if not result.get("authorized") or result.get("scope") != scope:
+            raise RuntimeError("NANNET portal rejected BSR scope: " + scope)
+        verify_point_zero_descriptor(result)
     PORTAL_TOKEN = token
     print("nannet-authenticated: " + result.get("installation_id", "unknown") +
-          " route=" + PORTAL_ROUTE.text(), file=sys.stderr)
-
+          " route=" + PORTAL_ROUTE.text() +
+          " scopes=training:execute,universe:register", file=sys.stderr)
 
 
 def portal_bridge_send(frame):
     """Send one raw NaN16DE bridge frame and validate its reverse-rail ACK."""
     import urllib.request
     base = os.environ.get("NANNET_PORTAL_API", "").rstrip("/")
-    if not base or not PORTAL_TOKEN:
+    if not base:
+        translator = point_zero_translator()
+        # Outbound frames target BSR0, not the runner local destination.
+        # Use the service-side decoder for local loopback validation.
+        frame = PointZeroTranslator().decode(
+            translator.encode(frame), expected_source=PORTAL_ROUTE
+        )
+        mailbox = native_bridge_mailbox()
+        if frame.payload == b"BSR_ACK":
+            mailbox.acknowledge_and_put(frame.destination, frame.source,
+                                        frame.sequence, frame)
+        elif frame.payload == b"ACK":
+            mailbox.acknowledge(frame.destination, frame.source, frame.sequence)
+        else:
+            mailbox.put(frame)
         return None
+    if not PORTAL_TOKEN:
+        raise RuntimeError("NANNET portal is configured but runner has no portal token")
     request = urllib.request.Request(
-        base + "/v1/nannet/bridge", data=frame.encode(),
+        base + "/v1/nannet/bridge", data=point_zero_translator().encode(frame),
         headers={"Authorization": "Bearer " + PORTAL_TOKEN,
                  "Content-Type": "application/vnd.nan16.n16b"},
         method="POST")
     with urllib.request.urlopen(request, timeout=20) as response:
-        ack = BridgeFrame.decode(response.read())
-    if (ack.source != frame.destination or ack.destination != frame.source or
-            ack.sequence != frame.sequence or ack.payload != b"ACK"):
+        ack = point_zero_translator().decode(
+            response.read(), expected_destination=frame.source,
+            expected_source=frame.destination)
+    if ack.sequence != frame.sequence or ack.payload != b"ACK":
         raise RuntimeError("NANNET bridge acknowledgement mismatch")
     return ack
 
@@ -505,8 +560,13 @@ def portal_bridge_poll():
     import urllib.parse
     import urllib.request
     base = os.environ.get("NANNET_PORTAL_API", "").rstrip("/")
-    if not base or not PORTAL_TOKEN or PORTAL_ROUTE is None:
+    if PORTAL_ROUTE is None:
         return None
+    if not base:
+        raw = native_bridge_mailbox().claim(PORTAL_ROUTE)
+        return point_zero_translator().decode(raw, expected_destination=PORTAL_ROUTE) if raw else None
+    if not PORTAL_TOKEN:
+        raise RuntimeError("NANNET portal is configured but runner has no portal token")
     query = urllib.parse.urlencode({"route": PORTAL_ROUTE.text()})
     request = urllib.request.Request(
         base + "/v1/nannet/bridge/poll?" + query,
@@ -517,53 +577,74 @@ def portal_bridge_poll():
     return BridgeFrame.decode(raw) if raw else None
 
 
-def portal_bridge_startup(slot, epoch):
-    """Announce the runner to BSR0, drain queued frames, and return reverse ACKs."""
-    if not os.environ.get("NANNET_PORTAL_API") or PORTAL_ROUTE is None:
-        return {"enabled": False, "route": None, "received": 0}
-    root = RunnerRoute(bsr=0)
-    sent = False
-    if slot != 0:
-        seq = int(epoch) & 0xFFFFFFFF
-        frame = BridgeFrame(PORTAL_ROUTE, root, seq,
-                            NanWord.from_bits(0, 0, seq), b"BSR_ONLINE")
-        portal_bridge_send(frame)
-        sent = True
+def portal_bridge_drain(epoch, limit=16):
+    """Lease, persist, and acknowledge incoming frames on the reverse rail."""
+    if PORTAL_ROUTE is None:
+        return 0
     received = []
-    for _ in range(16):
+    for _ in range(limit):
         frame = portal_bridge_poll()
         if frame is None:
             break
         received.append(frame)
-        reply = BridgeFrame(PORTAL_ROUTE, frame.source, frame.sequence,
-                            NanWord.from_bits(3, 3, frame.sequence),
-                            b"BSR_ACK")
-        portal_bridge_send(reply)
     if received:
-        path = local_path() / ("nannet_inbox_" + str(epoch) + "_" + str(slot) + ".bin")
-        path.write_bytes(b"".join(len(f.encode()).to_bytes(4, "little") + f.encode()
-                                  for f in received))
-    return {"enabled": True, "route": PORTAL_ROUTE.text(),
-            "announced_to_root": sent, "received": len(received)}
+        path = local_path() / ("nannet_inbox_" + str(epoch) + "_" + str(PORTAL_ROUTE.bsr) + ".bin")
+        with path.open("ab") as stream:
+            for frame in received:
+                raw = frame.encode()
+                stream.write(len(raw).to_bytes(4, "little") + raw)
+    # Two-phase receipt: BSR_ACK confirms the data frame; ACK consumes that receipt.
+    for frame in received:
+        if frame.payload == b"ACK":
+            continue
+        payload = b"ACK" if frame.payload == b"BSR_ACK" else b"BSR_ACK"
+        reply = point_zero_translator().make_frame(
+            frame.source, frame.sequence,
+            NanWord.from_bits(3, 3, frame.sequence), payload)
+        portal_bridge_send(reply)
+    return len(received)
+
+
+def portal_bridge_startup(slot, epoch):
+    """Announce the runner to BSR0 and drain any already queued frames."""
+    if PORTAL_ROUTE is None:
+        return {"enabled": False, "transport": "unavailable", "route": None, "received": 0}
+    hosted = bool(os.environ.get("NANNET_PORTAL_API", "").strip())
+    transport = "koyeb" if hosted else "native"
+    root = RunnerRoute(bsr=0)
+    sent = False
+    if slot != 0:
+        seq = int(epoch) & 0xFFFFFFFF
+        frame = point_zero_translator().make_frame(
+            root, seq, NanWord.from_bits(0, 0, seq), b"BSR_ONLINE")
+        portal_bridge_send(frame)
+        sent = True
+    received = portal_bridge_drain(epoch)
+    return {"enabled": True, "transport": transport, "route": PORTAL_ROUTE.text(),
+            "announced_to_root": sent, "received": received}
 
 
 def portal_heartbeat():
     global PORTAL_TOKEN
     base = os.environ.get("NANNET_PORTAL_API", "").rstrip("/")
-    if not base:
-        return
-    if not PORTAL_TOKEN:
-        raise RuntimeError("NANNET BSR identity is not initialized")
-    import urllib.request
-    request = urllib.request.Request(
-        base + "/v1/bootstrap/heartbeat", data=b"{}",
-        headers={"Authorization": "Bearer " + PORTAL_TOKEN, "Content-Type": "application/json"},
-        method="POST")
-    with urllib.request.urlopen(request, timeout=20) as response:
-        renewed = json.load(response)
-    if not renewed.get("token"):
-        raise RuntimeError("NANNET BSR heartbeat did not rotate the credential")
-    PORTAL_TOKEN = renewed["token"]
+    if base:
+        if not PORTAL_TOKEN:
+            raise RuntimeError("NANNET BSR identity is not initialized")
+        import urllib.request
+        request = urllib.request.Request(
+            base + "/v1/bootstrap/heartbeat", data=b"{}",
+            headers={"Authorization": "Bearer " + PORTAL_TOKEN, "Content-Type": "application/json"},
+            method="POST")
+        with urllib.request.urlopen(request, timeout=20) as response:
+            renewed = json.load(response)
+        if not renewed.get("token"):
+            raise RuntimeError("NANNET BSR heartbeat did not rotate the credential")
+        expected_identity = f"github-actions:shemshallah/nanlm-cpu-{PORTAL_ROUTE.bsr + 1}"
+        if renewed.get("identity") != expected_identity:
+            raise RuntimeError("NANNET heartbeat identity changed runner route")
+        verify_point_zero_descriptor(renewed)
+        PORTAL_TOKEN = renewed["token"]
+    portal_bridge_drain(int(time.time()))
 
 
 def main():

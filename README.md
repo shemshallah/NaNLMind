@@ -83,6 +83,67 @@ The 256 fixed points are the **present** / synchronization anchors. A mirror pai
 
 See [docs/03_MATHEMATICAL_STRUCTURE.md](docs/03_MATHEMATICAL_STRUCTURE.md).
 
+## NaNNet
+
+Native runner-to-BS0 loopback validation uses the service-side point-zero decoder for outbound frames; runner-local decoding remains destination-bound for inbound traffic.
+ runner routes and point-zero translation
+
+The six GitHub Actions runners use one canonical route form:
+
+`nan://GM0:SC0:MC0:BS0:HW0:BSR0` through
+`nan://GM0:SC0:MC0:BS0:HW0:BSR5`.
+
+The runner repositories `nanlm-cpu-1` through `nanlm-cpu-6` map to
+`BSR0` through `BSR5`. Route parsing rejects aliases, leading zeroes,
+parentheses, wildcards, and out-of-range runner identifiers.
+
+Every runner assigns its route before selecting a transport. With
+`NANNET_PORTAL_API` and a portal-issued `NANNET_BSR_TOKEN`, it uses the
+Koyeb-hosted N16B bridge. Without a portal URL, it uses the native
+`BridgeMailbox` implementation with the same N16B frame and NaN16DE word
+encoding. Set `NANNET_NATIVE_MAILBOX` to a shared SQLite path when native
+runners on separate processes or hosts must communicate; the default
+`state/nannet_native_bridge.sqlite` is local to that runner's filesystem and
+does not create cross-host connectivity by itself.
+
+Point zero (`BSR0`) is the rendezvous/translation endpoint. Other runners
+announce to point zero; received frames are persisted to the runner inbox and
+answered on the reverse rail. The persistent runner loop drains the mailbox
+during heartbeats. Both transports use the same canonical route and frame
+contract.
+
+Deliveries are leased for 30 seconds rather than deleted on poll. If a runner
+fails before persisting and acknowledging a frame, the lease expires and the
+frame is delivered again. The receiver persists the inbox before sending
+`BSR_ACK`; the sender consumes that receipt with `ACK`. Receipt insertion and
+retirement of the original frame are one SQLite transaction, so queue pressure
+cannot silently discard an unacknowledged delivery.
+
+Every native C++ `Universe` owns a `PointZeroTranslator` at diagonal
+point `(0,0)`; the point-zero cell stores its protocol version and six-byte
+local route, and that binding survives universe snapshots. The runner-side
+adapter is also instantiated per BSR universe and anchored at `BSR0`. Both
+adapters convert canonical `nan://` coordinates to and from the six-byte
+NaN16DE route representation while preserving NaN16 words bit-for-bit. The
+Koyeb service instantiates the same adapter as its central point-zero
+translation endpoint; hosted ingress and egress pass through that codec
+rather than bypassing it.
+The authority returns the canonical URI, local route bytes, point-zero URI,
+and point-zero bytes. Runner startup verifies the route translation and
+`N16B/1` descriptor, and credential rotation repeats those checks. The
+service health response exposes the point-zero descriptor and queued frames
+by destination; each destination mailbox is bounded at 4,096 frames and
+returns HTTP 429 when full.
+
+For a Koyeb deployment, mount a persistent volume at `/data` and configure
+`NANLM_MERGE_ROOT=/data`, `NANNET_AUTHORITY_DB=/data/nannet-authority.sqlite`,
+`NANLM_MERGE_TOKEN`, and `NANNET_AUTHORITY_MASTER_KEY` as service environment
+settings (the last two are secrets; the authority key must decode from
+base64url to 32 bytes). The service listens on Koyeb's `PORT`. The persistent
+volume is required so the bridge mailbox and identity authority survive
+instance restarts. This documents the expected runtime configuration; it
+does not claim that a live Koyeb service has already been deployed.
+
 ### The 256-Head Array
 
 There is one canonical head implementation, instantiated exactly 256 times,

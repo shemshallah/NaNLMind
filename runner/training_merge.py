@@ -30,7 +30,7 @@ from nanlmind_nannet.pairing import PairingAuthority
 from nanlmind_nannet.devices import DeviceRegistry
 from nanlmind_nannet.nan16de import decode_envelope
 from nanlmind_nannet.crypto_compat import Ed25519PublicKey
-from nanlmind_nannet.bridge import (BridgeFrame, BridgeMailbox, RunnerRoute,
+from nanlmind_nannet.bridge import (BridgeFrame, BridgeMailbox, PointZeroTranslator, RunnerRoute,
                                     MEDIA_TYPE as N16B_MEDIA_TYPE, route_for_identity)
 
 
@@ -230,6 +230,13 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
     store = MergeStore(root, token)
     devices = DeviceRegistry(authority.database, authority=authority) if authority else None
     bridge = BridgeMailbox(root / "nannet-bridge.sqlite")
+    point_zero = PointZeroTranslator()
+
+    def point_zero_identity_descriptor(route: RunnerRoute) -> dict[str, Any]:
+        descriptor = point_zero.descriptor()
+        descriptor["local_route"] = route.text()
+        descriptor["local_route_bytes"] = route.bytes().hex()
+        return descriptor
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, fmt: str, *args: Any) -> None:
@@ -267,9 +274,11 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                     requested = RunnerRoute.parse(query['route'][0]) if query.get('route') else expected
                     if requested != expected:
                         raise AuthError('poll route does not match authenticated BSR identity')
-                    raw = bridge.take(requested)
+                    raw = bridge.claim(requested)
                     if raw is None:
                         self.send_response(HTTPStatus.NO_CONTENT); self.send_header('Cache-Control', 'no-store'); self.end_headers(); return
+                    frame = point_zero.decode(raw, expected_destination=requested)
+                    raw = point_zero.encode(frame)
                     self.send_response(HTTPStatus.OK)
                     self.send_header('Content-Type', N16B_MEDIA_TYPE)
                     self.send_header('Content-Length', str(len(raw)))
@@ -297,6 +306,8 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
             if path == "/healthz":
                 health = store.health()
                 health["nannet_authority"] = "ready" if authority else "disabled"
+                health["nannet_bridge"] = bridge.stats()
+                health["nannet_point_zero"] = point_zero.descriptor()
                 if authority:
                     import sqlite3
                     with sqlite3.connect(authority.database) as db:
@@ -337,16 +348,26 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                     raw = self.rfile.read(length)
                     if len(raw) != length:
                         raise ValueError('truncated N16B frame')
-                    frame = BridgeFrame.decode(raw)
+                    frame = point_zero.decode(raw, expected_source=expected)
+                    raw = point_zero.encode(frame)
+                    frame = point_zero.decode(raw, expected_source=expected)
                     if frame.source != expected:
                         raise AuthError('source route does not match authenticated BSR identity')
-                    bridge.put(frame)
-                    ack = BridgeFrame.acknowledgement(frame).encode()
+                    if frame.payload == b"BSR_ACK":
+                        bridge.acknowledge_and_put(frame.destination, frame.source,
+                                                   frame.sequence, frame)
+                    elif frame.payload == b"ACK":
+                        bridge.acknowledge(frame.destination, frame.source, frame.sequence)
+                    else:
+                        bridge.put(frame)
+                    ack = point_zero.encode(BridgeFrame.acknowledgement(frame))
                     self.send_response(HTTPStatus.ACCEPTED)
                     self.send_header('Content-Type', N16B_MEDIA_TYPE)
                     self.send_header('Content-Length', str(len(ack)))
                     self.send_header('Cache-Control', 'no-store')
                     self.end_headers(); self.wfile.write(ack)
+                except OverflowError as exc:
+                    self._json(HTTPStatus.TOO_MANY_REQUESTS, {'error': str(exc)[:160]})
                 except (ValueError, TypeError, AuthError) as exc:
                     self._json(HTTPStatus.UNAUTHORIZED, {'error': str(exc)[:160]})
                 return
@@ -392,7 +413,12 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                     authority.register_identity("admin", identity)
                     authority.revoke_token(bearer)
                     renewed = issue_token(authority._private_key("admin", identity), identity, scopes, 900, role="admin")
-                    self._json(HTTPStatus.OK, {"token": renewed, "token_type": "Bearer", "expires_in": 900, "identity": identity, "route": route_for_identity(identity).text(), "universe_point": 0, "translator": "N16B/1"})
+                    route = route_for_identity(identity)
+                    response = {"token": renewed, "token_type": "Bearer",
+                        "expires_in": 900, "identity": identity, "route": route.text(),
+                        "route_bytes": route.bytes().hex()}
+                    response.update(point_zero_identity_descriptor(route))
+                    self._json(HTTPStatus.OK, response)
                 except (ValueError, KeyError, TypeError, AuthError) as exc:
                     self._json(HTTPStatus.UNAUTHORIZED, {"error": str(exc)[:160]})
                 return
@@ -425,7 +451,12 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                     authority.register_identity("admin", identity)
                     scopes = ["training:execute", "universe:read", "universe:register", "snapshot:read", "snapshot:write", "corpus:write", "installation:admin"]
                     token = issue_token(authority._private_key("admin", identity), identity, scopes, 900, role="admin")
-                    self._json(HTTPStatus.OK, {"token": token, "token_type": "Bearer", "expires_in": 900, "identity": identity, "route": route_for_identity(identity).text(), "universe_point": 0, "translator": "N16B/1", "role": "admin", "scopes": scopes})
+                    route = route_for_identity(identity)
+                    response = {"token": token, "token_type": "Bearer",
+                        "expires_in": 900, "identity": identity, "route": route.text(),
+                        "route_bytes": route.bytes().hex(), "role": "admin", "scopes": scopes}
+                    response.update(point_zero_identity_descriptor(route))
+                    self._json(HTTPStatus.OK, response)
                 except (ValueError, KeyError, TypeError, AuthError) as exc:
                     self._json(HTTPStatus.UNAUTHORIZED, {"error": str(exc)[:160]})
                 return
@@ -520,7 +551,14 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                             claims = authority.verify_access_token(bearer, required_scope=scope)
                     except (AuthError, ValueError) as exc:
                         self._json(HTTPStatus.UNAUTHORIZED, {'error': str(exc)[:160]}); return
-                    self._json(HTTPStatus.OK, {'authorized': True, 'installation_id': claims['sub'], 'scope': scope, 'expires_at': claims['exp'], 'route': route_for_identity(claims['sub']).text() if claims.get('role') == 'admin' and claims['sub'].startswith('github-actions:') else None, 'universe_point': 0}); return
+                    route = route_for_identity(claims['sub']) if claims.get('role') == 'admin' and claims['sub'].startswith('github-actions:') else None
+                    response = {'authorized': True, 'installation_id': claims['sub'],
+                        'scope': scope, 'expires_at': claims['exp'],
+                        'route': route.text() if route else None,
+                        'route_bytes': route.bytes().hex() if route else None}
+                    if route:
+                        response.update(point_zero_identity_descriptor(route))
+                    self._json(HTTPStatus.OK, response); return
                 if path == '/v1/revoke':
                     bearer = self._bearer()
                     if not bearer: self._json(HTTPStatus.UNAUTHORIZED, {'error': 'bearer_required'}); return

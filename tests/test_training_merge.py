@@ -7,6 +7,7 @@ import tempfile
 import threading
 import unittest
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -18,6 +19,8 @@ from nanlmind_nannet.devices import TERMS_VERSION
 from nanlmind_nannet.auth import AuthError, identity_public_key
 from nanlmind_nannet.crypto_compat import serialization
 from nanlmind_nannet.crypto_compat import Ed25519PrivateKey
+from nanlmind_nannet.bridge import BridgeFrame, RunnerRoute
+from nanlmind_nannet.nan16de import NanWord
 
 
 class TrainingMergeTest(unittest.TestCase):
@@ -182,14 +185,23 @@ class TrainingMergeTest(unittest.TestCase):
             status, issued = call("/v1/bootstrap/oidc", {"id_token": "mock", "slot": 0})
             self.assertEqual(status, 200)
             self.assertEqual(issued["role"], "admin")
+            self.assertEqual(issued["route"], "nan://GM0:SC0:MC0:BS0:HW0:BSR0")
+            self.assertEqual(issued["route_bytes"], "000000000000")
+            self.assertEqual(issued["universe_point"], 0)
+            self.assertEqual(issued["translator"], "N16B/1")
             replay_status, _ = call("/v1/bootstrap/oidc", {"id_token": "mock", "slot": 0})
             self.assertEqual(replay_status, 401)
             identity = issued["identity"]
             status, auth = call("/v1/authorize", {"scope": "training:execute"}, issued["token"])
             self.assertEqual(status, 200)
+            self.assertEqual(auth["route"], issued["route"])
+            self.assertEqual(auth["route_bytes"], issued["route_bytes"])
+            self.assertEqual(auth["translator"], "N16B/1")
             status, renewed = call("/v1/bootstrap/heartbeat", {}, issued["token"])
             self.assertEqual(status, 200)
             self.assertNotEqual(renewed["token"], issued["token"])
+            self.assertEqual(renewed["route_bytes"], issued["route_bytes"])
+            self.assertEqual(renewed["translator"], "N16B/1")
             status, denied = call("/v1/authorize", {"scope": "training:execute"}, issued["token"])
             self.assertEqual(status, 401)
             status, revoked = call("/v1/admin/identities/revoke", {"role": "admin", "identity": identity}, renewed["token"])
@@ -199,6 +211,109 @@ class TrainingMergeTest(unittest.TestCase):
         finally:
             training_merge._verify_github_oidc = original_verifier
             server.shutdown(); server.server_close(); thread.join(timeout=2)
+
+    def test_n16b_leased_delivery_and_two_phase_ack(self):
+        db = Path(self.tmp.name) / "n16b-authority.sqlite"
+        authority = PairingAuthority(db, _unb64(generate_master_key()))
+        server = training_merge.make_server("127.0.0.1", 0, Path(self.tmp.name),
+                                            "test-token", authority)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        original_verifier = training_merge._verify_github_oidc
+        training_merge._verify_github_oidc = lambda jwt, repo: {
+            "repository": repo, "jti": "n16b-" + repo,
+            "exp": int(__import__("time").time()) + 300,
+            "event_name": "workflow_dispatch"}
+        base = "http://127.0.0.1:" + str(server.server_address[1])
+
+        def post_frame(token, frame):
+            request = urllib.request.Request(
+                base + "/v1/nannet/bridge", data=frame.encode(), method="POST",
+                headers={"Authorization": "Bearer " + token,
+                         "Content-Type": "application/vnd.nan16.n16b"})
+            with urllib.request.urlopen(request, timeout=5) as response:
+                self.assertEqual(response.status, 202)
+                return BridgeFrame.decode(response.read())
+
+        def poll(token, route):
+            query = urllib.parse.urlencode({"route": route.text()})
+            request = urllib.request.Request(
+                base + "/v1/nannet/bridge/poll?" + query,
+                headers={"Authorization": "Bearer " + token})
+            with urllib.request.urlopen(request, timeout=5) as response:
+                raw = response.read()
+                return BridgeFrame.decode(raw) if raw else None
+
+        thread.start()
+        try:
+            tokens = []
+            for slot in (0, 1):
+                request = urllib.request.Request(
+                    base + "/v1/bootstrap/oidc",
+                    data=json.dumps({"id_token": "mock", "slot": slot}).encode(),
+                    method="POST", headers={"Content-Type": "application/json"})
+                with urllib.request.urlopen(request, timeout=5) as response:
+                    bootstrap = json.loads(response.read())
+                    tokens.append(bootstrap["token"])
+                self.assertEqual(bootstrap["universe_point"], 0)
+                self.assertEqual(bootstrap["translator"], "N16B/1")
+                self.assertEqual(bootstrap["point_zero_route"],
+                                 "nan://GM0:SC0:MC0:BS0:HW0:BSR0")
+                self.assertEqual(bootstrap["point_zero_bytes"],
+                                 RunnerRoute(bsr=0).bytes().hex())
+                self.assertEqual(bootstrap["local_route"], RunnerRoute(bsr=slot).text())
+                self.assertEqual(bootstrap["local_route_bytes"],
+                                 RunnerRoute(bsr=slot).bytes().hex())
+                for scope in ("training:execute", "universe:register"):
+                    auth_request = urllib.request.Request(
+                        base + "/v1/authorize",
+                        data=json.dumps({"scope": scope}).encode(),
+                        method="POST",
+                        headers={"Authorization": "Bearer " + bootstrap["token"],
+                                 "Content-Type": "application/json"})
+                    with urllib.request.urlopen(auth_request, timeout=5) as auth_response:
+                        authorization = json.loads(auth_response.read())
+                    self.assertEqual(authorization["scope"], scope)
+                    self.assertEqual(authorization["point_zero_route"],
+                                     bootstrap["point_zero_route"])
+                    self.assertEqual(authorization["local_route"], bootstrap["local_route"])
+            heartbeat_request = urllib.request.Request(
+                base + "/v1/bootstrap/heartbeat", data=b"{}",
+                method="POST",
+                headers={"Authorization": "Bearer " + tokens[0],
+                         "Content-Type": "application/json"})
+            with urllib.request.urlopen(heartbeat_request, timeout=5) as heartbeat_response:
+                renewed = json.loads(heartbeat_response.read())
+            self.assertEqual(renewed["identity"], "github-actions:shemshallah/nanlm-cpu-1")
+            self.assertEqual(renewed["point_zero_route"],
+                             "nan://GM0:SC0:MC0:BS0:HW0:BSR0")
+            self.assertEqual(renewed["local_route"], RunnerRoute(bsr=0).text())
+            self.assertEqual(renewed["point_zero_bytes"], RunnerRoute(bsr=0).bytes().hex())
+            tokens[0] = renewed["token"]
+            source, destination = RunnerRoute(bsr=0), RunnerRoute(bsr=1)
+            original = BridgeFrame(source, destination, 501,
+                                   NanWord.from_bits(0, 0, 501), b"test-payload")
+            accepted = post_frame(tokens[0], original)
+            self.assertEqual(accepted.payload, b"ACK")
+            delivered = poll(tokens[1], destination)
+            self.assertEqual(delivered.payload, b"test-payload")
+            self.assertIsNone(poll(tokens[1], destination))
+
+            receipt = BridgeFrame(destination, source, 501,
+                                  NanWord.from_bits(3, 3, 501), b"BSR_ACK")
+            post_frame(tokens[1], receipt)
+            receipt_delivery = poll(tokens[0], source)
+            self.assertEqual(receipt_delivery.payload, b"BSR_ACK")
+
+            consumed = BridgeFrame(source, destination, 501,
+                                   NanWord.from_bits(3, 3, 501), b"ACK")
+            post_frame(tokens[0], consumed)
+            self.assertIsNone(poll(tokens[0], source))
+            self.assertIsNone(poll(tokens[1], destination))
+        finally:
+            training_merge._verify_github_oidc = original_verifier
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
 
     def test_n16t_hello_capabilities_and_portal_alias(self):
         session = bytes(range(1, 17))
@@ -221,7 +336,7 @@ class TrainingMergeTest(unittest.TestCase):
                 "<4sHH16sII", peer)
             self.assertEqual((magic, version, kind, peer_session, sequence, length),
                              (b"N16T", 1, 2, session, 1, 8))
-            self.assertEqual(peer[32:34], b"\x0f\x00")
+            self.assertEqual(struct.unpack_from("<H6B", peer, 32), (0x000F, 0, 0, 0, 0, 0, 0))
             self.assertEqual(struct.unpack_from("<I", peer, 40)[0],
                              zlib.crc32(peer[:40]) & 0xFFFFFFFF)
 
@@ -246,6 +361,14 @@ class TrainingMergeTest(unittest.TestCase):
             health = json.loads(r.read())
         self.assertTrue(health["ok"])
         self.assertEqual(health["nodes"], 0)
+        self.assertEqual(health["nannet_bridge"]["queued"], 0)
+        self.assertEqual(health["nannet_bridge"]["max_pending_per_route"], 4096)
+        self.assertEqual(health["nannet_point_zero"]["universe_point"], 0)
+        self.assertEqual(health["nannet_point_zero"]["translator"], "N16B/1")
+        self.assertEqual(health["nannet_point_zero"]["point_zero_route"],
+                         "nan://GM0:SC0:MC0:BS0:HW0:BSR0")
+        self.assertEqual(health["nannet_point_zero"]["point_zero_bytes"],
+                         RunnerRoute(bsr=0).bytes().hex())
 
 
 if __name__ == "__main__":
