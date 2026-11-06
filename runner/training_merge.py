@@ -263,7 +263,7 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
 
         def do_GET(self) -> None:
             path = self.path.split('?', 1)[0].rstrip('/') or '/'
-            if path in ('/v1/rawroute/health', '/v1/rawroute/resolve'):
+            if path in ('/v1/rawroute/health', '/v1/rawroute/resolve', '/v1/rawroute/reverse'):
                 if not self._auth():
                     self._json(HTTPStatus.UNAUTHORIZED, {'error': 'unauthorized'}); return
                 try:
@@ -275,6 +275,16 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                     route = query.get('route', [''])[0]
                     if not namespace or not route:
                         raise ValueError('namespace and route query parameters are required')
+                    if path.endswith('/reverse'):
+                        target_kind = query.get('target_kind', [''])[0]
+                        target_id = query.get('target_id', [''])[0]
+                        if not target_kind or not target_id:
+                            raise ValueError('namespace, target_kind and target_id are required')
+                        routes = rawroute_mesh.reverse_lookup(namespace, target_kind, target_id)
+                        self._json(HTTPStatus.OK, {'namespace': namespace,
+                                                   'target_kind': target_kind,
+                                                   'target_id': target_id,
+                                                   'routes': routes}); return
                     resolved = rawroute_mesh.resolve(namespace, route)
                     self._json(HTTPStatus.OK, {'found': resolved is not None,
                                                'route': resolved}); return
