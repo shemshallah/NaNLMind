@@ -4,7 +4,7 @@ on:
     paths: ["integrations/nannet/**", "runner/nannet_consumer.py", "runner/test_nannet_consumer.py", ".github/workflows/nannet-universal.yml", ".github/workflows/nannet-consume.yml", ".github/workflows/ring.yml", "Dockerfile"]
   push:
     branches: [main, nannet-universal-intake]
-    paths: ["integrations/nannet/**", ".github/workflows/nannet-universal.yml"]
+    paths: ["integrations/nannet/**", "runner/nannet_consumer.py", "runner/test_nannet_consumer.py", ".github/workflows/nannet-universal.yml", ".github/workflows/nannet-consume.yml", ".github/workflows/ring.yml", "Dockerfile"]
 permissions:
   contents: read
 jobs:
@@ -19,6 +19,7 @@ jobs:
       - run: python -m unittest -v
         working-directory: integrations/nannet
       - run: python -m unittest -v runner.test_nannet_consumer
+      - run: python -m unittest discover -s tests -p "test_training_merge.py" -v
 
   container-build:
     runs-on: ubuntu-latest
