@@ -500,9 +500,19 @@ int cmd_headshift(int argc, char** argv) {
 
 int cmd_math_train(int argc, char** argv) {
     const std::string corpus_path = argc > 2 ? argv[2] : "";
-    const int epochs = argc > 3 ? std::max(1, std::stoi(argv[3])) : 3;
-    const std::size_t max_samples = argc > 4
-        ? static_cast<std::size_t>(std::max(1, std::stoi(argv[4]))) : 4096u;
+    int epochs = 3;
+    std::size_t max_samples = 4096u;
+    try {
+        if (argc > 3) epochs = std::stoi(argv[3]);
+        if (argc > 4) max_samples = static_cast<std::size_t>(std::stoull(argv[4]));
+    } catch (const std::exception&) {
+        std::cerr << "epochs and max_samples must be integers\n";
+        return 2;
+    }
+    if (epochs < 1 || epochs > 100 || max_samples < 1 || max_samples > 100000) {
+        std::cerr << "epochs must be 1..100 and max_samples must be 1..100000\n";
+        return 2;
+    }
     const std::string state_path = argc > 5 ? argv[5] : "state/hermes-universe.nmg";
     const std::string trace_path = argc > 6 ? argv[6] : "state/hermes-discoveries.jsonl";
     if (corpus_path.empty()) {
@@ -631,11 +641,26 @@ int cmd_math_train(int argc, char** argv) {
     if (!trace) { std::cerr << "failed writing discovery trace\n"; return 4; }
 
     const auto state = topology->serialize();
-    std::ofstream output(state_path, std::ios::binary | std::ios::trunc);
-    if (!output) { std::cerr << "cannot write universe state " << state_path << "\n"; return 5; }
-    output.write(reinterpret_cast<const char*>(state.data()), static_cast<std::streamsize>(state.size()));
-    output.flush();
-    if (!output) { std::cerr << "failed writing universe state\n"; return 5; }
+    const std::string state_tmp = state_path + ".tmp";
+    {
+        std::ofstream output(state_tmp, std::ios::binary | std::ios::trunc);
+        if (!output) { std::cerr << "cannot write temporary universe state " << state_tmp << "\n"; return 5; }
+        output.write(reinterpret_cast<const char*>(state.data()), static_cast<std::streamsize>(state.size()));
+        output.flush();
+        if (!output) {
+            std::cerr << "failed writing temporary universe state\n";
+            output.close();
+            std::filesystem::remove(state_tmp);
+            return 5;
+        }
+    }
+    std::error_code rename_error;
+    std::filesystem::rename(state_tmp, state_path, rename_error);
+    if (rename_error) {
+        std::cerr << "cannot atomically publish universe state: " << rename_error.message() << "\n";
+        std::filesystem::remove(state_tmp);
+        return 5;
+    }
 
     std::cout << "trained_heads=" << HeadArray::size()
               << " train_observations=" << total_train
