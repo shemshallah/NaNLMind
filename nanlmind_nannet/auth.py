@@ -72,13 +72,14 @@ def load_installation(state_dir: str | Path, master_key: bytes) -> tuple[dict, E
         if isinstance(exc, AuthError): raise
         raise AuthError("cannot unlock installation identity; check NANNET master key and state") from exc
 
-def issue_token(issuer_private_key: Ed25519PrivateKey, installation_id: str, scopes: Iterable[str], ttl_seconds: int = 900, now: int | None = None) -> str:
+def issue_token(issuer_private_key: Ed25519PrivateKey, installation_id: str, scopes: Iterable[str], ttl_seconds: int = 900, now: int | None = None, role: str = "guest") -> str:
     requested = sorted(set(scopes))
-    if not installation_id or not requested or not set(requested) <= ALLOWED_SCOPES: raise AuthError("invalid installation ID or unsupported/empty scope set")
+    ceiling = identity_scope_ceiling(role)
+    if not installation_id or not requested or not set(requested) <= ceiling: raise AuthError("invalid installation ID, role, or scope set")
     if isinstance(ttl_seconds, bool) or not isinstance(ttl_seconds, int) or not 30 <= ttl_seconds <= 86400: raise AuthError("token lifetime must be 30–86400 seconds")
     issued = int(time.time()) if now is None else int(now)
     header = {"alg":"EdDSA","typ":"NANNET-HERMES"}
-    claims = {"iss":TOKEN_ISSUER,"aud":TOKEN_AUDIENCE,"sub":installation_id,"scope":requested,"iat":issued,"nbf":issued,"exp":issued+ttl_seconds,"jti":str(uuid.uuid4())}
+    claims = {"iss":TOKEN_ISSUER,"aud":TOKEN_AUDIENCE,"sub":installation_id,"role":role,"scope":requested,"iat":issued,"nbf":issued,"exp":issued+ttl_seconds,"jti":str(uuid.uuid4())}
     signing_input = _b64(_json_bytes(header)) + "." + _b64(_json_bytes(claims))
     return signing_input + "." + _b64(issuer_private_key.sign(signing_input.encode("ascii")))
 
@@ -94,7 +95,9 @@ def verify_token(token: str, issuer_public_key: Ed25519PublicKey, required_scope
     if current < claims.get("nbf",0) or current >= claims.get("exp",0): raise AuthError("token is not yet valid or has expired")
     if claims.get("jti") in (revoked_ids or set()): raise AuthError("token has been revoked")
     scopes = claims.get("scope",[])
-    if not isinstance(scopes,list) or not set(scopes) <= ALLOWED_SCOPES: raise AuthError("invalid token scopes")
+    role = claims.get("role", "guest")
+    if role not in IDENTITY_DOMAINS: raise AuthError("invalid token role")
+    if not isinstance(scopes,list) or not set(scopes) <= identity_scope_ceiling(role): raise AuthError("token scope exceeds role ceiling")
     if required_scope and required_scope not in scopes: raise AuthError("token lacks required scope: " + required_scope)
     return claims
 
