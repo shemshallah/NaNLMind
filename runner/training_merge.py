@@ -232,6 +232,22 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
             header = self.headers.get('Authorization', '')
             return header[7:] if header.startswith('Bearer ') else ''
         def do_POST(self) -> None:
+            if self.path == '/v1/admin/identities/revoke':
+                try:
+                    bearer = self._bearer()
+                    if not bearer:
+                        raise AuthError("admin bearer required")
+                    claims = authority.verify_access_token(bearer, required_scope="installation:admin")
+                    if claims.get("role") != "admin":
+                        raise AuthError("admin role required")
+                    payload = self._body(4096)
+                    target_role, target_identity = payload.get("role"), payload.get("identity")
+                    if target_role not in ("admin", "guest") or not isinstance(target_identity, str):
+                        raise AuthError("invalid identity target")
+                    self._json(HTTPStatus.OK, authority.revoke_identity(target_role, target_identity))
+                except (ValueError, KeyError, TypeError, AuthError) as exc:
+                    self._json(HTTPStatus.UNAUTHORIZED, {"error": str(exc)[:160]})
+                return
             if self.path == '/v1/bootstrap/oidc':
                 try:
                     payload = self._body(16384)
@@ -241,8 +257,9 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                     repository = f"shemshallah/nanlm-cpu-{slot + 1}"
                     _verify_github_oidc(payload.get("id_token", ""), repository)
                     identity = "github-actions:" + repository
+                    authority.register_identity("admin", identity)
                     scopes = ["training:execute", "universe:read", "universe:register", "snapshot:read", "snapshot:write", "corpus:write", "installation:admin"]
-                    token = issue_token(authority._private_key(), identity, scopes, 900, role="admin")
+                    token = issue_token(authority._private_key("admin", identity), identity, scopes, 900, role="admin")
                     self._json(HTTPStatus.OK, {"token": token, "token_type": "Bearer", "expires_in": 900, "identity": identity, "role": "admin", "scopes": scopes})
                 except (ValueError, KeyError, TypeError, AuthError) as exc:
                     self._json(HTTPStatus.UNAUTHORIZED, {"error": str(exc)[:160]})
