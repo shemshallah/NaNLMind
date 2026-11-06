@@ -1,5 +1,7 @@
 import json
 import base64
+import struct
+import zlib
 import sys
 import tempfile
 import threading
@@ -197,6 +199,44 @@ class TrainingMergeTest(unittest.TestCase):
         finally:
             training_merge._verify_github_oidc = original_verifier
             server.shutdown(); server.server_close(); thread.join(timeout=2)
+
+    def test_n16t_hello_capabilities_and_portal_alias(self):
+        session = bytes(range(1, 17))
+        payload = b"\x01\x00"
+        header = struct.pack("<4sHH16sII", b"N16T", 1, 1, session, 1, len(payload))
+        body = header + payload
+        frame = body + struct.pack("<I", zlib.crc32(body) & 0xFFFFFFFF)
+        for path in ("/portal", "/n16t"):
+            request = urllib.request.Request(
+                self.base + path, data=frame, method="POST",
+                headers={"Content-Type": "application/vnd.nan16.n16t",
+                         "Accept": "application/vnd.nan16.n16t"})
+            with urllib.request.urlopen(request, timeout=5) as response:
+                self.assertEqual(response.status, 200)
+                self.assertEqual(response.headers.get_content_type(),
+                                 "application/vnd.nan16.n16t")
+                peer = response.read()
+            self.assertEqual(len(peer), 44)
+            magic, version, kind, peer_session, sequence, length = struct.unpack_from(
+                "<4sHH16sII", peer)
+            self.assertEqual((magic, version, kind, peer_session, sequence, length),
+                             (b"N16T", 1, 2, session, 1, 8))
+            self.assertEqual(peer[32:34], b"\x01\x00")
+            self.assertEqual(struct.unpack_from("<I", peer, 40)[0],
+                             zlib.crc32(peer[:40]) & 0xFFFFFFFF)
+
+        bad = bytearray(frame)
+        bad[-1] ^= 0x80
+        request = urllib.request.Request(
+            self.base + "/n16t", data=bytes(bad), method="POST",
+            headers={"Content-Type": "application/vnd.nan16.n16t"})
+        with self.assertRaises(urllib.error.HTTPError) as error:
+            urllib.request.urlopen(request, timeout=5)
+        self.assertEqual(error.exception.code, 400)
+
+        with urllib.request.urlopen(self.base + "/portal", timeout=5) as response:
+            self.assertEqual(response.status, 200)
+            self.assertIn(b"POST /n16t", response.read())
 
     def test_auth_and_health(self):
         status, body = self.post(self.payload(), "auth", token="wrong")
