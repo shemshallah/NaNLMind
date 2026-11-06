@@ -563,6 +563,9 @@ int cmd_math_train(int argc, char** argv) {
     std::uint64_t total_test = 0;
     std::uint64_t total_correct = 0;
     std::uint64_t total_baseline_correct = 0;
+    std::uint64_t native_hyperedges_added = 0;
+    const Hash256 hypergraph_before = topology->hypergraph().digest();
+    const Hash256 run_seed = topology->global_digest();
 
     std::cout << "hermes_math_train heads=" << HeadArray::size()
               << " epochs=" << epochs << " corpus_bytes=" << data.size()
@@ -622,12 +625,37 @@ int cmd_math_train(int argc, char** argv) {
         const double baseline_accuracy = evaluated
             ? static_cast<double>(baseline_correct) / evaluated : 0.0;
 
+        // Commit each learned head rule into the native shared hypergraph.
+        // The relation connects the head's fixed-point cell to its next
+        // palindromic neighbor-pair address; it is weighted by held-out score.
+        const std::uint8_t neighbor = static_cast<std::uint8_t>((index + 1u) & 255u);
+        BitAddress head_bit{PageId::root(), head.address().value, 0, 0};
+        BitAddress pair_bit{PageId::root(), matrix_addr(static_cast<std::uint8_t>(index), neighbor), 0, 0};
+        Hyperedge learned_edge;
+        learned_edge.flags = kHyperLearned;
+        learned_edge.weight = static_cast<std::uint32_t>(std::max(1.0, accuracy * 65536.0));
+        learned_edge.epoch = topology->ledger().size() + 1u;
+        std::string edge_key = source_digest + ":" + hex(run_seed) + ":" +
+            std::to_string(index) + ":" + std::to_string(head.boolean_rule());
+        const Hash256 edge_hash = Sha256::hash(edge_key.data(), edge_key.size());
+        for (unsigned byte = 0; byte < 8; ++byte)
+            learned_edge.label = (learned_edge.label << 8) | edge_hash[byte];
+        learned_edge.members = {Ref::from_bit(head_bit), Ref::from_bit(pair_bit)};
+        const std::uint32_t hyperedge_id = topology->hypergraph().add(learned_edge);
+        if (hyperedge_id == 0) {
+            std::cerr << "failed to add learned hyperedge for head " << index << "\\n";
+            return 7;
+        }
+        ++native_hyperedges_added;
+
         trace << "{\"schema\":\"nanlm-hermes-discovery/1\""
               << ",\"kind\":\"hypothesis\""
               << ",\"subject\":\"byte-bit-transition/" << static_cast<unsigned>(previous_bit)
               << "/" << static_cast<unsigned>(current_bit) << "/" << static_cast<unsigned>(target_bit) << "\""
               << ",\"head\":" << index
               << ",\"address\":" << head.address().value
+              << ",\"hyperedge_id\":" << hyperedge_id
+              << ",\"hyperedge_label\":" << learned_edge.label
               << ",\"layer\":0"
               << ",\"source_digest\":\"" << source_digest << "\""
               << ",\"expression\":{\"op\":\"boolean_truth_table\",\"inputs\":["
@@ -682,6 +710,8 @@ int cmd_math_train(int argc, char** argv) {
               << " heldout_accuracy=" << (total_test ? static_cast<double>(total_correct) / total_test : 0.0)
               << " majority_baseline_accuracy=" << (total_test ? static_cast<double>(total_baseline_correct) / total_test : 0.0)
               << " discoveries=256"
+              << " native_hyperedges_added=" << native_hyperedges_added
+              << " native_hypergraph_size=" << topology->hypergraph().size()
               << " state_bytes=" << state.size()
               << " state_digest=" << hex(topology->global_digest())
               << " state_path=" << state_path
