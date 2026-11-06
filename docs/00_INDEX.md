@@ -83,7 +83,7 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 78 | [78_LOGIC_CURRICULUM.md](78_LOGIC_CURRICULUM.md) | How are graded logic puzzles run through the runners? |
 | 79 | [79_STAGED_LOGIC_TRAINER.md](79_STAGED_LOGIC_TRAINER.md) | What happens in the Boolean -> deep logic -> word session? |
 | 80 | [80_TRAINING_CORPUS_PIPELINE.md](80_TRAINING_CORPUS_PIPELINE.md) | How do HERMES and Clocked drive the staged corpus? |
-| 81 | [81_CONVERSATIONAL_TRAINING_LOOP.md](81_CONVERSATIONAL_TRAINING_LOOP.md) | How does the host model close the training conversation loop? |
+| 81 | [81_CONVERSATIONAL_TRAINING_LOOP.md](81_CONVERSATIONAL_TRAINING_LOOP.md) | How does the host model close the training conversation loop? |\n| 82 | [CLOCKED_HERMES_BRAINSTORM.md](CLOCKED_HERMES_BRAINSTORM.md) | How does Rezolve.ai CLOCKED map into HW3, NaN16, M0–M9, HERMES scratch and the runner ring? |
 
 The short version:
 
