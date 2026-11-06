@@ -127,9 +127,11 @@ CHAT_MODEL: the keeper reads the existing DeepRepo repository variable.
 
 Koyeb documents Nano as 256 MiB RAM and 2.5 GB local SSD. That local disk
 cannot hold a durable 6 GiB corpus. Koyeb Volumes are currently public preview,
-1–10 GB, and limited to Washington, D.C. and Frankfurt. A 10 GB volume can
-stage the 6 GiB target for testing, but it needs backups and should not be the
-only authoritative copy. Without a persistent volume, keep dataset payloads
+1–10 GB, and limited to Washington, D.C. and Frankfurt. They support only
+single-instance standard/GPU services, are local to one machine with no built-in
+redundancy, and cannot be detached except by deleting the service. A 10 GB
+volume can stage the 6 GiB target for testing, but it needs snapshots/backups and
+should not be the only authoritative copy. Without a persistent volume, keep dataset payloads
 on a separate VPS/runner-owned durable volume and let this Nano coordinate
 metadata, auth, routing, and validation state.
 
