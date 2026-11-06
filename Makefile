@@ -91,6 +91,7 @@ warmup: $(CLI)
 rawroute-test:
 	PYTHONPATH=runner python3 -m unittest discover -s tests -p 'test_rawroute.py' -v
 	PYTHONPATH=runner python3 -m unittest discover -s tests -p 'test_rawroute_store.py' -v
+	PYTHONPATH=runner python3 -m unittest discover -s tests -p 'test_rawroute_api.py' -v
 
 merge-test:
 	PYTHONPATH=runner python3 -m unittest discover -s tests -p 'test_nannet_bridge.py' -v
