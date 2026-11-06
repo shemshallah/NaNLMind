@@ -104,7 +104,7 @@ make -j2 build/clocked-demo
 python integrations/clocked/demo.py --native-binary build/clocked-demo
 ```
 
-The demo sends an `Idempotency-Key` for each sample. The gateway stores the request-body digest and minimized response under the participant token scope. A retry with the same key and body replays the response without another Clocked call or quota charge; reusing a key with a different body returns conflict. The short-lived native TSV is deleted after the learner exits. The durable event log contains sample IDs, labels, digests and outcome status, not source text.
+The demo sends an `Idempotency-Key` for each training sample only. The held-out split is never sent to Clocked, including in live mode, so the teacher cannot see evaluation examples. The gateway stores the request-body digest and minimized response under the participant token scope. A retry with the same key and body replays the response without another Clocked call or quota charge; reusing a key with a different body returns conflict. The short-lived native TSV is deleted after the learner exits. The durable event log contains sample IDs, labels, digests and outcome status, not source text.
 
 The labelled curriculum is synthetic and intended for demonstration. For a real training chain, use independently reviewed labels, provenance/license metadata and source-separated held-out evaluation. See [the chainable training architecture](../../specs/CLOCKED_CHAINABLE_TRAINING.md).
 
