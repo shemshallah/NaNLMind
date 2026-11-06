@@ -17,6 +17,11 @@ EVENT_ID=re.compile(r"^[a-f0-9]{64}$"); HEX=EVENT_ID
 ID_RE=re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$")
 ADDRESS_RE=re.compile(r"^nan://GM(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9]):SC(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9]):MC(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9]):BS(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9]):HW(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])$")
 def valid_nan_address(value): return isinstance(value,str) and ADDRESS_RE.fullmatch(value) is not None
+def address_coordinates(value):
+ match=ADDRESS_RE.fullmatch(value) if isinstance(value,str) else None
+ if not match: raise ValueError("invalid_nan_address")
+ return dict(zip(("gm","sc","mc","bs","hw"),map(int,match.groups())))
+def address_node_point(value): return address_coordinates(value)["hw"]+1
 def nan_address(gm,sc,mc,bs,hw): return f"nan://GM{gm}:SC{sc}:MC{mc}:BS{bs}:HW{hw}"
 NANLM_ADDRESS=nan_address(0,0,0,0,0)
 ANDROID_ADDRESS=nan_address(0,0,0,0,1)
@@ -98,12 +103,12 @@ class Handler(BaseHTTPRequestHandler):
   try:
    db.execute("BEGIN IMMEDIATE"); row=db.execute("SELECT * FROM tokens WHERE token_hash=?",(th,)).fetchone()
    if not row or row["revoked"] or row["expires_at"]<=now() or row["used_requests"]>=row["max_requests"]: db.rollback(); return None
-   db.execute("UPDATE tokens SET used_requests=used_requests+1 WHERE token_hash=?",(th,)); db.commit()
    address=row["endpoint_id"]
    claimed=self.headers.get("X-NaN-Address","")
    if claimed and claimed!=address:
     db.rollback(); return None
-   return {"endpoint_id":address,"address":address,"scopes":json.loads(row["scopes_json"])}
+   db.execute("UPDATE tokens SET used_requests=used_requests+1 WHERE token_hash=?",(th,)); db.commit()
+   return {"endpoint_id":address,"address":address,"node_point":address_node_point(address),"coordinates":address_coordinates(address),"scopes":json.loads(row["scopes_json"])}
   finally: db.close()
  def need(self,role="endpoint"):
   ident=self.auth(role)
@@ -115,7 +120,7 @@ class Handler(BaseHTTPRequestHandler):
   if p=="/v1/address":
    x=self.need()
    if x is None:return
-   return self.reply(200,{"address":x["address"],"addressing":"nan.global-mesh.v1","transport_authority":os.environ.get("NANNET_PUBLIC_URL","").rstrip("/"),"transport":"https"})
+   return self.reply(200,{"address":x["address"],"node_point":x["node_point"],"coordinates":x["coordinates"],"addressing":"nan.global-mesh.v1","transport_authority":os.environ.get("NANNET_PUBLIC_URL","").rstrip("/"),"transport":"https","transport_binding":"bearer-token"})
   if p=="/admin/keeper/status":
    if self.need("admin") is None:return
    return self.reply(200,dict(KEEPER_STATE))
@@ -127,7 +132,7 @@ class Handler(BaseHTTPRequestHandler):
    if x is None:return
    scopes=set(x["scopes"]); ep=x["endpoint_id"]
    visible={k:v for k,v in ROUTES.items() if "*" in scopes or ep in v["audience"] or scopes.intersection(v["audience"])}
-   return self.reply(200,{"address":x["address"],"routes":visible})
+   return self.reply(200,{"address":x["address"],"node_point":x["node_point"],"routes":visible})
   if p=="/internal/datasets":
    if self.need("validator") is None:return
    db=connect()
