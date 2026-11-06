@@ -1,4 +1,4 @@
-# Clocked to NANNET evidence bridge
+# CLOCKED service to NANNET evidence bridge\n\nThe upstream CLOCKED SDK, API orchestration, credentials, service gateway and CLOCKED-specific tests are owned by [NaNLMind_CLOCKED](https://github.com/shemshallah/NaNLMind_CLOCKED). This repository owns only the generic NANNET observation contract, native evidence fold, routing and learning-admission boundary.
 
 Clocked observations are stored by NANNET as endpoint-bound evidence. The runner-only observation queue is exposed at `GET /internal/observations`; acknowledgements use `POST /internal/observations/ack` only after a durable native fold receipt exists. Observations are not validated corpora and must not be sent through the text-corpus consumer. They remain unverified until an independent target or outcome exists. The canonical six-runner ring alone commits model generations.
 
