@@ -68,6 +68,8 @@ class BridgeTests(unittest.TestCase):
             box.put(reply)
             self.assertEqual(BridgeFrame.decode(box.take(a)).payload, b"reverse")
             self.assertIsNone(box.take(a))
+            self.assertEqual(box.stats()["queued"], 0)
+            self.assertEqual(box.stats()["max_pending_per_route"], 4096)
 
     def test_six_runner_identities(self):
         from nanlmind_nannet.bridge import route_for_identity
