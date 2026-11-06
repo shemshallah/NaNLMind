@@ -123,6 +123,10 @@ class TrainingMergeTest(unittest.TestCase):
                 authority.verify_access_token(renewed['token'][4:], "training:execute")
             health = urllib.request.urlopen(base + '/healthz', timeout=5)
             self.assertEqual(json.loads(health.read())['nannet_authority'], 'ready')
+            ready = urllib.request.urlopen(base + '/readyz', timeout=5)
+            ready_body = json.loads(ready.read())
+            self.assertTrue(ready_body['ready'])
+            self.assertEqual(ready_body['nannet_authority'], 'ready')
         finally:
             server.shutdown(); server.server_close(); thread.join(timeout=2)
 
@@ -205,6 +209,10 @@ class TrainingMergeTest(unittest.TestCase):
             health = json.loads(r.read())
         self.assertTrue(health["ok"])
         self.assertEqual(health["nodes"], 0)
+        self.assertFalse(health["ready"])
+        with self.assertRaises(urllib.error.HTTPError) as not_ready:
+            urllib.request.urlopen(self.base + "/readyz", timeout=5)
+        self.assertEqual(not_ready.exception.code, 503)
 
 
 if __name__ == "__main__":
