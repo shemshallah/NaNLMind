@@ -25,11 +25,22 @@ FEATURE_SCHEMA = "utf8-byte-trigram-16d-v1"
 
 def add_features(data: bytes, carry: bytes, counts: list[list[int]]) -> bytes:
     joined = carry + data
-    for i in range(2, len(joined)):
-        a, b, c = joined[i - 2], joined[i - 1], joined[i]
-        head = a
-        dim = ((b * 17) ^ c) & 15
-        counts[head][dim] += 1
+    try:
+        import numpy as np
+        values = np.frombuffer(joined, dtype=np.uint8)
+        if len(values) >= 3:
+            heads = values[:-2].astype(np.int32)
+            middle = values[1:-1].astype(np.uint16)
+            tail = values[2:].astype(np.uint16)
+            dims = (((middle * 17) ^ tail) & 15).astype(np.int32)
+            histogram = np.bincount(heads * DIMS + dims, minlength=HEADS * DIMS)
+            for index, value in enumerate(histogram):
+                if value:
+                    counts[index // DIMS][index % DIMS] += int(value)
+    except ImportError:
+        for i in range(2, len(joined)):
+            a, b, c = joined[i - 2], joined[i - 1], joined[i]
+            counts[a][((b * 17) ^ c) & 15] += 1
     return joined[-2:]
 
 
