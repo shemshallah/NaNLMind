@@ -117,8 +117,8 @@ std::uint8_t predicate_head(std::uint8_t resolution, const Hash256& hash) {
 }
 
 std::uint8_t distinct_head(std::uint8_t base, std::uint8_t span,
-                           std::uint8_t candidate, std::uint8_t first,
-                           std::uint8_t second) {
+                           std::uint8_t candidate, std::uint16_t first,
+                           std::uint16_t second) {
     for (unsigned i = 0; i < span && (candidate == first || candidate == second); ++i)
         candidate = static_cast<std::uint8_t>(base + ((candidate - base + 1u) % span));
     return candidate;
@@ -247,7 +247,7 @@ int relation_train_cli(int argc, char** argv) {
             if (old && old->label == e.label) { duplicate=true; break; }
         }
         if (duplicate) { ++duplicates; continue; }
-        std::uint8_t sh = distinct_head(base, span, static_cast<std::uint8_t>(base + e.sh[1]%span), ph, 255u);
+        std::uint8_t sh = distinct_head(base, span, static_cast<std::uint8_t>(base + e.sh[1]%span), ph, 256u);
         std::uint8_t oh = distinct_head(base, span, static_cast<std::uint8_t>(base + e.oh[2]%span), ph, sh);
         if (sh==ph || oh==ph || oh==sh) { std::cerr << "relation head collision\n"; return 7; }
         HeadView p = heads.at(ph), s = heads.at(sh), o = heads.at(oh);
