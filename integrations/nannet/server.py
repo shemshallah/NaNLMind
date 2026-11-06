@@ -141,6 +141,13 @@ class Handler(BaseHTTPRequestHandler):
     rows=db.execute("SELECT dataset_id,endpoint_id,created_at,expected_chunks,total_bytes,dataset_sha256,status,metadata_json FROM datasets WHERE status='quarantine' ORDER BY created_at LIMIT 32").fetchall()
     return self.reply(200,{"datasets":[{**dict(r),"metadata":json.loads(r["metadata_json"])} for r in rows]})
    finally: db.close()
+  if p=="/internal/datasets/committed":
+   if self.need("runner") is None:return
+   db=connect()
+   try:
+    rows=db.execute("SELECT dataset_id,endpoint_id,created_at,total_bytes,dataset_sha256,status,committed_generation,validation_json,metadata_json FROM datasets WHERE status='committed' ORDER BY created_at DESC LIMIT 100").fetchall()
+    return self.reply(200,{"datasets":[{**dict(r),"metadata":json.loads(r["metadata_json"]),"validation":json.loads(r["validation_json"] or "{}")} for r in rows]})
+   finally:db.close()
   if p=="/internal/datasets/validated":
    if self.need("runner") is None:return
    db=connect()
