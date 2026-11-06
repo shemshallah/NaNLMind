@@ -21,7 +21,8 @@ class LogicLocalRingTests(unittest.TestCase):
                 [sys.executable, str(ROOT / "runner" / "logic_local_ring.py"),
                  "--slots", "3", "--rounds", "5",
                  "--state-root", str(Path(tmp) / "ring")],
-                text=True, capture_output=True, check=True, env=env)
+                text=True, capture_output=True, check=False, env=env)
+            self.assertEqual(proc.returncode, 0, msg=proc.stdout + "\n" + proc.stderr)
             payload = json.loads(proc.stdout)
             self.assertTrue(payload["ok"])
             self.assertTrue(payload["improved"])
