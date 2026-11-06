@@ -525,7 +525,11 @@ def portal_bridge_send(frame):
     base = os.environ.get("NANNET_PORTAL_API", "").rstrip("/")
     if not base:
         translator = point_zero_translator()
-        frame = translator.decode(translator.encode(frame), expected_source=PORTAL_ROUTE)
+        # Outbound frames target BSR0, not the runner local destination.
+        # Use the service-side decoder for local loopback validation.
+        frame = PointZeroTranslator().decode(
+            translator.encode(frame), expected_source=PORTAL_ROUTE
+        )
         mailbox = native_bridge_mailbox()
         if frame.payload == b"BSR_ACK":
             mailbox.acknowledge_and_put(frame.destination, frame.source,
