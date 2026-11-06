@@ -178,7 +178,17 @@ int relation_train_cli(int argc, char** argv) {
     std::array<std::uint64_t,10> train_n{}, train_pos{}, test_n{}, test_ok{};
     std::array<std::uint64_t,10> test_pos{}, test_neg{}, tp{}, tn{}, baseline_ok{};
     std::array<std::uint64_t,10> pre_test_n{}, pre_test_ok{}, pre_test_pos{}, pre_test_neg{}, pre_tp{}, pre_tn{};
-    std::array<bool,256> touched{};
+    std::array<Hash256,256> head_state_before{};
+    auto head_state_hash = [](HeadView& h) {
+        Sha256 digest;
+        digest.update(&h.cell(), sizeof(NanCell));
+        digest.update(&h.scratch(), sizeof(HeadScratch));
+        return digest.final();
+    };
+    for (std::uint16_t i=0;i<256;++i) {
+        HeadView h=heads.at(static_cast<std::uint8_t>(i));
+        head_state_before[i]=head_state_hash(h);
+    }
     std::uint64_t accepted=0, duplicates=0, pair_updates=0, edges_added=0;
     // Measure the exact same held-out rows before mutation, then again after
     // training. This makes per-run movement observable instead of reporting
@@ -229,7 +239,6 @@ int relation_train_cli(int argc, char** argv) {
                 o.train_boolean(e.sh[lane]&1u, e.ph[lane]&1u, e.positive);
             }
         }
-        touched[ph]=touched[sh]=touched[oh]=true;
         ++train_n[e.resolution]; if (e.positive) ++train_pos[e.resolution];
         const std::uint64_t epoch=topology->ledger().size()+1u;
         BitAddress sb{PageId::root(),heads.at(sh).address().value,0,0};
@@ -280,7 +289,11 @@ int relation_train_cli(int argc, char** argv) {
     }
     std::error_code ec; std::filesystem::rename(tmp,state_path,ec);
     if (ec) { std::cerr << "relation state publish failed: " << ec.message() << "\n"; std::filesystem::remove(tmp); return 5; }
-    std::uint64_t changed=0; for (bool v:touched) if (v) ++changed;
+    std::uint64_t changed=0;
+    for (std::uint16_t i=0;i<256;++i) {
+        HeadView h=heads.at(static_cast<std::uint8_t>(i));
+        if (!(head_state_before[i] == head_state_hash(h))) ++changed;
+    }
     std::cout << "relation_train status=updated epochs=" << epochs << " train_events=" << accepted
               << " duplicate_events=" << duplicates << " changed_heads=" << changed
               << " mirror_pair_updates=" << pair_updates << " hyperedges_added=" << edges_added
