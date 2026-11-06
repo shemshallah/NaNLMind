@@ -42,6 +42,22 @@ def token_hash(token):
  return hmac.new(pepper.encode(),token.encode(),hashlib.sha256).hexdigest()
 def jbytes(v): return json.dumps(v,sort_keys=True,separators=(",",":")).encode()
 
+class BoundedHTTPServer(ThreadingHTTPServer):
+ daemon_threads=True
+ request_queue_size=32
+ def __init__(self,server_address,handler):
+  self.slots=threading.BoundedSemaphore(max(2,min(32,int(os.environ.get("NANLM_HTTP_WORKERS","8")))))
+  super().__init__(server_address,handler)
+ def process_request(self,request,client_address):
+  self.slots.acquire()
+  try:super().process_request(request,client_address)
+  except Exception:
+   self.slots.release()
+   raise
+ def process_request_thread(self,request,client_address):
+  try:super().process_request_thread(request,client_address)
+  finally:self.slots.release()
+
 class Handler(BaseHTTPRequestHandler):
  server_version="NANNET/1"
  def log_message(self,fmt,*args): print("nannet "+(fmt%args),flush=True)
@@ -322,7 +338,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def start_deeprepo_keeper():
  if os.environ.get("DEEPREPO_KEEPER_ENABLED","0")!="1":return
- for name in ("GH_TOKEN","DEEPREPO_MAIN"):
+ for name in ("GH_TOKEN","DEEPREPO_MAIN","DEEPREPO_RAM","DEEPREPO_VRAM"):
   if not os.environ.get(name):raise SystemExit(name+" is required when DEEPREPO_KEEPER_ENABLED=1")
  def run():
   try:
@@ -351,5 +367,5 @@ def main():
  start_deeprepo_keeper()
  port=int(os.environ.get("PORT",os.environ.get("NANLM_PORT","8000")))
  print("NANNET listening on 0.0.0.0:%d; disk quota=%d; chunk=%d"%(port,DATASET_QUOTA,CHUNK_BYTES),flush=True)
- ThreadingHTTPServer(("0.0.0.0",port),Handler).serve_forever()
+ BoundedHTTPServer(("0.0.0.0",port),Handler).serve_forever()
 if __name__=="__main__":main()
