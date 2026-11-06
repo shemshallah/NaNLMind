@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from nanlmind_nannet.bridge import BridgeFrame, BridgeMailbox, RunnerRoute
+from nanlmind_nannet.bridge import BridgeFrame, BridgeMailbox, PointZeroTranslator, RunnerRoute
 from nanlmind_nannet.nan16de import NanWord
 
 
@@ -23,6 +23,45 @@ class BridgeTests(unittest.TestCase):
             expected = f"nan://GM0:SC0:MC0:BS0:HW0:BSR{index}"
             self.assertEqual(RunnerRoute(bsr=index).text(), expected)
             self.assertEqual(RunnerRoute.parse(expected).text(), expected)
+
+    def test_every_runner_universe_has_point_zero_translator(self):
+        point_zero = RunnerRoute(bsr=0)
+        for slot in range(6):
+            local = RunnerRoute(bsr=slot)
+            translator = PointZeroTranslator(local)
+            descriptor = translator.descriptor()
+            self.assertEqual(descriptor["universe_point"], 0)
+            self.assertEqual(descriptor["translator"], "N16B/1")
+            self.assertEqual(descriptor["point_zero_route"], point_zero.text())
+            self.assertEqual(descriptor["point_zero_bytes"], point_zero.bytes().hex())
+            self.assertEqual(descriptor["local_route"], local.text())
+            self.assertEqual(
+                PointZeroTranslator.route_from_wire(
+                    PointZeroTranslator.route_to_wire(local)), local)
+            frame = translator.make_frame(point_zero, 0xA5 + slot,
+                                          NanWord.from_bits(0, 0, slot), b"point-zero")
+            raw = translator.encode(frame)
+            decoded = translator.decode(raw, expected_destination=point_zero)
+            self.assertEqual(decoded.source, local)
+            self.assertEqual(decoded.destination, point_zero)
+            self.assertEqual(decoded.payload, b"point-zero")
+            with self.assertRaises(ValueError):
+                translator.encode(BridgeFrame(point_zero, local, 1,
+                                              NanWord.from_bits(0, 0, 1), b"wrong-source"))
+            with self.assertRaises(ValueError):
+                translator.decode(raw, expected_destination=local)
+
+    def test_point_zero_service_adapter_accepts_authenticated_routes(self):
+        translator = PointZeroTranslator()
+        for slot in range(6):
+            source = RunnerRoute(bsr=slot)
+            frame = BridgeFrame(source, RunnerRoute(bsr=0), slot,
+                                NanWord.from_bits(0, 0, slot), b"hosted")
+            wire = translator.encode(frame)
+            decoded = translator.decode(wire, expected_source=source)
+            self.assertEqual(decoded, frame)
+        with self.assertRaises(ValueError):
+            translator.decode(wire, expected_source=RunnerRoute(bsr=0))
 
     def test_double_endian_frame_roundtrip(self):
         src = RunnerRoute(bsr=0)
