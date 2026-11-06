@@ -17,12 +17,13 @@ EVENT_ID=re.compile(r"^[a-f0-9]{64}$"); HEX=EVENT_ID
 ID_RE=re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$")
 ENDPOINTS={f"bootstrap-{i:03d}" for i in range(256)}|{"my_android","hermes_demo","clocked_demo"}
 MERGE_STORE=None
+KEEPER_STATE={"enabled":False,"status":"disabled"}
 ROUTES={
  "training.merge":{"audience":["runner","admin"],"description":"Generation-safe evidence merge; runner ring owns commits"},
  "training.validate":{"audience":["validator","admin"],"description":"Validate quarantined corpus packages"},
  "n16t.peer":{"audience":["my_android","hermes_demo","clocked_demo","bootstrap"],"description":"NaN16 transport peer and capability exchange"},
- "deeprepo.keeper":{"audience":["admin","keeper"],"description":"DeepRepo keeper and GitHub forwarding control"},
- "models.status":{"audience":["admin","keeper","runner"],"description":"Read-only status for preserved Qwen deployments"}}
+ "deeprepo.keeper":{"audience":["admin"],"description":"GET /admin/keeper/status; DeepRepo keeper health and last action"},
+ "models.status":{"audience":["admin"],"description":"GET /admin/models/status; read-only Qwen deployment metadata"}}
 
 def now(): return int(time.time())
 def connect():
