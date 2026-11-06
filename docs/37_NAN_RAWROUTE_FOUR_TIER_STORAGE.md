@@ -54,7 +54,7 @@ nan://GM0:SC0:MC0:BS0:0:HW0:0::HW0:1::vector1337
 nan://GM0:SC0:MC0:BS0:0:HW0:0::HW0:2::hyperedge1337
 ```
 
-The existing six-coordinate runner route and N16B/1 wire format remain supported as the transport-level leaf address. The hierarchical rawroute is a higher-level name that resolves to that existing transport route plus node/ring/head/object selectors. Do not change N16B bytes or existing runner identities as part of this extension.
+The existing six-coordinate runner route and N16B/1 wire format remain supported as the transport-level leaf address. The hierarchical rawroute is a higher-level name that resolves through a committed mapping record to an existing transport route plus node/HW-node/head/object selectors. The `HW0:0` coordinate identifies a hardware network node; it is not the N16B runner slot. The transport leaf (including BSR0..5) is an explicit association in the route registry and must never be inferred from the HW-node or head number. Do not change N16B bytes or existing runner identities as part of this extension.
 
 ## 3. Authority and ownership
 
