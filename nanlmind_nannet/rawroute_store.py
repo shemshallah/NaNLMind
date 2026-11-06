@@ -18,6 +18,7 @@ from typing import Mapping, Optional, Sequence
 
 from .bridge import RunnerRoute
 from .rawroute import RawRoute
+from .volume_address import parse_volume_path
 
 NAMESPACE_FILES = {
     "BS0": "bs0db.sqlite3",
@@ -370,7 +371,8 @@ class RawRouteMesh:
                  quota_bytes: int = DEFAULT_QUOTA_BYTES,
                  mounts: Mapping[str, Sequence[str | Path] | str | Path] | None = None,
                  physical_reserve_bytes: int = 256 * 1024 * 1024,
-                 require_mounts: bool = False):
+                 require_mounts: bool = False,
+                 require_nan_paths: bool = False):
         self.quota_bytes = _uint(quota_bytes, "quota_bytes")
         self.physical_reserve_bytes = _uint(physical_reserve_bytes, "physical_reserve_bytes")
         if self.quota_bytes == 0:
@@ -407,6 +409,31 @@ class RawRouteMesh:
                         path.mkdir(parents=True, exist_ok=True)
                     paths.append(path)
                 normalized[namespace] = paths
+        # Hex NaN mount roots are stable logical volume identities. Legacy
+        # human-readable mount paths remain accepted during staged migration.
+        self.volume_addresses: dict[str, list[dict | None]] = {}
+        for namespace, paths in normalized.items():
+            identities: list[dict | None] = []
+            seen_shards: set[int] = set()
+            for path in paths:
+                if path.name.startswith("0x"):
+                    identity = parse_volume_path("/" + path.name)
+                    if identity.tier != namespace:
+                        raise ValueError(
+                            f"NaN volume path tier {identity.tier} does not match {namespace}")
+                    if identity.shard in seen_shards:
+                        raise ValueError(f"duplicate {namespace} NaN volume shard")
+                    seen_shards.add(identity.shard)
+                    identities.append({
+                        "path": identity.path, "tier": identity.tier,
+                        "shard": identity.shard, "raw": f"0x{identity.raw:016X}",
+                    })
+                else:
+                    if require_nan_paths:
+                        raise ValueError(
+                            f"{namespace} mount must use a canonical /0x NaN volume path")
+                    identities.append(None)
+            self.volume_addresses[namespace] = identities
         self.mounts = normalized
         self.databases: dict[str, list[RawRouteDB]] = {}
         for namespace, paths in self.mounts.items():
@@ -446,8 +473,10 @@ class RawRouteMesh:
         reserve = int(os.environ.get(
             "NANLM_RAWROUTE_PHYSICAL_RESERVE_BYTES", str(256 * 1024 * 1024)))
         require_mounts = os.environ.get("NANLM_RAWROUTE_REQUIRE_MOUNTS", "0").strip().lower() in ("1", "true", "yes", "on")
+        require_nan_paths = os.environ.get("NANLM_RAWROUTE_REQUIRE_NAN_PATHS", "0").strip().lower() in ("1", "true", "yes", "on")
         return cls(quota_bytes=configured_quota, mounts=mounts,
-                   physical_reserve_bytes=reserve, require_mounts=require_mounts)
+                   physical_reserve_bytes=reserve, require_mounts=require_mounts,
+                   require_nan_paths=require_nan_paths)
 
     def _shards(self, namespace: str) -> list[RawRouteDB]:
         try:
@@ -522,6 +551,7 @@ class RawRouteMesh:
                 item = db.health()
                 item["shard_index"] = index
                 item["mount_path"] = str(db.path.parent)
+                item["volume_address"] = self.volume_addresses[namespace][index]
                 shard_health.append(item)
                 disk = shutil.disk_usage(db.path.parent)
                 filesystems.append({
