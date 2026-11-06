@@ -142,6 +142,11 @@ class Handler(BaseHTTPRequestHandler):
    x=self.need()
    if x is None:return
    return self.reply(200,{"address":x["address"],"node_point":x["node_point"],"coordinates":x["coordinates"],"addressing":"nan.global-mesh.v1","transport_authority":os.environ.get("NANNET_PUBLIC_URL","").rstrip("/"),"transport":"https","transport_binding":"bearer-token","head_count":256,"head_index_space":"local-to-endpoint"})
+  if p=="/admin/training/status":
+   if self.need("admin") is None:return
+   store=get_merge_store()
+   if store is None:return self.reply(503,{"error":"training_merge_not_configured"})
+   return self.reply(200,store.status())
   if p=="/admin/keeper/status":
    if self.need("admin") is None:return
    return self.reply(200,dict(KEEPER_STATE))
