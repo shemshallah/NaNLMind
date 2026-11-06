@@ -50,6 +50,20 @@ values. A deployment-definition read can expose plaintext env values; if a
 plaintext runner PAT was ever used there, rotate it and re-create the service
 with a secret reference.
 
+## Cryptography fallback
+
+`nanlmind_nannet` can run without the `cryptography` package. It uses Ed25519,
+AES-256-GCM, and HKDF-SHA256 from a dependency-free Fallback for minimal images
+such as Termux. The fallback is not constant-time; use the optional
+`cryptography` package or an HSM for production key custody.
+
+```sh
+pip install "nanlmind-hermes[auth]"
+```
+
+The fallback still signs and verifies Ed25519 tokens; it does not replace the
+algorithm.
+
 ## Build hygiene
 
 - `.nanlmind/` is an external source clone and is gitignored.

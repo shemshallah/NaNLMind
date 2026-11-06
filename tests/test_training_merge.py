@@ -14,8 +14,8 @@ from nanlmind_nannet.auth import _unb64, generate_master_key
 from nanlmind_nannet.pairing import PairingAuthority
 from nanlmind_nannet.devices import TERMS_VERSION
 from nanlmind_nannet.auth import AuthError, identity_public_key
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from nanlmind_nannet.crypto_compat import serialization
+from nanlmind_nannet.crypto_compat import Ed25519PrivateKey
 
 
 class TrainingMergeTest(unittest.TestCase):

@@ -147,3 +147,11 @@ node.
 - Add per-node scoped token records and revocation.
 - Add slot-level merge (currently head/route deltas).
 - Add a Koyeb health/alert workflow.
+
+## Minimal-host crypto
+
+The vendored `nanlmind_nannet` auth path works without the `cryptography`
+package by using the dependency-free Ed25519/AES-GCM/HKDF fallback. The merge
+tests exercise the signed token, pairing, and device routes with that fallback.
+For production deployments, install the optional `cryptography` extra or use
+an HSM-backed key store.
