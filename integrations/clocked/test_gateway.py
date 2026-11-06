@@ -10,7 +10,11 @@ from gateway import Gateway
 
 
 class FakeClocked:
+    def __init__(self):
+        self.calls = 0
+
     def pipeline(self, text, steps, on_error):
+        self.calls += 1
         return {
             "steps": [
                 {"endpoint": "decide", "name": "task_classification", "status": 200,
@@ -23,12 +27,14 @@ class FakeClocked:
         }
 
 
-def invoke(app, path, method="GET", payload=None, bearer=None):
+def invoke(app, path, method="GET", payload=None, bearer=None, headers=None):
     raw = b"" if payload is None else json.dumps(payload).encode("utf-8")
     environ = {"REQUEST_METHOD": method, "PATH_INFO": path,
                "CONTENT_LENGTH": str(len(raw)), "wsgi.input": io.BytesIO(raw)}
     if bearer:
         environ["HTTP_AUTHORIZATION"] = "Bearer " + bearer
+    for key, value in (headers or {}).items():
+        environ["HTTP_" + key.upper().replace("-", "_")] = value
     captured = {}
     def start_response(status, headers):
         captured["status"] = status
@@ -96,6 +102,32 @@ class GatewayTests(unittest.TestCase):
         self.assertNotIn("private source text", encoded)
         self.assertNotIn("private claim", encoded)
         self.assertNotIn("2026-11-05", encoded)
+
+
+    def test_experience_idempotency_replays_without_second_clocked_call(self):
+        token = self.issue(max_requests=1)
+        payload = {"protocol": "nanlm.clocked-experience", "text": "same request"}
+        headers = {"Idempotency-Key": "demo-request-0001"}
+        status, first = invoke(self.app, "/v1/experience", "POST", payload, token, headers)
+        self.assertEqual(status, "200 OK")
+        calls_after_first = self.app.clocked_client.calls
+        status, replay = invoke(self.app, "/v1/experience", "POST", payload, token, headers)
+        self.assertEqual(status, "200 OK")
+        self.assertEqual(first, replay)
+        self.assertEqual(self.app.clocked_client.calls, calls_after_first)
+        status, quota = invoke(self.app, "/v1/experience", "POST",
+            {"text": "different request"}, token, {"Idempotency-Key": "demo-request-0002"})
+        self.assertEqual(status, "429 Too Many Requests")
+        self.assertEqual(quota["error"], "quota_exceeded")
+
+    def test_idempotency_key_cannot_be_reused_for_different_body(self):
+        token = self.issue()
+        headers = {"Idempotency-Key": "same-key"}
+        status, _ = invoke(self.app, "/v1/experience", "POST", {"text": "one"}, token, headers)
+        self.assertEqual(status, "200 OK")
+        status, result = invoke(self.app, "/v1/experience", "POST", {"text": "two"}, token, headers)
+        self.assertEqual(status, "409 Conflict")
+        self.assertEqual(result["error"], "idempotency_key_conflict")
 
     def test_quota_is_enforced(self):
         token = self.issue(max_requests=1)
