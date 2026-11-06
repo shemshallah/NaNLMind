@@ -27,7 +27,7 @@ NANLM_ADDRESS=nan_address(0,0,0,0,0)
 ANDROID_ADDRESS=nan_address(0,0,0,0,1)
 HERMES_ADDRESS=nan_address(0,0,0,0,2)
 CLOCKED_ADDRESS=nan_address(0,0,0,0,3)
-ENDPOINTS={NANLM_ADDRESS,ANDROID_ADDRESS,HERMES_ADDRESS,CLOCKED_ADDRESS}
+ENDPOINTS={nan_address(0,0,0,0,hw) for hw in range(256)}
 MERGE_STORE=None
 KEEPER_STATE={"enabled":False,"status":"disabled"}
 ROUTES={
@@ -163,6 +163,7 @@ class Handler(BaseHTTPRequestHandler):
    try:
     ds=db.execute("SELECT status FROM datasets WHERE dataset_id=?",(m.group(1),)).fetchone()
     if not ds:return self.reply(404,{"error":"dataset_not_found"})
+    if ds["status"]=="committed":return self.reply(410,{"error":"dataset_bytes_released_after_canonical_ingest"})
     if runner is not None and ds["status"]!="validated":return self.reply(403,{"error":"dataset_not_validated"})
     row=db.execute("SELECT blob_path,size_bytes,sha256 FROM chunks WHERE dataset_id=? AND chunk_index=? AND status='stored'",(m.group(1),int(m.group(2)))).fetchone()
    finally: db.close()
