@@ -133,10 +133,14 @@ control plane. Never deploy literal placeholders.
 Recommended Koyeb mount destinations:
 
 ```
-BS0 volume -> /0x7FF14E1100E8F17F/bs0db.sqlite3
-MC0 volume -> /0x7FF14E1200D7F17F/mc0db.sqlite3
-SC0 volume -> /0x7FF14E1300C2F17F/sc0db.sqlite3
-GM0 volume -> /0x7FF14E1400A9F17F/gm0db.sqlite3
+BS0 volume -> mount root /0x7FF14E1100E8F17F
+               database /0x7FF14E1100E8F17F/bs0db.sqlite3
+MC0 volume -> mount root /0x7FF14E1200D7F17F
+               database /0x7FF14E1200D7F17F/mc0db.sqlite3
+SC0 volume -> mount root /0x7FF14E1300C2F17F
+               database /0x7FF14E1300C2F17F/sc0db.sqlite3
+GM0 volume -> mount root /0x7FF14E1400A9F17F
+               database /0x7FF14E1400A9F17F/gm0db.sqlite3
 ```
 
 A provider mount destination is a POSIX path, not a hardware memory address.
