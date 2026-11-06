@@ -14,7 +14,7 @@ import shutil
 import sqlite3
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Mapping, Optional, Sequence
 
 from .bridge import RunnerRoute
 from .rawroute import RawRoute
@@ -25,7 +25,7 @@ NAMESPACE_FILES = {
     "SC0": "sc0db.sqlite3",
     "GM0": "gm0db.sqlite3",
 }
-DEFAULT_QUOTA_BYTES = 10 * 1024 * 1024 * 1024
+DEFAULT_QUOTA_BYTES = 9_500_000_000
 SCHEMA_VERSION = 1
 
 
@@ -198,8 +198,8 @@ class RawRouteDB:
         payload_json = json.dumps(payload, sort_keys=True, separators=(",", ":"))
         payload_sha = hashlib.sha256(payload_json.encode("utf-8")).hexdigest()
         event_id = hashlib.sha256(
-            (self.namespace + "|" + (idempotency_key or
-             (route_id + "|" + str(base_generation) + "|" + str(nanclock_tick) + "|" + payload_sha)))
+            (self.namespace + "|" + route_id + "|" + (idempotency_key or
+             (str(base_generation) + "|" + str(nanclock_tick) + "|" + payload_sha)))
             .encode("utf-8")
         ).hexdigest()
         record_bytes = len(payload_json.encode("utf-8")) + len(route.text().encode("ascii")) + 256
@@ -360,37 +360,187 @@ class RawRouteDB:
 
 
 class RawRouteMesh:
-    """Four independently quota-controlled databases on one persistent mount."""
+    """Four-tier registry across independently mounted persistent volumes.
 
-    def __init__(self, root: str | Path,
-                 quota_bytes: int = DEFAULT_QUOTA_BYTES):
-        self.root = Path(root)
-        self.root.mkdir(parents=True, exist_ok=True)
+    Each namespace owns one or more SQLite shards. Existing route IDs remain
+    on their original shard as capacity is added; new routes use rendezvous
+    hashing across the configured shards.
+    """
+    def __init__(self, root: str | Path | None = None,
+                 quota_bytes: int = DEFAULT_QUOTA_BYTES,
+                 mounts: Mapping[str, Sequence[str | Path] | str | Path] | None = None,
+                 physical_reserve_bytes: int = 256 * 1024 * 1024,
+                 require_mounts: bool = False):
         self.quota_bytes = _uint(quota_bytes, "quota_bytes")
+        self.physical_reserve_bytes = _uint(physical_reserve_bytes, "physical_reserve_bytes")
         if self.quota_bytes == 0:
             raise ValueError("quota_bytes must be greater than zero")
-        self.databases = {
-            namespace: RawRouteDB(self.root / filename, namespace, self.quota_bytes,
-                                  physical_root=self.root)
-            for namespace, filename in NAMESPACE_FILES.items()
-        }
+        if mounts is None:
+            if root is None:
+                raise ValueError("root or explicit namespace mounts are required")
+            fallback = Path(root)
+            fallback.mkdir(parents=True, exist_ok=True)
+            normalized = {namespace: [fallback] for namespace in NAMESPACE_FILES}
+        else:
+            if set(mounts) != set(NAMESPACE_FILES):
+                raise ValueError("mount manifest must define exactly BS0, MC0, SC0 and GM0")
+            normalized: dict[str, list[Path]] = {}
+            seen: set[str] = set()
+            for namespace in NAMESPACE_FILES:
+                value = mounts[namespace]
+                values = [value] if isinstance(value, (str, Path)) else list(value)
+                if not values:
+                    raise ValueError(namespace + " requires at least one mounted volume")
+                paths = []
+                for item in values:
+                    path = Path(item)
+                    if not path.is_absolute():
+                        raise ValueError("rawroute volume mount paths must be absolute")
+                    key = str(path.resolve())
+                    if key in seen:
+                        raise ValueError("each rawroute volume must have a distinct mount path")
+                    seen.add(key)
+                    if require_mounts:
+                        if not path.is_dir() or not os.path.ismount(path):
+                            raise ValueError("configured rawroute path is not an active mount: " + str(path))
+                    else:
+                        path.mkdir(parents=True, exist_ok=True)
+                    paths.append(path)
+                normalized[namespace] = paths
+        self.mounts = normalized
+        self.databases: dict[str, list[RawRouteDB]] = {}
+        for namespace, paths in self.mounts.items():
+            filename = NAMESPACE_FILES[namespace]
+            self.databases[namespace] = [
+                RawRouteDB(path / filename, namespace, self.quota_bytes,
+                           physical_root=path,
+                           physical_reserve_bytes=self.physical_reserve_bytes)
+                for path in paths
+            ]
 
-    def __getitem__(self, namespace: str) -> RawRouteDB:
+    @classmethod
+    def from_environment(cls, fallback_root: str | Path,
+                         quota_bytes: int | None = None) -> "RawRouteMesh":
+        """Read Koyeb mount paths from NANLM_RAWROUTE_MOUNTS JSON.
+
+        Example: {"BS0":["/bs0db"],"MC0":["/mc0db"],
+                  "SC0":["/sc0db"],"GM0":["/gm0db"]}
+        Values may be lists to support additional per-layer volumes.
+        Without the variable, local development uses four isolated subdirs.
+        """
+        raw = os.environ.get("NANLM_RAWROUTE_MOUNTS", "").strip()
+        if raw:
+            try:
+                mounts = json.loads(raw)
+            except json.JSONDecodeError as exc:
+                raise ValueError("NANLM_RAWROUTE_MOUNTS must be valid JSON") from exc
+            if not isinstance(mounts, dict):
+                raise ValueError("NANLM_RAWROUTE_MOUNTS must be a JSON object")
+        else:
+            root = Path(fallback_root)
+            mounts = {ns: [str(root / ns.lower())] for ns in NAMESPACE_FILES}
+        configured_quota = quota_bytes
+        if configured_quota is None:
+            configured_quota = int(os.environ.get(
+                "NANLM_RAWROUTE_QUOTA_BYTES", str(DEFAULT_QUOTA_BYTES)))
+        reserve = int(os.environ.get(
+            "NANLM_RAWROUTE_PHYSICAL_RESERVE_BYTES", str(256 * 1024 * 1024)))
+        require_mounts = os.environ.get("NANLM_RAWROUTE_REQUIRE_MOUNTS", "0").strip().lower() in ("1", "true", "yes", "on")
+        return cls(quota_bytes=configured_quota, mounts=mounts,
+                   physical_reserve_bytes=reserve, require_mounts=require_mounts)
+
+    def _shards(self, namespace: str) -> list[RawRouteDB]:
         try:
             return self.databases[namespace]
         except KeyError as exc:
             raise ValueError("unknown NaN route namespace") from exc
 
+    @staticmethod
+    def _placement(route_id: str, shards: Sequence[RawRouteDB]) -> RawRouteDB:
+        return max(shards, key=lambda shard: hashlib.sha256(
+            (route_id + "|" + str(shard.path)).encode("utf-8")).digest())
+
+    def commit(self, namespace: str, route: RawRoute | str,
+               base_generation: int, nanclock_tick: int,
+               transport_route: RunnerRoute | str | None = None,
+               runner_identity: str | None = None,
+               idempotency_key: str | None = None) -> dict:
+        if isinstance(route, str):
+            route = RawRoute.parse(route)
+        if not isinstance(route, RawRoute):
+            raise ValueError("route must be a RawRoute or canonical rawroute string")
+        shards = self._shards(namespace)
+        existing = [(shard, shard.resolve(route)) for shard in shards]
+        existing = [(shard, value) for shard, value in existing if value is not None]
+        if len(existing) > 1:
+            raise RouteConflict("duplicate route identity exists across volume shards")
+        if existing:
+            # Delegate generation/idempotency ordering to the shard transaction.
+            # The shard checks an idempotency receipt before rejecting a stale
+            # base generation, so a lost-response retry remains safe.
+            shard, _current = existing[0]
+        else:
+            shard = self._placement(route.definition_id, shards)
+        result = shard.commit(route, base_generation, nanclock_tick,
+                              transport_route, runner_identity, idempotency_key)
+        result["namespace"] = namespace
+        result["shard"] = str(shard.path.parent)
+        return result
+
+    def resolve(self, namespace: str, route: RawRoute | str) -> Optional[dict]:
+        if isinstance(route, str):
+            route = RawRoute.parse(route)
+        found = [db.resolve(route) for db in self._shards(namespace)]
+        found = [item for item in found if item is not None]
+        if len(found) > 1:
+            raise RouteConflict("duplicate route identity exists across volume shards")
+        if not found:
+            return None
+        result = dict(found[0])
+        result["namespace"] = namespace
+        return result
+
+    def reverse_lookup(self, namespace: str, target_kind: str,
+                       target_id: int | str) -> list[str]:
+        values = set()
+        for db in self._shards(namespace):
+            values.update(db.reverse_lookup(target_kind, target_id))
+        return sorted(values)
+
+    def __getitem__(self, namespace: str) -> RawRouteDB:
+        shards = self._shards(namespace)
+        if len(shards) != 1:
+            raise ValueError("namespace has multiple shards; use mesh commit/resolve APIs")
+        return shards[0]
+
     def health(self) -> dict:
-        disk = shutil.disk_usage(self.root)
+        namespaces = {}
+        filesystems = []
+        for namespace, shards in self.databases.items():
+            shard_health = []
+            for index, db in enumerate(shards):
+                item = db.health()
+                item["shard_index"] = index
+                item["mount_path"] = str(db.path.parent)
+                shard_health.append(item)
+                disk = shutil.disk_usage(db.path.parent)
+                filesystems.append({
+                    "namespace": namespace, "shard_index": index,
+                    "mount_path": str(db.path.parent), "total_bytes": disk.total,
+                    "used_bytes": disk.used, "free_bytes": disk.free,
+                })
+            namespaces[namespace] = {
+                "quota_bytes": sum(x["quota_bytes"] for x in shard_health),
+                "logical_used_bytes": sum(x["logical_used_bytes"] for x in shard_health),
+                "logical_free_bytes": sum(x["logical_free_bytes"] for x in shard_health),
+                "route_count": sum(x["route_count"] for x in shard_health),
+                "event_count": sum(x["event_count"] for x in shard_health),
+                "generation": max((x["generation"] for x in shard_health), default=0),
+                "status": "ready" if all(x["status"] == "ready" for x in shard_health) else "degraded",
+                "shards": shard_health,
+            }
         return {
-            "namespaces": {namespace: database.health()
-                           for namespace, database in self.databases.items()},
-            "filesystem": {
-                "total_bytes": disk.total,
-                "used_bytes": disk.used,
-                "free_bytes": disk.free,
-                "logical_quota_total_bytes": self.quota_bytes * len(self.databases),
-                "preallocated": False,
-            },
+            "namespaces": namespaces, "filesystems": filesystems,
+            "logical_quota_total_bytes": sum(x["quota_bytes"] for x in namespaces.values()),
+            "preallocated": False,
         }

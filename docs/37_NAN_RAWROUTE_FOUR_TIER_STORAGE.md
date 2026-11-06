@@ -11,7 +11,32 @@ Use four independently addressable NaN-native namespaces:
 - `SC0:0::sc0db` — supercluster topology and aggregation.
 - `GM0:0::gm0db` — global mesh registry and cross-domain mapping.
 
-Each namespace receives a **10 GB logical quota**. Do not preallocate 40 GB or create four physical volumes unless Koyeb's actual persistent-volume capacity supports it. Use sparse files / quota-enforced database files on the existing persistent mount. Report logical quota, allocated bytes, and physical free bytes separately.
+The initial Koyeb deployment has **four existing 10 GB persistent volumes**, one mounted at each of the user's established paths:
+
+| NaN layer | Existing mount | Initial physical capacity |
+|---|---|---:|
+| BS0:0 | `/bs0db` | 10 GB |
+| MC0:0 | `/mc0db` | 10 GB |
+| SC0:0 | `/sc0db` | 10 GB |
+| GM0:0 | `/gm0db` | 10 GB |
+
+These are four separate volumes, not four directories on one shared disk. The first implementation uses a **9.5 GB logical quota per 10 GB volume**, retaining 500 MB for SQLite WAL/checkpoint growth and filesystem overhead; a 256 MiB physical-free reserve is checked before every commit. No volume is preallocated by the application. Physical free space, logical quota, and actual database bytes are reported independently.
+
+The mount manifest accepts a list of paths per namespace. This supports later volume additions without changing any public NaN address. The current deployment remains exactly the four mounts above; additional mounts are optional expansion, not a prerequisite.
+
+### Capacity expansion target (proposal, not yet attached)
+
+The four current volumes provide 40 GB. A possible ten-volume/100 GB layout keeps BS0 at one volume and grows the higher mapping tiers:
+
+| Tier | Current | Expansion target | Additional volumes |
+|---|---:|---:|---:|
+| BS0 | 10 GB | 10 GB | 0 |
+| MC0 | 10 GB | 20 GB | 1 |
+| SC0 | 10 GB | 30 GB | 2 |
+| GM0 | 10 GB | 40 GB | 3 |
+| **Total** | **40 GB** | **100 GB** | **6** |
+
+The extra six mounts are not assumed to exist. Attach them when provisioned, then add their absolute mount paths to the matching namespace array in `NANLM_RAWROUTE_MOUNTS`. Public route coordinates do not encode volume numbers and remain unchanged.
 
 Koyeb BS0:0 is the always-on bootstrap/network gateway because it has continuous availability and inbound/outbound networking. It is not the owner of all live computation. MC0:0 is runner-controlled and initially exposes six logical execution units.
 
@@ -106,7 +131,7 @@ Higher layers should reference lower-layer records by stable IDs and digests rat
 
 ## 4. Initial logical quota plans
 
-These are planning ceilings inside each 10 GB namespace, not preallocated files. Adjust after measuring real record sizes and access patterns.
+These are planning targets within the 9.5 GB logical quota on each currently mounted 10 GB volume; they are not preallocated files. The tables reserve at least 500 MB of each physical volume for WAL/checkpoint growth and filesystem overhead. Adjust after measuring real record sizes and access patterns.
 
 | BS0DB allocation | Logical budget |
 |---|---:|
@@ -116,7 +141,7 @@ These are planning ceilings inside each 10 GB namespace, not preallocated files.
 | Merge receipts, nanclock and provenance | 1.5 GB |
 | Training-intake routing metadata | 1.0 GB |
 | Indexes and operational metadata | 1.0 GB |
-| Growth reserve | 1.0 GB |
+| Growth reserve | 0.5 GB |
 
 | MC0DB allocation | Logical budget |
 |---|---:|
@@ -126,7 +151,7 @@ These are planning ceilings inside each 10 GB namespace, not preallocated files.
 | Execution / scheduling history | 1.5 GB |
 | Local route snapshots and recovery | 1.5 GB |
 | Reverse indexes and lookup metadata | 1.5 GB |
-| Growth reserve | 1.0 GB |
+| Growth reserve | 0.5 GB |
 
 | SC0DB allocation | Logical budget |
 |---|---:|
@@ -135,7 +160,7 @@ These are planning ceilings inside each 10 GB namespace, not preallocated files.
 | Aggregated route snapshots | 2.0 GB |
 | Vector / hyperedge association metadata | 1.5 GB |
 | Transform definitions and versions | 1.0 GB |
-| Provenance, indexes and reserve | 1.5 GB |
+| Provenance, indexes and reserve | 1.0 GB |
 
 | GM0DB allocation | Logical budget |
 |---|---:|
@@ -144,7 +169,7 @@ These are planning ceilings inside each 10 GB namespace, not preallocated files.
 | Global discovery and reverse indexes | 2.0 GB |
 | Mathematical transform registry | 1.5 GB |
 | Global topology snapshots / checkpoints | 1.0 GB |
-| Provenance and growth reserve | 1.5 GB |
+| Provenance and growth reserve | 1.0 GB |
 
 The initial software milestone is to create the schemas, quotas, indexes, migration/version metadata and health reporting. Empty future-layer databases are valid; they must report uninitialized/empty rather than pretend a supercluster or global mesh is populated.
 
@@ -184,16 +209,18 @@ Redis is **not required for the first deployment**. Add Redis only when there ar
 ## 7. Koyeb deployment constraints
 
 - BS0:0 is the 24/7 externally reachable bootstrap endpoint.
-- All four namespaces can initially live as separate database files under the same persistent mount, subject to actual volume capacity.
-- Enforce independent per-namespace logical quotas and expose allocated/available counters.
-- Do not claim 10 GB physical allocation per layer unless the volume has at least 40 GB usable capacity.
+- The initial Koyeb topology is four independent 10 GB volumes: `/bs0db`, `/mc0db`, `/sc0db`, `/gm0db`.
+- `NANLM_RAWROUTE_MOUNTS` maps each logical tier to one or more absolute mount paths; the checked-in example is `config/rawroute.mounts.koyeb.example.json`; copy the non-secret environment values from `config/rawroute.koyeb.env.example` into the Koyeb service settings.
+- Set `NANLM_RAWROUTE_REQUIRE_MOUNTS=1` in production. Startup then refuses to create missing mount directories and requires every configured path to be an active mount, preventing silent writes to ephemeral container storage.
+- Each 10 GB mount defaults to a 9.5 GB logical quota plus a 256 MiB physical-free reserve. Additional volumes increase only the tier to which they are attached.
+- Report each physical mount separately; never aggregate free-space figures across unrelated volumes.
 - Use transactional writes, checksums, atomic checkpoint replacement and startup recovery.
 - Keep secrets in Koyeb secret configuration, never in route records or committed files.
 - Expose health fields for each DB: schema version, logical quota, allocated bytes, record count, generation, digest, last checkpoint and read/write status.
 
 ## 8. Persistent registry implementation
 
-The first storage implementation is in `nanlm_nannet/rawroute_store.py`. It creates four independent SQLite-backed files (`bs0db.sqlite3`, `mc0db.sqlite3`, `sc0db.sqlite3`, `gm0db.sqlite3`) with a 10 GiB logical quota each by default. It stores canonical route definitions, current transport instances, append-only commit events, reverse head/object indexes, generation checks, nanclock monotonicity, idempotency receipts and per-namespace health/digests. The files are created sparsely; startup does not preallocate 40 GiB. Logical quota accounting includes both current route records and append-only event records. The N16B/1 transport route is an explicit association and is never inferred from the HW node or target head.
+The first storage implementation is in `nanlm_nannet/rawroute_store.py`. It creates four independent SQLite-backed files (`bs0db.sqlite3`, `mc0db.sqlite3`, `sc0db.sqlite3`, `gm0db.sqlite3`) with a 9.5 GB (9,500,000,000-byte) logical quota per mount by default. It stores canonical route definitions, current transport instances, append-only commit events, reverse head/object indexes, generation checks, nanclock monotonicity, idempotency receipts and per-namespace health/digests. The files are created sparsely; startup does not preallocate 40 GiB. Logical quota accounting includes both current route records and append-only event records. The N16B/1 transport route is an explicit association and is never inferred from the HW node or target head.
 
 ## 9. Implementation sequence
 

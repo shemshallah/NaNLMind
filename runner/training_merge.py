@@ -32,6 +32,8 @@ from nanlmind_nannet.nan16de import decode_envelope
 from nanlmind_nannet.crypto_compat import Ed25519PublicKey
 from nanlmind_nannet.bridge import (BridgeFrame, BridgeMailbox, PointZeroTranslator, RunnerRoute,
                                     MEDIA_TYPE as N16B_MEDIA_TYPE, route_for_identity)
+from nanlmind_nannet.rawroute import RawRoute
+from nanlmind_nannet.rawroute_store import RawRouteMesh, RouteConflict, RouteQuotaExceeded
 
 
 N16T_MEDIA_TYPE = "application/vnd.nan16.n16t"
@@ -231,6 +233,7 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
     devices = DeviceRegistry(authority.database, authority=authority) if authority else None
     bridge = BridgeMailbox(root / "nannet-bridge.sqlite")
     point_zero = PointZeroTranslator()
+    rawroute_mesh = RawRouteMesh.from_environment(root / "rawroute")
 
     def point_zero_identity_descriptor(route: RunnerRoute) -> dict[str, Any]:
         descriptor = point_zero.descriptor()
@@ -260,6 +263,37 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
 
         def do_GET(self) -> None:
             path = self.path.split('?', 1)[0].rstrip('/') or '/'
+            if path in ('/v1/rawroute/health', '/v1/rawroute/resolve', '/v1/rawroute/reverse'):
+                if not self._auth():
+                    self._json(HTTPStatus.UNAUTHORIZED, {'error': 'unauthorized'}); return
+                try:
+                    if path.endswith('/health'):
+                        self._json(HTTPStatus.OK, rawroute_mesh.health()); return
+                    from urllib.parse import parse_qs
+                    query = parse_qs(self.path.split('?', 1)[1] if '?' in self.path else '')
+                    namespace = query.get('namespace', [''])[0]
+                    route = query.get('route', [''])[0]
+                    if not namespace:
+                        raise ValueError('namespace query parameter is required')
+                    if path.endswith('/reverse'):
+                        target_kind = query.get('target_kind', [''])[0]
+                        target_id = query.get('target_id', [''])[0]
+                        if not target_kind or not target_id:
+                            raise ValueError('namespace, target_kind and target_id are required')
+                        routes = rawroute_mesh.reverse_lookup(namespace, target_kind, target_id)
+                        self._json(HTTPStatus.OK, {'namespace': namespace,
+                                                   'target_kind': target_kind,
+                                                   'target_id': target_id,
+                                                   'routes': routes}); return
+                    if not route:
+                        raise ValueError('route query parameter is required')
+                    resolved = rawroute_mesh.resolve(namespace, route)
+                    self._json(HTTPStatus.OK, {'found': resolved is not None,
+                                               'route': resolved}); return
+                except RouteConflict as exc:
+                    self._json(HTTPStatus.CONFLICT, {'error': str(exc)[:160]}); return
+                except (ValueError, KeyError, TypeError) as exc:
+                    self._json(HTTPStatus.BAD_REQUEST, {'error': str(exc)[:160]}); return
             if path == '/v1/nannet/bridge/poll':
                 if authority is None:
                     self._json(HTTPStatus.SERVICE_UNAVAILABLE, {'error': 'nannet authority disabled'}); return
@@ -308,6 +342,7 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                 health["nannet_authority"] = "ready" if authority else "disabled"
                 health["nannet_bridge"] = bridge.stats()
                 health["nannet_point_zero"] = point_zero.descriptor()
+                health["rawroute_mesh"] = rawroute_mesh.health()
                 if authority:
                     import sqlite3
                     with sqlite3.connect(authority.database) as db:
@@ -332,6 +367,34 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
             return header[7:] if header.startswith('Bearer ') else ''
         def do_POST(self) -> None:
             path = self.path.split('?', 1)[0].rstrip('/') or '/'
+            if path == '/v1/rawroute/commit':
+                if not self._auth():
+                    self._json(HTTPStatus.UNAUTHORIZED, {'error': 'unauthorized'}); return
+                try:
+                    payload = self._body()
+                    namespace = payload.get('namespace')
+                    route = payload.get('route')
+                    idempotency_key = payload.get('idempotency_key')
+                    if not isinstance(namespace, str) or not isinstance(route, str):
+                        raise ValueError('namespace and canonical route are required')
+                    if not isinstance(idempotency_key, str) or not idempotency_key:
+                        raise ValueError('idempotency_key is required')
+                    result = rawroute_mesh.commit(
+                        namespace=namespace,
+                        route=RawRoute.parse(route),
+                        base_generation=payload.get('base_generation'),
+                        nanclock_tick=payload.get('nanclock_tick'),
+                        transport_route=payload.get('transport_route'),
+                        runner_identity=payload.get('runner_identity'),
+                        idempotency_key=idempotency_key,
+                    )
+                    self._json(HTTPStatus.ACCEPTED, result); return
+                except RouteConflict as exc:
+                    self._json(HTTPStatus.CONFLICT, {'error': str(exc)[:160]}); return
+                except RouteQuotaExceeded as exc:
+                    self._json(HTTPStatus.INSUFFICIENT_STORAGE, {'error': str(exc)[:160]}); return
+                except (ValueError, KeyError, TypeError) as exc:
+                    self._json(HTTPStatus.BAD_REQUEST, {'error': str(exc)[:160]}); return
             if path == '/v1/nannet/bridge':
                 if authority is None:
                     self._json(HTTPStatus.SERVICE_UNAVAILABLE, {'error': 'nannet authority disabled'}); return
