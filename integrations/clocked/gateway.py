@@ -186,20 +186,18 @@ class Gateway:
     def authenticate(self, environ, start_response):
         auth = environ.get("HTTP_AUTHORIZATION", "")
         if not auth.startswith("Bearer ") or len(auth) > 512:
-            json_response(start_response, "401 Unauthorized", {"error": "unauthorized"})
-            return None
+            return json_response(start_response, "401 Unauthorized", {"error": "unauthorized"})
         identity, error = self.reserve_request(auth[7:])
         if error:
             status = "429 Too Many Requests" if error == "quota_exceeded" else (
                 "503 Service Unavailable" if error == "gateway_misconfigured" else "401 Unauthorized")
-            json_response(start_response, status, {"error": error})
-            return None
+            return json_response(start_response, status, {"error": error})
         return identity
 
     def run_experience(self, environ, start_response):
         identity = self.authenticate(environ, start_response)
-        if identity is None:
-            return [b'{"error":"unauthorized"}']
+        if not isinstance(identity, dict):
+            return identity
         if identity["endpoint_id"] != "clocked_demo":
             return json_response(start_response, "403 Forbidden", {"error": "endpoint_scope_mismatch"})
         try:
