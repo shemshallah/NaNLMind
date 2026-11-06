@@ -46,6 +46,8 @@ bootstrap-255.
 - GET /healthz
 - POST /admin/tokens (NANLM_ADMIN_TOKEN)
 - GET /v1/routes (endpoint bearer)
+- GET /admin/keeper/status (admin-only; keeper health/action)
+- GET /admin/models/status (admin-only; read-only Qwen metadata)
 - POST /v1/observations (endpoint bearer; metadata-only, unverified evidence)
 - POST /v1/training/merge (NANLM_BOOTSTRAP_TOKEN only; canonical runner deltas)
 - POST /n16t (endpoint bearer with n16t scope; opaque binary relay)
