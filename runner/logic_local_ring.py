@@ -96,6 +96,12 @@ def main(argv: list[str] | None = None) -> int:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(encoded)
     sys.stdout.write(encoded)
+    if not summary["ok"]:
+        for item in results:
+            if not item["ok"]:
+                detail = item.get("stderr") or "worker exited without a recorded error"
+                print(f"logic ring slot {item['slot']} failed (exit {item['returncode']}): {detail}",
+                      file=sys.stderr)
     return 0 if summary["ok"] else 1
 
 
