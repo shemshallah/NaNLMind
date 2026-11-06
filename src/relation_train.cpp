@@ -303,6 +303,14 @@ int relation_train_cli(int argc, char** argv) {
         std::cerr << "no new relation events; duplicates=0\n";
         return 8;
     }
+    const auto* root_page = topology->pages().entry(PageId::root());
+    if (!root_page || !root_page->page) {
+        std::cerr << "root universe missing before relation commit\\n";
+        return 7;
+    }
+    // Direct mirror-pair cell writes must refresh the owning Universe's
+    // descriptor checksums before the serialized topology can be reloaded.
+    root_page->page->refresh_checksums();
     topology->commit(0x48u,0x41u,0,before,topology->global_digest(),
                      static_cast<std::uint64_t>(topology->ledger().size()+1u));
     const auto bytes=topology->serialize();
