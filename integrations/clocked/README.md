@@ -9,6 +9,7 @@ All clients use the same versioned HTTP/JSON contract:
 - `GET /healthz` reports the protocol and version.
 - `POST /v1/experience` accepts `{"protocol":"nanlm.clocked-experience","text":"..."}`.
 - The response contains a content-minimized `nanlm.clocked-experience` event and a remaining request quota.
+- The normative event shape is `protocol.schema.json`.
 
 The gateway is a host-side service. Android, Termux, ARM, x86, and other runners do not need the Clocked SDK or any Clocked credential. Each platform only needs an HTTP client and a small adapter from the common event envelope to its local NaNLMind/NaN16 intake. Hardware capability negotiation belongs to the runner; it must not change event meaning.
 
@@ -51,7 +52,15 @@ curl --fail-with-body https://YOUR_GATEWAY/admin/tokens \
   -d '{"tenant_id":"hackathon-demo","max_requests":25,"ttl_seconds":21600}'
 ```
 
-The response's `token` is the participant's `CLOCKED_USER_API`. Give each participant their own token, not the admin token. Client requests use:
+The response's `token` is the participant's `CLOCKED_USER_API`. Give each participant their own token, not the admin token. A Termux/desktop participant can use the standard-library client:
+
+```sh
+export CLOCKED_INTAKE_URL="https://YOUR_GATEWAY/v1/experience"
+export CLOCKED_USER_API="(participant token)"
+python integrations/clocked/client.py input.txt
+```
+
+Native Android and NaN16 runners implement the same HTTP contract without needing Python. A raw HTTP example is:
 
 ```sh
 curl --fail-with-body https://YOUR_GATEWAY/v1/experience \
@@ -79,7 +88,7 @@ Each JSONL event is a credential-free, content-minimized external observation:
 - schema/version and deterministic event id
 - input and response digests
 - endpoint status/timing summaries
-- bounded task label and verdict flags, when present
+- allowlisted task labels and verdict flags, never arbitrary extracted values
 - credit/cost metadata when supplied by the SDK
 - tenant attribution at the gateway boundary
 - explicit `learning_state: awaiting_nanlmind_ingest`
@@ -92,4 +101,4 @@ The Clocked SDK sends an idempotency key and reuses it for retries. The direct a
 
 ## Current integration boundary
 
-This adds the server-side gateway, participant-token issuance, quota enforcement, an architecture-neutral protocol envelope, and offline tests. Native ingestion into the C++ 256-head/Overbootstrap state, durable ledger commits, Android controls, and held-out learning benchmarks remain subsequent integration steps. No claim of end-to-end training is made by this adapter.
+This adds the server-side gateway, participant-token issuance, quota enforcement, an architecture-neutral protocol envelope, a standard-library participant client, a normative JSON schema, and offline tests. Native ingestion into the C++ 256-head/Overbootstrap state, durable ledger commits, Android controls, and held-out learning benchmarks remain subsequent integration steps. No claim of end-to-end training is made by this adapter.
