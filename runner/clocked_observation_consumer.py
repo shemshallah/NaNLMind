@@ -59,7 +59,7 @@ class EvidenceLedger:
         ids = []
         with self.db:
             for row in rows:
-                endpoint = row.get("endpoint_id")
+                endpoint = row.get("source_endpoint", row.get("endpoint_id"))
                 if not isinstance(endpoint, str) or not endpoint:
                     raise ValueError("missing_endpoint_provenance")
                 event = validate_event(row.get("observation"))
