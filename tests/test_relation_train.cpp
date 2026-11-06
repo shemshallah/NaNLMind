@@ -43,8 +43,15 @@ int main() {
         CHECK(restored->temporal().size() >= 15u);
         CHECK(restored->ledger().verify());
     }
-    // Exact replay is idempotent: no duplicate relation hyperedges or head updates.
-    CHECK_EQ(relation_train_cli(4, argv), 8);
+    // Exact replay is idempotent and returns a machine-readable no-op receipt.
+    const Hash256 learned_digest = restored ? restored->global_digest() : Hash256{};
+    CHECK_EQ(relation_train_cli(4, argv), 0);
+    std::ifstream replay_in(state, std::ios::binary);
+    std::vector<std::uint8_t> replay_bytes((std::istreambuf_iterator<char>(replay_in)),
+                                           std::istreambuf_iterator<char>());
+    auto replayed = GlobalTopology::from_bytes(replay_bytes.data(), replay_bytes.size());
+    CHECK(replayed != nullptr);
+    if (replayed) CHECK(replayed->global_digest() == learned_digest);
     std::filesystem::remove_all(root);
     return test_done("resolution-aware native relation learning");
 }
