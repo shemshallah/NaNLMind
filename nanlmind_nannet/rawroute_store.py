@@ -450,9 +450,14 @@ class RawRouteMesh:
                          quota_bytes: int | None = None) -> "RawRouteMesh":
         """Read Koyeb mount paths from NANLM_RAWROUTE_MOUNTS JSON.
 
-        Example: {"BS0":["/bs0db"],"MC0":["/mc0db"],
-                  "SC0":["/sc0db"],"GM0":["/gm0db"]}
-        Values may be lists to support additional per-layer volumes.
+        Example:
+          {"BS0":["/0x7FF14E1100E8F17F"],
+           "MC0":["/0x7FF14E1200D7F17F"],
+           "SC0":["/0x7FF14E1300C2F17F"],
+           "GM0":["/0x7FF14E1400A9F17F"]}
+        Values may be lists to support additional per-layer volumes. Canonical
+        /0x paths are validated against tier, shard, NaN heads and CRC. Legacy
+        aliases remain accepted until NANLM_RAWROUTE_REQUIRE_NAN_PATHS=1.
         Without the variable, local development uses four isolated subdirs.
         """
         raw = os.environ.get("NANLM_RAWROUTE_MOUNTS", "").strip()
