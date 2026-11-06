@@ -45,11 +45,12 @@ def connect():
  db.executescript("""
  CREATE TABLE IF NOT EXISTS tokens(token_hash TEXT PRIMARY KEY,endpoint_id TEXT NOT NULL,scopes_json TEXT NOT NULL,expires_at INTEGER NOT NULL,max_requests INTEGER NOT NULL,used_requests INTEGER NOT NULL DEFAULT 0,revoked INTEGER NOT NULL DEFAULT 0,created_at INTEGER NOT NULL);
  CREATE TABLE IF NOT EXISTS observations(event_id TEXT PRIMARY KEY,endpoint_id TEXT NOT NULL,received_at INTEGER NOT NULL,payload_json TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'pending');
- CREATE TABLE IF NOT EXISTS datasets(dataset_id TEXT PRIMARY KEY,endpoint_id TEXT NOT NULL,created_at INTEGER NOT NULL,expected_chunks INTEGER NOT NULL,total_bytes INTEGER NOT NULL DEFAULT 0,dataset_sha256 TEXT,status TEXT NOT NULL DEFAULT 'uploading',validation_json TEXT,last_error TEXT,metadata_json TEXT NOT NULL DEFAULT '{}');
+ CREATE TABLE IF NOT EXISTS datasets(dataset_id TEXT PRIMARY KEY,endpoint_id TEXT NOT NULL,created_at INTEGER NOT NULL,expected_chunks INTEGER NOT NULL,total_bytes INTEGER NOT NULL DEFAULT 0,dataset_sha256 TEXT,status TEXT NOT NULL DEFAULT 'uploading',validation_json TEXT,last_error TEXT,metadata_json TEXT NOT NULL DEFAULT '{}',committed_generation INTEGER NOT NULL DEFAULT 0);
  CREATE TABLE IF NOT EXISTS chunks(dataset_id TEXT NOT NULL,chunk_index INTEGER NOT NULL,sha256 TEXT NOT NULL,size_bytes INTEGER NOT NULL,blob_path TEXT NOT NULL,status TEXT NOT NULL,PRIMARY KEY(dataset_id,chunk_index));
  """)
  columns={r[1] for r in db.execute("PRAGMA table_info(datasets)").fetchall()}
  if "metadata_json" not in columns:db.execute("ALTER TABLE datasets ADD COLUMN metadata_json TEXT NOT NULL DEFAULT '{}'")
+ if "committed_generation" not in columns:db.execute("ALTER TABLE datasets ADD COLUMN committed_generation INTEGER NOT NULL DEFAULT 0")
  db.commit(); return db
 
 def token_hash(token):
@@ -178,6 +179,35 @@ class Handler(BaseHTTPRequestHandler):
   return self.reply(404,{"error":"not_found"})
  def do_POST(self):
   p=urlparse(self.path).path
+  commit_match=re.fullmatch(r"/internal/datasets/([A-Za-z0-9._-]{1,96})/commit",p)
+  if commit_match:
+   if self.need("runner") is None:return
+   try:
+    data=self.json_body();generation=data.get("generation");digest=data.get("dataset_sha256")
+    if isinstance(generation,bool) or not isinstance(generation,int) or generation<1 or not isinstance(digest,str) or not HEX.fullmatch(digest):raise ValueError("generation_and_dataset_sha256_required")
+   except (ValueError,TypeError) as e:return self.reply(400,{"error":str(e)[:80]})
+   dsid=commit_match.group(1);db=connect();paths=[]
+   try:
+    db.execute("BEGIN IMMEDIATE")
+    ds=db.execute("SELECT status,dataset_sha256,committed_generation FROM datasets WHERE dataset_id=?",(dsid,)).fetchone()
+    if not ds:db.rollback();return self.reply(404,{"error":"dataset_not_found"})
+    if ds["status"]=="committed":
+     db.rollback()
+     if ds["dataset_sha256"]==digest and ds["committed_generation"]==generation:return self.reply(200,{"dataset_id":dsid,"state":"committed","generation":generation,"duplicate_noop":True,"staging_bytes_released":True})
+     return self.reply(409,{"error":"dataset_already_committed_with_different_receipt"})
+    if ds["status"]!="validated":db.rollback();return self.reply(409,{"error":"dataset_not_validated"})
+    if not secrets.compare_digest(ds["dataset_sha256"] or "",digest):db.rollback();return self.reply(422,{"error":"dataset_digest_receipt_mismatch"})
+    paths=db.execute("SELECT blob_path FROM chunks WHERE dataset_id=?",(dsid,)).fetchall()
+    report=json.loads(db.execute("SELECT validation_json FROM datasets WHERE dataset_id=?",(dsid,)).fetchone()[0] or "{}")
+    report["canonical_ingest"]={"generation":generation,"dataset_sha256":digest,"committed_at":now(),"consumer":"nanlm-runner-ring"}
+    db.execute("UPDATE datasets SET status='committed',committed_generation=?,validation_json=? WHERE dataset_id=?",(generation,jbytes(report).decode(),dsid))
+    db.execute("DELETE FROM chunks WHERE dataset_id=?",(dsid,));db.commit()
+   finally:db.close()
+   removed=0
+   for row in paths:
+    try:Path(row["blob_path"]).unlink(missing_ok=True);removed+=1
+    except OSError:pass
+   return self.reply(200,{"dataset_id":dsid,"state":"committed","generation":generation,"staging_chunks_removed":removed,"staging_bytes_released":True})
   if p=="/v1/training/merge":
    if self.need("canonical") is None:return
    store=get_merge_store()
