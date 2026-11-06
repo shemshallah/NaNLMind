@@ -337,9 +337,13 @@ into the Minsky format. After 100 million chart Minsky steps it has not complete
 a full description pass; the run is reproducible with `make self-sim-probe`.
 This is a partial self-run, not a completed self-simulation.
 
+The 508-state binary machine also runs through a compact direct table runtime
+(`BinaryUniversalMachine`) that skips the 22 KB Minsky scan and preserves 20
+Minsky source steps exactly.
+
 ### TM-to-binary compiler
 
-The 23-state/8-symbol Minsky table now compiles to a 505-state binary TM with
+The 23-state/8-symbol Minsky table now compiles to a 508-state binary TM with
 3-bit symbol blocks. The binary machine reproduces 20 source steps exactly.
 This provides the binary bridge needed for self-simulation; encoding and running
 the full binary machine through the Minsky input format remains open.

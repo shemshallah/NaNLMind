@@ -11,7 +11,7 @@ For the Minsky 23-state / 8-symbol table:
 source states:       23
 source symbols:      8
 binary block width:  3 bits
-binary states:       505
+binary states:       508
 binary transitions:  1014
 ```
 
@@ -43,13 +43,13 @@ Files:
 
 This is a concrete binary implementation of the Minsky universal machine. It is
 not just a host-side interpreter: the compiled object is a deterministic binary
-TM transition table with 505 states.
+TM transition table with 508 states.
 
 It provides the missing bridge for self-simulation:
 
 ```text
 Minsky 23x8 table
-  -> binary TM (505 states)
+  -> binary TM (508 states)
   -> encode binary TM with p=9 state bits
   -> Minsky universal input format
 ```

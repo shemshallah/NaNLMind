@@ -99,8 +99,10 @@ Counters are limb lists in chart cells; program/state/IP/HALT are fixed cells.
   Minsky table is also loaded as an encoded universal description and runs a
   normally encoded binary machine.
 - Self-simulation of the 23x8 table and a general TM-to-binary compiler remain.
-- A 23x8 -> 505-state binary TM compiler now preserves 20 source steps; full
+- A 23x8 -> 508-state binary TM compiler now preserves 20 source steps; full
   Minsky-input self-simulation remains open.
+- A compact direct binary runtime also preserves 20 source steps without the
+  22 KB Minsky scan.
 
 ### U10 — optional UTM program in ROM
 
