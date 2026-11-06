@@ -536,8 +536,18 @@ int cmd_math_train(int argc, char** argv) {
     std::ofstream trace(trace_path, std::ios::binary | std::ios::trunc);
     if (!trace) { std::cerr << "cannot write trace " << trace_path << "\n"; return 3; }
 
-    GlobalTopology topology(0x4845524D45530001ull);
-    HeadArray heads = topology.root_heads();
+    std::unique_ptr<GlobalTopology> topology;
+    if (std::filesystem::exists(state_path)) {
+        std::ifstream prior(state_path, std::ios::binary);
+        std::vector<std::uint8_t> prior_bytes((std::istreambuf_iterator<char>(prior)),
+                                              std::istreambuf_iterator<char>());
+        topology = GlobalTopology::from_bytes(prior_bytes.data(), prior_bytes.size());
+        if (!topology) { std::cerr << "existing universe state is invalid: " << state_path << "\n"; return 6; }
+        std::cout << "resumed_state_bytes=" << prior_bytes.size() << "\n";
+    } else {
+        topology = std::make_unique<GlobalTopology>(0x4845524D45530001ull);
+    }
+    HeadArray heads = topology->root_heads();
     std::uint64_t total_train = 0;
     std::uint64_t total_test = 0;
     std::uint64_t total_correct = 0;
@@ -576,7 +586,7 @@ int cmd_math_train(int argc, char** argv) {
             if (prediction == target) ++correct;
         }
         const Hash256 after = Sha256::hash(&head.cell(), sizeof(NanCell));
-        topology.commit(static_cast<std::uint8_t>(index), 0x31u, head.address().value,
+        topology->commit(static_cast<std::uint8_t>(index), 0x31u, head.address().value,
                         before, after, static_cast<std::uint64_t>(epochs));
 
         total_train += train_count * static_cast<std::uint64_t>(epochs);
@@ -614,7 +624,7 @@ int cmd_math_train(int argc, char** argv) {
     trace.flush();
     if (!trace) { std::cerr << "failed writing discovery trace\n"; return 4; }
 
-    const auto state = topology.serialize();
+    const auto state = topology->serialize();
     std::ofstream output(state_path, std::ios::binary | std::ios::trunc);
     if (!output) { std::cerr << "cannot write universe state " << state_path << "\n"; return 5; }
     output.write(reinterpret_cast<const char*>(state.data()), static_cast<std::streamsize>(state.size()));
@@ -627,7 +637,7 @@ int cmd_math_train(int argc, char** argv) {
               << " heldout_accuracy=" << (total_test ? static_cast<double>(total_correct) / total_test : 0.0)
               << " discoveries=256"
               << " state_bytes=" << state.size()
-              << " state_digest=" << hex(topology.global_digest())
+              << " state_digest=" << hex(topology->global_digest())
               << " state_path=" << state_path
               << " trace_path=" << trace_path << "\n";
     return 0;
