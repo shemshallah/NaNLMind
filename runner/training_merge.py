@@ -16,6 +16,8 @@ import hashlib
 import hmac
 import json
 import os
+import struct
+import zlib
 import threading
 import time
 from http import HTTPStatus
@@ -26,6 +28,35 @@ from typing import Any
 from nanlmind_nannet.auth import AuthError, _unb64, issue_token
 from nanlmind_nannet.pairing import PairingAuthority
 from nanlmind_nannet.devices import DeviceRegistry
+
+
+N16T_MEDIA_TYPE = "application/vnd.nan16.n16t"
+N16T_MAX_PAYLOAD = 65_536
+
+
+def _n16t_decode(frame: bytes) -> tuple[int, bytes, bytes, int]:
+    """Validate the bounded N16T v1 envelope. Payload semantics stay in NaN16."""
+    if len(frame) < 36 or len(frame) > 36 + N16T_MAX_PAYLOAD:
+        raise ValueError("N16T frame size rejected")
+    magic, version, kind, session, sequence, length = struct.unpack_from("<4sHH16sII", frame)
+    if magic != b"N16T" or version != 1:
+        raise ValueError("N16T magic/version rejected")
+    if length > N16T_MAX_PAYLOAD or len(frame) != 36 + length:
+        raise ValueError("N16T payload length rejected")
+    expected = struct.unpack_from("<I", frame, 32 + length)[0]
+    if zlib.crc32(frame[:32 + length]) & 0xFFFFFFFF != expected:
+        raise ValueError("N16T CRC rejected")
+    if not any(session):
+        raise ValueError("N16T session id must be nonzero")
+    return kind, session, frame[32:32 + length], sequence
+
+
+def _n16t_encode(kind: int, session: bytes, sequence: int, payload: bytes) -> bytes:
+    if len(session) != 16 or len(payload) > N16T_MAX_PAYLOAD:
+        raise ValueError("N16T response fields rejected")
+    header = struct.pack("<4sHH16sII", b"N16T", 1, kind, session, sequence, len(payload))
+    body = header + payload
+    return body + struct.pack("<I", zlib.crc32(body) & 0xFFFFFFFF)
 
 
 def canonical(value: Any) -> bytes:
@@ -216,6 +247,22 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
             return hmac.compare_digest(header[7:], store.token)
 
         def do_GET(self) -> None:
+            if self.path in ("/", "/portal"):
+                page = ("<!doctype html><meta charset=utf-8><title>NaNNet N16T Portal</title>"
+                        "<main style='font:16px system-ui;max-width:48rem;margin:3rem auto'>"
+                        "<h1>NaNNet N16T Portal</h1><p>Service is online.</p>"
+                        "<p>Binary protocol: <code>POST /n16t</code> or compatibility alias "
+                        "<code>POST /portal</code> with Content-Type "
+                        "<code>application/vnd.nan16.n16t</code>.</p>"
+                        "<p>Training merge API: <code>POST /v1/training/merge</code>. "
+                        "Health: <a href='/healthz'>/healthz</a>.</p></main>").encode()
+                self.send_response(HTTPStatus.OK)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(page)))
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                self.wfile.write(page)
+                return
             if self.path == "/healthz":
                 health = store.health()
                 health["nannet_authority"] = "ready" if authority else "disabled"
@@ -242,6 +289,25 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
             header = self.headers.get('Authorization', '')
             return header[7:] if header.startswith('Bearer ') else ''
         def do_POST(self) -> None:
+            if self.path in ("/portal", "/n16t"):
+                try:
+                    raw = self.rfile.read(int(self.headers.get("Content-Length", "0")))
+                    kind, session, payload, sequence = _n16t_decode(raw)
+                    if kind != 1 or len(payload) != 2 or sequence != 1:
+                        self._json(HTTPStatus.BAD_REQUEST, {"error": "initial N16T message must be HELLO(type=1, seq=1, payload=2)"})
+                        return
+                    # CAPABILITIES(type=2) advertises only the runner portal point.
+                    # Corpus streaming/merge remains on the separately authenticated JSON API.
+                    response = _n16t_encode(2, session, 1, struct.pack("<H6B", 1, 0, 0, 0, 0, 0, 0))
+                    self.send_response(HTTPStatus.OK)
+                    self.send_header("Content-Type", N16T_MEDIA_TYPE)
+                    self.send_header("Content-Length", str(len(response)))
+                    self.send_header("Cache-Control", "no-store")
+                    self.end_headers()
+                    self.wfile.write(response)
+                except (ValueError, TypeError, struct.error) as exc:
+                    self._json(HTTPStatus.BAD_REQUEST, {"error": str(exc)[:160]})
+                return
             if self.path in ('/v1/bootstrap/heartbeat', '/v1/admin/identities/revoke', '/v1/bootstrap/oidc') and authority is None:
                 self._json(HTTPStatus.SERVICE_UNAVAILABLE, {'error': 'nannet authority disabled'}); return
             if self.path == '/v1/bootstrap/heartbeat':
