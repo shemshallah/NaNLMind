@@ -73,7 +73,8 @@ class GatewayTests(unittest.TestCase):
             {"tenant_id": "test-tenant", "endpoint_id": endpoint_id, "max_requests": max_requests, "ttl_seconds": 600},
             "admin-test-token")
         self.assertEqual(status, "201 Created")
-        self.assertEqual(result["token_type"], "CLOCKED_USER_API")
+        expected_type = {"clocked_demo": "CLOCKED_USER_API", "my_android": "NANLM_DEVICE_TOKEN", "hermes_demo": "HERMES_DEMO_API"}[endpoint_id]
+        self.assertEqual(result["token_type"], expected_type)
         self.assertEqual(result["source_endpoint"], endpoint_id)
         return result["token"]
 
