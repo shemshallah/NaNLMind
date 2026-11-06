@@ -76,6 +76,31 @@ Corpus upload uses browser SHA-256, sends bounded chunks, and seals the manifest
 - POST /internal/observations/ack (runner acknowledges after native fold)
 - DELETE /admin/datasets/{id} (admin deletes only non-validated data)
 
+## Training fold and recovery semantics
+
+The runner consumer is wired into the six-runner ring after a successful
+head epoch and is also available as a scheduled/manual workflow. It streams
+validated chunks, checks each chunk hash and the complete dataset digest,
+validates UTF-8, and computes a deterministic 16-dimensional byte-trigram
+feature vector for each of the 256 local heads at bootstrap node point 1.
+Those vectors are folded through the existing idempotent `MergeStore` into
+the durable `NANLM_MERGE_ROOT/training_merge.json` state. This is the first
+NANNET-to-canonical-head-bank training bridge; it is a compact byte-feature
+fold, not a claim that the C++ Context2 language-model snapshot is already
+persisted or updated by this path.
+
+Before folding, the runner checks for a prior idempotency receipt. If a job
+crashes after the merge but before the dataset acknowledgement, the retry
+recovers the same generation from that receipt instead of applying the
+dataset twice. The dataset staging files are deleted only after the merge
+receipt is durable and the runner posts the exact dataset digest and generation
+to the commit endpoint. Keep `NANLM_MERGE_ROOT` on persistent storage.
+
+Required GitHub repository configuration for the runner workflows:
+- Variable `NANNET_URL`: public HTTPS NANNET origin.
+- Secret `NANLM_RUNNER_TOKEN`: validated dataset retrieval + acknowledgement.
+- Secret `NANLM_BOOTSTRAP_TOKEN`: canonical state, receipt, and merge access.
+
 The validator must independently check encoding, UTF-8, record boundaries,
 duplicates, provenance/licensing, contamination, safety, and held-out quality.
 An endpoint's own assertion is never proof. A successful upload means
