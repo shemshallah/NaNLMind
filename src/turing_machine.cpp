@@ -119,6 +119,21 @@ void TuringMachine::set_tape(const std::string& tape, std::int64_t head) {
     universe_->set_address_meta(kControlBase + kHaltSlot, 0);
 }
 
+void TuringMachine::set_tape_symbols(const std::vector<std::uint8_t>& tape,
+                                     std::int64_t head) {
+    tape_.clear();
+    for (std::int64_t i = 0; i < static_cast<std::int64_t>(tape.size()); ++i) {
+        tape_.write(i, tape[static_cast<std::size_t>(i)]);
+    }
+    universe_->set_address_meta(kControlBase + kHeadSlot, static_cast<std::uint64_t>(head));
+    universe_->set_address_meta(kControlBase + kStateSlot, 0);
+    universe_->set_address_meta(kControlBase + kHaltSlot, 0);
+}
+
+void TuringMachine::set_state(std::uint8_t state) {
+    universe_->set_address_meta(kControlBase + kStateSlot, state);
+}
+
 bool TuringMachine::halted() const {
     return universe_->address_reg(kControlBase + kHaltSlot).meta != 0;
 }

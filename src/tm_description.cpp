@@ -17,7 +17,7 @@ bool get(const std::uint8_t* d, std::size_t n, std::size_t& p, unsigned b, std::
 } // namespace
 
 bool TmDescription::valid() const {
-    if (states == 0 || states > 16 || alphabet < 2 || alphabet > 4) return false;
+    if (states == 0 || states > 32 || alphabet < 2 || alphabet > 8) return false;
     if (transitions.size() > 255) return false;
     for (const auto& t : transitions) {
         if (t.from >= states || t.to >= states || t.read >= alphabet || t.write >= alphabet)
@@ -50,7 +50,7 @@ std::optional<TmDescription> TmDescription::decode(const std::uint8_t* data, std
     if (!get(data, len, p, 2, version) || version != kVersion) return std::nullopt;
     if (!get(data, len, p, 2, states) || !get(data, len, p, 2, alphabet) ||
         !get(data, len, p, 2, count)) return std::nullopt;
-    if (states == 0 || states > 16 || alphabet < 2 || alphabet > 4 || count > 255) return std::nullopt;
+    if (states == 0 || states > 32 || alphabet < 2 || alphabet > 8 || count > 255) return std::nullopt;
     if (len - p != count * 6 + 32) return std::nullopt;
     TmDescription out;
     out.states = static_cast<std::uint16_t>(states);

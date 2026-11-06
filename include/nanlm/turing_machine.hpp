@@ -47,8 +47,8 @@ class TuringMachine {
 public:
     static constexpr std::uint16_t kControlBase = 0x0800;
     static constexpr std::uint16_t kTableBase = 0x1000;
-    static constexpr std::uint8_t kMaxStates = 16;
-    static constexpr std::uint8_t kAlphabet = 4;
+    static constexpr std::uint8_t kMaxStates = 32;
+    static constexpr std::uint8_t kAlphabet = 8;
 
     explicit TuringMachine(Universe& universe) : universe_(&universe) {}
 
@@ -56,6 +56,8 @@ public:
     std::vector<std::uint8_t> serialize_tape() const { return tape_.serialize(); }
     bool restore_tape(const std::uint8_t* data, std::size_t len) { return tape_.restore(data, len); }
     void set_tape(const std::string& tape, std::int64_t head);
+    void set_tape_symbols(const std::vector<std::uint8_t>& tape, std::int64_t head);
+    void set_state(std::uint8_t state);
     bool step();
     std::size_t run(std::size_t max_steps = 1000000);
     bool halted() const;

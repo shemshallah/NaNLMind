@@ -334,10 +334,12 @@ formal finite-control/self-encoding proof is still open (doc 69).
 
 ### UTM explicit table
 
-The Neary-Woods U6,4 6-state/4-symbol table is now loaded as ordinary chart
+The Neary-Woods U6,4 6-state/4-symbol table is loaded as ordinary chart
 transitions and cross-checked against an independent map-based reference for
-200 steps. This is an explicit finite universal table, but its bi-tag tape
-compiler/decoder and the self-encoded universal description remain open.
+200 steps. The complete Minsky 23-state/8-symbol universal table is also loaded
+as 184 transitions and matches a Python reference for 100 steps. This is an
+explicit finite universal table, but its tape compiler/self-encoding remains
+open.
 
 ### UTM proof harness
 

@@ -95,7 +95,7 @@ Counters are limb lists in chart cells; program/state/IP/HALT are fixed cells.
 - Prove the encoded description grammar covers arbitrary TM sizes.
 - Produce a self-encoded universal description.
 - Prove trace equivalence, not only randomized checks.
-- U6,4 table is loaded and cross-checked, but its tape compiler is not implemented.
+- U6,4 and Minsky 23-state/8-symbol tables are loaded and cross-checked; their tape compilers/self-encoding are not implemented.
 
 ### U10 — optional UTM program in ROM
 

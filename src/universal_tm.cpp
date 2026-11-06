@@ -14,7 +14,7 @@ bool UniversalTuringMachine::load_machine(
     std::int64_t head) {
     if (transitions.size() > 255) return false;
     for (const auto& t : transitions) {
-        if (t.read >= 4 || t.write >= 4 || t.move < -1 || t.move > 1) return false;
+        if (t.from >= 32 || t.to >= 32 || t.read >= 8 || t.write >= 8 || t.move < -1 || t.move > 1) return false;
     }
     tape_.clear();
     tape_.write(kDescriptionBase, static_cast<std::uint8_t>(transitions.size()));

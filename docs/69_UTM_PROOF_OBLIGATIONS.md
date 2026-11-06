@@ -21,11 +21,11 @@ Evidence:
 ### O1 — explicit finite control
 
 A literature-backed 6-state, 4-symbol U6,4 transition table (23 defined
-transitions) now loads into the table-driven runtime and matches an independent
-reference for 200 steps on a blank tape. That is an explicit finite table, but
-it is not yet the fixed interpreter loop and it is not the Neary-Woods tape
-compiler. The host `UniversalTuringMachine::step()` remains the interpreter
-under proof.
+transitions) loads into the table-driven runtime and matches an independent
+reference for 200 steps on a blank tape. The complete 23-state, 8-symbol Minsky
+universal table also loads as 184 chart transitions and matches a Python
+reference for 100 steps. This is an explicit finite universal table, but it is
+not yet a self-encoded description or a formal interpreter proof.
 
 ### O2 — universal symbol/state encoding
 
