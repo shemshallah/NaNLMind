@@ -338,8 +338,9 @@ a full description pass; the run is reproducible with `make self-sim-probe`.
 This is a partial self-run, not a completed self-simulation.
 
 The 508-state binary machine also runs through a compact direct table runtime
-(`BinaryUniversalMachine`) that skips the 22 KB Minsky scan and preserves 20
-Minsky source steps exactly.
+(`BinaryUniversalMachine`) that skips the 22 KB Minsky scan. It preserves 20
+Minsky source steps exactly and tracks 100 steps of the Minsky machine on its
+own default tape.
 
 ### TM-to-binary compiler
 

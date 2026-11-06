@@ -29,6 +29,16 @@ binary state and tape and compares them with the source reference:
 PASS compact binary runtime preserves 20 Minsky source steps
 ```
 
+A second test runs the compiled binary machine on the Minsky table's own default
+tape, starting in the same source state and head position, for 100 steps:
+
+```text
+PASS compiled binary Minsky table tracks the source Minsky trace
+```
+
+That is a real one-level self-simulation trace: the compiled binary machine
+executes the Minsky table on the Minsky table's own input configuration.
+
 Files:
 
 - `include/nanlm/binary_utm.hpp`
