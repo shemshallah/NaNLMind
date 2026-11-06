@@ -590,6 +590,14 @@ def portal_heartbeat():
             renewed = json.load(response)
         if not renewed.get("token"):
             raise RuntimeError("NANNET BSR heartbeat did not rotate the credential")
+        if renewed.get("identity") and not renewed["identity"].endswith(
+                f"/nanlm-cpu-{PORTAL_ROUTE.bsr + 1}"):
+            raise RuntimeError("NANNET heartbeat identity changed runner route")
+        advertised = renewed.get("route")
+        if advertised and RunnerRoute.parse(advertised) != PORTAL_ROUTE:
+            raise RuntimeError("NANNET heartbeat changed the canonical runner route")
+        if renewed.get("universe_point", 0) != 0 or renewed.get("translator") != "N16B/1":
+            raise RuntimeError("NANNET heartbeat did not preserve point-zero N16B translation")
         PORTAL_TOKEN = renewed["token"]
     portal_bridge_drain(int(time.time()))
 
