@@ -34,7 +34,7 @@ class NannetTests(unittest.TestCase):
   self.assertEqual(status,200);self.assertEqual(models["keeper_action"],"not_started")
   self.assertEqual(self.req("GET","/admin/keeper/status",token="p"*48)[0],401)
  def test_256_and_route_scoping(self):
-  s,d=self.req("GET","/healthz");self.assertEqual(s,200);self.assertEqual(d["bootstrap_endpoints"],256);self.assertEqual(len(server.ENDPOINTS),4);self.assertIn("nan://GM0:SC0:MC0:BS0:HW0",server.ENDPOINTS);self.assertTrue(server.valid_nan_address("nan://GM255:SC255:MC255:BS255:HW255"));self.assertFalse(server.valid_nan_address("nan://GM256:SC0:MC0:BS0:HW0"))
+  s,d=self.req("GET","/healthz");self.assertEqual(s,200);self.assertEqual(d["bootstrap_endpoints"],256);self.assertEqual(len(server.ENDPOINTS),256);self.assertIn("nan://GM0:SC0:MC0:BS0:HW0",server.ENDPOINTS);self.assertTrue(server.valid_nan_address("nan://GM255:SC255:MC255:BS255:HW255"));self.assertFalse(server.valid_nan_address("nan://GM256:SC0:MC0:BS0:HW0"))
   t=self.issue("nan://GM0:SC0:MC0:BS0:HW1",["intake"]);s,r=self.req("GET","/v1/routes",token=t);self.assertEqual(s,200);self.assertIn("n16t.peer",r["routes"]);self.assertNotIn("deeprepo.keeper",r["routes"])
   self.assertEqual(self.req("POST","/admin/tokens",{"address":"nan://GM0:SC0:MC0:BS0:HW1","scopes":["runner"]},token="a"*48)[0],400)
  def test_observation_unverified_and_idempotent(self):
@@ -56,7 +56,7 @@ class NannetTests(unittest.TestCase):
   s,runner_blob=self.req("GET","/internal/datasets/demo-1/chunks/0",token="r"*48);self.assertEqual(s,200);self.assertEqual(runner_blob,raw[0])
   receipt={"generation":7,"dataset_sha256":hashlib.sha256(full).hexdigest()}
   s,committed=self.req("POST","/internal/datasets/demo-1/commit",receipt,token="r"*48);self.assertEqual(s,200);self.assertEqual(committed["state"],"committed");self.assertTrue(committed["staging_bytes_released"])
-  self.assertEqual(self.req("GET","/internal/datasets/demo-1/chunks/0",token="r"*48)[0],404)
+  self.assertEqual(self.req("GET","/internal/datasets/demo-1/chunks/0",token="r"*48)[0],410)
   s,again=self.req("POST","/internal/datasets/demo-1/commit",receipt,token="r"*48);self.assertEqual(s,200);self.assertTrue(again["duplicate_noop"])
   s,audit=self.req("GET","/internal/datasets/committed",token="r"*48);self.assertEqual(s,200);self.assertEqual(audit["datasets"][0]["committed_generation"],7)
  def test_bad_chunk_digest(self):
