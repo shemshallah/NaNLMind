@@ -458,15 +458,21 @@ std::unique_ptr<Universe> Universe::from_bytes(const std::uint8_t* data, std::si
               u->pair_to_index_.size() * sizeof(u->pair_to_index_[0]))) return nullptr;
 
     const NanCell& point_zero_cell = u->head_cell(PointZeroTranslator::kPointIndex);
-    if (point_zero_cell.meta[2] != PointZeroTranslator::kPointIndex ||
-        point_zero_cell.meta[3] != PointZeroTranslator::kProtocolVersion) return nullptr;
-    std::array<std::uint8_t, 6> point_route_bytes{};
-    for (std::size_t i = 0; i < point_route_bytes.size(); ++i) {
-        point_route_bytes[i] = point_zero_cell.meta[4 + i];
-    }
     NannetRoute local_route{};
-    if (!PointZeroTranslator::decode_route(point_route_bytes, local_route) ||
-        !u->point_zero_translator_.bind(local_route)) return nullptr;
+    if (point_zero_cell.meta[2] == 0 && point_zero_cell.meta[3] == 0) {
+        // Upgrade pre-PointZero snapshots in memory; the original schema left
+        // these reserved metadata bytes zeroed.
+        local_route = NannetRoute{};
+    } else {
+        if (point_zero_cell.meta[2] != PointZeroTranslator::kPointIndex ||
+            point_zero_cell.meta[3] != PointZeroTranslator::kProtocolVersion) return nullptr;
+        std::array<std::uint8_t, 6> point_route_bytes{};
+        for (std::size_t i = 0; i < point_route_bytes.size(); ++i) {
+            point_route_bytes[i] = point_zero_cell.meta[4 + i];
+        }
+        if (!PointZeroTranslator::decode_route(point_route_bytes, local_route)) return nullptr;
+    }
+    if (!u->bind_point_zero_route(local_route)) return nullptr;
 
     // Rebuild the address->canonical index from the canonical table.
     u->index_.fill(0xFFFFu);
