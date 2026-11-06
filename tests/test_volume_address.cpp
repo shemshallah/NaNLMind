@@ -42,7 +42,7 @@ int main() {
     CHECK(mc1.valid());
     CHECK(mc2.valid());
     CHECK(mc1.word.raw != mc2.word.raw);
-    CHECK_EQ(mc1.tier(), VolumeTier::MC0);
+    CHECK_EQ(static_cast<unsigned>(mc1.tier()), static_cast<unsigned>(VolumeTier::MC0));
     CHECK_EQ(mc1.shard(), 1u);
 
     // Reject wrong type, bad magic, unsupported format, bad tier and CRC.
