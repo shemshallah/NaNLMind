@@ -343,6 +343,12 @@ class Gateway:
             return identity
         try:
             data = self.read_body(environ)
+            allowed_fields = {
+                "protocol", "version", "event_id", "base_generation",
+                "active_heads", "outcome_verified",
+            }
+            if set(data) - allowed_fields:
+                raise ValueError("unknown_observation_fields")
             if data.get("protocol") != "nanlm.endpoint-observation" or data.get("version") != 1:
                 raise ValueError("unsupported_protocol")
             event_id = data.get("event_id")
