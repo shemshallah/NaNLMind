@@ -23,15 +23,17 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
+ENDPOINTS = {"bootstrap", "my_android", "hermes_demo", "clocked_demo"}
+
 
 def canonical(value: Any) -> bytes:
     return json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
 
 
 class MergeStore:
-    def __init__(self, root: Path, token: str) -> None:
+    def __init__(self, root: Path, tokens: dict[str, str]) -> None:
         self.root = root
-        self.token = token
+        self.tokens = {k: v for k, v in tokens.items() if k in ENDPOINTS and v}
         self.path = root / "training_merge.json"
         self.lock = threading.Lock()
         self.root.mkdir(parents=True, exist_ok=True)
@@ -56,12 +58,17 @@ class MergeStore:
                 "digest": self.digest(),
             }
 
-    def merge(self, payload: dict[str, Any], idempotency: str) -> tuple[int, dict[str, Any]]:
+    def merge(self, payload: dict[str, Any], idempotency: str, source_endpoint: str) -> tuple[int, dict[str, Any]]:
         if not idempotency:
             return HTTPStatus.BAD_REQUEST, {"error": "Idempotency-Key required"}
         with self.lock:
             prior = self.state["idempotency"].get(idempotency)
-            body_hash = hashlib.sha256(canonical(payload)).hexdigest()
+            if source_endpoint not in ENDPOINTS:
+                return HTTPStatus.BAD_REQUEST, {"error": "invalid source endpoint"}
+            claimed_source = payload.get("source_endpoint")
+            if claimed_source != source_endpoint:
+                return HTTPStatus.FORBIDDEN, {"error": "endpoint identity mismatch"}
+            body_hash = hashlib.sha256(canonical({"source_endpoint": source_endpoint, "payload": payload})).hexdigest()
             if prior:
                 if prior.get("body") != body_hash:
                     return HTTPStatus.CONFLICT, {"error": "idempotency key reused"}
@@ -81,8 +88,9 @@ class MergeStore:
 
             nkey = str(node)
             ns = self.state["nodes"].setdefault(nkey, {
-                "generation": 0, "last_clock": 0, "heads": {}
+                "generation": 0, "last_clock": 0, "heads": {}, "sources": {}
             })
+            ns.setdefault("sources", {})
             if base != ns["generation"]:
                 return HTTPStatus.CONFLICT, {
                     "error": "stale base generation",
@@ -128,9 +136,12 @@ class MergeStore:
 
             ns["generation"] += 1
             ns["last_clock"] = tick
+            ns["sources"][source_endpoint] = int(ns["sources"].get(source_endpoint, 0)) + 1
             response = {
                 "accepted": True,
                 "node": node,
+                "source_endpoint": source_endpoint,
+                "source_observations": ns["sources"][source_endpoint],
                 "generation": ns["generation"],
                 "nanclock_tick": tick,
                 "applied": applied,
@@ -148,8 +159,10 @@ class MergeStore:
             return HTTPStatus.OK, response
 
 
-def make_server(host: str, port: int, root: Path, token: str) -> ThreadingHTTPServer:
-    store = MergeStore(root, token)
+def make_server(host: str, port: int, root: Path, tokens: dict[str, str] | str) -> ThreadingHTTPServer:
+    if isinstance(tokens, str):
+        tokens = {"my_android": tokens}
+    store = MergeStore(root, tokens)
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, fmt: str, *args: Any) -> None:
@@ -165,11 +178,12 @@ def make_server(host: str, port: int, root: Path, token: str) -> ThreadingHTTPSe
             self.end_headers()
             self.wfile.write(raw)
 
-        def _auth(self) -> bool:
+        def _auth(self, endpoint: str) -> bool:
             header = self.headers.get("Authorization", "")
-            if not header.startswith("Bearer "):
+            expected = store.tokens.get(endpoint, "")
+            if not expected or not header.startswith("Bearer "):
                 return False
-            return hmac.compare_digest(header[7:], store.token)
+            return hmac.compare_digest(header[7:], expected)
 
         def do_GET(self) -> None:
             if self.path == "/healthz":
@@ -181,7 +195,8 @@ def make_server(host: str, port: int, root: Path, token: str) -> ThreadingHTTPSe
             if self.path != "/v1/training/merge":
                 self._json(HTTPStatus.NOT_FOUND, {"error": "not found"})
                 return
-            if not self._auth():
+            endpoint = self.headers.get("X-NaNLM-Endpoint", "")
+            if endpoint not in ENDPOINTS or not self._auth(endpoint):
                 self._json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
                 return
             try:
@@ -196,7 +211,10 @@ def make_server(host: str, port: int, root: Path, token: str) -> ThreadingHTTPSe
             except (ValueError, UnicodeDecodeError):
                 self._json(HTTPStatus.BAD_REQUEST, {"error": "invalid json"})
                 return
-            status, body = store.merge(payload, self.headers.get("Idempotency-Key", ""))
+            if not isinstance(payload, dict):
+                self._json(HTTPStatus.BAD_REQUEST, {"error": "json object required"})
+                return
+            status, body = store.merge(payload, self.headers.get("Idempotency-Key", ""), endpoint)
             self._json(status, body)
 
     return ThreadingHTTPServer((host, port), Handler)
@@ -208,11 +226,20 @@ def main() -> int:
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8080")))
     parser.add_argument("--host", default="0.0.0.0")
     args = parser.parse_args()
-    token = os.environ.get("NANLM_MERGE_TOKEN", "")
-    if not token:
-        print("NANLM_MERGE_TOKEN is required; DEEPREPO_PAT is never used", flush=True)
+    tokens = {}
+    for endpoint, env_name in {
+        "my_android": "NANLM_MERGE_TOKEN",
+        "hermes_demo": "NANLM_HERMES_TOKEN",
+        "clocked_demo": "NANLM_CLOCKED_TOKEN",
+        "bootstrap": "NANLM_BOOTSTRAP_TOKEN",
+    }.items():
+        value = os.environ.get(env_name, "")
+        if value:
+            tokens[endpoint] = value
+    if not tokens:
+        print("At least one NANLM endpoint token is required; DEEPREPO_PAT is never used", flush=True)
         return 2
-    server = make_server(args.host, args.port, Path(args.root), token)
+    server = make_server(args.host, args.port, Path(args.root), tokens)
     print(f"training merge listening on {args.host}:{args.port} root={args.root}", flush=True)
     try:
         server.serve_forever()
