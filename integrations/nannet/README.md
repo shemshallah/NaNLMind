@@ -61,7 +61,7 @@ Corpus upload uses browser SHA-256, sends bounded chunks, and seals the manifest
 - GET /admin/models/status (admin-only; read-only Qwen metadata)
 - POST /v1/observations (endpoint bearer; metadata-only, unverified evidence)
 - POST /v1/training/merge (NANLM_BOOTSTRAP_TOKEN only; canonical runner deltas)
-- POST /n16t (endpoint bearer with n16t scope; opaque binary relay)
+- POST /n16t (endpoint bearer with n16t scope; opaque binary relay; accepts `application/vnd.nan16.n16t` and Android's legacy `application/x-n16t` alias, normalizes upstream)
 - POST /v1/datasets/{id}/begin (declare expected chunk count)
 - PUT /v1/datasets/{id}/chunks/{index} (binary chunk + X-Chunk-SHA256)
 - POST /v1/datasets/{id}/seal (verify contiguous chunks, total size and SHA-256)
