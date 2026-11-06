@@ -81,6 +81,32 @@ A CLOCKED response can be a high-quality teacher label, but it is not automatica
 
 ---
 
+## 1.4 Existing CLOCKED-named pipeline work — important distinction
+
+NaNLMind already has `docs/80_TRAINING_CORPUS_PIPELINE.md` and
+`docs/81_CONVERSATIONAL_TRAINING_LOOP.md`. The corpus pipeline describes a
+`ClockedAdapter` in `runner/hermes_pipeline.py` that attaches a training
+session to an epoch/clock value and reuses the existing `training` runner
+operation. The conversation trainer already loops model intent → staged
+pipeline → metrics → reflection.
+
+That is useful groundwork for the temporal/session side of this proposal, but
+it is **not the Rezolve.ai CLOCKED API adapter**. Do not conflate the existing
+logical-clock/session adapter with the hosted service. The new service adapter
+must have a distinct name (for example `RezolveClockedClient` or
+`ClockedApiAdapter`) and preserve the existing logical clock as a separate
+NaNLMind subsystem. Reuse the current HERMES corpus pipeline and conversation
+trainer where their contracts fit; do not replace them with a second corpus
+generator or a duplicate conversation loop.
+
+The current HERMES `MemoryStore`, native relation learner, mandatory Boolean
+foundation, frozen L0–L9 challenges and native mutation receipts are also
+existing integration points. CLOCKED-specific observations should extend
+these same stores/topology through a typed evidence codec, not create a
+parallel student or a parallel evidence ledger.
+
+---
+
 ## 2. System boundaries and repository responsibilities
 
 ### 2.1 Proposed repository: NaNLMind_CLOCKED
