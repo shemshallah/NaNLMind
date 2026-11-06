@@ -144,6 +144,46 @@ class TrainingMergeTest(unittest.TestCase):
         with self.assertRaises(AuthError):
             authority.verify_access_token(admin["token"], "installation:admin")
 
+
+    def test_bsr_oidc_bootstrap_rotation_and_admin_revocation(self):
+        db = Path(self.tmp.name) / "bsr.sqlite"
+        authority = PairingAuthority(db, _unb64(generate_master_key()))
+        server = training_merge.make_server("127.0.0.1", 0, Path(self.tmp.name), "test-token", authority)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        original_verifier = training_merge._verify_github_oidc
+        training_merge._verify_github_oidc = lambda jwt, repo: {"repository": repo}
+        base = "http://127.0.0.1:" + str(server.server_address[1])
+        def call(path, payload, token=None):
+            headers = {"Content-Type": "application/json"}
+            if token:
+                headers["Authorization"] = "Bearer " + token
+            request = urllib.request.Request(base + path, data=json.dumps(payload).encode(), method="POST", headers=headers)
+            try:
+                with urllib.request.urlopen(request, timeout=5) as response:
+                    return response.status, json.loads(response.read())
+            except urllib.error.HTTPError as exc:
+                return exc.code, json.loads(exc.read())
+        thread.start()
+        try:
+            status, issued = call("/v1/bootstrap/oidc", {"id_token": "mock", "slot": 0})
+            self.assertEqual(status, 200)
+            self.assertEqual(issued["role"], "admin")
+            identity = issued["identity"]
+            status, auth = call("/v1/authorize", {"scope": "training:execute"}, issued["token"])
+            self.assertEqual(status, 200)
+            status, renewed = call("/v1/bootstrap/heartbeat", {}, issued["token"])
+            self.assertEqual(status, 200)
+            self.assertNotEqual(renewed["token"], issued["token"])
+            status, denied = call("/v1/authorize", {"scope": "training:execute"}, issued["token"])
+            self.assertEqual(status, 401)
+            status, revoked = call("/v1/admin/identities/revoke", {"role": "admin", "identity": identity}, renewed["token"])
+            self.assertEqual(status, 200)
+            status, denied = call("/v1/authorize", {"scope": "training:execute"}, renewed["token"])
+            self.assertEqual(status, 401)
+        finally:
+            training_merge._verify_github_oidc = original_verifier
+            server.shutdown(); server.server_close(); thread.join(timeout=2)
+
     def test_auth_and_health(self):
         status, body = self.post(self.payload(), "auth", token="wrong")
         self.assertEqual(status, 401)
