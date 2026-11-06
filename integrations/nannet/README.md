@@ -93,8 +93,9 @@ the Koyeb keeper.
   during cutover if it contains the existing training_merge.json)
 - NANLM_DATASET_QUOTA_BYTES=6442450944
 - NANLM_CHUNK_BYTES=8388608
+- NANLM_HTTP_WORKERS=8 (bounded concurrent requests for Nano RAM)
 - NANLM_N16T_PEER_URL (optional until the runner-side peer is deployed)
-- NANLM_DATASET_QUOTA_BYTES=0 if no persistent corpus volume is attached
+- Set NANLM_DATASET_QUOTA_BYTES=0 if no persistent corpus volume is attached
 - PORT (Koyeb supplies this; the app defaults to 8000 locally)
 
 The repository-root Dockerfile installs the existing DeepRepo core from its
