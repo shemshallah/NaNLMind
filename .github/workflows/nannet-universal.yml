@@ -1,7 +1,7 @@
 name: NANNET universal intake
 on:
   pull_request:
-    paths: ["integrations/nannet/**", ".github/workflows/nannet-universal.yml"]
+    paths: ["integrations/nannet/**", "Dockerfile", ".github/workflows/nannet-universal.yml"]
   push:
     branches: [main, nannet-universal-intake]
     paths: ["integrations/nannet/**", ".github/workflows/nannet-universal.yml"]
