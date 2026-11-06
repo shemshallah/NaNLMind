@@ -97,6 +97,9 @@ logic-test:
 training-test:
 	PYTHONPATH=runner python3 -m unittest discover -s tests -p 'test_*pipeline.py' -v
 
+conversation-test:
+	PYTHONPATH=runner python3 -m unittest discover -s tests -p 'test_conversation_trainer.py' -v
+
 byte-mesh: $(BUILD)/test_byte_stream_learning
 	./$(BUILD)/test_byte_stream_learning
 

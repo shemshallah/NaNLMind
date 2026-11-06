@@ -342,6 +342,10 @@ The 508-state binary machine also runs through a compact direct table runtime
 Minsky source steps exactly and tracks 100 steps of the Minsky machine on its
 own default tape.
 
+### Conversational training loop
+
+`runner/conversation_trainer.py` closes the loop from a host/model intent to a staged training run, back to a reflection turn and the next intent. It supports OpenAI-compatible endpoints, HERMES `ctx.llm`, and a deterministic Termux fallback; each round writes a transcript and summary.
+
 ### Staged corpus pipeline
 
 The runner now has a `training` op for six bounded stages: inverse/Boolean,
