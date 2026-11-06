@@ -148,7 +148,7 @@ def make_level(level: int) -> PuzzleLevel:
         ]
     elif level == 1:
         name = "inheritance"
-        support += [query("sparrow", "fly", True), query("robin", "fly", True)]
+        support += [query("sparrow", "fly", True)]
         test = [
             query("robin", "fly", True),
             query("salmon", "swim", True),
