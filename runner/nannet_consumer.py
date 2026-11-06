@@ -104,6 +104,76 @@ def fetch_chunk(base: str, token: str, dataset_id: str, index: int) -> tuple[byt
     return data, actual
 
 
+class TextCorpusFold:
+    """Streaming UTF-8 line codec for plain text and the N16TXT/1 envelope."""
+    def __init__(self, format_name: str):
+        if format_name not in ("plain-text/utf8", "N16TXT/1"):
+            raise RuntimeError("unsupported corpus format: " + format_name)
+        self.format = format_name
+        self.pending = bytearray()
+        self.first_line = True
+        self.header_seen = False
+        self.counts = [[0] * DIMS for _ in range(HEADS)]
+        self.carry = b""
+        self.record_count = 0
+        self.canonical_bytes = 0
+
+    def _line(self, raw: bytes) -> None:
+        if raw.endswith(b"\\r"):
+            raw = raw[:-1]
+        if b"\\r" in raw:
+            raise RuntimeError("bare CR is not a canonical line ending")
+        if self.first_line:
+            self.first_line = False
+            if raw == b"N16TXT/1":
+                self.header_seen = True
+                return
+            if self.format == "N16TXT/1":
+                raise RuntimeError("N16TXT/1 header is missing or altered")
+        if not raw:
+            return
+        if len(raw) > 4096:
+            raise RuntimeError("corpus record exceeds 4096 UTF-8 bytes")
+        try:
+            text = raw.decode("utf-8", "strict")
+        except UnicodeDecodeError as exc:
+            raise RuntimeError("invalid UTF-8 record") from exc
+        for char in text:
+            code = ord(char)
+            if (code < 32 and code != 9) or 0x7f <= code <= 0x9f:
+                raise RuntimeError("forbidden control character")
+            if 0xfdd0 <= code <= 0xfdef or (code & 0xffff) in (0xfffe, 0xffff):
+                raise RuntimeError("Unicode noncharacter rejected")
+        self.canonical_bytes += 4 + len(raw)
+        if self.format == "N16TXT/1" and self.canonical_bytes > 1_048_576:
+            raise RuntimeError("N16TXT/1 canonical corpus exceeds 1 MiB")
+        framed = len(raw).to_bytes(4, "little") + raw
+        self.carry = add_features(framed, self.carry, self.counts)
+        self.record_count += 1
+
+    def feed(self, chunk: bytes) -> None:
+        self.pending.extend(chunk)
+        while True:
+            try:
+                index = self.pending.index(10)
+            except ValueError:
+                break
+            line = bytes(self.pending[:index])
+            del self.pending[:index + 1]
+            self._line(line)
+        if len(self.pending) > 4097:
+            raise RuntimeError("corpus record exceeds 4096 UTF-8 bytes")
+
+    def finish(self) -> None:
+        if self.pending:
+            self._line(bytes(self.pending))
+            self.pending.clear()
+        if self.format == "N16TXT/1" and not self.header_seen:
+            raise RuntimeError("N16TXT/1 header is required")
+        if self.record_count == 0:
+            raise RuntimeError("corpus contains no non-empty records")
+
+
 def fold_dataset(base: str, runner_token: str, dataset: dict) -> tuple[list[dict], str]:
     dataset_id = dataset["dataset_id"]
     metadata = dataset.get("metadata") or {}
@@ -111,6 +181,7 @@ def fold_dataset(base: str, runner_token: str, dataset: dict) -> tuple[list[dict
         raise RuntimeError("%s is not declared UTF-8" % dataset_id)
     if not metadata.get("license") or not metadata.get("provenance"):
         raise RuntimeError("%s lacks license/provenance metadata" % dataset_id)
+    parser = TextCorpusFold(metadata.get("format", "plain-text/utf8"))
     count = int(dataset["expected_chunks"])
     if count < 1 or count > 100000:
         raise RuntimeError("invalid expected chunk count")
@@ -119,21 +190,17 @@ def fold_dataset(base: str, runner_token: str, dataset: dict) -> tuple[list[dict
     if not re.fullmatch(r"[a-f0-9]{64}", expected_digest or ""):
         raise RuntimeError("invalid dataset digest")
     digest = hashlib.sha256()
-    decoder = getincrementaldecoder("utf-8")("strict")
-    features = [[0] * DIMS for _ in range(HEADS)]
-    carry = b""
     total = 0
     for index in range(count):
         chunk, _ = fetch_chunk(base, runner_token, dataset_id, index)
         total += len(chunk)
         digest.update(chunk)
-        decoder.decode(chunk, final=False)
-        carry = add_features(chunk, carry, features)
-    decoder.decode(b"", final=True)
+        parser.feed(chunk)
+    parser.finish()
     actual = digest.hexdigest()
     if total != expected_total or actual != expected_digest:
         raise RuntimeError("%s dataset digest/size mismatch" % dataset_id)
-    return make_updates(features, 1), actual
+    return make_updates(parser.counts, 1), actual
 
 
 def consume_one(base: str, runner_token: str, bootstrap_token: str,
