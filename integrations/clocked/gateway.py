@@ -24,6 +24,7 @@ SCHEMA_VERSION = 1
 SOURCE_ENDPOINT = "clocked_demo"
 ENDPOINTS = {"my_android", "hermes_demo", "clocked_demo"}
 EVENT_ID = re.compile(r"^[a-f0-9]{64}$")
+IDEMPOTENCY_KEY = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
 
 
 def token_hash(token: str, pepper: str) -> str:
@@ -49,6 +50,18 @@ def connect_db(path: str) -> sqlite3.Connection:
     columns = {row["name"] for row in db.execute("PRAGMA table_info(demo_tokens)")}
     if "endpoint_id" not in columns:
         db.execute("ALTER TABLE demo_tokens ADD COLUMN endpoint_id TEXT NOT NULL DEFAULT 'clocked_demo'")
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS experience_requests (
+            token_hash TEXT NOT NULL,
+            request_key TEXT NOT NULL,
+            body_sha256 TEXT NOT NULL,
+            state TEXT NOT NULL DEFAULT 'pending',
+            response_status TEXT,
+            response_json TEXT,
+            created_at INTEGER NOT NULL,
+            PRIMARY KEY(token_hash, request_key)
+        )
+    """)
     db.execute("""
         CREATE TABLE IF NOT EXISTS endpoint_inbox (
             event_id TEXT PRIMARY KEY,
@@ -194,12 +207,76 @@ class Gateway:
             return json_response(start_response, status, {"error": error})
         return identity
 
+    def reserve_experience(self, token: str, request_key: str, body_sha256: str):
+        pepper = os.environ.get("CLOCKED_TOKEN_PEPPER", "")
+        if not pepper:
+            return None, None, "gateway_misconfigured", "503 Service Unavailable"
+        if not token or len(token) > 512:
+            return None, None, "unauthorized", "401 Unauthorized"
+        digest = token_hash(token, pepper)
+        db = connect_db(self.db_path)
+        try:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute("SELECT * FROM demo_tokens WHERE token_hash=?", (digest,)).fetchone()
+            now = int(time.time())
+            if row is None or row["revoked"] or row["expires_at"] <= now:
+                db.rollback()
+                return None, None, "unauthorized", "401 Unauthorized"
+            if row["endpoint_id"] != "clocked_demo":
+                db.rollback()
+                return None, None, "endpoint_scope_mismatch", "403 Forbidden"
+            if request_key:
+                prior = db.execute(
+                    "SELECT * FROM experience_requests WHERE token_hash=? AND request_key=?",
+                    (digest, request_key),
+                ).fetchone()
+                if prior is not None:
+                    if prior["body_sha256"] != body_sha256:
+                        db.rollback()
+                        return None, None, "idempotency_key_conflict", "409 Conflict"
+                    if prior["state"] == "complete" and prior["response_json"]:
+                        cached = json.loads(prior["response_json"])
+                        status = prior["response_status"] or "200 OK"
+                        db.rollback()
+                        return None, (status, cached), None, None
+                    db.rollback()
+                    return None, None, "request_in_progress", "409 Conflict"
+            if row["used_requests"] >= row["max_requests"]:
+                db.rollback()
+                return None, None, "quota_exceeded", "429 Too Many Requests"
+            if request_key:
+                db.execute(
+                    "INSERT INTO experience_requests(token_hash,request_key,body_sha256,created_at) VALUES(?,?,?,?)",
+                    (digest, request_key, body_sha256, now),
+                )
+            db.execute("UPDATE demo_tokens SET used_requests=used_requests+1 WHERE token_hash=?", (digest,))
+            db.commit()
+            return {
+                "tenant_id": row["tenant_id"],
+                "endpoint_id": row["endpoint_id"],
+                "remaining": row["max_requests"] - row["used_requests"] - 1,
+                "token_hash": digest,
+            }, None, None, None
+        finally:
+            db.close()
+
+    def complete_experience(self, token_digest: str, request_key: str,
+                            status: str, payload: Dict[str, Any]) -> None:
+        if not request_key:
+            return
+        db = connect_db(self.db_path)
+        try:
+            db.execute(
+                "UPDATE experience_requests SET state='complete',response_status=?,response_json=? "
+                "WHERE token_hash=? AND request_key=?",
+                (status, json.dumps(payload, sort_keys=True, separators=(",", ":")),
+                 token_digest, request_key),
+            )
+            db.commit()
+        finally:
+            db.close()
+
     def run_experience(self, environ, start_response):
-        identity = self.authenticate(environ, start_response)
-        if not isinstance(identity, dict):
-            return identity
-        if identity["endpoint_id"] != "clocked_demo":
-            return json_response(start_response, "403 Forbidden", {"error": "endpoint_scope_mismatch"})
         try:
             data = self.read_body(environ)
             if data.get("protocol") not in (None, "nanlm.clocked-experience"):
@@ -211,10 +288,30 @@ class Gateway:
                 raise ValueError("text_too_large")
         except (ValueError, TypeError) as exc:
             return json_response(start_response, "400 Bad Request", {"error": str(exc)[:64]})
+
+        authorization = environ.get("HTTP_AUTHORIZATION", "")
+        token = authorization[7:] if authorization.startswith("Bearer ") else ""
+        request_key = environ.get("HTTP_IDEMPOTENCY_KEY", "")
+        if request_key and not IDEMPOTENCY_KEY.fullmatch(request_key):
+            return json_response(start_response, "400 Bad Request", {"error": "invalid_idempotency_key"})
+        body_sha256 = hashlib.sha256(json.dumps(
+            data, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode("utf-8")).hexdigest()
+        identity, cached, error, error_status = self.reserve_experience(
+            token, request_key, body_sha256
+        )
+        if error:
+            return json_response(start_response, error_status, {"error": error})
+        if cached is not None:
+            return json_response(start_response, cached[0], cached[1])
+
         try:
             if self.clocked_client is None:
                 if not os.environ.get("CLOCKED_API_KEY"):
-                    return json_response(start_response, "503 Service Unavailable", {"error": "clocked_upstream_not_configured"})
+                    payload = {"error": "clocked_upstream_not_configured"}
+                    self.complete_experience(identity["token_hash"], request_key,
+                                              "503 Service Unavailable", payload)
+                    return json_response(start_response, "503 Service Unavailable", payload)
                 from clocked_sdk import Clocked
                 with Clocked() as client:
                     response = client.pipeline(text=source_text, steps=build_pipeline(source_text),
@@ -228,12 +325,17 @@ class Gateway:
             event["tenant_id"] = identity["tenant_id"]
             event["protocol_version"] = SCHEMA_VERSION
             event["learning_state"] = "awaiting_nanlmind_ingest"
-            return json_response(start_response, "200 OK", {
+            payload = {
                 "protocol": "nanlm.clocked-experience", "protocol_version": SCHEMA_VERSION,
                 "event": event, "quota_remaining": identity["remaining"],
-            })
+            }
+            self.complete_experience(identity["token_hash"], request_key, "200 OK", payload)
+            return json_response(start_response, "200 OK", payload)
         except Exception:
-            return json_response(start_response, "502 Bad Gateway", {"error": "upstream_unavailable"})
+            payload = {"error": "upstream_unavailable"}
+            self.complete_experience(identity["token_hash"], request_key,
+                                      "502 Bad Gateway", payload)
+            return json_response(start_response, "502 Bad Gateway", payload)
 
     def accept_observation(self, environ, start_response):
         identity = self.authenticate(environ, start_response)
