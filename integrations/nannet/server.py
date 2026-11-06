@@ -81,7 +81,8 @@ class Handler(BaseHTTPRequestHandler):
   if p=="/v1/routes":
    x=self.need()
    if x is None:return
-   scopes=set(x["scopes"]); visible={k:v for k,v in ROUTES.items() if "*" in scopes or x["endpoint_id"] in v["audience"] or scopes.intersection(v["audience"])}
+   scopes=set(x["scopes"]); ep=x["endpoint_id"]
+   visible={k:v for k,v in ROUTES.items() if "*" in scopes or ep in v["audience"] or (ep.startswith("bootstrap-") and "bootstrap" in v["audience"]) or scopes.intersection(v["audience"])}
    return self.reply(200,{"routes":visible})
   if p=="/internal/datasets":
    if self.need("validator") is None:return
