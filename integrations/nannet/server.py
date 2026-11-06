@@ -113,6 +113,8 @@ class Handler(BaseHTTPRequestHandler):
    if not row or row["revoked"] or row["expires_at"]<=now() or row["used_requests"]>=row["max_requests"]: db.rollback(); return None
    address=row["endpoint_id"]
    owner_device_id=row["owner_device_id"] if "owner_device_id" in row.keys() else None
+   if not owner_device_id and address_coordinates(address)["hw"]>=4:
+    db.rollback();return None
    lease_id=None
    if owner_device_id:
     lease=db.execute("SELECT lease_id FROM device_leases WHERE device_id=? AND address=? AND status='active'",(owner_device_id,address)).fetchone()
@@ -167,6 +169,20 @@ class Handler(BaseHTTPRequestHandler):
    x=self.need()
    if x is None:return
    return self.reply(200,{"address":x["address"],"node_point":x["node_point"],"coordinates":x["coordinates"],"addressing":"nan.global-mesh.v1","transport_authority":os.environ.get("NANNET_PUBLIC_URL","").rstrip("/"),"transport":"https","transport_binding":"bearer-token","head_count":256,"head_index_space":"local-to-endpoint"})
+  if p=="/admin/devices":
+   if self.need("admin") is None:return
+   db=connect()
+   try:
+    rows=db.execute("SELECT d.device_id,d.created_at,d.last_seen,d.status,d.report_json,l.address,l.lease_id,l.issued_at,l.expires_at FROM devices d LEFT JOIN device_leases l ON l.device_id=d.device_id AND l.status='active' ORDER BY d.last_seen DESC LIMIT 256").fetchall()
+    return self.reply(200,{"devices":[{**dict(r),"system_report":json.loads(r["report_json"])} for r in rows]})
+   finally:db.close()
+  if p=="/admin/device/reports":
+   if self.need("admin") is None:return
+   db=connect()
+   try:
+    rows=db.execute("SELECT report_id,device_id,address,created_at,report_type,summary,details,system_json,status FROM device_reports ORDER BY created_at DESC LIMIT 100").fetchall()
+    return self.reply(200,{"reports":[{**dict(r),"system_report":json.loads(r["system_json"])} for r in rows]})
+   finally:db.close()
   if p=="/admin/training/status":
    if self.need("admin") is None:return
    store=get_merge_store()
@@ -290,7 +306,7 @@ class Handler(BaseHTTPRequestHandler):
      if address is None:db.rollback();return self.reply(503,{"error":"no_device_slots_available","reserved_hw_slots":[0,1,2,3],"dynamic_range":"HW4-HW255"})
     db.execute("UPDATE tokens SET revoked=1 WHERE owner_device_id=?",(device_id,))
     scopes=["intake","dataset","observation","heartbeat","n16t","device.report"]
-    db.execute("INSERT INTO tokens(token_hash,endpoint_id,scopes_json,expires_at,max_requests,created_at,owner_device_id) VALUES(?,?,?,?,?,?,?)",(token_hash(token),address,json.dumps(scopes),timestamp+min(lease_seconds,604800),1000000,timestamp,device_id))
+    db.execute("INSERT INTO tokens(token_hash,endpoint_id,scopes_json,expires_at,max_requests,created_at,owner_device_id) VALUES(?,?,?,?,?,?,?)",(token_hash(token),address,json.dumps(scopes),timestamp+min(max(lease_seconds*4,604800),2592000),1000000,timestamp,device_id))
     db.execute("UPDATE devices SET status='active',last_seen=? WHERE device_id=?",(timestamp,device_id))
     db.commit()
    except sqlite3.IntegrityError:
@@ -407,7 +423,7 @@ class Handler(BaseHTTPRequestHandler):
    if self.need("admin") is None:return
    try:
     d=self.json_body(); endpoint=d.get("address"); scopes=d.get("scopes",["intake"]); ttl=int(d.get("ttl_seconds",86400)); quota=int(d.get("max_requests",10000))
-    if not valid_nan_address(endpoint) or endpoint not in ENDPOINTS or not isinstance(scopes,list) or not scopes or any(s not in {"intake","dataset","observation","heartbeat","n16t","device.report"} for s in scopes):raise ValueError("invalid_nan_address_or_scopes")
+    if not valid_nan_address(endpoint) or endpoint not in ENDPOINTS or address_coordinates(endpoint)["hw"]>=4 or not isinstance(scopes,list) or not scopes or any(s not in {"intake","dataset","observation","heartbeat","n16t","device.report"} for s in scopes):raise ValueError("invalid_nan_address_or_scopes")
     if not 60<=ttl<=7776000 or not 1<=quota<=10000000:raise ValueError("token_policy_out_of_range")
    except (ValueError,TypeError) as e:return self.reply(400,{"error":str(e)[:80]})
    token="nnt_"+secrets.token_urlsafe(36); db=connect()
