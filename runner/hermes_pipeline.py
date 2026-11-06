@@ -33,15 +33,16 @@ LAYER = {
 
 def plan_for_prompt(text: str) -> list[str]:
     value = text.lower()
+    plan: list[str] = []
     if any(word in value for word in ("boolean", "inverse", "truth")):
-        return ["inverses_boolean"]
+        plan.append("inverses_boolean")
     if any(word in value for word in ("deep", "chain", "adder", "circuit")):
-        return ["deep_logic"]
-    if any(word in value for word in ("sentence", "next word")):
-        return ["sentences"]
+        plan.append("deep_logic")
     if any(word in value for word in ("word", "choose", "choice", "vocab")):
-        return ["common_words", "word_choice"]
-    return [stage.name for stage in STAGES]
+        plan.extend(["common_words", "word_choice"])
+    if any(word in value for word in ("sentence", "next word")):
+        plan.append("sentences")
+    return list(dict.fromkeys(plan)) or [stage.name for stage in STAGES]
 
 
 class HermesPipeline:
@@ -144,17 +145,16 @@ class HermesPipeline:
         if not run:
             return {"prompt": text, "plan": names, "trained": False}
         result = self.train(names, max_samples=512)
-        return {
+        result.update({
             "prompt": text,
             "plan": names,
             "trained": True,
-            "ok": result["ok"],
-            "stages": result.get("stages", []),
             "response": (
                 "Training plan: " + ", ".join(names) +
                 ". Result: " + ("PASS" if result["ok"] else "FAIL")
             ),
-        }
+        })
+        return result
 
 
 class ClockedAdapter:
