@@ -145,6 +145,26 @@ class PairingAuthority:
             db.execute("INSERT OR IGNORE INTO revoked_tokens VALUES (?,?)",(claims["jti"],int(time.time()) if now is None else int(now)))
         return {"revoked":True,"token_id":claims["jti"],"installation_id":claims["sub"]}
 
+    def public_key_for(self, installation_id: str) -> str:
+        with sqlite3.connect(self.database) as db:
+            row = db.execute("SELECT public_key FROM installations WHERE installation_id=?",
+                             (installation_id,)).fetchone()
+        if not row:
+            raise AuthError("installation is not paired")
+        return row[0]
+
+    def consume_nan16de_nonce(self, installation_id: str, nonce: str, now: int) -> None:
+        try:
+            with sqlite3.connect(self.database, timeout=10) as db:
+                db.execute("CREATE TABLE IF NOT EXISTS nan16de_nonces "
+                           "(installation_id TEXT NOT NULL, nonce TEXT NOT NULL, "
+                           "seen_at INTEGER NOT NULL, PRIMARY KEY(installation_id,nonce))")
+                db.execute("DELETE FROM nan16de_nonces WHERE seen_at<?", (now - 600,))
+                db.execute("INSERT INTO nan16de_nonces VALUES (?,?,?)",
+                           (installation_id, nonce, now))
+        except sqlite3.IntegrityError as exc:
+            raise AuthError("replayed NaN16DE nonce") from exc
+
     def verify_access_token(self, token: str, required_scope=None, now=None) -> dict:
         from .auth import verify_token
         with sqlite3.connect(self.database) as db:

@@ -28,6 +28,8 @@ from typing import Any
 from nanlmind_nannet.auth import AuthError, _unb64, issue_token
 from nanlmind_nannet.pairing import PairingAuthority
 from nanlmind_nannet.devices import DeviceRegistry
+from nanlmind_nannet.nan16de import decode_envelope
+from nanlmind_nannet.crypto_compat import Ed25519PublicKey
 
 
 N16T_MEDIA_TYPE = "application/vnd.nan16.n16t"
@@ -369,6 +371,37 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                     self._json(HTTPStatus.OK, {"token": token, "token_type": "Bearer", "expires_in": 900, "identity": identity, "role": "admin", "scopes": scopes})
                 except (ValueError, KeyError, TypeError, AuthError) as exc:
                     self._json(HTTPStatus.UNAUTHORIZED, {"error": str(exc)[:160]})
+                return
+            if path == '/v1/nan16de/route':
+                bearer = self._bearer()
+                if not bearer:
+                    self._json(HTTPStatus.UNAUTHORIZED, {'error': 'bearer_required'}); return
+                try:
+                    claims = authority.verify_access_token(bearer)
+                    payload = self._body(65536)
+                    raw = bytes.fromhex(str(payload.get('envelope', '')))
+                    envelope = decode_envelope(raw)
+                    if envelope.installation_id != claims.get('sub'):
+                        raise AuthError('NaN16DE installation does not match bearer')
+                    public = Ed25519PublicKey.from_public_bytes(
+                        _unb64(authority.public_key_for(envelope.installation_id)))
+                    envelope.verify(public)
+                    now = int(time.time())
+                    if abs(now - envelope.timestamp) > 300:
+                        raise AuthError('NaN16DE timestamp outside allowed skew')
+                    authority.consume_nan16de_nonce(envelope.installation_id,
+                                                    envelope.nonce, now)
+                    self._json(HTTPStatus.OK, {
+                        'accepted': True,
+                        'route': envelope.route.text(),
+                        'route_bytes': envelope.route.bytes().hex(),
+                        'word_raw': envelope.word.pack().hex(),
+                        'opcode': envelope.word.opcode,
+                        'installation_id': envelope.installation_id,
+                        'body_sha256': envelope.as_dict()['body_sha256'],
+                    })
+                except (ValueError, TypeError, AuthError, KeyError) as exc:
+                    self._json(HTTPStatus.UNAUTHORIZED, {'error': str(exc)[:200]})
                 return
             if path == '/v1/training/merge':
                 if not self._auth():
