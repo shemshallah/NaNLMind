@@ -96,7 +96,13 @@ class Handler(BaseHTTPRequestHandler):
   return ident
  def do_GET(self):
   p=urlparse(self.path).path
-  if p=="/healthz": return self.reply(200,{"status":"ok","service":"nannet","protocol":"nanlm.universal-intake","version":1,"bootstrap_endpoints":256,"dataset_quota_bytes":DATASET_QUOTA,"chunk_limit_bytes":CHUNK_BYTES,"training_merge_enabled":bool(os.environ.get("NANLM_BOOTSTRAP_TOKEN"))})
+  if p=="/healthz": return self.reply(200,{"status":"ok","service":"nannet","protocol":"nanlm.universal-intake","version":1,"bootstrap_endpoints":256,"dataset_quota_bytes":DATASET_QUOTA,"chunk_limit_bytes":CHUNK_BYTES,"training_merge_enabled":bool(os.environ.get("NANLM_BOOTSTRAP_TOKEN")),"keeper_enabled":os.environ.get("DEEPREPO_KEEPER_ENABLED","0")=="1"})
+  if p=="/admin/keeper/status":
+   if self.need("admin") is None:return
+   return self.reply(200,dict(KEEPER_STATE))
+  if p=="/admin/models/status":
+   if self.need("admin") is None:return
+   return self.reply(200,{"model":KEEPER_STATE.get("model",{}),"budget":KEEPER_STATE.get("budget",{}),"keeper_action":KEEPER_STATE.get("action","not_started")})
   if p=="/v1/routes":
    x=self.need()
    if x is None:return
@@ -341,13 +347,25 @@ def start_deeprepo_keeper():
  for name in ("GH_TOKEN","DEEPREPO_MAIN","DEEPREPO_RAM","DEEPREPO_VRAM"):
   if not os.environ.get(name):raise SystemExit(name+" is required when DEEPREPO_KEEPER_ENABLED=1")
  def run():
+  global KEEPER_STATE
   try:
    from deepcore.runtime import Env
-   from deepcore.cli import cmd_keeper
+   from deepcore.cli import _keeper_tick
    env=Env(writer=True,cache_pages=8,kv_cache_pages=8)
-   cmd_keeper(env,loop=True,interval=int(os.environ.get("KEEPER_INTERVAL","600")))
+   interval=max(60,int(os.environ.get("KEEPER_INTERVAL","600")))
+   KEEPER_STATE.update({"enabled":True,"status":"running","started_at":now()})
+   while True:
+    try:
+     result=_keeper_tick(env)
+     mi=env.model_info() or {}
+     KEEPER_STATE.update({"enabled":True,"status":"running","last_tick":now(),"action":result.get("action","idle"),"quota_paused":bool(result.get("quota_paused")),"model":{k:mi.get(k) for k in ("key","ready","size","weight_pages")},"budget":env.budget.snapshot()})
+     time.sleep(1800 if result.get("quota_paused") else interval)
+    except Exception as exc:
+     KEEPER_STATE.update({"enabled":True,"status":"degraded","last_tick":now(),"last_error":type(exc).__name__})
+     time.sleep(interval)
   except Exception as exc:
-   print("DeepRepo keeper stopped: "+type(exc).__name__,flush=True)
+   KEEPER_STATE.update({"enabled":False,"status":"failed","last_error":type(exc).__name__})
+   print("DeepRepo keeper failed: "+type(exc).__name__,flush=True)
  threading.Thread(target=run,name="deeprepo-keeper",daemon=True).start()
 
 def get_merge_store():
