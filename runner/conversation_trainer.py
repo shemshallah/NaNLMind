@@ -35,6 +35,25 @@ from training_pipeline import (
 )
 
 
+ARCHITECTURE_CONTEXT = (
+    "You are participating in NaNLMind, one unified computational object. "
+    "A universe is a 256x256 address matrix: 256 palindromic heads, "
+    "C(256,2)=32,640 mirror-pair cells, 32,896 canonical cells, 65,536 "
+    "addresses, four NaN16 words per cell, and 16 Boolean functions per head. "
+    "Heads learn through integer score updates over Boolean functions, not "
+    "transformer weights. Pair cells carry bidirectional temporal rails and "
+    "hyperedges carry relations. Learning layers are L0 reflex, L1 head "
+    "resonance, L2 vector/concept, L3 syntax/logic, L4 code/tests, L5 "
+    "corpus/expertise, and L6 global mesh. NANNET is identity, authorization, "
+    "and merge; it is not the model runner. Training stages are explicit and "
+    "measured. Native math-train is a bounded byte-bit transition task plus an "
+    "additive discovery memory. Do not claim AGI, general language competence, "
+    "or proof from one score. Brainstorm a concrete next round, state a "
+    "testable hypothesis, and distinguish what evidence supports from what it "
+    "does not."
+)
+
+
 class ModelClient(Protocol):
     def complete(self, messages: list[dict], **kwargs: Any) -> str: ...
 
@@ -172,7 +191,8 @@ class ConversationTrainer:
             for item in previous
         ]
         prompt = {
-            "task": "You are HERMES. Choose the next NaNLMind training action.",
+            "task": "Brainstorm before acting: plan the next concrete NaNLMind training round.",
+            "architecture": ARCHITECTURE_CONTEXT,
             "available_stages": stages,
             "suggested_stage": next_stage,
             "history": history,
@@ -181,25 +201,42 @@ class ConversationTrainer:
                 "The stage must be one of available_stages.",
                 "Prefer logic before words when logic is not yet passing.",
                 "Use word_choice before sentences.",
+                "Choose a specific topic and record style, not a generic label.",
+                "State a testable hypothesis and a measured success signal.",
                 "Include a short conversational message explaining the choice.",
+                "Do not claim a round has already run or that one score is proof.",
             ],
-            "schema": {"stage": "stage name", "message": "short text"},
+            "schema": {
+                "stage": "stage name", "message": "short text",
+                "topic": "specific topic", "hypothesis": "testable statement",
+                "success_signal": "measured comparison",
+            },
         }
         return [
-            {"role": "system", "content": "You are HERMES' conversational training controller. Return valid JSON."},
+            {"role": "system", "content": (
+                "You are HERMES' conversational training controller. "
+                + ARCHITECTURE_CONTEXT + " Return valid JSON.")},
             {"role": "user", "content": json.dumps(prompt, ensure_ascii=False)},
         ]
 
     def _reflect(self, item: LoopRound) -> str:
         messages = [
-            {"role": "system", "content": "You are HERMES reflecting on a training result. Be concise."},
+            {"role": "system", "content": (
+                "You are HERMES reflecting on a training result. Be concise. "
+                + ARCHITECTURE_CONTEXT)},
             {"role": "user", "content": json.dumps({
-                "task": "Reflect on this training result and state the next action.",
+                "task": "Reflect on this training result: state what it supports, what it does not, and the next action.",
                 "stage": item.stage,
+                "planned_topic": item.plan.get("topic"),
+                "planned_hypothesis": item.plan.get("hypothesis"),
                 "accuracy": item.accuracy,
                 "improved": item.improved,
                 "result": item.result.get("stages", []),
-                "rules": ["Do not claim proof from a single score.", "Mention what to repeat or diversify."],
+                "rules": [
+                    "Do not claim proof from a single score.",
+                    "Mention what to repeat or diversify.",
+                    "Compare the measured result with the planned success signal.",
+                ],
             }, ensure_ascii=False)},
         ]
         reply = self.model.complete(messages, temperature=0.2, max_tokens=400)
