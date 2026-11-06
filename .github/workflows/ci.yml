@@ -16,6 +16,10 @@ jobs:
         run: make -j2
       - name: Test suite
         run: make test
+      - name: Install NANNET authority dependency
+        run: python3 -m pip install cryptography
+      - name: Unified NANNET and merge API tests
+        run: make merge-test
       - name: Universe training gate
         run: make universe-check
       - name: Legacy logic suite
