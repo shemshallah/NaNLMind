@@ -49,8 +49,9 @@ class BridgeTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 translator.encode(BridgeFrame(wrong_source, local, 1,
                                               NanWord.from_bits(0, 0, 1), b"wrong-source"))
+            wrong_destination = RunnerRoute(bsr=(slot + 1) % 6)
             with self.assertRaises(ValueError):
-                translator.decode(raw, expected_destination=local)
+                translator.decode(raw, expected_destination=wrong_destination)
 
     def test_point_zero_service_adapter_accepts_authenticated_routes(self):
         translator = PointZeroTranslator()
