@@ -560,7 +560,13 @@ int cmd_math_train(int argc, char** argv) {
 
     for (std::uint16_t index = 0; index < HeadArray::size(); ++index) {
         HeadView head = heads.at(static_cast<std::uint8_t>(index));
-        const Hash256 before = Sha256::hash(&head.cell(), sizeof(NanCell));
+        auto hash_head_learning_state = [](HeadView& view) {
+            Sha256 digest;
+            digest.update(&view.cell(), sizeof(NanCell));
+            digest.update(&view.scratch(), sizeof(HeadScratch));
+            return digest.final();
+        };
+        const Hash256 before = hash_head_learning_state(head);
         const std::uint8_t previous_bit = static_cast<std::uint8_t>(index & 7u);
         const std::uint8_t current_bit = static_cast<std::uint8_t>((index >> 3u) & 7u);
         const std::uint8_t target_bit = static_cast<std::uint8_t>((index >> 6u) & 3u);
@@ -585,7 +591,7 @@ int cmd_math_train(int argc, char** argv) {
             const bool prediction = (NanWord::eval_bool(head.boolean_rule(), a, b) & 1u) != 0;
             if (prediction == target) ++correct;
         }
-        const Hash256 after = Sha256::hash(&head.cell(), sizeof(NanCell));
+        const Hash256 after = hash_head_learning_state(head);
         topology->commit(static_cast<std::uint8_t>(index), 0x31u, head.address().value,
                         before, after, static_cast<std::uint64_t>(epochs));
 
