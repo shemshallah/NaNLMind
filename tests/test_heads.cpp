@@ -144,6 +144,20 @@ int main() {
     CHECK(h7.history().size() >= 1);
     CHECK(heads.verify(&err));
 
+    // Continual learning: accumulated Boolean evidence can decay away from
+    // int16 saturation so a later relation batch can change the selected rule.
+    HeadView adaptive = heads.at(9);
+    adaptive.reset_boolean_learner();
+    for (int i = 0; i < 32; ++i) adaptive.train_boolean(0, 0, true);
+    const std::int16_t saturated_candidate = adaptive.boolean_score(1);
+    CHECK(saturated_candidate > 0);
+    adaptive.decay_boolean_scores(1);
+    CHECK_EQ(adaptive.boolean_score(1), static_cast<std::int16_t>(saturated_candidate / 2));
+    const std::int16_t decayed_score = adaptive.boolean_score(1);
+    adaptive.train_boolean(0, 0, false);
+    CHECK(adaptive.boolean_score(1) < decayed_score);
+    CHECK(heads.verify(&err));
+
     // Serialization reconstructs the same head layer.
     const auto bytes = u->serialize();
     auto u2 = Universe::from_bytes(bytes.data(), bytes.size());
