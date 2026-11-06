@@ -24,4 +24,9 @@ jobs:
           NANNET_URL: ${{ vars.NANNET_URL }}
           NANLM_RUNNER_TOKEN: ${{ secrets.NANLM_RUNNER_TOKEN }}
           NANLM_BOOTSTRAP_TOKEN: ${{ secrets.NANLM_BOOTSTRAP_TOKEN }}
-        run: python3 runner/nannet_consumer.py
+        run: |
+          if [ -z "$NANNET_URL" ] || [ -z "$NANLM_RUNNER_TOKEN" ] || [ -z "$NANLM_BOOTSTRAP_TOKEN" ]; then
+            echo "NANNET credentials are not configured; queue is unchanged."
+            exit 0
+          fi
+          python3 runner/nannet_consumer.py
