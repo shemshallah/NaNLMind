@@ -13,6 +13,9 @@ import training_merge  # noqa: E402
 from nanlmind_nannet.auth import _unb64, generate_master_key
 from nanlmind_nannet.pairing import PairingAuthority
 from nanlmind_nannet.devices import TERMS_VERSION
+from nanlmind_nannet.auth import AuthError, identity_public_key
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 
 class TrainingMergeTest(unittest.TestCase):
@@ -96,6 +99,10 @@ class TrainingMergeTest(unittest.TestCase):
             with urllib.request.urlopen(req, timeout=5) as response:
                 enrolled = json.loads(response.read())
                 self.assertEqual(response.status, 201)
+            duplicate = urllib.request.Request(base + '/v1/devices/register', data=json.dumps(payload).encode(), method='POST', headers={'Content-Type': 'application/json'})
+            with self.assertRaises(urllib.error.HTTPError) as duplicate_error:
+                urllib.request.urlopen(duplicate, timeout=5)
+            self.assertEqual(duplicate_error.exception.code, 400)
             headers = {'Authorization': 'Bearer ' + enrolled['token'], 'Content-Type': 'application/json'}
             req = urllib.request.Request(base + '/v1/devices/rotate', data=b'{}', method='POST', headers=headers)
             with urllib.request.urlopen(req, timeout=5) as response:
@@ -106,6 +113,36 @@ class TrainingMergeTest(unittest.TestCase):
             self.assertEqual(json.loads(health.read())['nannet_authority'], 'ready')
         finally:
             server.shutdown(); server.server_close(); thread.join(timeout=2)
+
+
+    def test_role_separated_pairing_and_identity_revocation(self):
+        db = Path(self.tmp.name) / "roles.sqlite"
+        master = _unb64(generate_master_key())
+        authority = PairingAuthority(db, master)
+        guest_pub = identity_public_key(master, "guest", "device-A")
+        admin_pub = identity_public_key(master, "admin", "device-A")
+        self.assertEqual(guest_pub, identity_public_key(master, "guest", "device-A"))
+        self.assertNotEqual(guest_pub, admin_pub)
+        with self.assertRaises(AuthError):
+            authority.create_pairing_code(["installation:admin"], role="guest")
+        guest_code = authority.create_pairing_code(["universe:read", "snapshot:read"], role="guest")
+        admin_code = authority.create_pairing_code(["installation:admin", "training:execute"], role="admin")
+        guest_private = Ed25519PrivateKey.generate()
+        guest_public = guest_private.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+        admin_private = Ed25519PrivateKey.generate()
+        admin_public = admin_private.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+        guest_id = "00000000-0000-4000-8000-000000000001"
+        admin_id = "00000000-0000-4000-8000-000000000002"
+        b64 = lambda value: __import__("base64").urlsafe_b64encode(value).decode().rstrip("=")
+        guest = authority.pair(guest_code["pairing_code"], guest_id, b64(guest_public))
+        admin = authority.pair(admin_code["pairing_code"], admin_id, b64(admin_public))
+        self.assertEqual(guest["role"], "guest")
+        self.assertEqual(admin["role"], "admin")
+        self.assertEqual(authority.verify_access_token(guest["token"], "universe:read")["role"], "guest")
+        self.assertEqual(authority.verify_access_token(admin["token"], "installation:admin")["role"], "admin")
+        authority.revoke_identity("admin", admin_id)
+        with self.assertRaises(AuthError):
+            authority.verify_access_token(admin["token"], "installation:admin")
 
     def test_auth_and_health(self):
         status, body = self.post(self.payload(), "auth", token="wrong")
