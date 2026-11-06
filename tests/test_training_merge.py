@@ -327,6 +327,12 @@ class TrainingMergeTest(unittest.TestCase):
         self.assertEqual(health["nodes"], 0)
         self.assertEqual(health["nannet_bridge"]["queued"], 0)
         self.assertEqual(health["nannet_bridge"]["max_pending_per_route"], 4096)
+        self.assertEqual(health["nannet_point_zero"]["universe_point"], 0)
+        self.assertEqual(health["nannet_point_zero"]["translator"], "N16B/1")
+        self.assertEqual(health["nannet_point_zero"]["point_zero_route"],
+                         "nan://GM0:SC0:MC0:BS0:HW0:BSR0")
+        self.assertEqual(health["nannet_point_zero"]["point_zero_bytes"],
+                         RunnerRoute(bsr=0).bytes().hex())
 
 
 if __name__ == "__main__":
