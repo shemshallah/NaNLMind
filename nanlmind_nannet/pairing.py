@@ -20,7 +20,10 @@ class PairingAuthority:
             if "role" not in columns:
                 db.execute("ALTER TABLE pairing_codes ADD COLUMN role TEXT NOT NULL DEFAULT 'guest'")
             db.execute("CREATE TABLE IF NOT EXISTS installations (installation_id TEXT PRIMARY KEY,public_key TEXT NOT NULL,paired_at INTEGER NOT NULL)")
-            db.execute("CREATE TABLE IF NOT EXISTS identity_status (identity TEXT NOT NULL,role TEXT NOT NULL,created_at INTEGER NOT NULL,revoked_at INTEGER,PRIMARY KEY(identity,role))")
+            db.execute("CREATE TABLE IF NOT EXISTS identity_status (identity TEXT NOT NULL,role TEXT NOT NULL,created_at INTEGER NOT NULL,last_seen INTEGER NOT NULL DEFAULT 0,revoked_at INTEGER,PRIMARY KEY(identity,role))")
+            identity_columns = {row[1] for row in db.execute("PRAGMA table_info(identity_status)")}
+            if "last_seen" not in identity_columns:
+                db.execute("ALTER TABLE identity_status ADD COLUMN last_seen INTEGER NOT NULL DEFAULT 0")
         try: os.chmod(self.database,0o600)
         except OSError: pass
         self._ensure_signer()
@@ -63,10 +66,11 @@ class PairingAuthority:
             raise AuthError("invalid identity")
         stamp = int(time.time()) if now is None else int(now)
         with sqlite3.connect(self.database) as db:
-            db.execute("INSERT OR IGNORE INTO identity_status VALUES (?,?,?,NULL)", (identity, role, stamp))
+            db.execute("INSERT OR IGNORE INTO identity_status (identity,role,created_at,last_seen,revoked_at) VALUES (?,?,?,?,NULL)", (identity, role, stamp, stamp))
             row = db.execute("SELECT revoked_at FROM identity_status WHERE identity=? AND role=?", (identity, role)).fetchone()
             if row and row[0] is not None:
                 raise AuthError("identity has been revoked")
+            db.execute("UPDATE identity_status SET last_seen=? WHERE identity=? AND role=? AND revoked_at IS NULL", (stamp, identity, role))
 
     def revoke_identity(self, role: str, identity: str, now=None) -> dict:
         stamp = int(time.time()) if now is None else int(now)
