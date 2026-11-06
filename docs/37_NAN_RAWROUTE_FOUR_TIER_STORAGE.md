@@ -211,6 +211,7 @@ Redis is **not required for the first deployment**. Add Redis only when there ar
 - BS0:0 is the 24/7 externally reachable bootstrap endpoint.
 - The initial Koyeb topology is four independent 10 GB volumes: `/bs0db`, `/mc0db`, `/sc0db`, `/gm0db`.
 - `NANLM_RAWROUTE_MOUNTS` maps each logical tier to one or more absolute mount paths; the checked-in example is `config/rawroute.mounts.koyeb.example.json`.
+- Set `NANLM_RAWROUTE_REQUIRE_MOUNTS=1` in production. Startup then refuses to create missing mount directories and requires every configured path to be an active mount, preventing silent writes to ephemeral container storage.
 - Each 10 GB mount defaults to a 9.5 GB logical quota plus a 256 MiB physical-free reserve. Additional volumes increase only the tier to which they are attached.
 - Report each physical mount separately; never aggregate free-space figures across unrelated volumes.
 - Use transactional writes, checksums, atomic checkpoint replacement and startup recovery.
@@ -219,7 +220,7 @@ Redis is **not required for the first deployment**. Add Redis only when there ar
 
 ## 8. Persistent registry implementation
 
-The first storage implementation is in `nanlm_nannet/rawroute_store.py`. It creates four independent SQLite-backed files (`bs0db.sqlite3`, `mc0db.sqlite3`, `sc0db.sqlite3`, `gm0db.sqlite3`) with a 10 GiB logical quota each by default. It stores canonical route definitions, current transport instances, append-only commit events, reverse head/object indexes, generation checks, nanclock monotonicity, idempotency receipts and per-namespace health/digests. The files are created sparsely; startup does not preallocate 40 GiB. Logical quota accounting includes both current route records and append-only event records. The N16B/1 transport route is an explicit association and is never inferred from the HW node or target head.
+The first storage implementation is in `nanlm_nannet/rawroute_store.py`. It creates four independent SQLite-backed files (`bs0db.sqlite3`, `mc0db.sqlite3`, `sc0db.sqlite3`, `gm0db.sqlite3`) with a 9.5 GB (9,500,000,000-byte) logical quota per mount by default. It stores canonical route definitions, current transport instances, append-only commit events, reverse head/object indexes, generation checks, nanclock monotonicity, idempotency receipts and per-namespace health/digests. The files are created sparsely; startup does not preallocate 40 GiB. Logical quota accounting includes both current route records and append-only event records. The N16B/1 transport route is an explicit association and is never inferred from the HW node or target head.
 
 ## 9. Implementation sequence
 
