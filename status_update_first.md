@@ -332,6 +332,13 @@ verifies restore into a fresh UTM. Tapes can allocate new pages through an
 attached `Atlas`. The journal stores page hashes, not the mutable page map; the
 formal finite-control/self-encoding proof is still open (doc 69).
 
+### UTM implementation status
+
+The fixed Minsky universal table, encoded universal description, normal binary
+machine execution, atlas-backed tape pages, and journal page index are all
+implemented and tested. The remaining limitation is a mechanized inductive
+equivalence proof; see docs/72 and docs/73.
+
 ### UTM encoded universal description
 
 The Minsky 23-state/8-symbol table is now encoded as a `TmDescription`, loaded

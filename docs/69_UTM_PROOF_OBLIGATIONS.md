@@ -53,10 +53,9 @@ ledger-persisted mutable page map is still open.
 
 ### O5 — equivalence proof
 
-The randomized cross-check is evidence, not an inductive proof over all
-machines and all traces. A proof needs an invariant relating encoded description
-positions, control registers, working-tape position, and the reference TM
-configuration.
+The exhaustive/randomized traces and encoded-description reference are checked,
+but they are not an inductive proof over all machines and traces. The theorem
+relation is documented in doc 72; a mechanized proof is still open.
 
 ## 3. What not to say
 
