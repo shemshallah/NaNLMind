@@ -82,7 +82,9 @@ Corpus upload uses browser SHA-256, sends bounded chunks, and seals the manifest
 The runner consumer is wired into the six-runner ring after a successful
 head epoch and is also available as a scheduled/manual workflow. It streams
 validated chunks, checks each chunk hash and the complete dataset digest,
-validates UTF-8, and computes a deterministic 16-dimensional byte-trigram
+validates UTF-8 records (including the strict `N16TXT/1` header, 4096-byte
+record bound, control/noncharacter rejection, CRLF normalization, and optional
+final newline), and computes deterministic 16-dimensional byte-trigram
 feature vector for each of the 256 local heads at bootstrap node point 1.
 Those vectors are folded through the existing idempotent `MergeStore` into
 the durable `NANLM_MERGE_ROOT/training_merge.json` state. This is the first
