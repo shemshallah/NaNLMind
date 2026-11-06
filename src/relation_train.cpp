@@ -398,7 +398,7 @@ int relation_train_cli(int argc, char** argv) {
         if (!decayed[oh]) { o.decay_boolean_scores(1); decayed[oh] = true; }
         for (int epoch=0; epoch<epochs; ++epoch) {
             for (unsigned lane=0; lane<8; ++lane) {
-                p.train_boolean(e.sh[lane]&1u, e.oh[lane]&1u, e.positive);
+                p.train_boolean(e.sf[lane], e.of[lane], e.positive);
                 s.train_boolean(e.pf[lane], e.of[lane], e.positive);
                 o.train_boolean(e.sf[lane], e.pf[lane], e.positive);
             }
