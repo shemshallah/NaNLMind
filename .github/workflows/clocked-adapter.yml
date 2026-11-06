@@ -1,0 +1,26 @@
+name: Clocked adapter tests
+
+on:
+  pull_request:
+    paths:
+      - "integrations/clocked/**"
+      - ".github/workflows/clocked-adapter.yml"
+  push:
+    branches: [main, clocked-universe]
+    paths:
+      - "integrations/clocked/**"
+      - ".github/workflows/clocked-adapter.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run offline adapter and gateway tests
+        run: python -m unittest discover -s integrations/clocked -p "test_*.py" -v
