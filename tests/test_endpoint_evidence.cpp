@@ -22,8 +22,8 @@ int main() {
     clocked.outcome_verified = false;
     clocked.active_heads = {7, 7, 8};
 
-    CHECK_EQ(fold.observe(clocked), EndpointIngestResult::Accepted);
-    CHECK_EQ(fold.observe(clocked), EndpointIngestResult::Duplicate);
+    CHECK(fold.observe(clocked) == EndpointIngestResult::Accepted);
+    CHECK(fold.observe(clocked) == EndpointIngestResult::Duplicate);
     CHECK_EQ(fold.stats(EndpointId::ClockedDemo).observations, 1u);
     CHECK_EQ(fold.stats(EndpointId::ClockedDemo).evidence_only, 1u);
     CHECK_EQ(fold.feedback()[7], 0);
@@ -36,26 +36,26 @@ int main() {
     android.active_heads = {7, 7, 9};
     android.outcome_verified = true;
     android.correct = true;
-    CHECK_EQ(fold.observe(android), EndpointIngestResult::Accepted);
+    CHECK(fold.observe(android) == EndpointIngestResult::Accepted);
     CHECK_EQ(fold.stats(EndpointId::MyAndroid).correct, 1u);
     CHECK_EQ(fold.feedback()[7], 0); // one verified success, bounded /8
 
     EndpointObservation stale = android;
     stale.event_id = event_id('c');
     stale.base_generation = 1;
-    CHECK_EQ(fold.observe(stale), EndpointIngestResult::StaleGeneration);
+    CHECK(fold.observe(stale) == EndpointIngestResult::StaleGeneration);
 
     CHECK(!fold.advance_generation(2));
     CHECK(fold.advance_generation(1));
     stale.base_generation = 1;
-    CHECK_EQ(fold.observe(stale), EndpointIngestResult::Accepted);
+    CHECK(fold.observe(stale) == EndpointIngestResult::Accepted);
     CHECK_EQ(fold.stats(EndpointId::MyAndroid).correct, 2u);
 
     EndpointObservation bad;
     bad.endpoint = EndpointId::ClockedDemo;
     bad.base_generation = 1;
     bad.event_id = "not-a-digest";
-    CHECK_EQ(fold.observe(bad), EndpointIngestResult::Invalid);
+    CHECK(fold.observe(bad) == EndpointIngestResult::Invalid);
 
     CHECK_EQ(fold.unique_events(), 3u);
     CHECK(fold.digest() == fold.digest());
