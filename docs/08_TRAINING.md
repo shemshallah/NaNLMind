@@ -148,7 +148,7 @@ gradients:
 This is how a small open teacher can improve the substrate without a GPU farm.
 The teacher is a data source; the object remains integer and replayable.
 
-The NaNLM/Qwen7B work already provides the pattern: teacher cards, token
+The earlier deeprepo teacher work already provides the pattern: teacher cards, token
 shards, additive merges, and honest BPC/top-1 baselines. The new object can use
 the same shard format, but the target is a chart delta, not a dense matrix.
 

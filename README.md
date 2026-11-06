@@ -17,7 +17,7 @@ This repository contains:
 
 - the extracted provenance of 28 archives (Rounds 2–23, merged R15–R17/R18/R23clock, `distributedmind`, and `nanclock`);
 - a clean C++20 core for the address algebra, NaN16 Boolean functions, the 8 MiB full-address register-file chart, bit/byte/KB paging, hyperedges, bidirectional temporal memory, resonance, and one global ledger;
-- the specifications for rebuilding `reporam` and `repovram` as the memory tiers of this one object;
+- the six-runner NaNLMind ring and its `nanlm-ram` / `nanlm-vram` tiers;
 - a staged plan for a single-chart brain on GitHub, then a 5-replica deployment, then remote tiers and GPU training.
 
 ---
@@ -141,11 +141,10 @@ make challenge   # expected to fail: held-out logic probe
 
 ---
 
-## Two live rings
+## Live ring
 
 | ring | repos | tiers | role |
 |---|---|---|---|
-| Qwen demo | `deeprepo-cpu-1..5` | `reporam`, `repovram` | existing 24/7 model demo |
 | NaNLMind heads | `nanlm-cpu-1..6` | `nanlm-ram`, `nanlm-vram` | 256-head handoff ring |
 
 `DEEPREPO_PAT` is a GitHub Actions runner secret only; it is never shipped in
@@ -170,7 +169,6 @@ baseline — a plain RNN matching the 256-head topology — is in
 | `docs/02_ARCHITECTURE.md` | one global topology, charts, cells, heads, layers, homeostasis |
 | `docs/03_MATHEMATICAL_STRUCTURE.md` | the formal object `(A,C,E,H,T,P,L)` |
 | `docs/04_REGISTER_FILE.md` | exact 8 MiB full-address chart layout and linked register file |
-| `docs/05_MEMORY_TIERS.md` | rebuilt reporam/repovram specifications |
 | `docs/06_HEADS_RESONANCE.md` | 256 heads, resonance, self-modification, bidirectional memory |
 | `docs/07_DISTRIBUTED.md` | one object on a replica ring; leases, replay, failure modes |
 | `docs/08_TRAINING.md` | integer/CRDT training, teacher distillation, GPU plan |
@@ -275,7 +273,7 @@ Full state is dense only in the table. The real system is sparse: an unwritten c
 - one global topology with charts as coordinate regions;
 - a palindromic temporal hypergraph with bidirectional memory;
 - a deterministic, integer-only core with a logical clock that can be replayed and audited;
-- a memory-tier specification that reuses the page geometry of `reporam`/`repovram`.
+- the NaNLMind memory-tier geometry used by `nanlm-ram` / `nanlm-vram`.
 
 **This is not yet:**
 

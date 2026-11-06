@@ -588,7 +588,7 @@ Workers must fail closed for new privileged operations when the orchestrator is 
 
 ### 13.3 DeepRepo and existing model assets
 
-The existing DeepRepo/Qwen environment may be used as a separately approved test source for model artifacts or inference comparisons. It must not be silently migrated, repurposed or deleted by this proposal. Preserve the currently working Qwen3-30B-A3B and Qwen1.5B services and the DeepRepo keeper until a replacement is independently healthy and validated. Keep repository credentials such as `DEEPREPO_PAT` scoped to the GitHub Actions workflows that require them; do not distribute them to cluster workers.
+The Qwen demo ring and its `reporam`/`repovram` tiers are retired and deleted by directive. Keep the `deeprepo` repository as the engine dependency and keep `DEEPREPO_PAT` scoped to the GitHub Actions workflows that require it; do not distribute it to cluster workers.
 
 ## 14. Bootstrap implementation plan
 

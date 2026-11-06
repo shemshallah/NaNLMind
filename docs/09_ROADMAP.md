@@ -87,7 +87,7 @@ then train it. Do not invert the order.
 
 ---
 
-## M3 — reporam/repovram prototype
+## M3 — NaNLMind tier prototype
 
 **Goal:** persist the object in the rebuilt tiers.
 
@@ -139,7 +139,7 @@ then train it. Do not invert the order.
 - a page migration preserves head identity and collective facts;
 - replay from genesis on a fresh replica matches the head.
 
-**Resource:** five GitHub runners, 7 GiB each, 2 GiB dense atlas.
+**Resource:** six GitHub runners, 7 GiB each, 2 GiB dense atlas.
 
 ---
 
@@ -192,7 +192,7 @@ then train it. Do not invert the order.
 - a full generation can be rebuilt from the manifest and the store;
 - the object remains one object.
 
-**Resource:** reporam/repovram, S3/B2, five runners, a GPU farm optional.
+**Resource:** nanlm-ram/nanlm-vram, S3/B2, six runners, a GPU farm optional.
 
 ---
 
@@ -268,7 +268,7 @@ hosts a universal machine.
 now:      M0 complete
 next:     M1 single-chart brain on GitHub
 then:     M2 hypergraph + bidirectional memory
-then:     M3 reporam/repovram prototype
+then:     M3 NaNLMind tier prototype
 then:     M4 six runners, one object
 then:     M5 training + community shards
 then:     M6 remote tiers

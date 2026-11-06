@@ -5,18 +5,19 @@
 > There is one global topology. Five replicas host regions of it. There is no
 > external semantic coordinator and no per-replica history.
 
-The five GitHub runner slots are:
+The six NaNLMind GitHub runner slots are:
 
 ```text
-shemshallah/deeprepo-cpu-1
-shemshallah/deeprepo-cpu-2
-shemshallah/deeprepo-cpu-3
-shemshallah/deeprepo-cpu-4
-shemshallah/deeprepo-cpu-5
+nanlm-cpu-1
+nanlm-cpu-2
+nanlm-cpu-3
+nanlm-cpu-4
+nanlm-cpu-5
+nanlm-cpu-6
 ```
 
-Each has ~7 GiB RAM and ~14 GB disk. They are disposable. They are not five
-minds; they are five caches/executors of one object.
+Each has ~7 GiB RAM and ~14 GB disk. They are disposable. They are not six
+minds; they are six caches/executors of one object.
 
 ---
 
@@ -25,7 +26,7 @@ minds; they are five caches/executors of one object.
 | thing | semantics | distribution |
 |---|---|---|
 | address algebra | one | everywhere |
-| chart set / atlas | one | placed by `hash(chart_path) mod 5` |
+| chart set / atlas | one | placed by `hash(chart_path) mod 6` |
 | hypergraph | one | descriptors + member blocks placed by page |
 | temporal memory | one | links placed with their pages; epoch index replicated |
 | ledger | one | append-only; every commit carries the head |
@@ -44,7 +45,7 @@ committed pages under the one root.
 A first placement rule:
 
 ```text
-owner(chart_path) = fnv1a(chart_path) mod 5
+owner(chart_path) = fnv1a(chart_path) mod 6
 ```
 
 A page is *hosted* by one replica at a time. Other replicas may hold read
@@ -156,7 +157,7 @@ This is the first realistic multi-replica brain.
 ### Depth 2 — the remote tier
 
 65,536 charts = 512 GiB dense. Five replicas cannot hold it. They hold a hot
-working set (a few GiB each) and read cold pages from reporam/repovram over
+working set (a few GiB each) and read cold pages from nanlm-ram/nanlm-vram over
 HTTP Range. The 8 MiB page is the fetch unit. A page fault is a remote read, not
 a lost thought.
 
@@ -171,7 +172,7 @@ without downloading everything.
 |---:|---:|---:|---|---|
 | 0 | 1 | 8 MiB | yes | any |
 | 1 | 256 | 2 GiB | yes | GitHub runners |
-| 2 | 65,536 | 512 GiB | hot set only | reporam/repovram |
+| 2 | 65,536 | 512 GiB | hot set only | nanlm-ram/nanlm-vram |
 | 3 | 16.7M | 128 TiB | no | S3/B2 |
 | 4 | 4.29B | 32 PiB | no | distributed store |
 
@@ -231,7 +232,7 @@ The R17 "disappearing head" test is the specification for this behavior.
 
 ---
 
-## 7. Why this is not five little minds
+## 7. Why this is not six little minds
 
 A fragmented design would have:
 
@@ -242,7 +243,7 @@ six runners × private state × private history × external coordinator
 This design has:
 
 ```text
-five caches × one atlas × one hypergraph × one time × one ledger × one digest
+six caches × one atlas × one hypergraph × one time × one ledger × one digest
 ```
 
 The difference is testable:
@@ -263,9 +264,9 @@ history, it is rejected.
 The initial deployment uses GitHub Actions as the execution and storage layer:
 
 - one repository holds the code, manifests, and small state;
-- `reporam` holds the mutable journal and live pages;
-- `repovram` holds immutable generations;
-- the five `deeprepo-cpu-*` repositories hold runner workflows and no data;
+- `nanlm-ram` holds the mutable journal and live pages;
+- `nanlm-vram` holds immutable generations;
+- the six `nanlm-cpu-*` repositories hold runner workflows and no data;
 - a dispatch job leases a page range, runs a bounded work unit, appends a
   delta, and releases the lease;
 - a compaction job folds deltas into a generation and publishes a manifest;

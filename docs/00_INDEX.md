@@ -8,7 +8,6 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 2 | [02_ARCHITECTURE.md](02_ARCHITECTURE.md) | What is the one global topology, and how is it organized? |
 | 3 | [03_MATHEMATICAL_STRUCTURE.md](03_MATHEMATICAL_STRUCTURE.md) | What is the formal object `(A,C,E,H,T,P,L)`? |
 | 4 | [04_REGISTER_FILE.md](04_REGISTER_FILE.md) | How is one 8 MiB full-address chart laid out, bit for bit? |
-| 5 | [05_MEMORY_TIERS.md](05_MEMORY_TIERS.md) | How do we rebuild reporam/repovram for this object? |
 | 6 | [06_HEADS_RESONANCE.md](06_HEADS_RESONANCE.md) | How do the 256 heads, resonance, and self-modification work? |
 | 7 | [07_DISTRIBUTED.md](07_DISTRIBUTED.md) | How does one object run on six runners without fragmenting? |
 | 8 | [08_TRAINING.md](08_TRAINING.md) | How does it learn, and how can a community train it? |

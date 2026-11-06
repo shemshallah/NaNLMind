@@ -9,9 +9,8 @@ nanlm-cpu-1 .. nanlm-cpu-6
 ```
 
 They host regions of the one `NaNLMind` object. They do not own private
-histories. `NaNLMind` is the idle orchestrator/storage repository. The Qwen
-demo stays on `deeprepo-cpu-1..5`; its `reporam`/`repovram` tiers are separate
-from `nanlm-ram`/`nanlm-vram`.
+histories. `NaNLMind` is the idle orchestrator/storage repository. It is the
+only ring; the retired Qwen demo and its tiers are gone.
 
 ```text
 NaNLMind (orchestrator, manifests, docs)
@@ -22,8 +21,8 @@ nanlm-cpu-1..6  ──►  nanlm-ram (packets, clock, lease, manifest)
    └─ one global ledger / one digest
 ```
 
-The existing `deeprepo-cpu-1..5` ring keeps Qwen alive. The two rings share the
-same PAT and the same GitHub account, but not a writer journal.
+Only the NaNLMind ring remains. The `deeprepo` repository is retained as the
+engine dependency; there is no second writer journal.
 
 ---
 
@@ -88,7 +87,7 @@ epoch E, phase 1:
 A runner never starts the next epoch before the previous round is complete.
 The ring is **sequential by default**: one slot writes its packet set, releases
 its per-slot lease, and the next slot is dispatched. Six concurrent writers
-would corrupt the single `reporam` journal; `--parallel` is an experiment, not
+would corrupt the single NaNLMind journal; `--parallel` is an experiment, not
 the default.
 
 ---
@@ -205,8 +204,8 @@ Required permissions:
 - `keeper.yml` never overlaps an active ring run;
 - `concurrency` groups prevent duplicate ring/keeper runs.
 
-This keeps the ring within GitHub Actions and API limits while leaving the Qwen
-ring on its own five slots.
+This keeps the ring within GitHub Actions and API limits while leaving the
+ring on its own six slots.
 
 ---
 
@@ -240,7 +239,7 @@ hash; consolidation replays it into a COW page.
 | page hash mismatch | refetch from `nanlm-vram`; do not apply |
 | runner disappears | its packet set is missing; the round cannot validate |
 | clock drift | logical epoch wins; wall clock is only for lease expiry |
-| Qwen ring active | separate `nanlm-ram` tier; no journal conflict |
+| retired Qwen ring | removed; no separate tier or journal |
 | rate limit low | preflight fails; keeper waits for the next window |
 
 ---
@@ -277,7 +276,7 @@ Next:
 2. add a drift/dropped-slot test with the real workflow;
 3. add the legacy R18T sequence and logic suites to the ring acceptance gate;
 4. add a persistent slot loop to reduce the six-job overhead;
-5. keep Qwen and NaNLMind on separate tiers and budgets.
+5. keep only the NaNLMind ring and its tiers.
 
 ---
 

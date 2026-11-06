@@ -169,7 +169,7 @@ need.
 
 - `nanlm-cpu-1..6` — disposable head runners
 - `nanlm-ram`, `nanlm-vram` — separate tiers
-- `deeprepo-cpu-1..5` — Qwen demo, untouched
+- retired Qwen ring (`deeprepo-cpu-1..5`, `reporam`, `repovram`) — deleted
 - one secret: `DEEPREPO_PAT`
 
 First live epoch:
@@ -182,7 +182,7 @@ round digest = 0cc600649c35b0f91f0ed9693ac0916f14a03fa4587a2d292b33b7b091d7d61c
 ```
 
 Epoch 2 succeeded and self-redispatched. The ring is sequential by default:
-six concurrent writers corrupt the single reporam journal. One-epoch dispatch is
+six concurrent writers corrupt the single NaNLMind journal. One-epoch dispatch is
 ~6m25s because it starts six workflow jobs.
 
 The persistent loop (`op=loop`) is now live: one job processes multiple epochs

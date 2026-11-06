@@ -2,7 +2,7 @@
 """Dispatch the 6-slot NaNLMind head ring, one slot at a time.
 
 Each slot runs `runner.yml` in `owner/nanlm-cpu-N`, processes its head shard
-for one logical epoch, writes a packet set to reporam (or a local file in dev),
+for one logical epoch, writes a packet set to the NaNLMind head store (or a local file in dev),
 and exits. This script waits for each run before dispatching the next slot, so
 the ring is a synchronous handoff: preload -> shift -> publish -> next.
 """
@@ -100,7 +100,7 @@ def main():
                     help="one loop job processes many epochs in one workspace")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--parallel", dest="parallel", action="store_true", default=False,
-                    help="experimental: six writers at once (unsafe for the single reporam journal)")
+                    help="experimental: six writers at once (unsafe for the single NaNLMind head journal)")
     ap.add_argument("--sequential", dest="parallel", action="store_false")
     args = ap.parse_args()
 

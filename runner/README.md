@@ -1,8 +1,8 @@
 # NaNLMind runner ring
 
 `NaNLMind` is the idle orchestrator/storage repository. The six
-`nanlm-cpu-1..6` repositories are disposable head runners. The Qwen demo remains
-on `deeprepo-cpu-1..5`; it is a separate ring.
+`nanlm-cpu-1..6` repositories are disposable head runners. The retired Qwen
+ring is gone; only the `deeprepo` engine dependency remains.
 
 ## One secret
 
@@ -53,9 +53,8 @@ checks the GitHub rate limit before dispatching and uses the existing
 ## Tiers
 
 `nanlm-bootstrap.yml` creates the `nanlm-ram` and `nanlm-vram` release tiers,
-reusing deeprepo's `deepcore` sparse RAM/VRAM code. The Qwen ring keeps
-`reporam`/`repovram`; NaNLMind keeps `nanlm-ram`/`nanlm-vram`, so both can run
-without sharing a writer journal.
+reusing deeprepo's `deepcore` sparse RAM/VRAM code. NaNLMind is the only ring;
+there is no Qwen tier or second writer journal.
 
 ## Why one-at-a-time
 

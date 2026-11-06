@@ -24,7 +24,7 @@ all polling the same PAT.
 | `ring_dispatch.py --poll` | default 30s between run lookups |
 | `ring_dispatch.py` retry | 60s sleep on `403` / `rate limit` |
 | persistent loop | one job processes 10 epochs; far fewer dispatches |
-| single writer | no concurrent reporam writes |
+| single writer | no concurrent NaNLMind journal writes |
 | `concurrency` groups | no duplicate ring/keeper/atomic runs |
 | `clock-sync.yml` | skips while the ring is active |
 
@@ -35,8 +35,8 @@ all polling the same PAT.
 3. Let the keeper restart the ring; do not manually dispatch a second ring.
 4. Check the budget with `gh api rate_limit`, not by hammering run endpoints.
 5. Keep the PAT scopes minimal but sufficient.
-6. The Qwen ring has its own dispatches; both rings share the same account
-   budget. Leave headroom.
+6. The retired Qwen ring no longer dispatches. Keep headroom for the NaNLMind
+   ring and clock sync.
 
 ## 3.1 The six-hour limit
 

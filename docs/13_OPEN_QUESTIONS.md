@@ -142,7 +142,7 @@ questions:
 
 - What is the active working set for a real task?
 - How many charts are touched per query?
-- What is the page-fault latency from reporam/repovram/S3?
+- What is the page-fault latency from nanlm-ram/nanlm-vram/S3?
 - Does the hypergraph locality match the placement?
 - At what depth does the global digest become too expensive?
 - Can partial verification replace a full root recompute?

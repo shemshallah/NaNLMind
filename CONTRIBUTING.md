@@ -17,7 +17,7 @@ The repository has one rule above all others:
 
 - Add a benchmark that compares a substrate rule against a host implementation.
 - Add a fuzz target for `Universe::from_bytes` and the pager.
-- Add a page format conformance test against the `reporam`/`repovram` spec.
+- Add a page format conformance test against the NaNLMind chart/page geometry.
 - Add a cross-chart hyperedge experiment with a baseline.
 - Add an aarch64/Termux CI job.
 

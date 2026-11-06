@@ -6,7 +6,7 @@
 |---|---|---|
 | physical | `tcp://node-a.example:7401/nan` | where can I reach it? |
 | universe | `nan://U-07/R-03/H-0x0180/T-108/model/a` | where does it exist in the topology? |
-| semantic | `model/qwen-7b`, `corpus/alice`, `service/reason` | what am I trying to access? |
+| semantic | `model/nanlm-head`, `corpus/alice`, `service/reason` | what am I trying to access? |
 
 The fabric translates between them without letting the physical address become
 the identity. A universe can move hosts, a head can move CPUs, and a resource
