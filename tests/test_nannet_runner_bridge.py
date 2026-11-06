@@ -21,6 +21,29 @@ class RunnerBridgeIntegrationTests(unittest.TestCase):
         nanlm_worker.PORTAL_TOKEN = self.old_token
         nanlm_worker.PORTAL_ROUTE = self.old_route
 
+    def test_native_two_phase_reverse_ack_retires_both_frames(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            mailbox_path = str(Path(tmp) / "shared-native.sqlite")
+            source, destination = RunnerRoute(bsr=0), RunnerRoute(bsr=4)
+            mailbox = BridgeMailbox(mailbox_path)
+            original = BridgeFrame(source, destination, 901,
+                                   NanWord.from_bits(0, 0, 901), b"payload")
+            mailbox.put(original)
+            with patch.dict(os.environ, {"NANNET_PORTAL_API": "",
+                                          "NANNET_NATIVE_MAILBOX": mailbox_path}):
+                nanlm_worker.PORTAL_ROUTE = destination
+                receipt = BridgeFrame(destination, source, 901,
+                                      NanWord.from_bits(3, 3, 901), b"BSR_ACK")
+                nanlm_worker.portal_bridge_send(receipt)
+                self.assertIsNone(mailbox.claim(destination, lease_seconds=0))
+                queued_receipt = BridgeFrame.decode(mailbox.claim(source, lease_seconds=0))
+                self.assertEqual(queued_receipt.payload, b"BSR_ACK")
+                nanlm_worker.PORTAL_ROUTE = source
+                consumed = BridgeFrame(source, destination, 901,
+                                       NanWord.from_bits(3, 3, 901), b"ACK")
+                nanlm_worker.portal_bridge_send(consumed)
+                self.assertIsNone(mailbox.claim(source, lease_seconds=0))
+
     def test_native_transport_assigns_route_and_queues_to_point_zero(self):
         with tempfile.TemporaryDirectory() as tmp:
             mailbox_path = str(Path(tmp) / "shared-native.sqlite")
