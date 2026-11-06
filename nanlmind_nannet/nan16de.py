@@ -40,7 +40,7 @@ TYPE_BY_HEAD = {head: i for i, head in enumerate(HEAD_BY_TYPE)}
 TYPE_NAMES = ("+sNaN", "-sNaN", "+qNaN", "-qNaN")
 ROUTE_RE = re.compile(
     r"^nan://HW(\d{1,3}):BS(\d{1,3}):MC(\d{1,3}):"
-    r"SC(\d{1,3}):GM(\d{1,3}):UM(\d{1,3})$")
+    r"SC(\d{1,3}):GM(\d{1,3})(?::UM(\d{1,3}))?$")
 
 
 @dataclass(frozen=True)
@@ -50,29 +50,34 @@ class Route:
     mc: int
     sc: int
     gm: int
-    um: int
+    um: int | None = None
 
     def __post_init__(self):
-        values = (self.hw, self.bs, self.mc, self.sc, self.gm, self.um)
+        values = (self.hw, self.bs, self.mc, self.sc, self.gm)
         if any(isinstance(v, bool) or not isinstance(v, int) or not 0 <= v <= 255
                for v in values):
             raise ValueError("route coordinates must be 0..255")
-        if self.um == 255:
-            raise ValueError("UM255 is reserved for the NaN routing interface")
+        if self.um is not None and (isinstance(self.um, bool) or
+                                    not isinstance(self.um, int) or
+                                    not 0 <= self.um < 255):
+            raise ValueError("UM must be 0..254 or omitted")
 
     def bytes(self) -> bytes:
-        return bytes((self.hw, self.bs, self.mc, self.sc, self.gm, self.um))
+        return bytes((self.hw, self.bs, self.mc, self.sc, self.gm,
+                      255 if self.um is None else self.um))
 
     def text(self) -> str:
-        return (f"nan://HW{self.hw}:BS{self.bs}:MC{self.mc}:"
-                f"SC{self.sc}:GM{self.gm}:UM{self.um}")
+        base = (f"nan://HW{self.hw}:BS{self.bs}:MC{self.mc}:"
+                f"SC{self.sc}:GM{self.gm}")
+        return base if self.um is None else base + f":UM{self.um}"
 
     @classmethod
     def parse(cls, value: str) -> "Route":
         match = ROUTE_RE.match(value or "")
         if not match:
             raise ValueError("route must be nan://HW:BS:MC:SC:GM:UM with 0..255")
-        return cls(*(int(x) for x in match.groups()))
+        groups = match.groups()
+        return cls(*[int(x) for x in groups[:5]], int(groups[5]) if groups[5] else None)
 
 
 @dataclass(frozen=True)
@@ -231,7 +236,8 @@ def decode_envelope(raw: bytes) -> Envelope:
     if raw[:5] != MAGIC or raw[5] != VERSION:
         raise ValueError("unsupported NaN16DE magic/version")
     p = 6
-    route = Route(*raw[p:p + 6])
+    route_values = list(raw[p:p + 6])
+    route = Route(*route_values[:5], None if route_values[5] == 255 else route_values[5])
     p += 6
     kind_len = int.from_bytes(raw[p:p + 2], "big"); p += 2
     if kind_len < 1 or kind_len > 64 or p + kind_len > len(raw):
@@ -250,3 +256,17 @@ def decode_envelope(raw: bytes) -> Envelope:
         raise ValueError("trailing bytes in NaN16DE envelope")
     return Envelope(route, kind, word, installation_id, epoch, timestamp,
                     nonce, signature)
+
+
+def send_envelope(portal_url: str, bearer_token: str, envelope: Envelope,
+                  timeout: int = 30) -> dict:
+    """POST one signed NaN16DE envelope to the NANNET portal route."""
+    import urllib.request
+    body = json.dumps({"envelope": envelope.to_bytes().hex()}).encode()
+    request = urllib.request.Request(
+        portal_url.rstrip("/") + "/v1/nan16de/route", data=body,
+        headers={"Authorization": "Bearer " + bearer_token,
+                 "Content-Type": "application/json"},
+        method="POST")
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        return json.load(response)
