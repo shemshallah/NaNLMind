@@ -75,9 +75,10 @@ Merge rules:
 ## 3. Live deployment
 
 ```text
-service:  training-merge-v2
+service:  nannet-portal
 app:      deeprepo
 instance: nano
+volume:   /data (persistent)
 URL:      https://deeprepo-qtcl-9c8fea15.apps.mistral.run
 health:   /healthz -> 200
 merge:    /v1/training/merge -> 200
@@ -87,9 +88,10 @@ merge:    /v1/training/merge -> 200
 the repository. `DEEPREPO_PAT` is not used.
 
 Koyeb rejected the `free` instance type; the service is running on `nano`.
-This instance has no persistent volume, so `/data/training_merge.json` is
-ephemeral and resets if the instance is replaced. Attach a volume before using
-it for durable state.
+The live service has a persistent volume mounted at `/data`, so
+`training_merge.json` and `nannet-authority.sqlite` survive instance
+replacement. Verify retention after a deploy by checking `/healthz` and a known
+merge generation; do not infer persistence from a single 200 response.
 
 ## 4. Koyeb deployment
 
@@ -101,8 +103,8 @@ it for durable state.
 5. Point the bootstrap/peer merge client at
    `https://<service>.koyeb.app/v1/training/merge`.
 
-Koyeb's free instance has no persistent volume. Use a volume-enabled instance
-for durable training merge, or accept ephemeral state for a demo.
+Use a volume-enabled instance for durable training merge. The current live
+service is volume-enabled.
 
 `deploy/training_merge/koyeb.yaml` is the illustrative service definition.
 

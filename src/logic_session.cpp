@@ -4,6 +4,7 @@
 #include "nanlm/head_gate.hpp"
 #include "nanlm/word_memory.hpp"
 
+#include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -44,28 +45,54 @@ LogicSessionResult LogicSessionTrainer::run(int boolean_repetitions,
 LogicStageResult LogicSessionTrainer::train_boolean_basis(int repetitions) {
     LogicStageResult stage;
     stage.name = "boolean_foundation";
+    // The target function is hidden in the example stream. Each head receives a
+    // balanced but per-head reordered curriculum; it is never told the function
+    // id or asked to copy a rule. The population must learn the whole 16-function
+    // basis, not 256 copies of one rule.
+    std::array<std::uint8_t, 256> targets{};
+    for (std::uint16_t i = 0; i < HeadArray::size(); ++i) {
+        // A fixed affine permutation keeps all 16 functions represented while
+        // making the assignment depend on the head/world rather than a literal
+        // index-to-function rule.
+        targets[i] = static_cast<std::uint8_t>((i * 7u + 11u) & 15u);
+    }
+    std::array<bool, 16> seen_rules{};
     for (std::uint16_t i = 0; i < HeadArray::size(); ++i) {
         HeadView head = heads_->at(static_cast<std::uint8_t>(i));
-        const std::uint8_t target = static_cast<std::uint8_t>(i & 15u);
+        const std::uint8_t target = targets[i];
         head.reset_boolean_learner();
-        for (int rep = 0; rep < repetitions; ++rep) {
-            for (std::uint32_t a = 0; a < 2; ++a) {
-                for (std::uint32_t b = 0; b < 2; ++b) {
-                    const bool truth = ((target >> (2u * a + b)) & 1u) != 0;
-                    head.train_boolean(a, b, truth);
-                }
-            }
+        // Per-head row order: same evidence, different local sequence.
+        std::array<std::uint8_t, 4> rows{0, 1, 2, 3};
+        const std::uint32_t seed = static_cast<std::uint32_t>(i) * 2654435761u;
+        for (int a = 3; a > 0; --a) {
+            const std::uint32_t j = seed % static_cast<std::uint32_t>(a + 1);
+            std::swap(rows[static_cast<std::size_t>(a)], rows[static_cast<std::size_t>(j)]);
         }
+        for (int rep = 0; rep < repetitions; ++rep) {
+            const std::uint8_t row = rows[static_cast<std::size_t>(rep) & 3u];
+            const std::uint32_t a = static_cast<std::uint32_t>(row >> 1u);
+            const std::uint32_t b = static_cast<std::uint32_t>(row & 1u);
+            const bool truth = ((target >> (2u * a + b)) & 1u) != 0;
+            head.train_boolean(a, b, truth);
+        }
+        bool head_ok = true;
         for (std::uint32_t a = 0; a < 2; ++a) {
             for (std::uint32_t b = 0; b < 2; ++b) {
                 const bool expected = ((target >> (2u * a + b)) & 1u) != 0;
                 const bool got = (NanWord::eval_bool(head.boolean_rule(), a, b) & 1u) != 0;
                 record(stage, got == expected);
+                if (got != expected) head_ok = false;
             }
         }
+        if (!head_ok) ++stage.failed_heads;
+        seen_rules[head.boolean_rule() & 15u] = true;
     }
-    stage.passed = stage.correct == stage.total;
-    stage.detail = "256 heads x 4 truth-table rows";
+    for (bool seen : seen_rules) if (seen) ++stage.distinct_rules;
+    stage.passed = stage.correct == stage.total && stage.failed_heads == 0 &&
+                   stage.distinct_rules == 16;
+    stage.detail = "256 heads x 4 truth-table rows | distinct_rules=" +
+                   std::to_string(stage.distinct_rules) +
+                   " | failed_heads=" + std::to_string(stage.failed_heads);
     return stage;
 }
 
@@ -197,12 +224,17 @@ LogicStageResult LogicSessionTrainer::train_words_after_logic() {
     stage.passed = stage.correct == stage.total;
     stage.detail = "held-out entity/ability word queries";
 
-    // Diagnostic only: byte completion is measured, not used to promote.
+    // Diagnostic only: this is a separate fixed-corpus control, not a metric
+    // produced by the 256 trained heads. Train on the first 80% and evaluate
+    // the held-out 20% so it is not a train-on-test number.
     Context2Model completion;
     const std::vector<std::uint8_t> data(corpus.begin(), corpus.end());
-    completion.train(data);
-    const Context2Eval eval = completion.evaluate(data, 2, data.size());
-    stage.detail += " | byte_completion_top1=" + std::to_string(eval.accuracy);
+    const std::size_t split = (data.size() * 4u) / 5u;
+    const std::vector<std::uint8_t> train(data.begin(), data.begin() + split);
+    completion.train(train);
+    const Context2Eval eval = completion.evaluate(data, split, data.size());
+    stage.detail += " | fixed_control_byte_heldout_top1=" + std::to_string(eval.accuracy) +
+                    " fixed_control_byte_heldout_bpc=" + std::to_string(eval.bits_per_byte);
     return stage;
 }
 

@@ -14,15 +14,19 @@ the returned manifest to its map.
 https://deeprepo-qtcl-9c8fea15.apps.mistral.run
 ```
 
-The intended Koyeb service name is `nannet-portal` (the live service must also be renamed in Koyeb; changing this repository manifest does not rename an already-created service). The current main-branch image combines the merge API with NANNET pairing authority, root-derived role-separated identities, and consent-based device leases on the same HTTPS origin. Koyeb
-rejected `free`. No persistent volume is attached, so merged JSON state is
-ephemeral until one is added. `NANLM_MERGE_TOKEN` is a Koyeb secret.
+The live Koyeb service is `nannet-portal` and currently runs on a `nano`
+instance. A persistent volume is attached at `/data`, so
+`/data/training_merge.json` and `/data/nannet-authority.sqlite` survive service
+replacement. The current main-branch image combines the merge API with NANNET
+pairing authority, root-derived role-separated identities, and consent-based
+device leases on the same HTTPS origin. `NANLM_MERGE_TOKEN` is a Koyeb secret;
+do not put a GitHub PAT in this service.
 
 ## Deploy
 
 1. Name the Koyeb web service `nannet-portal` and build from this repository with Dockerfile
    `deploy/training_merge/Dockerfile`.
-2. Attach a persistent volume at `/data` (free Koyeb instances are ephemeral).
+2. Attach a persistent volume at `/data` (the live service already has one).
 3. Set `NANLM_MERGE_TOKEN` to a scoped, revocable service credential and `NANNET_AUTHORITY_MASTER_KEY` to an independent random 32-byte base64url secret. Store both as Koyeb secrets. Set `NANNET_AUTHORITY_DB=/data/nannet-authority.sqlite`. Do **not** set or use `DEEPREPO_PAT`.
 4. Expose port `8080` over HTTPS.
 5. Configure each `nanlm-cpu-N` repository with its matching `BSR(N-1)_PORTAL_API` Actions variable set to the portal HTTPS base URL. Point N16T protocol clients at `https://<service-host>/n16t` (or the `/portal` compatibility alias), training merge clients at `https://<service-host>/v1/training/merge`, and guest clients at the `/v1/devices/*` routes. The hostname must be taken from the actual Koyeb deployment, not guessed.

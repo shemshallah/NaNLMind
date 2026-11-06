@@ -728,18 +728,68 @@ int cmd_math_train(int argc, char** argv) {
 int cmd_logic_train(int argc, char** argv) {
     const int boolean_reps = argc > 2 ? std::max(1, std::stoi(argv[2])) : 32;
     const int circuit_reps = argc > 3 ? std::max(1, std::stoi(argv[3])) : 64;
-    Universe universe(0x4C4F474943303031ull);
-    HeadArray heads(universe, PageId::root());
-    LogicSessionTrainer trainer(heads);
+    const std::string state_path = argc > 4 ? argv[4] : "";
+    std::unique_ptr<GlobalTopology> topology;
+    std::unique_ptr<Universe> universe;
+    std::unique_ptr<HeadArray> heads;
+
+    if (!state_path.empty()) {
+        if (std::filesystem::exists(state_path)) {
+            std::ifstream prior(state_path, std::ios::binary);
+            std::vector<std::uint8_t> prior_bytes((std::istreambuf_iterator<char>(prior)),
+                                                  std::istreambuf_iterator<char>());
+            topology = GlobalTopology::from_bytes(prior_bytes.data(), prior_bytes.size());
+            if (!topology) {
+                std::cerr << "existing Boolean foundation state is invalid: " << state_path << "\n";
+                return 6;
+            }
+        } else {
+            topology = std::make_unique<GlobalTopology>(0x424F4F4C45414E31ull);
+        }
+        heads = std::make_unique<HeadArray>(topology->root_heads());
+    } else {
+        universe = std::make_unique<Universe>(0x4C4F474943303031ull);
+        heads = std::make_unique<HeadArray>(*universe, PageId::root());
+    }
+
+    LogicSessionTrainer trainer(*heads);
     const LogicSessionResult result = trainer.run(boolean_reps, circuit_reps);
     std::cout << "logic_train boolean_reps=" << boolean_reps
-              << " circuit_reps=" << circuit_reps << "\n";
+              << " circuit_reps=" << circuit_reps;
+    if (!state_path.empty()) std::cout << " state_path=" << state_path;
+    std::cout << "\n";
     for (const auto& stage : result.stages) {
         std::cout << "stage=" << stage.name
                   << " passed=" << (stage.passed ? "yes" : "no")
                   << " correct=" << stage.correct << "/" << stage.total
                   << " accuracy=" << stage.accuracy
                   << " detail=" << stage.detail << "\n";
+    }
+    if (!state_path.empty() && result.ok) {
+        const auto bytes = topology->serialize();
+        const std::string tmp = state_path + ".tmp";
+        std::ofstream out(tmp, std::ios::binary | std::ios::trunc);
+        if (!out) {
+            std::cerr << "cannot write Boolean foundation state: " << state_path << "\n";
+            return 5;
+        }
+        out.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+        out.flush();
+        if (!out) {
+            std::cerr << "failed writing Boolean foundation state: " << state_path << "\n";
+            return 5;
+        }
+        out.close();
+        std::error_code rename_error;
+        std::filesystem::rename(tmp, state_path, rename_error);
+        if (rename_error) {
+            std::cerr << "cannot publish Boolean foundation state: " << rename_error.message() << "\n";
+            std::filesystem::remove(tmp);
+            return 5;
+        }
+        std::cout << "state_bytes=" << bytes.size()
+                  << " state_digest=" << hex(topology->global_digest())
+                  << " state_path=" << state_path << "\n";
     }
     std::cout << "result=" << (result.ok ? "PASS" : "FAIL") << "\n";
     return result.ok ? 0 : 1;
@@ -1179,7 +1229,7 @@ void usage() {
               << "  warmup [n]   bytewise relation warmup and hard query probe\n"
               << "  bootstrap [path] [epochs] streaming byte bootstrap\n"
               << "  math-train CORPUS [epochs] [max_samples] [state] [trace] train all 256 heads and export discoveries\n"
-              << "  logic-train [boolean_reps] [circuit_reps] staged Boolean -> deep logic -> words\n"
+              << "  logic-train [boolean_reps] [circuit_reps] [state] staged full Boolean -> deep logic -> words\n"
               << "  snapshot    write state/chart.nmc\n"
               << "  headshift   real HeadView packets for one slot\n"
               << "  growth      child-chart growth and scratch consolidation\n"

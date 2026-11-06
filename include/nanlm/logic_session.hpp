@@ -13,6 +13,8 @@ struct LogicStageResult {
     bool passed = false;
     std::size_t correct = 0;
     std::size_t total = 0;
+    std::size_t distinct_rules = 0;
+    std::size_t failed_heads = 0;
     double accuracy = 0.0;
     std::string detail;
 };
