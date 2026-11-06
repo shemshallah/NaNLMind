@@ -45,8 +45,9 @@ class BridgeTests(unittest.TestCase):
             self.assertEqual(decoded.source, local)
             self.assertEqual(decoded.destination, point_zero)
             self.assertEqual(decoded.payload, b"point-zero")
+            wrong_source = RunnerRoute(bsr=(slot + 1) % 6)
             with self.assertRaises(ValueError):
-                translator.encode(BridgeFrame(point_zero, local, 1,
+                translator.encode(BridgeFrame(wrong_source, local, 1,
                                               NanWord.from_bits(0, 0, 1), b"wrong-source"))
             with self.assertRaises(ValueError):
                 translator.decode(raw, expected_destination=local)
