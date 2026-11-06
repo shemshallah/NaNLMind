@@ -44,10 +44,17 @@ def connect():
  db.execute("PRAGMA journal_mode=WAL"); db.execute("PRAGMA synchronous=NORMAL"); db.execute("PRAGMA busy_timeout=20000")
  db.executescript("""
  CREATE TABLE IF NOT EXISTS tokens(token_hash TEXT PRIMARY KEY,endpoint_id TEXT NOT NULL,scopes_json TEXT NOT NULL,expires_at INTEGER NOT NULL,max_requests INTEGER NOT NULL,used_requests INTEGER NOT NULL DEFAULT 0,revoked INTEGER NOT NULL DEFAULT 0,created_at INTEGER NOT NULL);
+ CREATE TABLE IF NOT EXISTS devices(device_id TEXT PRIMARY KEY,key_hash TEXT NOT NULL UNIQUE,created_at INTEGER NOT NULL,last_seen INTEGER NOT NULL,status TEXT NOT NULL DEFAULT 'registered',report_json TEXT NOT NULL DEFAULT '{}',terms_version TEXT NOT NULL,consent_at INTEGER NOT NULL);
+ CREATE TABLE IF NOT EXISTS device_leases(lease_id TEXT PRIMARY KEY,address TEXT NOT NULL,device_id TEXT NOT NULL,issued_at INTEGER NOT NULL,expires_at INTEGER NOT NULL,released_at INTEGER,status TEXT NOT NULL DEFAULT 'active');
+ CREATE UNIQUE INDEX IF NOT EXISTS one_active_lease_per_address ON device_leases(address) WHERE status='active';
+ CREATE UNIQUE INDEX IF NOT EXISTS one_active_lease_per_device ON device_leases(device_id) WHERE status='active';
+ CREATE TABLE IF NOT EXISTS device_reports(report_id TEXT PRIMARY KEY,device_id TEXT NOT NULL,address TEXT NOT NULL,created_at INTEGER NOT NULL,report_type TEXT NOT NULL,summary TEXT NOT NULL,details TEXT NOT NULL,system_json TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'open');
  CREATE TABLE IF NOT EXISTS observations(event_id TEXT PRIMARY KEY,endpoint_id TEXT NOT NULL,received_at INTEGER NOT NULL,payload_json TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'pending');
  CREATE TABLE IF NOT EXISTS datasets(dataset_id TEXT PRIMARY KEY,endpoint_id TEXT NOT NULL,created_at INTEGER NOT NULL,expected_chunks INTEGER NOT NULL,total_bytes INTEGER NOT NULL DEFAULT 0,dataset_sha256 TEXT,status TEXT NOT NULL DEFAULT 'uploading',validation_json TEXT,last_error TEXT,metadata_json TEXT NOT NULL DEFAULT '{}',committed_generation INTEGER NOT NULL DEFAULT 0);
  CREATE TABLE IF NOT EXISTS chunks(dataset_id TEXT NOT NULL,chunk_index INTEGER NOT NULL,sha256 TEXT NOT NULL,size_bytes INTEGER NOT NULL,blob_path TEXT NOT NULL,status TEXT NOT NULL,PRIMARY KEY(dataset_id,chunk_index));
  """)
+ token_columns={r[1] for r in db.execute("PRAGMA table_info(tokens)").fetchall()}
+ if "owner_device_id" not in token_columns:db.execute("ALTER TABLE tokens ADD COLUMN owner_device_id TEXT")
  columns={r[1] for r in db.execute("PRAGMA table_info(datasets)").fetchall()}
  if "metadata_json" not in columns:db.execute("ALTER TABLE datasets ADD COLUMN metadata_json TEXT NOT NULL DEFAULT '{}'")
  if "committed_generation" not in columns:db.execute("ALTER TABLE datasets ADD COLUMN committed_generation INTEGER NOT NULL DEFAULT 0")
@@ -105,11 +112,19 @@ class Handler(BaseHTTPRequestHandler):
    db.execute("BEGIN IMMEDIATE"); row=db.execute("SELECT * FROM tokens WHERE token_hash=?",(th,)).fetchone()
    if not row or row["revoked"] or row["expires_at"]<=now() or row["used_requests"]>=row["max_requests"]: db.rollback(); return None
    address=row["endpoint_id"]
+   owner_device_id=row["owner_device_id"] if "owner_device_id" in row.keys() else None
+   lease_id=None
+   if owner_device_id:
+    lease=db.execute("SELECT lease_id FROM device_leases WHERE device_id=? AND address=? AND status='active'",(owner_device_id,address)).fetchone()
+    if not lease:
+     db.rollback();return None
+    lease_id=lease["lease_id"]
    claimed=self.headers.get("X-NaN-Address","")
    if claimed and claimed!=address:
     db.rollback(); return None
    db.execute("UPDATE tokens SET used_requests=used_requests+1 WHERE token_hash=?",(th,)); db.commit()
-   return {"endpoint_id":address,"address":address,"node_point":address_node_point(address),"coordinates":address_coordinates(address),"scopes":json.loads(row["scopes_json"])}
+   if owner_device_id:db.execute("UPDATE devices SET last_seen=? WHERE device_id=?",(now(),owner_device_id));db.commit()
+   return {"endpoint_id":address,"address":address,"node_point":address_node_point(address),"coordinates":address_coordinates(address),"scopes":json.loads(row["scopes_json"]),"device_id":owner_device_id,"lease_id":lease_id}
   finally: db.close()
  def need(self,role="endpoint"):
   ident=self.auth(role)
@@ -138,6 +153,16 @@ class Handler(BaseHTTPRequestHandler):
    receipt=store.receipt(m.group(1))
    if receipt is None:return self.reply(404,{"error":"training_receipt_not_found"})
    return self.reply(200,receipt)
+  if p=="/v1/devices/me":
+   x=self.need()
+   if x is None:return
+   if not x.get("device_id"):return self.reply(403,{"error":"device_registration_required"})
+   db=connect()
+   try:
+    row=db.execute("SELECT d.device_id,d.created_at,d.last_seen,d.status,d.report_json,l.lease_id,l.address,l.issued_at,l.expires_at FROM devices d JOIN device_leases l ON l.device_id=d.device_id AND l.status='active' WHERE d.device_id=?",(x["device_id"],)).fetchone()
+    if not row:return self.reply(404,{"error":"active_device_lease_not_found"})
+    return self.reply(200,{**dict(row),"system_report":json.loads(row["report_json"])})
+   finally:db.close()
   if p=="/v1/address":
    x=self.need()
    if x is None:return
@@ -212,6 +237,109 @@ class Handler(BaseHTTPRequestHandler):
   return self.reply(404,{"error":"not_found"})
  def do_POST(self):
   p=urlparse(self.path).path
+  if p=="/v1/devices/register":
+   try:
+    d=self.json_body()
+    secret=d.get("device_secret",""); report=d.get("system_report")
+    if not isinstance(secret,str) or not re.fullmatch(r"[A-Za-z0-9_-]{43,128}",secret):raise ValueError("device_secret_must_be_32_random_bytes_base64url")
+    if d.get("consent") is not True or d.get("terms_version")!="nannet-device-registration-v1":raise ValueError("explicit_registration_consent_required")
+    if not isinstance(report,dict) or len(jbytes(report))>8192:raise ValueError("bounded_system_report_required")
+    required=("platform","os_version","app_version","abi")
+    if any(not isinstance(report.get(k),str) or not report[k].strip() or len(report[k])>96 for k in required):raise ValueError("platform_os_app_and_abi_required")
+    forbidden={"imei","imsi","serial","serial_number","android_id","mac","mac_address","phone_number","email"}
+    if forbidden.intersection(k.lower() for k in report):raise ValueError("persistent_hardware_or_personal_identifiers_not_collected")
+    safe_report={k:report[k] for k in ("platform","os_version","app_version","build_id","device_model","manufacturer","abi","cpu_cores","ram_mb","storage_free_mb","capabilities","locale") if k in report}
+    if any(isinstance(safe_report.get(k),bool) or not isinstance(safe_report.get(k),int) or safe_report[k]<0 or safe_report[k]>2**31-1 for k in ("cpu_cores","ram_mb","storage_free_mb") if k in safe_report):raise ValueError("invalid_system_capacity_value")
+   except (ValueError,TypeError) as e:return self.reply(400,{"error":str(e)[:100]})
+   key_hash=token_hash(secret);device_id=hashlib.sha256(key_hash.encode()).hexdigest()[:32];timestamp=now()
+   lease_seconds=max(3600,min(2592000,int(os.environ.get("NANLM_DEVICE_LEASE_SECONDS","86400"))))
+   db=connect();token="nnt_"+secrets.token_urlsafe(36);lease_id=None;address=None
+   try:
+    db.execute("BEGIN IMMEDIATE")
+    device=db.execute("SELECT * FROM devices WHERE device_id=? AND key_hash=?",(device_id,key_hash)).fetchone()
+    if not device:
+     db.execute("INSERT INTO devices(device_id,key_hash,created_at,last_seen,status,report_json,terms_version,consent_at) VALUES(?,?,?,?,?,?,?,?)",(device_id,key_hash,timestamp,timestamp,"registered",jbytes(safe_report).decode(),"nannet-device-registration-v1",timestamp))
+    else:
+     db.execute("UPDATE devices SET last_seen=?,status='registered',report_json=? WHERE device_id=?",(timestamp,jbytes(safe_report).decode(),device_id))
+    lease=db.execute("SELECT * FROM device_leases WHERE device_id=? AND status='active'",(device_id,)).fetchone()
+    if lease and lease["expires_at"]<=timestamp:
+     pending=db.execute("SELECT 1 FROM datasets WHERE endpoint_id=? AND status IN ('uploading','quarantine','validated') LIMIT 1",(lease["address"],)).fetchone() or db.execute("SELECT 1 FROM observations WHERE endpoint_id=? AND status='pending' LIMIT 1",(lease["address"],)).fetchone()
+     if pending:
+      db.execute("UPDATE device_leases SET expires_at=? WHERE lease_id=?",(timestamp+lease_seconds,lease["lease_id"]))
+     else:
+      db.execute("UPDATE device_leases SET status='expired',released_at=? WHERE lease_id=?",(timestamp,lease["lease_id"]))
+      db.execute("UPDATE tokens SET revoked=1 WHERE owner_device_id=?",(device_id,))
+      lease=None
+    if lease:
+     address=lease["address"];lease_id=lease["lease_id"]
+     db.execute("UPDATE device_leases SET expires_at=? WHERE lease_id=?",(timestamp+lease_seconds,lease_id))
+    else:
+     for hw in range(4,256):
+      candidate=nan_address(0,0,0,0,hw)
+      active=db.execute("SELECT lease_id,expires_at,device_id FROM device_leases WHERE address=? AND status='active'",(candidate,)).fetchone()
+      if active and active["expires_at"]<=timestamp:
+       pending=db.execute("SELECT 1 FROM datasets WHERE endpoint_id=? AND status IN ('uploading','quarantine','validated') LIMIT 1",(candidate,)).fetchone() or db.execute("SELECT 1 FROM observations WHERE endpoint_id=? AND status='pending' LIMIT 1",(candidate,)).fetchone()
+       if not pending:
+        db.execute("UPDATE device_leases SET status='expired',released_at=? WHERE lease_id=?",(timestamp,active["lease_id"]))
+        db.execute("UPDATE tokens SET revoked=1 WHERE endpoint_id=?",(candidate,))
+        active=None
+      if not active:
+       address=candidate;lease_id=secrets.token_urlsafe(24)
+       db.execute("INSERT INTO device_leases(lease_id,address,device_id,issued_at,expires_at,status) VALUES(?,?,?,?,?,'active')",(lease_id,address,device_id,timestamp,timestamp+lease_seconds))
+       break
+     if address is None:db.rollback();return self.reply(503,{"error":"no_device_slots_available","reserved_hw_slots":[0,1,2,3],"dynamic_range":"HW4-HW255"})
+    db.execute("UPDATE tokens SET revoked=1 WHERE owner_device_id=?",(device_id,))
+    scopes=["intake","dataset","observation","heartbeat","n16t","device.report"]
+    db.execute("INSERT INTO tokens(token_hash,endpoint_id,scopes_json,expires_at,max_requests,created_at,owner_device_id) VALUES(?,?,?,?,?,?,?)",(token_hash(token),address,json.dumps(scopes),timestamp+min(lease_seconds,604800),1000000,timestamp,device_id))
+    db.execute("UPDATE devices SET status='active',last_seen=? WHERE device_id=?",(timestamp,device_id))
+    db.commit()
+   except sqlite3.IntegrityError:
+    db.rollback();return self.reply(409,{"error":"device_or_node_lease_conflict_retry_registration"})
+   finally:db.close()
+   return self.reply(201,{"device_id":device_id,"address":address,"node_point":address_node_point(address),"coordinates":address_coordinates(address),"lease_id":lease_id,"lease_expires_at":timestamp+lease_seconds,"token":token,"scopes":scopes,"head_count":256,"identity_model":"installation-key","mac_address_collected":False})
+  if p=="/v1/devices/heartbeat":
+   x=self.need()
+   if x is None:return
+   if "heartbeat" not in x["scopes"] and "*" not in x["scopes"]:return self.reply(403,{"error":"scope_denied"})
+   if not x.get("device_id"):return self.reply(403,{"error":"device_registration_required"})
+   seconds=max(3600,min(2592000,int(os.environ.get("NANLM_DEVICE_LEASE_SECONDS","86400"))))
+   db=connect()
+   try:
+    n=db.execute("UPDATE device_leases SET expires_at=? WHERE lease_id=? AND device_id=? AND status='active'",(now()+seconds,x["lease_id"],x["device_id"])).rowcount
+    db.execute("UPDATE devices SET last_seen=?,status='active' WHERE device_id=?",(now(),x["device_id"]));db.commit()
+   finally:db.close()
+   if not n:return self.reply(409,{"error":"lease_not_active"})
+   return self.reply(200,{"state":"active","address":x["address"],"lease_id":x["lease_id"],"lease_expires_at":now()+seconds})
+  if p=="/v1/devices/release":
+   x=self.need()
+   if x is None:return
+   if not x.get("device_id"):return self.reply(403,{"error":"device_registration_required"})
+   db=connect()
+   try:
+    pending=db.execute("SELECT dataset_id,status FROM datasets WHERE endpoint_id=? AND status IN ('uploading','quarantine','validated') LIMIT 1",(x["address"],)).fetchone()
+    evidence=db.execute("SELECT event_id FROM observations WHERE endpoint_id=? AND status='pending' LIMIT 1",(x["address"],)).fetchone()
+    if pending or evidence:return self.reply(409,{"error":"pending_work_must_be_committed_or_rejected_before_release","dataset_id":pending["dataset_id"] if pending else None,"pending_observation":bool(evidence)})
+    db.execute("UPDATE device_leases SET status='released',released_at=? WHERE lease_id=? AND device_id=? AND status='active'",(now(),x["lease_id"],x["device_id"]))
+    db.execute("UPDATE devices SET status='released',last_seen=? WHERE device_id=?",(now(),x["device_id"]))
+    db.execute("UPDATE tokens SET revoked=1 WHERE owner_device_id=?",(x["device_id"],));db.commit()
+   finally:db.close()
+   return self.reply(200,{"state":"released","address":x["address"],"lease_id":x["lease_id"],"token_revoked":True,"node_available":True})
+  if p=="/v1/devices/report":
+   x=self.need()
+   if x is None:return
+   if "device.report" not in x["scopes"] and "*" not in x["scopes"]:return self.reply(403,{"error":"scope_denied"})
+   if not x.get("device_id"):return self.reply(403,{"error":"device_registration_required"})
+   try:
+    d=self.json_body();kind=d.get("report_type");summary=d.get("summary","");details=d.get("details","");system=d.get("system_report",{})
+    if kind not in ("device_error","system_error","network_error","security_concern","other"):raise ValueError("invalid_report_type")
+    if not isinstance(summary,str) or not summary.strip() or len(summary)>240:raise ValueError("summary_required_max_240")
+    if not isinstance(details,str) or len(details)>4000 or not isinstance(system,dict) or len(jbytes(system))>8192:raise ValueError("report_details_or_system_snapshot_invalid")
+   except (ValueError,TypeError) as e:return self.reply(400,{"error":str(e)[:100]})
+   report_id=secrets.token_urlsafe(18);db=connect()
+   try:
+    db.execute("INSERT INTO device_reports(report_id,device_id,address,created_at,report_type,summary,details,system_json) VALUES(?,?,?,?,?,?,?,?)",(report_id,x["device_id"],x["address"],now(),kind,summary.strip(),details, jbytes(system).decode()));db.commit()
+   finally:db.close()
+   return self.reply(202,{"report_id":report_id,"state":"received","address":x["address"]})
   commit_match=re.fullmatch(r"/internal/datasets/([A-Za-z0-9._-]{1,96})/commit",p)
   if commit_match:
    if self.need("runner") is None:return
@@ -279,7 +407,7 @@ class Handler(BaseHTTPRequestHandler):
    if self.need("admin") is None:return
    try:
     d=self.json_body(); endpoint=d.get("address"); scopes=d.get("scopes",["intake"]); ttl=int(d.get("ttl_seconds",86400)); quota=int(d.get("max_requests",10000))
-    if not valid_nan_address(endpoint) or endpoint not in ENDPOINTS or not isinstance(scopes,list) or not scopes or any(s not in {"intake","dataset","observation","heartbeat","n16t"} for s in scopes):raise ValueError("invalid_nan_address_or_scopes")
+    if not valid_nan_address(endpoint) or endpoint not in ENDPOINTS or not isinstance(scopes,list) or not scopes or any(s not in {"intake","dataset","observation","heartbeat","n16t","device.report"} for s in scopes):raise ValueError("invalid_nan_address_or_scopes")
     if not 60<=ttl<=7776000 or not 1<=quota<=10000000:raise ValueError("token_policy_out_of_range")
    except (ValueError,TypeError) as e:return self.reply(400,{"error":str(e)[:80]})
    token="nnt_"+secrets.token_urlsafe(36); db=connect()
