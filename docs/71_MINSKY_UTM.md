@@ -53,6 +53,14 @@ tape and head:
 PASS Minsky UTM executes a normally encoded binary machine
 ```
 
+The same table is also encoded as a `TmDescription`, loaded into the fixed-step
+`UniversalTuringMachine`, and used to run that encoded binary machine. Its
+state/head/halt/tape trace matches the table-driven runtime for 100 steps:
+
+```text
+PASS encoded Minsky universal description runs on the chart UTM
+```
+
 ## 3. Tape format
 
 The UTM tape is:

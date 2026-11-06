@@ -332,6 +332,14 @@ verifies restore into a fresh UTM. Tapes can allocate new pages through an
 attached `Atlas`. The journal stores page hashes, not the mutable page map; the
 formal finite-control/self-encoding proof is still open (doc 69).
 
+### UTM encoded universal description
+
+The Minsky 23-state/8-symbol table is now encoded as a `TmDescription`, loaded
+into the fixed-step chart UTM, and used to run an encoded binary machine for
+100 steps against the table-driven reference. The journal also reconstructs a
+verified `TapePageIndex` from per-page records. Self-simulation of the 23x8
+table and a general TM-to-binary compiler remain open.
+
 ### UTM explicit table
 
 The Neary-Woods U6,4 6-state/4-symbol table is loaded as ordinary chart

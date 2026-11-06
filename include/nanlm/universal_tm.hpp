@@ -21,8 +21,15 @@ public:
 
     bool load_machine(const std::vector<TmTransition>& transitions,
                       const std::string& initial_tape, std::int64_t head);
+    bool load_machine_symbols(const std::vector<TmTransition>& transitions,
+                              const std::vector<std::uint8_t>& initial_tape,
+                              std::int64_t head);
     bool load_description(const TmDescription& description,
                           const std::string& initial_tape, std::int64_t head);
+    bool load_description_symbols(const TmDescription& description,
+                                  const std::vector<std::uint8_t>& initial_tape,
+                                  std::int64_t head);
+    void set_state(std::uint8_t state);
     bool load_encoded_description(const std::uint8_t* data, std::size_t len,
                                   const std::string& initial_tape, std::int64_t head);
     bool step();
@@ -30,6 +37,9 @@ public:
     bool halted() const;
     std::uint8_t state() const;
     std::int64_t head() const;
+    std::uint8_t symbol(std::int64_t position) const {
+        return tape_.read(kWorkingTapeBase + position);
+    }
     std::string tape(std::int64_t begin, std::int64_t end) const;
     std::size_t tape_pages() const { return tape_.pages(); }
     const TuringTape& tape_store() const { return tape_; }

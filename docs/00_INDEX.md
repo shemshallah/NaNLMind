@@ -75,6 +75,7 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 69 | [69_UTM_PROOF_OBLIGATIONS.md](69_UTM_PROOF_OBLIGATIONS.md) | What is still missing before a formal UTM proof? |
 | 70 | [70_SMALL_UTM_TABLE.md](70_SMALL_UTM_TABLE.md) | What explicit small universal transition table fits the runtime? |
 | 71 | [71_MINSKY_UTM.md](71_MINSKY_UTM.md) | Can a 23-state/8-symbol universal table be loaded and trace-checked? |
+| 72 | [72_UTM_TRACE_INVARIANT.md](72_UTM_TRACE_INVARIANT.md) | What is the exact trace relation and what remains unproved? |
 
 The short version:
 

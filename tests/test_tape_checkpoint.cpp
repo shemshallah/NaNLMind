@@ -27,6 +27,14 @@ int main() {
     CHECK(g.journals().verify(&err));
     CHECK_EQ(g.journals().size(), 1u + cp.page_keys.size());
     CHECK_EQ(TapeCheckpointManager::page_records(g, cp), cp.page_keys.size());
+    const auto index = TapeCheckpointManager::load_index(g, cp);
+    CHECK(index.has_value());
+    if (index) {
+        CHECK(index->pages.size() == cp.page_keys.size());
+        for (std::size_t i = 0; i < cp.page_keys.size(); ++i) {
+            CHECK(index->pages.at(cp.page_keys[i]) == cp.page_hashes[i]);
+        }
+    }
     CHECK(g.journals().ordered().front().subject == cp.root);
 
     // A fresh interpreter can restore the exact tape bytes.

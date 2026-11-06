@@ -34,15 +34,22 @@ prove that larger machines can be block-encoded rather than rejected.
 
 ### O3 — self-encoded universal description
 
-There is no TM description that simulates another encoded machine while itself
-being executed by the interpreter. This is the largest missing proof object.
+The Minsky 23-state/8-symbol universal table is now encoded as a
+`TmDescription`, loaded into the fixed-step `UniversalTuringMachine`, and used to
+run another encoded binary machine against the table-driven reference for 100
+steps. This is a working encoded universal description.
+
+Still open: a description that encodes the 23x8 table **as an input to itself**
+and run its own self-simulation. That needs a TM-to-binary/table compiler and a
+decoder, not just the universal table.
 
 ### O4 — atlas/ledger ownership
 
 Tape pages can be allocated through `Atlas` when explicitly attached. A page
-root and one per-page hash record are committed to the sharded journal. The
-journal still stores hashes rather than the mutable page map, so pages are not
-yet fully persisted ledger-owned objects.
+root plus one per-page record is committed to the sharded journal. The journal
+now also reconstructs a verified `TapePageIndex` of key/hash entries. The page
+data remains in the tape/atlas rather than the journal, so a fully
+ledger-persisted mutable page map is still open.
 
 ### O5 — equivalence proof
 

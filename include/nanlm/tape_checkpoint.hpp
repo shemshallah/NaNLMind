@@ -6,6 +6,8 @@
 #include "nanlm/turing_machine.hpp"
 
 #include <cstdint>
+#include <map>
+#include <optional>
 #include <vector>
 
 namespace nanlm {
@@ -15,6 +17,11 @@ struct TapeCheckpoint {
     std::vector<std::int64_t> page_keys;
     std::vector<Hash256> page_hashes;
     std::size_t pages = 0;
+};
+
+struct TapePageIndex {
+    Hash256 root{};
+    std::map<std::int64_t, Hash256> pages;
 };
 
 class TapeCheckpointManager {
@@ -27,6 +34,8 @@ public:
                        std::uint32_t shard, std::uint64_t epoch);
     static std::size_t page_records(const GlobalTopology& topology,
                                     const TapeCheckpoint& checkpoint);
+    static std::optional<TapePageIndex> load_index(
+        const GlobalTopology& topology, const TapeCheckpoint& checkpoint);
 };
 
 } // namespace nanlm

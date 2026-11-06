@@ -39,6 +39,37 @@ bool UniversalTuringMachine::load_machine(
     return true;
 }
 
+bool UniversalTuringMachine::load_machine_symbols(
+    const std::vector<TmTransition>& transitions,
+    const std::vector<std::uint8_t>& initial_tape, std::int64_t head) {
+    if (transitions.size() > 255) return false;
+    for (const auto& t : transitions) {
+        if (t.from >= 32 || t.to >= 32 || t.read >= 8 || t.write >= 8 ||
+            t.move < -1 || t.move > 1) return false;
+    }
+    tape_.clear();
+    tape_.write(kDescriptionBase, static_cast<std::uint8_t>(transitions.size()));
+    for (std::size_t i = 0; i < transitions.size(); ++i) {
+        const auto& t = transitions[i];
+        const std::int64_t p = kEntryBase + static_cast<std::int64_t>(i) * kEntrySize;
+        tape_.write(p + 0, t.from);
+        tape_.write(p + 1, t.read);
+        tape_.write(p + 2, t.write);
+        tape_.write(p + 3, static_cast<std::uint8_t>(t.move + 1));
+        tape_.write(p + 4, t.to);
+        tape_.write(p + 5, t.halt ? 1 : 0);
+    }
+    for (std::int64_t i = 0;
+         i < static_cast<std::int64_t>(initial_tape.size()); ++i) {
+        tape_.write(kWorkingTapeBase + i, initial_tape[static_cast<std::size_t>(i)]);
+    }
+    universe_->set_address_meta(kControlBase + kHaltSlot, 0);
+    universe_->set_address_meta(kControlBase + kStateSlot, 0);
+    universe_->set_address_meta(kControlBase + kHeadSlot,
+                                static_cast<std::uint64_t>(head));
+    return true;
+}
+
 bool UniversalTuringMachine::load_description(
     const TmDescription& description, const std::string& initial_tape,
     std::int64_t head) {
@@ -52,6 +83,17 @@ bool UniversalTuringMachine::load_encoded_description(
     const auto description = TmDescription::decode(data, len);
     if (!description) return false;
     return load_description(*description, initial_tape, head);
+}
+
+bool UniversalTuringMachine::load_description_symbols(
+    const TmDescription& description,
+    const std::vector<std::uint8_t>& initial_tape, std::int64_t head) {
+    if (!description.valid()) return false;
+    return load_machine_symbols(description.transitions, initial_tape, head);
+}
+
+void UniversalTuringMachine::set_state(std::uint8_t state) {
+    universe_->set_address_meta(kControlBase + kStateSlot, state);
 }
 
 std::uint8_t UniversalTuringMachine::description_count() const {
