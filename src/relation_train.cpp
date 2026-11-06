@@ -5,6 +5,8 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
+#include <cstdlib>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -24,6 +26,7 @@ struct Example {
     std::uint32_t confidence = 0;
     std::string subject, predicate, object;
     Hash256 sh{}, ph{}, oh{}, event_hash{};
+    std::array<std::uint8_t,8> sf{}, pf{}, of{};
     std::uint64_t label = 0;
 };
 
@@ -92,12 +95,151 @@ bool parse_examples(const std::string& path, std::vector<Example>& examples) {
         e.sh = Sha256::hash(e.subject.data(), e.subject.size());
         e.ph = Sha256::hash(e.predicate.data(), e.predicate.size());
         e.oh = Sha256::hash(e.object.data(), e.object.size());
+        e.sf = relation_features(e.resolution, e.subject);
+        e.pf = relation_features(e.resolution, e.predicate);
+        e.of = relation_features(e.resolution, e.object);
         e.event_hash = Sha256::hash(line.data(), line.size());
         for (unsigned i = 0; i < 8; ++i) e.label = (e.label << 8) | e.event_hash[i];
         if (!e.label) e.label = 1;
         examples.push_back(std::move(e));
     }
     return !examples.empty();
+}
+
+
+std::array<std::uint8_t,8> relation_features(std::uint8_t resolution,
+                                             const std::string& value) {
+    std::string lower;
+    lower.reserve(value.size());
+    bool uppercase = false, digit = false, punctuation = false, whitespace = false;
+    unsigned vowel_count = 0, syllables = 0, consonant_count = 0;
+    bool previous_vowel = false;
+    for (unsigned char c : value) {
+        if (std::isupper(c)) uppercase = true;
+        if (std::isdigit(c)) digit = true;
+        if (std::ispunct(c)) punctuation = true;
+        if (std::isspace(c)) whitespace = true;
+        const char lc = static_cast<char>(std::tolower(c));
+        lower.push_back(lc);
+        const bool vowel = lc=='a'||lc=='e'||lc=='i'||lc=='o'||lc=='u'||lc=='y';
+        if (vowel) {
+            ++vowel_count;
+            if (!previous_vowel) ++syllables;
+        } else if (std::isalpha(static_cast<unsigned char>(lc))) {
+            ++consonant_count;
+        }
+        previous_vowel = vowel;
+    }
+    auto starts = [&](const char* p) { return lower.rfind(p,0)==0; };
+    auto ends = [&](const char* p) {
+        const std::string suffix(p);
+        return lower.size() >= suffix.size() &&
+               lower.compare(lower.size()-suffix.size(),suffix.size(),suffix)==0;
+    };
+    auto has = [&](const char* p) { return lower.find(p)!=std::string::npos; };
+    std::vector<std::string> words;
+    for (std::size_t i=0;i<lower.size();) {
+        while(i<lower.size()&&!std::isalnum(static_cast<unsigned char>(lower[i])))++i;
+        const std::size_t begin=i;
+        while(i<lower.size()&&std::isalnum(static_cast<unsigned char>(lower[i])))++i;
+        if(i>begin)words.push_back(lower.substr(begin,i-begin));
+    }
+    auto token = [&](const char* t) {
+        return std::find(words.begin(),words.end(),std::string(t))!=words.end();
+    };
+    unsigned sentence_marks=0, repeated=0, pronouns=0, conjunctions=0;
+    unsigned temporal=0, causal=0, action=0;
+    for(char c:lower)if(c=='.'||c=='!'||c=='?')++sentence_marks;
+    for(std::size_t i=1;i<words.size();++i)if(words[i]==words[i-1])++repeated;
+    for(const char* w:{"i","you","he","she","it","we","they","who","which","that"})
+        if(token(w))++pronouns;
+    for(const char* w:{"and","or","but","because","although","if","then"})
+        if(token(w))++conjunctions;
+    for(const char* w:{"before","after","then","later","first","finally","while","when"})
+        if(token(w))++temporal;
+    for(const char* w:{"because","therefore","thus","caused","causes","due"})
+        if(token(w))++causal;
+    for(const char* w:{"run","walk","move","go","went","make","made","build","built","happen","occur","said","say"})
+        if(token(w))++action;
+    const bool starts_vowel=!lower.empty()&&(lower[0]=='a'||lower[0]=='e'||lower[0]=='i'||lower[0]=='o'||lower[0]=='u');
+    const bool ends_vowel=!lower.empty()&&(lower.back()=='a'||lower.back()=='e'||lower.back()=='i'||lower.back()=='o'||lower.back()=='u');
+    const bool plural=ends("s")&&!ends("ss");
+    const bool past=ends("ed")||token("was")||token("were");
+    const bool progressive=ends("ing")||token("is")||token("are");
+    const bool negation=token("not")||token("no")||token("never")||token("n't");
+    const bool quote=has("\"")||has("'");
+    const bool hyphen=has("-");
+    const bool number=!lower.empty()&&std::all_of(lower.begin(),lower.end(),[](unsigned char c){return std::isdigit(c)!=0;});
+    std::array<std::uint8_t,8> f{};
+    auto set=[&](unsigned i,bool v){f[i]=v?1u:0u;};
+    switch(resolution) {
+        case 0: {
+            char* endp=nullptr; const long n=std::strtol(lower.c_str(),&endp,0);
+            const bool parsed=endp&&endp!=lower.c_str()&&*endp=='\0';
+            set(0,lower=="true"||lower=="yes"||(parsed&&n!=0));
+            set(1,lower=="false"||lower=="no"||(parsed&&n==0));
+            set(2,parsed&&(n&1L)); set(3,parsed&&(n&2L));
+            set(4,parsed&&(n&4L)); set(5,parsed&&(n&8L));
+            set(6,number); set(7,lower=="true"||lower=="false");
+            break;
+        }
+        case 1:
+            set(0,lower.size()%2u); set(1,lower.size()%4u>=2u);
+            set(2,starts_vowel); set(3,ends_vowel); set(4,digit);
+            set(5,number); set(6,hyphen); set(7,uppercase);
+            break;
+        case 2:
+            set(0,lower.size()&1u); set(1,lower.size()>1u);
+            set(2,lower.size()>4u); set(3,digit); set(4,uppercase);
+            set(5,whitespace); set(6,punctuation); set(7,number);
+            break;
+        case 3:
+            set(0,vowel_count&1u); set(1,consonant_count&1u);
+            set(2,starts_vowel); set(3,ends_vowel); set(4,syllables>1u);
+            set(5,has("sh")||has("ch")||has("th")||has("ph"));
+            set(6,lower.size()>4u); set(7,has("ng")||has("ck")||has("qu"));
+            break;
+        case 4:
+            set(0,starts("un")||starts("re")||starts("pre")||starts("dis"));
+            set(1,ends("ing")); set(2,ends("ed")); set(3,plural);
+            set(4,ends("ly")); set(5,ends("ness")||ends("ment")||ends("tion"));
+            set(6,ends("able")||ends("ful")||ends("less")); set(7,hyphen);
+            break;
+        case 5:
+            set(0,lower.size()>=5u); set(1,plural); set(2,uppercase);
+            set(3,ends("er")||ends("est")); set(4,ends("ful")||ends("less")||ends("ous"));
+            set(5,whitespace); set(6,hyphen); set(7,ends("tion")||ends("ment")||ends("ity"));
+            break;
+        case 6:
+            set(0,lower.size()<=3u); set(1,lower.size()>=6u);
+            set(2,starts_vowel); set(3,ends_vowel); set(4,whitespace);
+            set(5,punctuation); set(6,progressive); set(7,plural);
+            break;
+        case 7:
+            set(0,words.size()>5u); set(1,uppercase); set(2,sentence_marks>0u);
+            set(3,token("is")||token("are")||token("was")||token("were"));
+            set(4,pronouns>0u); set(5,negation); set(6,conjunctions>0u);
+            set(7,has("?"));
+            break;
+        case 8:
+            set(0,sentence_marks>1u); set(1,words.size()>20u);
+            set(2,pronouns>0u); set(3,conjunctions>1u);
+            set(4,temporal>0u); set(5,repeated>0u);
+            set(6,has("however")||has("therefore")||has("meanwhile"));
+            set(7,has("\n")||has("\r"));
+            break;
+        case 9:
+            set(0,temporal>0u); set(1,causal>0u); set(2,action>0u);
+            set(3,uppercase); set(4,quote); set(5,past);
+            set(6,pronouns>0u); set(7,token("then")||token("finally")||token("next"));
+            break;
+        default:
+            set(0,lower.size()&1u); set(1,starts_vowel); set(2,ends_vowel);
+            set(3,uppercase); set(4,digit); set(5,whitespace);
+            set(6,punctuation); set(7,negation);
+            break;
+    }
+    return f;
 }
 
 std::uint8_t resolution_base(std::uint8_t resolution) {
@@ -215,7 +357,7 @@ int relation_train_cli(int argc, char** argv) {
         const HeadView h = heads.at(predicate_head(e.resolution, e.ph));
         unsigned votes = 0;
         for (unsigned lane=0; lane<8; ++lane)
-            votes += (NanWord::eval_bool(h.boolean_rule(), e.sh[lane]&1u, e.oh[lane]&1u)&1u) ? 1u : 0u;
+            votes += (NanWord::eval_bool(h.boolean_rule(), e.sf[lane], e.of[lane])&1u) ? 1u : 0u;
         const bool prediction = votes >= 4u;
         ++pre_test_n[e.resolution];
         if (e.positive) { ++pre_test_pos[e.resolution]; if (prediction) ++pre_tp[e.resolution]; }
@@ -230,7 +372,7 @@ int relation_train_cli(int argc, char** argv) {
             const HeadView h = heads.at(ph);
             unsigned votes = 0;
             for (unsigned lane=0; lane<8; ++lane)
-                votes += (NanWord::eval_bool(h.boolean_rule(), e.sh[lane]&1u, e.oh[lane]&1u)&1u) ? 1u : 0u;
+                votes += (NanWord::eval_bool(h.boolean_rule(), e.sf[lane], e.of[lane])&1u) ? 1u : 0u;
             const bool prediction = votes >= 4u;
             ++test_n[e.resolution];
             if (e.positive) ++test_pos[e.resolution]; else ++test_neg[e.resolution];
@@ -257,8 +399,8 @@ int relation_train_cli(int argc, char** argv) {
         for (int epoch=0; epoch<epochs; ++epoch) {
             for (unsigned lane=0; lane<8; ++lane) {
                 p.train_boolean(e.sh[lane]&1u, e.oh[lane]&1u, e.positive);
-                s.train_boolean(e.ph[lane]&1u, e.oh[lane]&1u, e.positive);
-                o.train_boolean(e.sh[lane]&1u, e.ph[lane]&1u, e.positive);
+                s.train_boolean(e.pf[lane], e.of[lane], e.positive);
+                o.train_boolean(e.sf[lane], e.pf[lane], e.positive);
             }
         }
         const std::uint64_t epoch=topology->ledger().size()+1u;
