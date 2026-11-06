@@ -105,6 +105,65 @@ static_assert(std::is_trivially_copyable_v<AddressReg>);
 // Per-head scratchpad: 256 bytes of local registers + 768 bytes of working
 // memory. The local area is for the head's own registers/stack; the work area
 // is for Boolean truth-table patches, operands, and small experiments.
+// NaNNet route coordinates are six bytes in canonical GM:SC:MC:BS:HW:BSR order.
+struct NannetRoute {
+    std::uint8_t gm = 0;
+    std::uint8_t sc = 0;
+    std::uint8_t mc = 0;
+    std::uint8_t bs = 0;
+    std::uint8_t hw = 0;
+    std::uint8_t bsr = 0;
+
+    constexpr bool valid() const { return bsr <= 5; }
+    constexpr std::array<std::uint8_t, 6> bytes() const {
+        return {gm, sc, mc, bs, hw, bsr};
+    }
+    static constexpr bool from_bytes(const std::array<std::uint8_t, 6>& raw,
+                                     NannetRoute& route) {
+        route = {raw[0], raw[1], raw[2], raw[3], raw[4], raw[5]};
+        return route.valid();
+    }
+};
+
+// The translator is a real per-Universe module, anchored at diagonal cell (0,0).
+// Its wire representation preserves NaN16DE words bit-for-bit.
+class PointZeroTranslator {
+public:
+    static constexpr std::uint8_t kPointIndex = 0;
+    static constexpr std::uint8_t kProtocolVersion = 1;
+
+    constexpr PointZeroTranslator() = default;
+    constexpr explicit PointZeroTranslator(NannetRoute route) : local_route_(route) {}
+
+    constexpr bool bind(NannetRoute route) {
+        if (!route.valid()) return false;
+        local_route_ = route;
+        return true;
+    }
+    constexpr const NannetRoute& local_route() const { return local_route_; }
+    constexpr NannetRoute point_route() const { return NannetRoute{}; }
+    constexpr std::uint8_t point_index() const { return kPointIndex; }
+    constexpr std::uint8_t protocol_version() const { return kProtocolVersion; }
+
+    static constexpr std::array<std::uint8_t, 6> encode_route(NannetRoute route) {
+        return route.bytes();
+    }
+    static constexpr bool decode_route(const std::array<std::uint8_t, 6>& raw,
+                                       NannetRoute& route) {
+        return NannetRoute::from_bytes(raw, route);
+    }
+    static std::string route_uri(NannetRoute route) {
+        return "nan://GM" + std::to_string(route.gm) + ":SC" +
+               std::to_string(route.sc) + ":MC" + std::to_string(route.mc) +
+               ":BS" + std::to_string(route.bs) + ":HW" +
+               std::to_string(route.hw) + ":BSR" + std::to_string(route.bsr);
+    }
+    static constexpr NanWord preserve_word(NanWord word) { return NanWord(word.raw); }
+
+private:
+    NannetRoute local_route_{};
+};
+
 struct HeadScratch {
     std::array<std::uint8_t, kHeadScratchBytes> bytes{};
 
@@ -231,6 +290,10 @@ public:
     bool set_capability(std::uint16_t addr, std::uint8_t caps);
     static std::uint32_t address_checksum(const AddressReg& reg);
 
+    PointZeroTranslator& point_zero_translator() { return point_zero_translator_; }
+    const PointZeroTranslator& point_zero_translator() const { return point_zero_translator_; }
+    bool bind_point_zero_route(NannetRoute route);
+
     Head& head(std::uint8_t i) { return heads_[i]; }
     const Head& head(std::uint8_t i) const { return heads_[i]; }
 
@@ -276,6 +339,7 @@ private:
     void build_index();
     void build_genesis(std::uint64_t genome);
 
+    PointZeroTranslator point_zero_translator_{};
     std::uint64_t genome_ = 0;
     std::vector<NanCell> cells_;                 // 32,896 x 64 = 2 MiB
     std::vector<AddressReg> addr_regs_;          // 65,536 x 32 = 2 MiB
