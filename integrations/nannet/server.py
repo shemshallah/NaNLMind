@@ -117,11 +117,15 @@ class Handler(BaseHTTPRequestHandler):
   return ident
  def do_GET(self):
   p=urlparse(self.path).path
+  if p in ("/","/portal"):
+   try: raw=Path(__file__).with_name("portal.html").read_bytes()
+   except OSError:return self.reply(503,{"error":"portal_unavailable"})
+   return self.reply(200,raw,"text/html; charset=utf-8")
   if p=="/healthz": return self.reply(200,{"status":"ok","service":"nannet","protocol":"nanlm.universal-intake","version":2,"addressing":"nan.global-mesh.v1","bootstrap_endpoints":256,"dataset_quota_bytes":DATASET_QUOTA,"chunk_limit_bytes":CHUNK_BYTES,"training_merge_enabled":bool(os.environ.get("NANLM_BOOTSTRAP_TOKEN")),"keeper_enabled":os.environ.get("DEEPREPO_KEEPER_ENABLED","0")=="1"})
   if p=="/v1/address":
    x=self.need()
    if x is None:return
-   return self.reply(200,{"address":x["address"],"node_point":x["node_point"],"coordinates":x["coordinates"],"addressing":"nan.global-mesh.v1","transport_authority":os.environ.get("NANNET_PUBLIC_URL","").rstrip("/"),"transport":"https","transport_binding":"bearer-token"})
+   return self.reply(200,{"address":x["address"],"node_point":x["node_point"],"coordinates":x["coordinates"],"addressing":"nan.global-mesh.v1","transport_authority":os.environ.get("NANNET_PUBLIC_URL","").rstrip("/"),"transport":"https","transport_binding":"bearer-token","head_count":256,"head_index_space":"local-to-endpoint"})
   if p=="/admin/keeper/status":
    if self.need("admin") is None:return
    return self.reply(200,dict(KEEPER_STATE))
@@ -133,7 +137,7 @@ class Handler(BaseHTTPRequestHandler):
    if x is None:return
    scopes=set(x["scopes"]); ep=x["endpoint_id"]
    visible={k:v for k,v in ROUTES.items() if "*" in scopes or ep in v["audience"] or scopes.intersection(v["audience"])}
-   return self.reply(200,{"address":x["address"],"node_point":x["node_point"],"routes":visible})
+   return self.reply(200,{"address":x["address"],"node_point":x["node_point"],"head_count":256,"routes":visible})
   if p=="/internal/datasets":
    if self.need("validator") is None:return
    db=connect()
