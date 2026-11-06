@@ -62,16 +62,17 @@ index. `MC` and `BS` remain distinct hierarchy levels, not hardware aliases.
 - GET /internal/datasets/{id}/chunks/{index} (validator reads quarantined bytes)
 - PATCH /internal/datasets/{id}/validation (validator approves/rejects)
 - GET /internal/datasets/validated (runner lists approved manifests)
+- GET /internal/datasets/committed (runner lists durable ingest receipts)
 - GET /internal/datasets/{id}/chunks/{index} (runner reads only validated bytes)
 - GET /internal/observations (runner reads pending evidence)
+- POST /internal/datasets/{id}/commit (runner records canonical generation + exact dataset digest; deletes staged chunk files but retains the audit manifest)
 - POST /internal/observations/ack (runner acknowledges after native fold)
 - DELETE /admin/datasets/{id} (admin deletes only non-validated data)
 
 The validator must independently check encoding, UTF-8, record boundaries,
 duplicates, provenance/licensing, contamination, safety, and held-out quality.
 An endpoint's own assertion is never proof. A successful upload means
-quarantined, not trained. A successful validation means training-eligible,
-not yet committed to the canonical mind.
+quarantined, not trained. A successful validation means training-eligible, not yet committed to the canonical mind. After the runner has copied, verified, encoded, and committed a dataset into a canonical generation, it posts the generation and exact SHA-256 receipt. NANNET then removes staged chunk files and chunk rows while retaining the manifest, validation report, digest, and generation receipt. A repeated identical receipt is idempotent.
 
 ## Required service secrets
 
