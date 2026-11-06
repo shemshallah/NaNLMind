@@ -33,7 +33,9 @@ KEEPER_STATE={"enabled":False,"status":"disabled"}
 ROUTES={
  "training.merge":{"audience":["runner","admin"],"description":"Generation-safe evidence merge; runner ring owns commits"},
  "training.validate":{"audience":["validator","admin"],"description":"Validate quarantined corpus packages"},
- "n16t.peer":{"audience":[ANDROID_ADDRESS,HERMES_ADDRESS,CLOCKED_ADDRESS,NANLM_ADDRESS],"description":"NaN16 transport peer and capability exchange"},
+ "corpus.upload":{"audience":["dataset","intake"],"description":"Upload licensed corpus chunks into quarantine"},
+ "device.lease":{"audience":["heartbeat","device.report"],"description":"Heartbeat, report diagnostics, and release an exclusive HW slot"},
+ "n16t.peer":{"audience":[ANDROID_ADDRESS,HERMES_ADDRESS,CLOCKED_ADDRESS,NANLM_ADDRESS,"n16t"],"description":"NaN16 transport peer and capability exchange"},
  "deeprepo.keeper":{"audience":["admin"],"description":"GET /admin/keeper/status; DeepRepo keeper health and last action"},
  "models.status":{"audience":["admin"],"description":"GET /admin/models/status; read-only Qwen deployment metadata"}}
 
