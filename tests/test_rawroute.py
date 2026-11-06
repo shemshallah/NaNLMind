@@ -8,7 +8,7 @@ class RawRouteTests(unittest.TestCase):
         text = "nan://GM0:SC0:MC0:BS0:0:HW0:0::HW0:1"
         route = parse_rawroute(text)
         self.assertEqual(route.text(), text)
-        self.assertEqual(route.transport_coordinates, (0, 0, 0, 0, 0, 0))
+        self.assertEqual(route.hw_node, 0)
         self.assertEqual(len(route.definition_id), 64)
 
     def test_multihead_runner_ring_route(self):
