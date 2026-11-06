@@ -39,17 +39,24 @@ curl -fsS -X POST "$NANNET_URL/admin/tokens" \
 
 For NaN0S transport, issue a separate HW1 token with only the `n16t` scope.
 Tokens are returned once; store them securely and never paste them into source
-control or logs. `HWn` maps to existing bootstrap node point `n+1` (HW0 ->
-point 1, HW1 -> point 2, HW255 -> point 256). The five-part address remains
-the global identity; the node point is only the local 256-slot bootstrap-map
-index. `MC` and `BS` remain distinct hierarchy levels, not hardware aliases.
+control or logs. `HWn` maps to the corresponding bootstrap node point `n+1` within BS0
+(HW0 -> point 1, HW1 -> point 2, HW255 -> point 256). A node point is a
+registry slot, not a head number: each endpoint owns its own 256-head local
+universe. Head indices are local to that endpoint. `MC` and `BS` remain
+distinct hierarchy levels, not hardware aliases.
+
+## Operator portal
+
+The same-origin portal is served at `/` and `/portal`. It provides health, authenticated identity/routes, endpoint-token issuance, corpus upload, and admin-only keeper/model status. Credentials remain in page memory only and are not written to local storage or cookies. Use HTTPS only. The portal never proxies Qwen requests.
+
+Corpus upload uses browser SHA-256, sends bounded chunks, and seals the manifest after every chunk is acknowledged. Upload means **quarantined**, not trained. Independent validation and a runner commit receipt are required before staging bytes are released.
 
 ## API
 
 - GET /healthz
 - POST /admin/tokens (NANLM_ADMIN_TOKEN)
-- GET /v1/address (endpoint bearer; canonical address and local node-point mapping)
-- GET /v1/routes (endpoint bearer)
+- GET /v1/address (endpoint bearer; canonical address, registry slot, and 256-head local universe)
+- GET /v1/routes (endpoint bearer; capability-filtered routes and head count)
 - GET /admin/keeper/status (admin-only; keeper health/action)
 - GET /admin/models/status (admin-only; read-only Qwen metadata)
 - POST /v1/observations (endpoint bearer; metadata-only, unverified evidence)
