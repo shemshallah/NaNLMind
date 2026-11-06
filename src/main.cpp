@@ -564,6 +564,12 @@ int cmd_math_train(int argc, char** argv) {
     std::uint64_t total_correct = 0;
     std::uint64_t total_baseline_correct = 0;
     std::uint64_t native_hyperedges_added = 0;
+    std::uint64_t changed_heads = 0;
+    std::uint64_t changed_mirror_pairs = 0;
+    std::uint64_t changed_rules = 0;
+    std::array<std::uint64_t, 4> bit_test_total{};
+    std::array<std::uint64_t, 4> bit_test_correct{};
+    std::array<std::uint64_t, 4> bit_baseline_correct{};
     const Hash256 hypergraph_before = topology->hypergraph().digest();
     const Hash256 run_seed = topology->global_digest();
 
@@ -582,6 +588,7 @@ int cmd_math_train(int argc, char** argv) {
             return digest.final();
         };
         const Hash256 before = hash_head_learning_state(head);
+        const std::uint8_t previous_rule = head.boolean_rule();
         const std::uint8_t previous_bit = static_cast<std::uint8_t>(index & 7u);
         const std::uint8_t current_bit = static_cast<std::uint8_t>((index >> 3u) & 7u);
         const std::uint8_t target_bit = static_cast<std::uint8_t>((index >> 6u) & 3u);
@@ -614,6 +621,8 @@ int cmd_math_train(int argc, char** argv) {
             if (baseline_prediction == target) ++baseline_correct;
         }
         const Hash256 after = hash_head_learning_state(head);
+        if (!(before == after)) ++changed_heads;
+        if (previous_rule != head.boolean_rule()) ++changed_rules;
         topology->commit(static_cast<std::uint8_t>(index), 0x31u, head.address().value,
                         before, after, static_cast<std::uint64_t>(epochs));
 
@@ -624,13 +633,56 @@ int cmd_math_train(int argc, char** argv) {
         const double accuracy = evaluated ? static_cast<double>(correct) / evaluated : 0.0;
         const double baseline_accuracy = evaluated
             ? static_cast<double>(baseline_correct) / evaluated : 0.0;
+        bit_test_total[target_bit] += evaluated;
+        bit_test_correct[target_bit] += correct;
+        bit_baseline_correct[target_bit] += baseline_correct;
 
-        // Commit each learned head rule into the native shared hypergraph.
-        // The relation connects the head's fixed-point cell to its next
-        // palindromic neighbor-pair address; it is weighted by held-out score.
+        // Persist the learned relation in the actual canonical mirror-pair
+        // cell. The two temporal rails are explicit; the mirrored address
+        // resolves to this same canonical cell through GlobalTopology::cell.
         const std::uint8_t neighbor = static_cast<std::uint8_t>((index + 1u) & 255u);
+        const std::uint16_t pair_address = matrix_addr(static_cast<std::uint8_t>(index), neighbor);
+        NanCell* pair_cell = topology->cell(PageId::root(), pair_address);
+        if (!pair_cell || !pair_cell->is_pair()) {
+            std::cerr << "invalid mirror-pair cell for head " << index << "\\n";
+            return 7;
+        }
+        Sha256 pair_before_hash;
+        pair_before_hash.update(pair_cell, sizeof(NanCell));
+        const Hash256 pair_before = pair_before_hash.final();
+        const std::uint32_t relation_payload =
+            (static_cast<std::uint32_t>(previous_bit) << 24) |
+            (static_cast<std::uint32_t>(current_bit) << 16) |
+            (static_cast<std::uint32_t>(target_bit) << 8) |
+            static_cast<std::uint32_t>(head.boolean_rule());
+        const std::uint32_t confidence_q16 = static_cast<std::uint32_t>(
+            std::max(0.0, std::min(1.0, accuracy)) * 65536.0);
+        pair_cell->s_plus() = NanWord::make(NanType::SignalPositive,
+                                            NanType::QuietPositive, relation_payload);
+        pair_cell->s_minus() = NanWord::make(NanType::SignalNegative,
+                                             NanType::QuietNegative,
+                                             relation_payload ^ 0xFFFFFFFFu);
+        pair_cell->q_plus() = NanWord::make(NanType::QuietPositive,
+                                            NanType::QuietPositive, confidence_q16);
+        pair_cell->q_minus() = NanWord::make(NanType::QuietNegative,
+                                             NanType::QuietNegative,
+                                             static_cast<std::uint32_t>(topology->ledger().size() + 1u));
+        pair_cell->epoch = static_cast<std::uint32_t>(topology->ledger().size() + 1u);
+        pair_cell->rule = head.boolean_rule();
+        pair_cell->ops = static_cast<std::uint16_t>(1u << (head.boolean_rule() & 15u));
+        ++pair_cell->generation;
+        pair_cell->set_flag(kFlagDirty, true);
+        pair_cell->meta[0] = previous_bit;
+        pair_cell->meta[1] = current_bit;
+        pair_cell->meta[2] = target_bit;
+        pair_cell->meta[3] = head.boolean_rule();
+        Sha256 pair_after_hash;
+        pair_after_hash.update(pair_cell, sizeof(NanCell));
+        const Hash256 pair_after = pair_after_hash.final();
+        if (!(pair_before == pair_after)) ++changed_mirror_pairs;
+
         BitAddress head_bit{PageId::root(), head.address().value, 0, 0};
-        BitAddress pair_bit{PageId::root(), matrix_addr(static_cast<std::uint8_t>(index), neighbor), 0, 0};
+        BitAddress pair_bit{PageId::root(), pair_address, 0, 0};
         Hyperedge learned_edge;
         learned_edge.flags = kHyperLearned;
         learned_edge.weight = static_cast<std::uint32_t>(std::max(1.0, accuracy * 65536.0));
@@ -647,6 +699,8 @@ int cmd_math_train(int argc, char** argv) {
             return 7;
         }
         ++native_hyperedges_added;
+        topology->temporal().link(Ref::from_bit(head_bit), Ref::from_bit(pair_bit),
+                                  learned_edge.epoch);
 
         trace << "{\"schema\":\"nanlm-hermes-discovery/1\""
               << ",\"kind\":\"hypothesis\""
@@ -718,6 +772,23 @@ int cmd_math_train(int argc, char** argv) {
               << " discoveries=256"
               << " native_hyperedges_added=" << native_hyperedges_added
               << " native_hypergraph_size=" << topology->hypergraph().size()
+              << " changed_heads=" << changed_heads
+              << " changed_rules=" << changed_rules
+              << " changed_mirror_pairs=" << changed_mirror_pairs
+              << " resolution_metrics={";
+    for (std::size_t bit = 0; bit < bit_test_total.size(); ++bit) {
+        if (bit) std::cout << ",";
+        const double score = bit_test_total[bit]
+            ? static_cast<double>(bit_test_correct[bit]) / bit_test_total[bit] : 0.0;
+        const double baseline = bit_test_total[bit]
+            ? static_cast<double>(bit_baseline_correct[bit]) / bit_test_total[bit] : 0.0;
+        std::cout << "\\"L0_bit_" << bit << "\\":{\\"correct\\":"
+                  << bit_test_correct[bit] << ",\\"total\\":" << bit_test_total[bit]
+                  << ",\\"accuracy\\":" << score
+                  << ",\\"majority_baseline\\":" << baseline << "}";
+    }
+    std::cout << "}"
+              << " native_pair_updates=enabled"
               << " state_bytes=" << state.size()
               << " state_digest=" << hex(topology->global_digest())
               << " state_path=" << state_path
