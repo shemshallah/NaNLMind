@@ -141,3 +141,42 @@ class TokenRegistry:
         try:
             with sqlite3.connect(self.path) as db: db.execute("INSERT INTO nonces VALUES (?,?,?)",(installation_id,nonce,int(time.time()) if now is None else int(now)))
         except sqlite3.IntegrityError as exc: raise AuthError("replayed request nonce") from exc
+
+
+# Root-derived identity keys are domain-separated: an admin identity can never
+# derive or authenticate as a guest identity. The master key remains server-side.
+IDENTITY_DOMAINS = {
+    "admin": b"identity/admin/v1",
+    "guest": b"identity/guest/v1",
+}
+
+def derive_identity_private_key(master_key: bytes, role: str, identity: str) -> Ed25519PrivateKey:
+    """Derive a stable per-identity Ed25519 key from the authority root.
+
+    Call only inside the authority service. Never expose master_key or the
+    derived private seed to a runner/client. Revocation remains server-side.
+    """
+    if role not in IDENTITY_DOMAINS:
+        raise AuthError("identity role must be admin or guest")
+    if not isinstance(identity, str) or not identity or len(identity) > 256:
+        raise AuthError("invalid identity")
+    # Fixed salt + distinct role namespace + identity yields independent keys.
+    seed = _derive(master_key, b"NANNET-IDENTITY-V1", IDENTITY_DOMAINS[role] + b"/" + identity.encode("utf-8"))
+    return Ed25519PrivateKey.from_private_bytes(seed)
+
+def identity_public_key(master_key: bytes, role: str, identity: str) -> str:
+    """Return only the public half of a root-derived identity key."""
+    private = derive_identity_private_key(master_key, role, identity)
+    raw = private.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+    return _b64(raw)
+
+def identity_scope_ceiling(role: str) -> frozenset[str]:
+    """Hard role boundary; caller may further narrow scopes per identity."""
+    if role == "admin":
+        return frozenset({"training:execute", "universe:read", "universe:register",
+                          "snapshot:read", "snapshot:write", "corpus:write",
+                          "installation:admin"})
+    if role == "guest":
+        return frozenset({"universe:read", "snapshot:read", "corpus:write",
+                          "training:execute"})
+    raise AuthError("identity role must be admin or guest")
