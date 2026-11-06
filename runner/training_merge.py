@@ -240,6 +240,8 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
             header = self.headers.get('Authorization', '')
             return header[7:] if header.startswith('Bearer ') else ''
         def do_POST(self) -> None:
+            if self.path in ('/v1/bootstrap/heartbeat', '/v1/admin/identities/revoke', '/v1/bootstrap/oidc') and authority is None:
+                self._json(HTTPStatus.SERVICE_UNAVAILABLE, {'error': 'nannet authority disabled'}); return
             if self.path == '/v1/bootstrap/heartbeat':
                 try:
                     bearer = self._bearer()
