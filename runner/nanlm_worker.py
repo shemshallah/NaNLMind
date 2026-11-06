@@ -490,6 +490,11 @@ def verify_portal_identity(slot):
         advertised = result.get("route")
         if advertised and RunnerRoute.parse(advertised) != PORTAL_ROUTE:
             raise RuntimeError("NANNET route does not match this GitHub runner slot")
+        route_bytes = result.get("route_bytes")
+        if route_bytes and route_bytes != PORTAL_ROUTE.bytes().hex():
+            raise RuntimeError("NANNET route binary translation does not match canonical URI")
+        if result.get("universe_point", 0) != 0 or result.get("translator") != "N16B/1":
+            raise RuntimeError("NANNET authority did not advertise the point-zero N16B translator")
     PORTAL_TOKEN = token
     print("nannet-authenticated: " + result.get("installation_id", "unknown") +
           " route=" + PORTAL_ROUTE.text() +
@@ -602,6 +607,9 @@ def portal_heartbeat():
         advertised = renewed.get("route")
         if advertised and RunnerRoute.parse(advertised) != PORTAL_ROUTE:
             raise RuntimeError("NANNET heartbeat changed the canonical runner route")
+        route_bytes = renewed.get("route_bytes")
+        if route_bytes and route_bytes != PORTAL_ROUTE.bytes().hex():
+            raise RuntimeError("NANNET heartbeat route bytes do not match its URI")
         if renewed.get("universe_point", 0) != 0 or renewed.get("translator") != "N16B/1":
             raise RuntimeError("NANNET heartbeat did not preserve point-zero N16B translation")
         PORTAL_TOKEN = renewed["token"]
