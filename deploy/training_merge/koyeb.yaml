@@ -1,5 +1,5 @@
 # Illustrative Koyeb service definition. Use a persistent volume for /data.
-name: nanlm-training-merge
+name: nannet-portal
 type: web
 ports:
   - port: 8080
