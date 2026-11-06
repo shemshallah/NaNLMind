@@ -103,6 +103,8 @@ Counters are limb lists in chart cells; program/state/IP/HALT are fixed cells.
   Minsky-input self-simulation remains open.
 - A compact direct binary runtime also preserves 20 source steps without the
   22 KB Minsky scan.
+- The proof package composes Minsky universality with the implementation
+  lemmas; a mechanized proof assistant artifact remains open.
 
 ### U10 — optional UTM program in ROM
 

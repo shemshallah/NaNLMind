@@ -342,6 +342,13 @@ The 508-state binary machine also runs through a compact direct table runtime
 Minsky source steps exactly and tracks 100 steps of the Minsky machine on its
 own default tape.
 
+### UTM proof package
+
+The proof package composes Minsky's published 23x8 universality theorem with the
+table transcription, encoded-description execution, binary compiler invariant,
+and compiled binary own-tape trace. See docs/77. It remains a checked
+construction, not a proof-assistant artifact.
+
 ### TM-to-binary compiler
 
 The 23-state/8-symbol Minsky table now compiles to a 508-state binary TM with
