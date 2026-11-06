@@ -25,20 +25,13 @@ class FakeClocked:
 
 def invoke(app, path, method="GET", payload=None, bearer=None):
     raw = b"" if payload is None else json.dumps(payload).encode("utf-8")
-    environ = {
-        "REQUEST_METHOD": method,
-        "PATH_INFO": path,
-        "CONTENT_LENGTH": str(len(raw)),
-        "wsgi.input": io.BytesIO(raw),
-    }
+    environ = {"REQUEST_METHOD": method, "PATH_INFO": path,
+               "CONTENT_LENGTH": str(len(raw)), "wsgi.input": io.BytesIO(raw)}
     if bearer:
         environ["HTTP_AUTHORIZATION"] = "Bearer " + bearer
     captured = {}
-
     def start_response(status, headers):
         captured["status"] = status
-        captured["headers"] = headers
-
     body = b"".join(app(environ, start_response))
     return captured["status"], json.loads(body.decode("utf-8"))
 
@@ -48,11 +41,8 @@ class ClockedExperienceTests(unittest.TestCase):
         self.assertEqual(digest({"b": 2, "a": 1}), digest({"a": 1, "b": 2}))
 
     def test_step_summary_does_not_persist_extracted_values(self):
-        summary = summarize_step({
-            "endpoint": "extract",
-            "status": 200,
-            "result": {"fields": {"email": "secret@example.test", "amount": "$42"}},
-        })
+        summary = summarize_step({"endpoint": "extract", "status": 200,
+            "result": {"fields": {"email": "secret@example.test", "amount": "$42"}}})
         self.assertEqual(summary["extracted_field_names"], ["amount", "email"])
         self.assertNotIn("secret@example.test", repr(summary))
         self.assertNotIn("$42", repr(summary))
@@ -79,29 +69,27 @@ class GatewayTests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
 
     def issue(self, max_requests=2):
-        status, result = invoke(
-            self.app, "/admin/tokens", "POST",
+        status, result = invoke(self.app, "/admin/tokens", "POST",
             {"tenant_id": "test-tenant", "max_requests": max_requests, "ttl_seconds": 600},
-            "admin-test-token",
-        )
+            "admin-test-token")
         self.assertEqual(status, "201 Created")
         self.assertEqual(result["token_type"], "CLOCKED_USER_API")
+        self.assertEqual(result["source_endpoint"], "clocked_demo")
         return result["token"]
 
     def test_health_does_not_require_credentials(self):
         status, result = invoke(self.app, "/healthz")
         self.assertEqual(status, "200 OK")
         self.assertEqual(result["protocol"], "nanlm.clocked-experience")
+        self.assertEqual(result["source_endpoint"], "clocked_demo")
 
     def test_admin_issues_scoped_token_and_demo_returns_content_minimized_event(self):
         token = self.issue()
-        status, result = invoke(
-            self.app, "/v1/experience", "POST",
-            {"protocol": "nanlm.clocked-experience", "text": "private source text"},
-            token,
-        )
+        status, result = invoke(self.app, "/v1/experience", "POST",
+            {"protocol": "nanlm.clocked-experience", "text": "private source text"}, token)
         self.assertEqual(status, "200 OK")
         self.assertEqual(result["event"]["tenant_id"], "test-tenant")
+        self.assertEqual(result["event"]["source_endpoint"], "clocked_demo")
         self.assertEqual(result["event"]["learning_state"], "awaiting_nanlmind_ingest")
         encoded = json.dumps(result)
         self.assertNotIn("private source text", encoded)
