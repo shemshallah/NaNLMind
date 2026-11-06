@@ -235,8 +235,8 @@ class Gateway:
 
     def accept_observation(self, environ, start_response):
         identity = self.authenticate(environ, start_response)
-        if identity is None:
-            return [b'{"error":"unauthorized"}']
+        if not isinstance(identity, dict):
+            return identity
         try:
             data = self.read_body(environ)
             if data.get("protocol") != "nanlm.endpoint-observation" or data.get("version") != 1:
