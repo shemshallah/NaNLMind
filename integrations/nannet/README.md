@@ -7,9 +7,10 @@ and exposes the canonical runner merge boundary.
 
 ## Architecture and resource model
 
-- 256 bootstrap identities: bootstrap-000 through bootstrap-255.
-- Named edge identities: my_android, hermes_demo, clocked_demo.
-- Identity is derived from an issued token, never from request JSON.
+- Canonical address form: `nan://GM0:SC0:MC0:BS0:HW0`.
+- Each GM, SC, MC, BS, and HW coordinate is an unsigned integer from 0 through 255.
+- Initial identities: HW0=NaNLMind runner ring; HW1=Android; HW2=Hermes; HW3=Clocked, all initially under GM0/SC0/MC0/BS0.
+- The issued bearer token binds the endpoint to its canonical NaN address; optional `X-NaN-Address` claims are checked against that binding.
 - SQLite WAL stores metadata and bounded observation envelopes only.
 - Corpus bytes stream to disk in 8 MiB chunks; no SQLite BLOBs and no 6 GiB
   in-memory buffers.
@@ -27,24 +28,27 @@ and exposes the canonical runner merge boundary.
 The 256 bootstrap identities are endpoint/slot identities, not 256 separate
 models. NaNLMind's six-runner ring remains the sole canonical 256-head learner.
 
-Issue a device token once, then deliver it to that endpoint's secret store:
+Issue an endpoint token once, then deliver it to that endpoint's secret store:
 
 \`\`\`sh
 curl -fsS -X POST "$NANNET_URL/admin/tokens" \
   -H "Authorization: Bearer $NANLM_ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"endpoint_id":"my_android","scopes":["intake","observation"],"ttl_seconds":2592000,"max_requests":100000}'
+  -d '{"address":"nan://GM0:SC0:MC0:BS0:HW1","scopes":["intake","observation","n16t"],"ttl_seconds":2592000,"max_requests":100000}'
 \`\`\`
 
-For NaN0S transport, issue a separate my_android token with only the n16t
-scope. Tokens are returned once; store them securely and never paste them into
-source control or logs. Bootstrap slots use endpoint IDs bootstrap-000 through
-bootstrap-255.
+For NaN0S transport, issue a separate HW1 token with only the `n16t` scope.
+Tokens are returned once; store them securely and never paste them into source
+control or logs. `HWn` maps to existing bootstrap node point `n+1` (HW0 ->
+point 1, HW1 -> point 2, HW255 -> point 256). The five-part address remains
+the global identity; the node point is only the local 256-slot bootstrap-map
+index. `MC` and `BS` remain distinct hierarchy levels, not hardware aliases.
 
 ## API
 
 - GET /healthz
 - POST /admin/tokens (NANLM_ADMIN_TOKEN)
+- GET /v1/address (endpoint bearer; canonical address and local node-point mapping)
 - GET /v1/routes (endpoint bearer)
 - GET /admin/keeper/status (admin-only; keeper health/action)
 - GET /admin/models/status (admin-only; read-only Qwen metadata)
@@ -97,6 +101,7 @@ the Koyeb keeper.
 
 ## Non-secret service settings
 
+- NANNET_PUBLIC_URL (public HTTPS service origin, e.g. the Koyeb service URL)
 - DEEPREPO_KEEPER_ENABLED=1
 - KEEPER_INTERVAL=600
 - KEEPER_DISPATCH=1
