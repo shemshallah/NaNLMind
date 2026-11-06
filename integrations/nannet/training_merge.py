@@ -87,6 +87,26 @@ class MergeStore:
                 "digest": self.digest(),
             }
 
+    def status(self) -> dict[str, Any]:
+        with self.lock:
+            nodes = {
+                key: {
+                    "generation": int(value.get("generation", 0)),
+                    "nanclock_tick": int(value.get("last_clock", 0)),
+                    "heads": len(value.get("heads", {})),
+                }
+                for key, value in self.state["nodes"].items()
+            }
+            return {
+                "nodes": nodes,
+                "node_count": len(nodes),
+                "corpus_receipts": sum(
+                    1 for item in self.state["idempotency"].values()
+                    if item.get("response", {}).get("dataset_id")
+                ),
+                "digest": self.digest(),
+            }
+
     def merge(self, payload: dict[str, Any], idempotency: str, source_endpoint: str) -> tuple[int, dict[str, Any]]:
         if not idempotency:
             return HTTPStatus.BAD_REQUEST, {"error": "Idempotency-Key required"}
