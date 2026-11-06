@@ -151,7 +151,7 @@ class TrainingMergeTest(unittest.TestCase):
         server = training_merge.make_server("127.0.0.1", 0, Path(self.tmp.name), "test-token", authority)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         original_verifier = training_merge._verify_github_oidc
-        training_merge._verify_github_oidc = lambda jwt, repo: {"repository": repo}
+        training_merge._verify_github_oidc = lambda jwt, repo: {"repository": repo, "jti": "test-oidc-jti", "exp": int(__import__("time").time()) + 300, "event_name": "workflow_dispatch"}
         base = "http://127.0.0.1:" + str(server.server_address[1])
         def call(path, payload, token=None):
             headers = {"Content-Type": "application/json"}
