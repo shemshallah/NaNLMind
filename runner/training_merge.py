@@ -408,10 +408,11 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                     authority.revoke_token(bearer)
                     renewed = issue_token(authority._private_key("admin", identity), identity, scopes, 900, role="admin")
                     route = route_for_identity(identity)
-                    self._json(HTTPStatus.OK, {"token": renewed, "token_type": "Bearer",
+                    response = {"token": renewed, "token_type": "Bearer",
                         "expires_in": 900, "identity": identity, "route": route.text(),
-                        "route_bytes": route.bytes().hex(), "universe_point": 0,
-                        "translator": "N16B/1"})
+                        "route_bytes": route.bytes().hex()}
+                    response.update(point_zero.descriptor())
+                    self._json(HTTPStatus.OK, response)
                 except (ValueError, KeyError, TypeError, AuthError) as exc:
                     self._json(HTTPStatus.UNAUTHORIZED, {"error": str(exc)[:160]})
                 return
@@ -445,10 +446,11 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                     scopes = ["training:execute", "universe:read", "universe:register", "snapshot:read", "snapshot:write", "corpus:write", "installation:admin"]
                     token = issue_token(authority._private_key("admin", identity), identity, scopes, 900, role="admin")
                     route = route_for_identity(identity)
-                    self._json(HTTPStatus.OK, {"token": token, "token_type": "Bearer",
+                    response = {"token": token, "token_type": "Bearer",
                         "expires_in": 900, "identity": identity, "route": route.text(),
-                        "route_bytes": route.bytes().hex(), "universe_point": 0,
-                        "translator": "N16B/1", "role": "admin", "scopes": scopes})
+                        "route_bytes": route.bytes().hex(), "role": "admin", "scopes": scopes}
+                    response.update(point_zero.descriptor())
+                    self._json(HTTPStatus.OK, response)
                 except (ValueError, KeyError, TypeError, AuthError) as exc:
                     self._json(HTTPStatus.UNAUTHORIZED, {"error": str(exc)[:160]})
                 return
