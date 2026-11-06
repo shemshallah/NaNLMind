@@ -43,9 +43,9 @@ class RouterRingClientTests(unittest.TestCase):
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
-        self.addCleanup(self.server.shutdown)
-        self.addCleanup(self.thread.join)
         self.addCleanup(self.server.server_close)
+        self.addCleanup(self.thread.join)
+        self.addCleanup(self.server.shutdown)
         self.base = f"http://127.0.0.1:{self.server.server_port}"
 
     def test_reads_registry_then_acknowledges_exact_generation_and_digest(self):
