@@ -255,6 +255,8 @@ class TrainingMergeTest(unittest.TestCase):
             health = json.loads(r.read())
         self.assertTrue(health["ok"])
         self.assertEqual(health["nodes"], 0)
+        self.assertEqual(health["nannet_bridge"]["queued"], 0)
+        self.assertEqual(health["nannet_bridge"]["max_pending_per_route"], 4096)
 
 
 if __name__ == "__main__":
