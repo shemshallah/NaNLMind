@@ -1,0 +1,44 @@
+name: Clocked and NANNET bridge tests
+on:
+  pull_request:
+    paths:
+      - "runner/clocked_observation_consumer.py"
+      - "runner/test_clocked_observation_consumer.py"
+      - "runner/nannet_consumer.py"
+      - "integrations/nannet/**"
+      - "nanlmind_nannet/**"
+      - "runner/training_merge.py"
+      - ".github/workflows/clocked-nannet-bridge.yml"
+  push:
+    branches: [main, nannet-universal-intake, clocked-universe-nannet]
+    paths:
+      - "runner/clocked_observation_consumer.py"
+      - "runner/test_clocked_observation_consumer.py"
+      - "runner/nannet_consumer.py"
+      - "integrations/nannet/**"
+      - "nanlmind_nannet/**"
+      - "runner/training_merge.py"
+      - ".github/workflows/clocked-nannet-bridge.yml"
+permissions:
+  contents: read
+jobs:
+  bridge-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install merge authority dependency
+        run: python -m pip install --disable-pip-version-check cryptography
+      - name: Compile bridge modules
+        run: python -m py_compile runner/clocked_observation_consumer.py runner/nannet_consumer.py integrations/nannet/server.py
+      - name: NANNET service regression tests
+        working-directory: integrations/nannet
+        run: python -m unittest -v
+      - name: NANNET corpus consumer tests
+        run: python -m unittest -v runner.test_nannet_consumer
+      - name: Clocked evidence consumer tests
+        run: python -m unittest -v runner.test_clocked_observation_consumer
+      - name: Canonical merge API tests
+        run: python -m unittest discover -s tests -p "test_training_merge.py" -v
