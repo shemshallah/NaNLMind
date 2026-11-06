@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: nannet-corpus-consumer
+  group: nanlm-canonical-training-fold
   cancel-in-progress: false
 jobs:
   consume:
