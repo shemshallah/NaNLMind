@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/shemshallah/NaNLMind/blob/main/integrations/clocked/endpoint-observation.schema.json",
+  "title": "NaNLMind Hardware-Neutral Endpoint Observation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocol", "version", "event_id", "base_generation", "active_heads", "outcome_verified"],
+  "properties": {
+    "protocol": {"const": "nanlm.endpoint-observation"},
+    "version": {"const": 1},
+    "event_id": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "base_generation": {"type": "integer", "minimum": 0},
+    "active_heads": {
+      "type": "array", "maxItems": 256, "uniqueItems": true,
+      "items": {"type": "integer", "minimum": 0, "maximum": 255}
+    },
+    "outcome_verified": {"const": false}
+  }
+}
