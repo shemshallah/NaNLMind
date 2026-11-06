@@ -518,6 +518,8 @@ def portal_bridge_send(frame):
     import urllib.request
     base = os.environ.get("NANNET_PORTAL_API", "").rstrip("/")
     if not base:
+        translator = point_zero_translator()
+        frame = translator.decode(translator.encode(frame), expected_source=PORTAL_ROUTE)
         mailbox = native_bridge_mailbox()
         if frame.payload == b"BSR_ACK":
             mailbox.acknowledge_and_put(frame.destination, frame.source,
