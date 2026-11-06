@@ -232,6 +232,12 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
     bridge = BridgeMailbox(root / "nannet-bridge.sqlite")
     point_zero = PointZeroTranslator()
 
+    def point_zero_identity_descriptor(route: RunnerRoute) -> dict[str, Any]:
+        descriptor = point_zero.descriptor()
+        descriptor["local_route"] = route.text()
+        descriptor["local_route_bytes"] = route.bytes().hex()
+        return descriptor
+
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, fmt: str, *args: Any) -> None:
             # Never log authorization headers or bodies.
@@ -411,7 +417,7 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                     response = {"token": renewed, "token_type": "Bearer",
                         "expires_in": 900, "identity": identity, "route": route.text(),
                         "route_bytes": route.bytes().hex()}
-                    response.update(point_zero.descriptor())
+                    response.update(point_zero_identity_descriptor(route))
                     self._json(HTTPStatus.OK, response)
                 except (ValueError, KeyError, TypeError, AuthError) as exc:
                     self._json(HTTPStatus.UNAUTHORIZED, {"error": str(exc)[:160]})
