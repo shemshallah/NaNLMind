@@ -236,6 +236,9 @@ int relation_train_cli(int argc, char** argv) {
         std::uint8_t oh = distinct_head(base, static_cast<std::uint8_t>(base + e.oh[2]%25u), ph, sh);
         if (sh==ph || oh==ph || oh==sh) { std::cerr << "relation head collision\n"; return 7; }
         HeadView p = heads.at(ph), s = heads.at(sh), o = heads.at(oh);
+        if (!decayed[ph]) { p.decay_boolean_scores(1); decayed[ph] = true; }
+        if (!decayed[sh]) { s.decay_boolean_scores(1); decayed[sh] = true; }
+        if (!decayed[oh]) { o.decay_boolean_scores(1); decayed[oh] = true; }
         for (int epoch=0; epoch<epochs; ++epoch) {
             for (unsigned lane=0; lane<8; ++lane) {
                 p.train_boolean(e.sh[lane]&1u, e.oh[lane]&1u, e.positive);
