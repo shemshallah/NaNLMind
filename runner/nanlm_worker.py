@@ -507,9 +507,12 @@ def portal_bridge_send(frame):
     base = os.environ.get("NANNET_PORTAL_API", "").rstrip("/")
     if not base:
         mailbox = native_bridge_mailbox()
-        if frame.payload in (b"BSR_ACK", b"ACK"):
+        if frame.payload == b"BSR_ACK":
+            mailbox.acknowledge_and_put(frame.destination, frame.source,
+                                        frame.sequence, frame)
+        elif frame.payload == b"ACK":
             mailbox.acknowledge(frame.destination, frame.source, frame.sequence)
-        if frame.payload != b"ACK":
+        else:
             mailbox.put(frame)
         return None
     if not PORTAL_TOKEN:
