@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """NANNET universal, disk-backed intake/control plane. Standard library only."""
 from __future__ import annotations
-import hashlib, json, os, re, secrets, sqlite3, tempfile, threading, time
+import hashlib, json, os, re, secrets, sqlite3, tempfile, threading, time, sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
@@ -308,10 +308,25 @@ class Handler(BaseHTTPRequestHandler):
  def do_OPTIONS(self):
   self.send_response(204);self.send_header("Allow","GET,POST,PUT,PATCH,DELETE,OPTIONS");self.send_header("Content-Length","0");self.end_headers()
 
+def start_deeprepo_keeper():
+ if os.environ.get("DEEPREPO_KEEPER_ENABLED","0")!="1":return
+ for name in ("GH_TOKEN","DEEPREPO_MAIN"):
+  if not os.environ.get(name):raise SystemExit(name+" is required when DEEPREPO_KEEPER_ENABLED=1")
+ def run():
+  try:
+   from deepcore.runtime import Env
+   from deepcore.cli import cmd_keeper
+   env=Env(writer=True,cache_pages=8,kv_cache_pages=8)
+   cmd_keeper(env,loop=True,interval=int(os.environ.get("KEEPER_INTERVAL","600")))
+  except Exception as exc:
+   print("DeepRepo keeper stopped: "+type(exc).__name__,flush=True)
+ threading.Thread(target=run,name="deeprepo-keeper",daemon=True).start()
+
 def main():
  for name in ("NANLM_ADMIN_TOKEN","NANLM_VALIDATOR_TOKEN","NANLM_RUNNER_TOKEN","NANLM_TOKEN_PEPPER"):
   if len(os.environ.get(name,""))<32:raise SystemExit(name+" must be a server-side secret of at least 32 characters")
  ROOT.mkdir(parents=True,exist_ok=True);BLOBS.mkdir(parents=True,exist_ok=True);connect().close()
+ start_deeprepo_keeper()
  port=int(os.environ.get("PORT",os.environ.get("NANLM_PORT","8000")))
  print("NANNET listening on 0.0.0.0:%d; disk quota=%d; chunk=%d"%(port,DATASET_QUOTA,CHUNK_BYTES),flush=True)
  ThreadingHTTPServer(("0.0.0.0",port),Handler).serve_forever()
