@@ -1,0 +1,65 @@
+name: clocked integration
+on:
+  push:
+    branches: [clocked-universe]
+    paths:
+      - "integrations/clocked/**"
+      - "src/endpoint_evidence.cpp"
+      - "include/nanlm/endpoint_evidence.hpp"
+      - "tests/test_endpoint_evidence.cpp"
+      - "Makefile"
+      - ".github/workflows/clocked-integration.yml"
+  pull_request:
+    paths:
+      - "integrations/clocked/**"
+      - "src/endpoint_evidence.cpp"
+      - "include/nanlm/endpoint_evidence.hpp"
+      - "tests/test_endpoint_evidence.cpp"
+      - "Makefile"
+      - ".github/workflows/clocked-integration.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: clocked-integration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gateway-and-demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Gateway protocol and security tests
+        working-directory: integrations/clocked
+        run: python -m unittest -v test_gateway.py
+      - name: Build native learner and endpoint evidence test
+        run: |
+          make -j2 build/test_endpoint_evidence build/clocked-demo
+          ./build/test_endpoint_evidence
+      - name: Offline Clocked-to-native integration demo
+        run: |
+          python integrations/clocked/demo.py --fixture \
+            --native-binary build/clocked-demo \
+            --output-dir build/clocked-demo-run
+      - name: Verify content-minimized artifacts
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("build/clocked-demo-run")
+          files = list(root.glob("*.jsonl"))
+          if not files:
+              raise SystemExit("missing event log")
+          for path in files:
+              for line in path.read_text().splitlines():
+                  event = json.loads(line)
+                  if "text" in event or "raw_text" in event:
+                      raise SystemExit(f"raw source text leaked into {path}")
+          print("content-minimized event artifacts verified")
+          PY
