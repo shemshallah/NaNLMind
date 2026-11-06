@@ -247,7 +247,8 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
             return hmac.compare_digest(header[7:], store.token)
 
         def do_GET(self) -> None:
-            if self.path in ("/", "/portal"):
+            path = self.path.split('?', 1)[0].rstrip('/') or '/'
+            if path in ("/", "/portal"):
                 page = ("<!doctype html><meta charset=utf-8><title>NaNNet N16T Portal</title>"
                         "<main style='font:16px system-ui;max-width:48rem;margin:3rem auto'>"
                         "<h1>NaNNet N16T Portal</h1><p>Service is online.</p>"
@@ -263,7 +264,7 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                 self.end_headers()
                 self.wfile.write(page)
                 return
-            if self.path == "/healthz":
+            if path == "/healthz":
                 health = store.health()
                 health["nannet_authority"] = "ready" if authority else "disabled"
                 if authority:
@@ -289,7 +290,8 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
             header = self.headers.get('Authorization', '')
             return header[7:] if header.startswith('Bearer ') else ''
         def do_POST(self) -> None:
-            if self.path in ("/portal", "/n16t"):
+            path = self.path.split('?', 1)[0].rstrip('/') or '/'
+            if path in ("/portal", "/n16t"):
                 try:
                     if self.headers.get("Content-Type", "").split(";", 1)[0].strip() != N16T_MEDIA_TYPE:
                         self._json(HTTPStatus.UNSUPPORTED_MEDIA_TYPE, {"error": "N16T media type required"})
@@ -318,9 +320,9 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                 except (ValueError, TypeError, struct.error) as exc:
                     self._json(HTTPStatus.BAD_REQUEST, {"error": str(exc)[:160]})
                 return
-            if self.path in ('/v1/bootstrap/heartbeat', '/v1/admin/identities/revoke', '/v1/bootstrap/oidc') and authority is None:
+            if path in ('/v1/bootstrap/heartbeat', '/v1/admin/identities/revoke', '/v1/bootstrap/oidc') and authority is None:
                 self._json(HTTPStatus.SERVICE_UNAVAILABLE, {'error': 'nannet authority disabled'}); return
-            if self.path == '/v1/bootstrap/heartbeat':
+            if path == '/v1/bootstrap/heartbeat':
                 try:
                     bearer = self._bearer()
                     claims = authority.verify_access_token(bearer, required_scope="training:execute")
@@ -335,7 +337,7 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                 except (ValueError, KeyError, TypeError, AuthError) as exc:
                     self._json(HTTPStatus.UNAUTHORIZED, {"error": str(exc)[:160]})
                 return
-            if self.path == '/v1/admin/identities/revoke':
+            if path == '/v1/admin/identities/revoke':
                 try:
                     bearer = self._bearer()
                     if not bearer:
@@ -351,7 +353,7 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                 except (ValueError, KeyError, TypeError, AuthError) as exc:
                     self._json(HTTPStatus.UNAUTHORIZED, {"error": str(exc)[:160]})
                 return
-            if self.path == '/v1/bootstrap/oidc':
+            if path == '/v1/bootstrap/oidc':
                 try:
                     payload = self._body(16384)
                     slot = payload.get("slot")
@@ -368,7 +370,7 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                 except (ValueError, KeyError, TypeError, AuthError) as exc:
                     self._json(HTTPStatus.UNAUTHORIZED, {"error": str(exc)[:160]})
                 return
-            if self.path == '/v1/training/merge':
+            if path == '/v1/training/merge':
                 if not self._auth():
                     self._json(HTTPStatus.UNAUTHORIZED, {'error': 'unauthorized'}); return
                 try: payload = self._body()
@@ -379,22 +381,22 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
             if authority is None or devices is None:
                 self._json(HTTPStatus.SERVICE_UNAVAILABLE, {'error': 'nannet authority disabled'}); return
             try:
-                if self.path == '/v1/devices/register':
+                if path == '/v1/devices/register':
                     self._json(HTTPStatus.CREATED, devices.register(self._body(8192))); return
-                if self.path in ('/v1/devices/heartbeat', '/v1/devices/rotate', '/v1/devices/release', '/v1/devices/report'):
+                if path in ('/v1/devices/heartbeat', '/v1/devices/rotate', '/v1/devices/release', '/v1/devices/report'):
                     bearer = self._bearer()
                     if not bearer: self._json(HTTPStatus.UNAUTHORIZED, {'error': 'bearer_required'}); return
-                    payload = self._body(8192) if self.path.endswith('/report') else self._body(1024)
-                    if self.path.endswith('/heartbeat'): result = devices.heartbeat(bearer)
-                    elif self.path.endswith('/rotate'): result = devices.rotate(bearer)
-                    elif self.path.endswith('/release'): result = devices.release(bearer)
+                    payload = self._body(8192) if path.endswith('/report') else self._body(1024)
+                    if path.endswith('/heartbeat'): result = devices.heartbeat(bearer)
+                    elif path.endswith('/rotate'): result = devices.rotate(bearer)
+                    elif path.endswith('/release'): result = devices.release(bearer)
                     else: result = devices.report(bearer, payload)
                     self._json(HTTPStatus.OK, result); return
-                if self.path == '/v1/pair':
+                if path == '/v1/pair':
                     p = self._body(16384)
                     result = authority.pair(p['pairing_code'], p['installation_id'], p['public_key'])
                     self._json(HTTPStatus.OK, result); return
-                if self.path == '/v1/authorize':
+                if path == '/v1/authorize':
                     bearer = self._bearer(); scope = self._body(4096).get('scope')
                     if not bearer or not isinstance(scope, str):
                         self._json(HTTPStatus.UNAUTHORIZED, {'error': 'bearer_or_scope_required'}); return
@@ -403,7 +405,7 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                     except AuthError as exc:
                         self._json(HTTPStatus.UNAUTHORIZED, {'error': str(exc)[:160]}); return
                     self._json(HTTPStatus.OK, {'authorized': True, 'installation_id': claims['sub'], 'scope': scope, 'expires_at': claims['exp']}); return
-                if self.path == '/v1/revoke':
+                if path == '/v1/revoke':
                     bearer = self._bearer()
                     if not bearer: self._json(HTTPStatus.UNAUTHORIZED, {'error': 'bearer_required'}); return
                     self._json(HTTPStatus.OK, authority.revoke_token(bearer)); return
