@@ -61,6 +61,23 @@ class RawRouteApiTests(unittest.TestCase):
                 self.assertTrue(resolved["found"])
                 self.assertEqual(resolved["route"]["generation"], 1)
 
+                reverse = "/v1/rawroute/reverse?namespace=BS0&target_kind=vector&target_id=1337"
+                connection.request("GET", reverse,
+                                   headers={"Authorization": headers["Authorization"]})
+                response = connection.getresponse()
+                reverse_result = json.loads(response.read())
+                self.assertEqual(response.status, 200)
+                self.assertEqual(reverse_result["routes"], [self.ROUTE])
+
+                replay_payload = dict(payload)
+                replay_payload["idempotency_key"] = "api-route-commit-1"
+                connection.request("POST", "/v1/rawroute/commit",
+                                   body=json.dumps(replay_payload), headers=headers)
+                response = connection.getresponse()
+                replay_result = json.loads(response.read())
+                self.assertEqual(response.status, 202)
+                self.assertTrue(replay_result["replay"])
+
                 payload["base_generation"] = 0
                 payload["nanclock_tick"] = 45
                 payload["idempotency_key"] = "api-route-stale-commit"
