@@ -21,6 +21,12 @@ class NannetTests(unittest.TestCase):
   return r.status,v
  def issue(self,endpoint="bootstrap-000",scopes=None):
   s,d=self.req("POST","/admin/tokens",{"endpoint_id":endpoint,"scopes":scopes or ["intake","dataset"],"ttl_seconds":3600}, "a"*48);self.assertEqual(s,201);return d["token"]
+ def test_admin_keeper_and_model_status_routes(self):
+  status,keeper=self.req("GET","/admin/keeper/status",token="a"*48)
+  self.assertEqual(status,200);self.assertEqual(keeper["status"],"disabled")
+  status,models=self.req("GET","/admin/models/status",token="a"*48)
+  self.assertEqual(status,200);self.assertEqual(models["keeper_action"],"not_started")
+  self.assertEqual(self.req("GET","/admin/keeper/status",token="p"*48)[0],401)
  def test_256_and_route_scoping(self):
   s,d=self.req("GET","/healthz");self.assertEqual(s,200);self.assertEqual(d["bootstrap_endpoints"],256);self.assertIn("bootstrap-255",server.ENDPOINTS)
   t=self.issue("my_android",["intake"]);s,r=self.req("GET","/v1/routes",token=t);self.assertEqual(s,200);self.assertIn("n16t.peer",r["routes"]);self.assertNotIn("deeprepo.keeper",r["routes"])
