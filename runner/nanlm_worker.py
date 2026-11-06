@@ -699,6 +699,9 @@ def main():
     args.slot = parse_slot(args.slot)
     args.slot_name = SLOT_NAMES[args.slot]
     verify_portal_identity(args.slot)
+    ring_status = router_ring_heartbeat()
+    if ring_status is not None:
+        print("router-ring: " + json.dumps(ring_status, sort_keys=True), file=sys.stderr)
     bridge_status = portal_bridge_startup(args.slot, args.epoch)
     if bridge_status.get("enabled"):
         print("nannet-bridge: " + json.dumps(bridge_status, sort_keys=True), file=sys.stderr)
