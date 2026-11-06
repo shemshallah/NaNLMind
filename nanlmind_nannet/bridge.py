@@ -135,9 +135,29 @@ class BridgeMailbox:
                 destination TEXT NOT NULL,
                 source TEXT NOT NULL,
                 frame BLOB NOT NULL,
-                created_at INTEGER NOT NULL)""")
+                created_at INTEGER NOT NULL,
+                sequence INTEGER NOT NULL DEFAULT 0,
+                claimed_until INTEGER NOT NULL DEFAULT 0)""")
+            columns = {row[1] for row in db.execute("PRAGMA table_info(bridge_messages)")}
+            if "sequence" not in columns:
+                db.execute("ALTER TABLE bridge_messages ADD COLUMN sequence INTEGER NOT NULL DEFAULT 0")
+            if "claimed_until" not in columns:
+                db.execute("ALTER TABLE bridge_messages ADD COLUMN claimed_until INTEGER NOT NULL DEFAULT 0")
+            # Migrate sequence keys for messages written by the original schema.
+            for message_id, raw in db.execute(
+                    "SELECT id, frame FROM bridge_messages WHERE sequence=0").fetchall():
+                try:
+                    sequence = BridgeFrame.decode(bytes(raw)).sequence
+                    db.execute("UPDATE bridge_messages SET sequence=? WHERE id=?",
+                               (sequence, message_id))
+                except ValueError:
+                    db.execute("DELETE FROM bridge_messages WHERE id=?", (message_id,))
             db.execute("CREATE INDEX IF NOT EXISTS bridge_destination_id "
                        "ON bridge_messages(destination, id)")
+            db.execute("CREATE INDEX IF NOT EXISTS bridge_delivery_lease "
+                       "ON bridge_messages(destination, claimed_until, id)")
+            db.execute("CREATE INDEX IF NOT EXISTS bridge_ack_lookup "
+                       "ON bridge_messages(source, destination, sequence)")
 
     def put(self, frame: BridgeFrame) -> None:
         raw = frame.encode()
@@ -147,9 +167,10 @@ class BridgeMailbox:
                                  (frame.destination.text(),)).fetchone()[0]
             if pending >= MAX_PENDING_PER_ROUTE:
                 raise OverflowError("N16B destination mailbox is full")
-            db.execute("INSERT INTO bridge_messages(destination,source,frame,created_at) "
-                       "VALUES(?,?,?,?)",
-                       (frame.destination.text(), frame.source.text(), raw, int(time.time())))
+            db.execute("INSERT INTO bridge_messages(destination,source,frame,created_at,sequence,claimed_until) "
+                       "VALUES(?,?,?,?,?,0)",
+                       (frame.destination.text(), frame.source.text(), raw,
+                        int(time.time()), frame.sequence))
 
     def stats(self) -> dict:
         """Return operational counters without exposing frame contents."""
@@ -161,7 +182,36 @@ class BridgeMailbox:
                 "by_destination": by_destination,
                 "max_pending_per_route": MAX_PENDING_PER_ROUTE}
 
+    def claim(self, destination: RunnerRoute, lease_seconds: int = 30) -> bytes | None:
+        """Lease one frame; it is redelivered after expiry until acknowledged."""
+        if isinstance(lease_seconds, bool) or not isinstance(lease_seconds, int) or not 0 <= lease_seconds <= 3600:
+            raise ValueError("bridge lease must be an integer from 0 to 3600 seconds")
+        now = int(time.time())
+        with sqlite3.connect(self.database, timeout=15) as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute("SELECT id,frame FROM bridge_messages "
+                             "WHERE destination=? AND claimed_until<=? ORDER BY id LIMIT 1",
+                             (destination.text(), now)).fetchone()
+            if row is None:
+                return None
+            db.execute("UPDATE bridge_messages SET claimed_until=? WHERE id=?",
+                       (now + lease_seconds, row[0]))
+            return bytes(row[1])
+
+    def acknowledge(self, source: RunnerRoute, destination: RunnerRoute, sequence: int) -> bool:
+        """Delete the original delivery only after its reverse-rail receipt."""
+        if not isinstance(source, RunnerRoute) or not isinstance(destination, RunnerRoute):
+            raise ValueError("acknowledgement routes must be canonical runner routes")
+        if isinstance(sequence, bool) or not isinstance(sequence, int) or not 0 <= sequence <= 0xFFFFFFFF:
+            raise ValueError("acknowledgement sequence must be uint32")
+        with sqlite3.connect(self.database, timeout=15, isolation_level="IMMEDIATE") as db:
+            cursor = db.execute("DELETE FROM bridge_messages "
+                                "WHERE source=? AND destination=? AND sequence=?",
+                                (source.text(), destination.text(), sequence))
+            return cursor.rowcount > 0
+
     def take(self, destination: RunnerRoute) -> bytes | None:
+        """Compatibility destructive read; active transports should use claim/ack."""
         with sqlite3.connect(self.database, timeout=15, isolation_level="IMMEDIATE") as db:
             row = db.execute("SELECT id,frame FROM bridge_messages "
                              "WHERE destination=? ORDER BY id LIMIT 1",
