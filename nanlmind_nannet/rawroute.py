@@ -13,11 +13,13 @@ from typing import Optional
 _COORD = r"(?:0|[1-9][0-9]{0,2})"
 _HEADS = r"(?:0|[1-9][0-9]{0,2})(?:,(?:0|[1-9][0-9]{0,2}))*"
 _OBJECT_KINDS = {"vector", "hyperedge", "memory", "transform"}
+_OBJECT_KIND_PATTERN = r"(?:vector|hyperedge|memory|transform)"
+_OBJECT_ID = r"(?:0|[1-9][0-9]{0,9})"
 _RAWROUTE = re.compile(
     rf"nan://GM({_COORD}):SC({_COORD}):MC({_COORD}):"
     rf"BS({_COORD}):({_COORD}):HW({_COORD}):({_COORD})"
     rf"::HW({_COORD}):({_HEADS})"
-    rf"(?:::([a-z][a-z0-9_-]*)(0|[1-9][0-9]{0,9}))?"
+    rf"(?:::({_OBJECT_KIND_PATTERN})({_OBJECT_ID}))?"
 )
 
 
@@ -110,7 +112,7 @@ class RawRoute:
         match = _RAWROUTE.fullmatch(value)
         if match is None:
             raise ValueError("rawroute syntax or canonical decimal form rejected")
-        (gm, sc, mc, bs, bs_node, hw, ring,
+        (gm, sc, mc, bs, bs_node, hw, hw_node,
          target_hw, heads, object_kind, object_id) = match.groups()
 
         gm_i = _byte(gm, "GM")
@@ -119,7 +121,7 @@ class RawRoute:
         bs_i = _byte(bs, "BS")
         bs_node_i = _byte(bs_node, "BS node")
         hw_i = _byte(hw, "HW")
-        hw_node_i = _byte(ring, "HW network node")
+        hw_node_i = _byte(hw_node, "HW network node")
         target_hw_i = _byte(target_hw, "target HW")
         if target_hw_i != hw_i:
             raise ValueError("local target hardware kind must match network HW")
