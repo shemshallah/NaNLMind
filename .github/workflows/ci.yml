@@ -34,6 +34,24 @@ jobs:
         run: ./build/nanlm-universal genesis
       - name: Global topology
         run: ./build/nanlm-universal global
+      - name: Hermes native 256-head train and resume smoke
+        run: |
+          mkdir -p state
+          ./build/nanlm-universal math-train data/alice_full.txt 2 128 state/hermes-universe.nmg state/hermes-discoveries-1.jsonl
+          test -s state/hermes-universe.nmg
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          events = [json.loads(line) for line in Path("state/hermes-discoveries-1.jsonl").read_text().splitlines()]
+          assert len(events) == 256, len(events)
+          assert {event["head"] for event in events} == set(range(256))
+          assert len({event["source_digest"] for event in events}) == 1
+          print("validated 256 unique head discoveries")
+          PY
+          ./build/nanlm-universal math-train data/alice_full.txt 1 64 state/hermes-universe.nmg state/hermes-discoveries-2.jsonl | tee state/hermes-resume.log
+          grep -q resumed_state_bytes state/hermes-resume.log
+          test -s state/hermes-universe.nmg
+          python3 -c 'import json,pathlib; e=[json.loads(x) for x in pathlib.Path("state/hermes-discoveries-2.jsonl").read_text().splitlines()]; assert len(e)==256 and {x["head"] for x in e}==set(range(256)); print("resume emitted 256 head discoveries")'
       - name: Scale
         run: ./build/nanlm-universal scale
       - name: Phase
