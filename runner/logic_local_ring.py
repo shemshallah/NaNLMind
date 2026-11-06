@@ -37,7 +37,10 @@ def run_slot(slot: int, epoch: int, rounds: int, session_rounds: int,
     ]
     result = subprocess.run(cmd, text=True, capture_output=True, env=env)
     prefix = "logic_core" if op == "logic-core" else "logic"
-    out = state / f"{prefix}_{epoch}_{slot - 1}.json"
+    # logic_curriculum receives the public 1-based slot; logic-core writes the
+    # worker's internal 0-based slot. Read the exact producer path for each op.
+    output_slot = slot if op == "logic" else slot - 1
+    out = state / f"{prefix}_{epoch}_{output_slot}.json"
     record = None
     if out.exists():
         try:
