@@ -19,7 +19,7 @@ class LogicLocalRingTests(unittest.TestCase):
             env.pop("NANNET_BSR_TOKEN", None)
             proc = subprocess.run(
                 [sys.executable, str(ROOT / "runner" / "logic_local_ring.py"),
-                 "--slots", "3", "--rounds", "3",
+                 "--slots", "3", "--rounds", "5",
                  "--state-root", str(Path(tmp) / "ring")],
                 text=True, capture_output=True, check=True, env=env)
             payload = json.loads(proc.stdout)
