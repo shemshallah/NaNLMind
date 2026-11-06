@@ -20,15 +20,6 @@ class DeviceRegistry:
         self.database = str(database)
         self.lease_seconds = max(300, min(int(lease_seconds), 86400))
         self.authority = authority
-
-    def _new_token(self, device_id: str, now: int | None = None) -> str:
-        if self.authority is None:
-            return "nnt_" + secrets.token_urlsafe(32)
-        issued = self.authority.issue_identity_token(
-            "guest", device_id,
-            ["universe:read", "snapshot:read", "corpus:write", "training:execute"],
-            ttl_seconds=self.lease_seconds, now=now)
-        return "nnt_" + issued["token"]
         Path(self.database).parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(self.database) as db:
             db.execute("""CREATE TABLE IF NOT EXISTS devices (
@@ -44,6 +35,15 @@ class DeviceRegistry:
                 report_type TEXT NOT NULL, summary TEXT NOT NULL,
                 details TEXT NOT NULL, system_report TEXT NOT NULL,
                 created_at INTEGER NOT NULL)""")
+
+    def _new_token(self, device_id: str, now: int | None = None) -> str:
+        if self.authority is None:
+            return "nnt_" + secrets.token_urlsafe(32)
+        issued = self.authority.issue_identity_token(
+            "guest", device_id,
+            ["universe:read", "snapshot:read", "corpus:write", "training:execute"],
+            ttl_seconds=self.lease_seconds, now=now)
+        return "nnt_" + issued["token"]
 
     def _connect(self):
         db = sqlite3.connect(self.database, timeout=15, isolation_level="IMMEDIATE")
