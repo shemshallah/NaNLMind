@@ -54,12 +54,14 @@ Required server-side secrets (never commit):
 - NANLM_ADMIN_TOKEN (at least 32 characters)
 - NANLM_VALIDATOR_TOKEN (at least 32 characters; quarantined-data review only)
 - NANLM_RUNNER_TOKEN (at least 32 characters; validated-data and evidence-fold consumer)
+- NANLM_N16T_PEER_TOKEN (at least 32 characters; outbound peer credential, only when a peer is deployed)
 - NANLM_TOKEN_PEPPER (at least 32 characters)
 
 Non-secret settings:
 - NANLM_DATA_DIR (default /data/nannet; mount persistent storage here)
 - NANLM_DATASET_QUOTA_BYTES (default 6442450944)
 - NANLM_CHUNK_BYTES (default 8388608)
+- NANLM_N16T_PEER_URL (HTTPS URL of the trusted N16T peer; optional until deployed)
 - PORT (platform supplied)
 
 Run from this directory with python3 server.py. Ephemeral container storage is
