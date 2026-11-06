@@ -1,14 +1,15 @@
-# NaNLMind CLOCKED interface boundary
+# NaNLMind-side CLOCKED interface
 
-The CLOCKED service implementation lives in the dedicated repository:
-https://github.com/shemshallah/NaNLMind_CLOCKED
+The upstream CLOCKED SDK client, API gateway, credentials, demo harness and service tests are owned by [NaNLMind_CLOCKED](https://github.com/shemshallah/NaNLMind_CLOCKED).
 
-This directory retains only NaNLMind-side interface material:
-- `protocol.schema.json`: canonical CLOCKED result-envelope contract consumed by NaNLMind.\n- `endpoint-observation.schema.json`: generic authenticated endpoint observation contract consumed by the NaNLMind evidence intake.
-- `endpoint_client.py`: standard-library publisher for the NaNLMind observation intake; it does not call the CLOCKED SDK.
-- `native_demo.cpp`: native learner demonstration using the NaNLMind head/evidence implementation.
-- `training_endpoints.json`: canonical NaNLMind endpoint/learner registry.
+This directory retains only the receiving-language contract and native learner-side integration:
 
-The native bridge, observation validation, evidence ledger, Boolean head mapping, and canonical training admission remain owned by NaNLMind. CLOCKED credentials, SDK calls, endpoint orchestration, service gateway, and CLOCKED-specific tests belong in NaNLMind_CLOCKED.
+- `protocol.schema.json` — canonical CLOCKED experience observation envelope.
+- `endpoint-observation.schema.json` — canonical hardware-neutral NANNET observation envelope.
+- `endpoint_client.py` — scoped publisher for the NaNLMind observation interface; it never calls the upstream CLOCKED SDK.
+- `native_demo.cpp` — native NaNLMind head/routing experiment compiled against NaNLMind APIs.
+- `training_endpoints.json` — canonical topology and endpoint ownership registry.
 
-HERMES integration is intentionally deferred until the CLOCKED service and this native interface have passed their independent tests.
+NaNLMind also owns the durable evidence consumer, Boolean heads, M0-M9 transformations, relation learner, six-runner ring and canonical generation commits. CLOCKED supplies external typed observations only.
+
+See the [CLOCKED/NANNET receiving-side bridge](../../docs/73_CLOCKED_NANNET_BRIDGE.md), [chainable training contract](../../specs/CLOCKED_CHAINABLE_TRAINING.md), and [HERMES autonomous CLOCKED/head-cortex design](https://github.com/shemshallah/NaNLMind_CLOCKED/blob/main/docs/HERMES_AUTONOMOUS_CLOCKED_HEAD_CORTEX.md).
