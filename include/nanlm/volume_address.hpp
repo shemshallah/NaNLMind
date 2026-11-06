@@ -89,7 +89,7 @@ struct VolumeAddress {
         std::string out = "/0x0000000000000000";
         if (!valid()) return {};
         std::uint64_t value = word.raw;
-        for (int i = 17; i >= 3; --i) {
+        for (int i = 18; i >= 3; --i) {
             out[static_cast<std::size_t>(i)] = digits[value & 0x0Fu];
             value >>= 4;
         }
