@@ -15,13 +15,20 @@ CHUNK_BYTES=int(os.environ.get("NANLM_CHUNK_BYTES",str(8*1024*1024)))
 DATASET_QUOTA=int(os.environ.get("NANLM_DATASET_QUOTA_BYTES",str(6*1024**3)))
 EVENT_ID=re.compile(r"^[a-f0-9]{64}$"); HEX=EVENT_ID
 ID_RE=re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$")
-ENDPOINTS={f"bootstrap-{i:03d}" for i in range(256)}|{"my_android","hermes_demo","clocked_demo"}
+ADDRESS_RE=re.compile(r"^nan://GM(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9]):SC(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9]):MC(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9]):BS(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9]):HW(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])$")
+def valid_nan_address(value): return isinstance(value,str) and ADDRESS_RE.fullmatch(value) is not None
+def nan_address(gm,sc,mc,bs,hw): return f"nan://GM{gm}:SC{sc}:MC{mc}:BS{bs}:HW{hw}"
+NANLM_ADDRESS=nan_address(0,0,0,0,0)
+ANDROID_ADDRESS=nan_address(0,0,0,0,1)
+HERMES_ADDRESS=nan_address(0,0,0,0,2)
+CLOCKED_ADDRESS=nan_address(0,0,0,0,3)
+ENDPOINTS={NANLM_ADDRESS,ANDROID_ADDRESS,HERMES_ADDRESS,CLOCKED_ADDRESS}
 MERGE_STORE=None
 KEEPER_STATE={"enabled":False,"status":"disabled"}
 ROUTES={
  "training.merge":{"audience":["runner","admin"],"description":"Generation-safe evidence merge; runner ring owns commits"},
  "training.validate":{"audience":["validator","admin"],"description":"Validate quarantined corpus packages"},
- "n16t.peer":{"audience":["my_android","hermes_demo","clocked_demo","bootstrap"],"description":"NaN16 transport peer and capability exchange"},
+ "n16t.peer":{"audience":[ANDROID_ADDRESS,HERMES_ADDRESS,CLOCKED_ADDRESS,NANLM_ADDRESS],"description":"NaN16 transport peer and capability exchange"},
  "deeprepo.keeper":{"audience":["admin"],"description":"GET /admin/keeper/status; DeepRepo keeper health and last action"},
  "models.status":{"audience":["admin"],"description":"GET /admin/models/status; read-only Qwen deployment metadata"}}
 
@@ -92,7 +99,11 @@ class Handler(BaseHTTPRequestHandler):
    db.execute("BEGIN IMMEDIATE"); row=db.execute("SELECT * FROM tokens WHERE token_hash=?",(th,)).fetchone()
    if not row or row["revoked"] or row["expires_at"]<=now() or row["used_requests"]>=row["max_requests"]: db.rollback(); return None
    db.execute("UPDATE tokens SET used_requests=used_requests+1 WHERE token_hash=?",(th,)); db.commit()
-   return {"endpoint_id":row["endpoint_id"],"scopes":json.loads(row["scopes_json"])}
+   address=row["endpoint_id"]
+   claimed=self.headers.get("X-NaN-Address","")
+   if claimed and claimed!=address:
+    db.rollback(); return None
+   return {"endpoint_id":address,"address":address,"scopes":json.loads(row["scopes_json"])}
   finally: db.close()
  def need(self,role="endpoint"):
   ident=self.auth(role)
@@ -100,7 +111,11 @@ class Handler(BaseHTTPRequestHandler):
   return ident
  def do_GET(self):
   p=urlparse(self.path).path
-  if p=="/healthz": return self.reply(200,{"status":"ok","service":"nannet","protocol":"nanlm.universal-intake","version":1,"bootstrap_endpoints":256,"dataset_quota_bytes":DATASET_QUOTA,"chunk_limit_bytes":CHUNK_BYTES,"training_merge_enabled":bool(os.environ.get("NANLM_BOOTSTRAP_TOKEN")),"keeper_enabled":os.environ.get("DEEPREPO_KEEPER_ENABLED","0")=="1"})
+  if p=="/healthz": return self.reply(200,{"status":"ok","service":"nannet","protocol":"nanlm.universal-intake","version":2,"addressing":"nan.global-mesh.v1","bootstrap_endpoints":256,"dataset_quota_bytes":DATASET_QUOTA,"chunk_limit_bytes":CHUNK_BYTES,"training_merge_enabled":bool(os.environ.get("NANLM_BOOTSTRAP_TOKEN")),"keeper_enabled":os.environ.get("DEEPREPO_KEEPER_ENABLED","0")=="1"})
+  if p=="/v1/address":
+   x=self.need()
+   if x is None:return
+   return self.reply(200,{"address":x["address"],"addressing":"nan.global-mesh.v1","transport_authority":os.environ.get("NANNET_PUBLIC_URL","").rstrip("/"),"transport":"https"})
   if p=="/admin/keeper/status":
    if self.need("admin") is None:return
    return self.reply(200,dict(KEEPER_STATE))
@@ -111,8 +126,8 @@ class Handler(BaseHTTPRequestHandler):
    x=self.need()
    if x is None:return
    scopes=set(x["scopes"]); ep=x["endpoint_id"]
-   visible={k:v for k,v in ROUTES.items() if "*" in scopes or ep in v["audience"] or (ep.startswith("bootstrap-") and "bootstrap" in v["audience"]) or scopes.intersection(v["audience"])}
-   return self.reply(200,{"routes":visible})
+   visible={k:v for k,v in ROUTES.items() if "*" in scopes or ep in v["audience"] or scopes.intersection(v["audience"])}
+   return self.reply(200,{"address":x["address"],"routes":visible})
   if p=="/internal/datasets":
    if self.need("validator") is None:return
    db=connect()
@@ -195,14 +210,14 @@ class Handler(BaseHTTPRequestHandler):
   if p=="/admin/tokens":
    if self.need("admin") is None:return
    try:
-    d=self.json_body(); endpoint=d.get("endpoint_id"); scopes=d.get("scopes",["intake"]); ttl=int(d.get("ttl_seconds",86400)); quota=int(d.get("max_requests",10000))
-    if endpoint not in ENDPOINTS or not isinstance(scopes,list) or not scopes or any(s not in {"intake","dataset","observation","heartbeat","n16t"} for s in scopes):raise ValueError("invalid_endpoint_or_scopes")
+    d=self.json_body(); endpoint=d.get("address"); scopes=d.get("scopes",["intake"]); ttl=int(d.get("ttl_seconds",86400)); quota=int(d.get("max_requests",10000))
+    if not valid_nan_address(endpoint) or endpoint not in ENDPOINTS or not isinstance(scopes,list) or not scopes or any(s not in {"intake","dataset","observation","heartbeat","n16t"} for s in scopes):raise ValueError("invalid_nan_address_or_scopes")
     if not 60<=ttl<=7776000 or not 1<=quota<=10000000:raise ValueError("token_policy_out_of_range")
    except (ValueError,TypeError) as e:return self.reply(400,{"error":str(e)[:80]})
    token="nnt_"+secrets.token_urlsafe(36); db=connect()
    try: db.execute("INSERT INTO tokens(token_hash,endpoint_id,scopes_json,expires_at,max_requests,created_at) VALUES(?,?,?,?,?,?)",(token_hash(token),endpoint,json.dumps(sorted(set(scopes))),now()+ttl,quota,now())); db.commit()
    finally:db.close()
-   return self.reply(201,{"token":token,"endpoint_id":endpoint,"scopes":sorted(set(scopes)),"expires_at":now()+ttl,"max_requests":quota})
+   return self.reply(201,{"token":token,"address":endpoint,"endpoint_id":endpoint,"scopes":sorted(set(scopes)),"expires_at":now()+ttl,"max_requests":quota})
   if p=="/internal/observations/ack":
    if self.need("runner") is None:return
    try:
