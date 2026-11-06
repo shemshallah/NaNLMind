@@ -33,7 +33,8 @@ training can be merged without standing up macrocluster storage.
 Endpoints:
 
 ```text
-GET  /healthz
+GET  /healthz                 # liveness: process responds
+GET  /readyz                  # readiness: NANNET authority + SQLite are usable
 POST /v1/training/merge
 ```
 
@@ -83,26 +84,26 @@ health:   /healthz -> 200
 merge:    /v1/training/merge -> 200
 ```
 
-`NANLM_MERGE_TOKEN` is stored as a Koyeb secret, not as a plaintext value in
-the repository. `DEEPREPO_PAT` is not used.
+`NANLM_MERGE_TOKEN` and `NANNET_AUTHORITY_MASTER_KEY` are Koyeb secrets,
+never repository values. `DEEPREPO_PAT` is not used by the service.
 
-Koyeb rejected the `free` instance type; the service is running on `nano`.
-This instance has no persistent volume, so `/data/training_merge.json` is
-ephemeral and resets if the instance is replaced. Attach a volume before using
-it for durable state.
+The service must mount a persistent volume at `/data`; both
+`/data/training_merge.json` and `/data/nannet-authority.sqlite` must live there.
+A restart must preserve identities, revocations, merge generations, and
+idempotency records. `/healthz` is only a liveness probe. Use `/readyz` for
+readiness: it returns 503 when authority is disabled or its SQLite database
+cannot be checked. A 200 from `/healthz` alone does not prove NANNET works.
 
 ## 4. Koyeb deployment
 
-1. Create a Koyeb service from this repository using
-   `deploy/training_merge/Dockerfile`.
-2. Attach a persistent volume at `/data` for `training_merge.json`.
-3. Set `NANLM_MERGE_TOKEN` to a scoped, revocable merge credential.
-4. Expose port `8080` with HTTPS.
-5. Point the bootstrap/peer merge client at
-   `https://<service>.koyeb.app/v1/training/merge`.
-
-Koyeb's free instance has no persistent volume. Use a volume-enabled instance
-for durable training merge, or accept ephemeral state for a demo.
+1. Build from `deploy/training_merge/Dockerfile`.
+2. Mount a persistent volume at `/data`.
+3. Set `NANLM_MERGE_TOKEN` and `NANNET_AUTHORITY_MASTER_KEY` as Koyeb secrets.
+4. Set `NANNET_AUTHORITY_DB=/data/nannet-authority.sqlite` and
+   `NANLM_MERGE_ROOT=/data`.
+5. Expose port `8080` with HTTPS and configure `/readyz` as the readiness probe.
+6. Point bootstrap/peer clients at the deployed `/v1` routes.
+7. Restart/redeploy once and verify identity + merge state survive.
 
 `deploy/training_merge/koyeb.yaml` is the illustrative service definition.
 
