@@ -68,7 +68,9 @@ Optional secrets only when those integrations are active:
 
 - NANLM_N16T_PEER_TOKEN (trusted N16T peer credential)
 - DEEPREPO_MIDDLE_TOKEN (with DEEPREPO_MIDDLE_URL)
-- NANLM_MERGE_TOKEN (preserve the existing Android/legacy merge credential; NANNET does not use it for canonical writes)\n- NANLM_HERMES_TOKEN / NANLM_CLOCKED_TOKEN (preserve legacy endpoint merge credentials if still referenced)\n- NANNET_AUTHORITY_MASTER_KEY (preserve the existing stable 32-byte master key)
+- NANLM_MERGE_TOKEN (preserve the existing Android/legacy merge credential; NANNET does not use it for canonical writes)
+- NANLM_HERMES_TOKEN / NANLM_CLOCKED_TOKEN (preserve legacy endpoint merge credentials if still referenced)
+- NANNET_AUTHORITY_MASTER_KEY (preserve the existing stable 32-byte master key)
 - CLOCKED_GATEWAY_ADMIN_TOKEN
 - CLOCKED_TOKEN_PEPPER
 - CLOCKED_API_KEY (only for the separate Clocked SDK adapter)
