@@ -206,7 +206,7 @@ class TrainingMergeTest(unittest.TestCase):
         header = struct.pack("<4sHH16sII", b"N16T", 1, 1, session, 1, len(payload))
         body = header + payload
         frame = body + struct.pack("<I", zlib.crc32(body) & 0xFFFFFFFF)
-        for path in ("/portal", "/n16t"):
+        for path in ("/portal", "/portal/", "/n16t", "/n16t/"):
             request = urllib.request.Request(
                 self.base + path, data=frame, method="POST",
                 headers={"Content-Type": "application/vnd.nan16.n16t",
@@ -234,9 +234,10 @@ class TrainingMergeTest(unittest.TestCase):
             urllib.request.urlopen(request, timeout=5)
         self.assertEqual(error.exception.code, 400)
 
-        with urllib.request.urlopen(self.base + "/portal", timeout=5) as response:
-            self.assertEqual(response.status, 200)
-            self.assertIn(b"POST /n16t", response.read())
+        for path in ("/portal", "/portal/"):
+            with urllib.request.urlopen(self.base + path, timeout=5) as response:
+                self.assertEqual(response.status, 200)
+                self.assertIn(b"POST /n16t", response.read())
 
     def test_auth_and_health(self):
         status, body = self.post(self.payload(), "auth", token="wrong")
