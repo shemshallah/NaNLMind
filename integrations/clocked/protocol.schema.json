@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/shemshallah/NaNLMind/blob/main/integrations/clocked/protocol.schema.json",
-  "title": "NaNLMind Clocked Experience Event",
+  "title": "NaNLMind Endpoint Experience Event",
   "description": "Hardware-neutral, content-minimized observation envelope. It is not a native training commit.",
   "type": "object",
   "additionalProperties": false,
@@ -12,6 +12,7 @@
     "observed_at",
     "input_sha256",
     "response_sha256",
+    "source_endpoint",
     "pipeline",
     "task_labels",
     "learning_state",
@@ -43,6 +44,9 @@
     "response_sha256": {
       "type": "string",
       "pattern": "^[a-f0-9]{64}$"
+    },
+    "source_endpoint": {
+      "const": "clocked_demo"
     },
     "tenant_id": {
       "type": "string",
