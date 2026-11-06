@@ -113,6 +113,17 @@ class DeviceRegistry:
                 raise ValueError("device token invalid, expired, revoked, or out of scope") from exc
         return row
 
+    def verify_scope(self, token: str, scope: str, now: int | None = None) -> dict:
+        """Verify a device bearer and requested scope; strips the nnt_ prefix."""
+        now = int(time.time()) if now is None else int(now)
+        if not isinstance(token, str) or not token.startswith("nnt_"):
+            raise ValueError("device bearer required")
+        if self.authority is None:
+            raise ValueError("authority is not configured")
+        with self._connect() as db:
+            self._active(db, token, now)
+        return self.authority.verify_access_token(token[4:], required_scope=scope, now=now)
+
     def heartbeat(self, token: str, now: int | None = None) -> dict:
         now = int(time.time()) if now is None else int(now)
         with self._connect() as db:
