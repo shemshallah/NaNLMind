@@ -113,11 +113,30 @@ def run_demo(samples: list[dict], mode: str, native_binary: Path,
 
     with events_path.open("w", encoding="utf-8") as events_file:
         for sample in samples:
+            if sample["split"] == "test":
+                # Keep held-out data isolated: it is never sent to Clocked.
+                test_rows.append("test\\t%s\\t%s" % (
+                    sample["expected_task_family"], sample["text"]
+                ))
+                records.append({
+                    "sample_id": sample["id"], "split": "test",
+                    "expected": sample["expected_task_family"],
+                    "clocked": None, "matched": None,
+                })
+                events_file.write(json.dumps({
+                    "sample_id": sample["id"], "split": "test",
+                    "expected_task_family": sample["expected_task_family"],
+                    "clocked_task_family": None, "matched_gold": None,
+                    "event_id": None, "source_schema": None,
+                    "learning_state": "heldout_never_sent_to_clocked",
+                }, sort_keys=True) + "\\n")
+                continue
+
             if mode == "fixture":
                 label = fixture_classify(sample["text"])
                 event = {
                     "schema": "nanlm.clocked-experience-fixture",
-                    "event_id": hashlib.sha256((sample["id"] + "\0" + label).encode()).hexdigest(),
+                    "event_id": hashlib.sha256((sample["id"] + "\\0" + label).encode()).hexdigest(),
                     "task_labels": {"task_family": label},
                     "raw_text_persisted": False,
                 }
@@ -126,31 +145,24 @@ def run_demo(samples: list[dict], mode: str, native_binary: Path,
             matched = label == sample["expected_task_family"]
             clocked_correct += int(matched)
             records.append({
-                "sample_id": sample["id"], "split": sample["split"],
+                "sample_id": sample["id"], "split": "train",
                 "expected": sample["expected_task_family"], "clocked": label,
                 "matched": matched,
             })
-            # Keep only minimized event summaries, never source text or raw results.
             events_file.write(json.dumps({
-                "sample_id": sample["id"], "split": sample["split"],
+                "sample_id": sample["id"], "split": "train",
                 "expected_task_family": sample["expected_task_family"],
                 "clocked_task_family": label, "matched_gold": matched,
                 "event_id": event.get("event_id"),
                 "source_schema": event.get("schema"),
-                "learning_state": "verified_for_demo" if matched and sample["split"] == "train"
-                                  else "heldout" if sample["split"] == "test"
+                "learning_state": "verified_for_demo" if matched
                                   else "evidence_only_mismatch",
-            }, sort_keys=True) + "\n")
-            if sample["split"] == "train":
-                if matched:
-                    train_rows.append("train\t%s\t%s" % (label, sample["text"]))
-                    verified_train += 1
-                else:
-                    skipped_train += 1
+            }, sort_keys=True) + "\\n")
+            if matched:
+                train_rows.append("train\\t%s\\t%s" % (label, sample["text"]))
+                verified_train += 1
             else:
-                test_rows.append("test\t%s\t%s" % (
-                    sample["expected_task_family"], sample["text"]
-                ))
+                skipped_train += 1
 
     if not train_rows:
         raise RuntimeError("Clocked produced no independently verified training samples")
@@ -179,8 +191,8 @@ def run_demo(samples: list[dict], mode: str, native_binary: Path,
     return {
         "demo": "clocked-to-nanlmind-native-routing",
         "mode": mode,
-        "clocked_samples": len(samples),
-        "clocked_label_accuracy": clocked_correct / len(samples),
+        "clocked_samples": len(train_rows) + skipped_train,
+        "clocked_label_accuracy": clocked_correct / (len(train_rows) + skipped_train),
         "verified_training_examples": verified_train,
         "skipped_training_examples": skipped_train,
         "heldout_examples": len(test_rows),
