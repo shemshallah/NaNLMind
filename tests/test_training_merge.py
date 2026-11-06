@@ -109,6 +109,18 @@ class TrainingMergeTest(unittest.TestCase):
                 rotated = json.loads(response.read())
             self.assertEqual(rotated['address'], enrolled['address'])
             self.assertNotEqual(rotated['token'], enrolled['token'])
+            self.assertEqual(authority.verify_access_token(rotated['token'][4:], "training:execute")["role"], "guest")
+            with self.assertRaises(AuthError):
+                authority.verify_access_token(enrolled['token'][4:], "training:execute")
+            req = urllib.request.Request(base + '/v1/devices/heartbeat', data=b'{}', method='POST', headers={'Authorization': 'Bearer ' + rotated['token'], 'Content-Type': 'application/json'})
+            with urllib.request.urlopen(req, timeout=5) as response:
+                renewed = json.loads(response.read())
+            self.assertNotEqual(renewed['token'], rotated['token'])
+            req = urllib.request.Request(base + '/v1/devices/release', data=b'{}', method='POST', headers={'Authorization': 'Bearer ' + renewed['token'], 'Content-Type': 'application/json'})
+            with urllib.request.urlopen(req, timeout=5):
+                pass
+            with self.assertRaises(AuthError):
+                authority.verify_access_token(renewed['token'][4:], "training:execute")
             health = urllib.request.urlopen(base + '/healthz', timeout=5)
             self.assertEqual(json.loads(health.read())['nannet_authority'], 'ready')
         finally:
