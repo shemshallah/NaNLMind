@@ -322,7 +322,10 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                     bearer = self._bearer(); scope = self._body(4096).get('scope')
                     if not bearer or not isinstance(scope, str):
                         self._json(HTTPStatus.UNAUTHORIZED, {'error': 'bearer_or_scope_required'}); return
-                    claims = authority.verify_access_token(bearer, required_scope=scope)
+                    try:
+                        claims = authority.verify_access_token(bearer, required_scope=scope)
+                    except AuthError as exc:
+                        self._json(HTTPStatus.UNAUTHORIZED, {'error': str(exc)[:160]}); return
                     self._json(HTTPStatus.OK, {'authorized': True, 'installation_id': claims['sub'], 'scope': scope, 'expires_at': claims['exp']}); return
                 if self.path == '/v1/revoke':
                     bearer = self._bearer()
