@@ -2,6 +2,7 @@
 #include "test_util.hpp"
 
 #include <array>
+#include <string>
 
 using namespace nanlm;
 
@@ -43,6 +44,30 @@ int main() {
     const auto fb = mesh.mind().feedback();
     for (auto b : fb) CHECK(b >= -8 && b <= 8);
     CHECK(mesh.mind().digest() == mesh.mind().digest());
+
+    // Overbootstrap folds endpoint observations alongside bootstrap traces.
+    // Unverified Clocked results remain evidence-only.
+    OverbootstrapLearner endpoint_mind;
+    EndpointObservation clocked;
+    clocked.endpoint = EndpointId::ClockedDemo;
+    clocked.event_id = std::string(64, 'a');
+    clocked.active_heads = {200, 200};
+    CHECK(endpoint_mind.observe_endpoint(clocked) == EndpointIngestResult::Accepted);
+    CHECK_EQ(endpoint_mind.endpoint_stats(EndpointId::ClockedDemo).evidence_only, 1u);
+    CHECK_EQ(endpoint_mind.feedback()[200], 0);
+
+    EndpointObservation android;
+    android.endpoint = EndpointId::MyAndroid;
+    android.outcome_verified = true;
+    android.correct = true;
+    android.active_heads = {200, 200};
+    for (char id = 'b'; id <= 'i'; ++id) {
+        android.event_id = std::string(64, id);
+        CHECK(endpoint_mind.observe_endpoint(android) == EndpointIngestResult::Accepted);
+    }
+    CHECK_EQ(endpoint_mind.endpoint_stats(EndpointId::MyAndroid).correct, 8u);
+    CHECK_EQ(endpoint_mind.feedback()[200], 1);
+
 
     return test_done("two-rate bootstrap/overbootstrap learning mesh");
 }
