@@ -92,6 +92,15 @@ class PairingAuthority:
                 raise AuthError("identity not found or already revoked")
         return {"revoked": True, "identity": identity, "role": role}
 
+    def issue_identity_token(self, role: str, identity: str, scopes, ttl_seconds=3600, now=None) -> dict:
+        from .auth import identity_scope_ceiling
+        requested = sorted(set(scopes))
+        if role not in ("admin", "guest") or not requested or not set(requested) <= identity_scope_ceiling(role):
+            raise AuthError("identity token scopes exceed role ceiling")
+        self.register_identity(role, identity, now)
+        token = issue_token(self._private_key(role, identity), identity, requested, ttl_seconds, now, role=role)
+        return {"token": token, "role": role, "identity": identity, "scopes": requested}
+
     def create_pairing_code(self, scopes, ttl_seconds=600, now=None, role="guest") -> dict:
         from .auth import identity_scope_ceiling
         scopes=sorted(set(scopes))
