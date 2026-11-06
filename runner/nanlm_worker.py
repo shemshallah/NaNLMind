@@ -506,7 +506,11 @@ def portal_bridge_send(frame):
     import urllib.request
     base = os.environ.get("NANNET_PORTAL_API", "").rstrip("/")
     if not base:
-        native_bridge_mailbox().put(frame)
+        mailbox = native_bridge_mailbox()
+        if frame.payload in (b"BSR_ACK", b"ACK"):
+            mailbox.acknowledge(frame.destination, frame.source, frame.sequence)
+        if frame.payload != b"ACK":
+            mailbox.put(frame)
         return None
     if not PORTAL_TOKEN:
         raise RuntimeError("NANNET portal is configured but runner has no portal token")
@@ -531,7 +535,7 @@ def portal_bridge_poll():
     if PORTAL_ROUTE is None:
         return None
     if not base:
-        raw = native_bridge_mailbox().take(PORTAL_ROUTE)
+        raw = native_bridge_mailbox().claim(PORTAL_ROUTE)
         return BridgeFrame.decode(raw) if raw else None
     if not PORTAL_TOKEN:
         raise RuntimeError("NANNET portal is configured but runner has no portal token")
@@ -546,7 +550,7 @@ def portal_bridge_poll():
 
 
 def portal_bridge_drain(epoch, limit=16):
-    """Drain incoming N16B frames, return reverse-rail ACKs, and persist the inbox."""
+    """Lease, persist, and acknowledge incoming frames on the reverse rail."""
     if PORTAL_ROUTE is None:
         return 0
     received = []
@@ -555,15 +559,20 @@ def portal_bridge_drain(epoch, limit=16):
         if frame is None:
             break
         received.append(frame)
-        reply = BridgeFrame(PORTAL_ROUTE, frame.source, frame.sequence,
-                            NanWord.from_bits(3, 3, frame.sequence), b"BSR_ACK")
-        portal_bridge_send(reply)
     if received:
         path = local_path() / ("nannet_inbox_" + str(epoch) + "_" + str(PORTAL_ROUTE.bsr) + ".bin")
         with path.open("ab") as stream:
             for frame in received:
                 raw = frame.encode()
                 stream.write(len(raw).to_bytes(4, "little") + raw)
+    # Two-phase receipt: BSR_ACK confirms the data frame; ACK consumes that receipt.
+    for frame in received:
+        if frame.payload == b"ACK":
+            continue
+        payload = b"ACK" if frame.payload == b"BSR_ACK" else b"BSR_ACK"
+        reply = BridgeFrame(PORTAL_ROUTE, frame.source, frame.sequence,
+                            NanWord.from_bits(3, 3, frame.sequence), payload)
+        portal_bridge_send(reply)
     return len(received)
 
 
