@@ -59,6 +59,7 @@ Corpus upload uses browser SHA-256, sends bounded chunks, and seals the manifest
 - GET /v1/routes (endpoint bearer; capability-filtered routes and head count)
 - GET /admin/keeper/status (admin-only; keeper health/action)
 - GET /admin/models/status (admin-only; read-only Qwen metadata)
+- GET /admin/training/status (admin-only; canonical generations, local-head counts, corpus receipt count, digest)
 - POST /v1/observations (endpoint bearer; metadata-only, unverified evidence)
 - POST /v1/intake/route (Android route-diff compatibility; verifies canonical digest and address/node binding, then stores only unverified evidence)
 - POST /v1/training/merge (NANLM_BOOTSTRAP_TOKEN only; canonical runner deltas)
