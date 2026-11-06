@@ -533,11 +533,33 @@ def portal_bridge_poll():
     return BridgeFrame.decode(raw) if raw else None
 
 
+def portal_bridge_drain(epoch, limit=16):
+    """Drain incoming N16B frames, return reverse-rail ACKs, and persist the inbox."""
+    if PORTAL_ROUTE is None:
+        return 0
+    received = []
+    for _ in range(limit):
+        frame = portal_bridge_poll()
+        if frame is None:
+            break
+        received.append(frame)
+        reply = BridgeFrame(PORTAL_ROUTE, frame.source, frame.sequence,
+                            NanWord.from_bits(3, 3, frame.sequence), b"BSR_ACK")
+        portal_bridge_send(reply)
+    if received:
+        path = local_path() / ("nannet_inbox_" + str(epoch) + "_" + str(PORTAL_ROUTE.bsr) + ".bin")
+        with path.open("ab") as stream:
+            for frame in received:
+                raw = frame.encode()
+                stream.write(len(raw).to_bytes(4, "little") + raw)
+    return len(received)
+
+
 def portal_bridge_startup(slot, epoch):
-    """Announce the runner to BSR0, drain queued frames, and return reverse ACKs."""
+    """Announce the runner to BSR0 and drain any already queued frames."""
     if PORTAL_ROUTE is None:
         return {"enabled": False, "transport": "unavailable", "route": None, "received": 0}
-    hosted = bool(os.environ.get("NANNET_PORTAL_API"))
+    hosted = bool(os.environ.get("NANNET_PORTAL_API", "").strip())
     transport = "koyeb" if hosted else "native"
     root = RunnerRoute(bsr=0)
     sent = False
@@ -547,41 +569,28 @@ def portal_bridge_startup(slot, epoch):
                             NanWord.from_bits(0, 0, seq), b"BSR_ONLINE")
         portal_bridge_send(frame)
         sent = True
-    received = []
-    for _ in range(16):
-        frame = portal_bridge_poll()
-        if frame is None:
-            break
-        received.append(frame)
-        reply = BridgeFrame(PORTAL_ROUTE, frame.source, frame.sequence,
-                            NanWord.from_bits(3, 3, frame.sequence),
-                            b"BSR_ACK")
-        portal_bridge_send(reply)
-    if received:
-        path = local_path() / ("nannet_inbox_" + str(epoch) + "_" + str(slot) + ".bin")
-        path.write_bytes(b"".join(len(f.encode()).to_bytes(4, "little") + f.encode()
-                                  for f in received))
+    received = portal_bridge_drain(epoch)
     return {"enabled": True, "transport": transport, "route": PORTAL_ROUTE.text(),
-            "announced_to_root": sent, "received": len(received)}
+            "announced_to_root": sent, "received": received}
 
 
 def portal_heartbeat():
     global PORTAL_TOKEN
     base = os.environ.get("NANNET_PORTAL_API", "").rstrip("/")
-    if not base:
-        return
-    if not PORTAL_TOKEN:
-        raise RuntimeError("NANNET BSR identity is not initialized")
-    import urllib.request
-    request = urllib.request.Request(
-        base + "/v1/bootstrap/heartbeat", data=b"{}",
-        headers={"Authorization": "Bearer " + PORTAL_TOKEN, "Content-Type": "application/json"},
-        method="POST")
-    with urllib.request.urlopen(request, timeout=20) as response:
-        renewed = json.load(response)
-    if not renewed.get("token"):
-        raise RuntimeError("NANNET BSR heartbeat did not rotate the credential")
-    PORTAL_TOKEN = renewed["token"]
+    if base:
+        if not PORTAL_TOKEN:
+            raise RuntimeError("NANNET BSR identity is not initialized")
+        import urllib.request
+        request = urllib.request.Request(
+            base + "/v1/bootstrap/heartbeat", data=b"{}",
+            headers={"Authorization": "Bearer " + PORTAL_TOKEN, "Content-Type": "application/json"},
+            method="POST")
+        with urllib.request.urlopen(request, timeout=20) as response:
+            renewed = json.load(response)
+        if not renewed.get("token"):
+            raise RuntimeError("NANNET BSR heartbeat did not rotate the credential")
+        PORTAL_TOKEN = renewed["token"]
+    portal_bridge_drain(int(time.time()))
 
 
 def main():
