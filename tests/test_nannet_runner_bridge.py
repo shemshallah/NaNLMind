@@ -15,11 +15,13 @@ class RunnerBridgeIntegrationTests(unittest.TestCase):
     def setUp(self):
         self.old_token = nanlm_worker.PORTAL_TOKEN
         self.old_route = nanlm_worker.PORTAL_ROUTE
+        self.old_translator = nanlm_worker.PORTAL_TRANSLATOR
         nanlm_worker.PORTAL_TOKEN = "test-token"
 
     def tearDown(self):
         nanlm_worker.PORTAL_TOKEN = self.old_token
         nanlm_worker.PORTAL_ROUTE = self.old_route
+        nanlm_worker.PORTAL_TRANSLATOR = self.old_translator
 
     def test_native_two_phase_reverse_ack_retires_both_frames(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -49,6 +51,13 @@ class RunnerBridgeIntegrationTests(unittest.TestCase):
             mailbox_path = str(Path(tmp) / "shared-native.sqlite")
             with patch.dict(os.environ, {"NANNET_PORTAL_API": "",
                                           "NANNET_NATIVE_MAILBOX": mailbox_path}):
+                for slot in range(6):
+                    nanlm_worker.verify_portal_identity(slot)
+                    self.assertEqual(nanlm_worker.PORTAL_ROUTE, RunnerRoute(bsr=slot))
+                    self.assertEqual(nanlm_worker.point_zero_translator().local_route,
+                                     RunnerRoute(bsr=slot))
+                    self.assertEqual(nanlm_worker.point_zero_translator().point_route,
+                                     RunnerRoute(bsr=0))
                 nanlm_worker.verify_portal_identity(2)
                 self.assertEqual(nanlm_worker.PORTAL_ROUTE, RunnerRoute(bsr=2))
                 result = nanlm_worker.portal_bridge_startup(2, 31)
