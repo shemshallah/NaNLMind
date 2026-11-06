@@ -115,7 +115,7 @@ def run_demo(samples: list[dict], mode: str, native_binary: Path,
         for sample in samples:
             if sample["split"] == "test":
                 # Keep held-out data isolated: it is never sent to Clocked.
-                test_rows.append("test\\t%s\\t%s" % (
+                test_rows.append("test\t%s\t%s" % (
                     sample["expected_task_family"], sample["text"]
                 ))
                 records.append({
@@ -129,14 +129,14 @@ def run_demo(samples: list[dict], mode: str, native_binary: Path,
                     "clocked_task_family": None, "matched_gold": None,
                     "event_id": None, "source_schema": None,
                     "learning_state": "heldout_never_sent_to_clocked",
-                }, sort_keys=True) + "\\n")
+                }, sort_keys=True) + "\n")
                 continue
 
             if mode == "fixture":
                 label = fixture_classify(sample["text"])
                 event = {
                     "schema": "nanlm.clocked-experience-fixture",
-                    "event_id": hashlib.sha256((sample["id"] + "\\0" + label).encode()).hexdigest(),
+                    "event_id": hashlib.sha256((sample["id"] + "\0" + label).encode()).hexdigest(),
                     "task_labels": {"task_family": label},
                     "raw_text_persisted": False,
                 }
@@ -157,9 +157,9 @@ def run_demo(samples: list[dict], mode: str, native_binary: Path,
                 "source_schema": event.get("schema"),
                 "learning_state": "verified_for_demo" if matched
                                   else "evidence_only_mismatch",
-            }, sort_keys=True) + "\\n")
+            }, sort_keys=True) + "\n")
             if matched:
-                train_rows.append("train\\t%s\\t%s" % (label, sample["text"]))
+                train_rows.append("train\t%s\t%s" % (label, sample["text"]))
                 verified_train += 1
             else:
                 skipped_train += 1
