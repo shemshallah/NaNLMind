@@ -21,6 +21,57 @@ class NannetTests(unittest.TestCase):
   return r.status,v
  def issue(self,endpoint="nan://GM0:SC0:MC0:BS0:HW0",scopes=None):
   s,d=self.req("POST","/admin/tokens",{"address":endpoint,"scopes":scopes or ["intake","dataset"],"ttl_seconds":3600}, "a"*48);self.assertEqual(s,201);return d["token"]
+
+ def device_report(self):
+  return {"platform":"Android","os_version":"13","app_version":"0.1.0","abi":"arm64-v8a","cpu_cores":8,"ram_mb":4096,"storage_free_mb":1024,"capabilities":["n16t","corpus-upload"]}
+ def register_device(self,secret):
+  payload={"device_secret":secret,"consent":True,"terms_version":"nannet-device-registration-v1","system_report":self.device_report()}
+  return self.req("POST","/v1/devices/register",payload)
+ def test_device_registration_allocates_exclusive_first_available_slots_and_resumes(self):
+  secret="A"*43
+  status,first=self.register_device(secret)
+  self.assertEqual(status,201);self.assertEqual(first["address"],"nan://GM0:SC0:MC0:BS0:HW4")
+  self.assertEqual(first["node_point"],5);self.assertEqual(first["head_count"],256)
+  status,again=self.register_device(secret)
+  self.assertEqual(status,201);self.assertEqual(again["device_id"],first["device_id"])
+  self.assertEqual(again["address"],first["address"]);self.assertNotEqual(again["token"],first["token"])
+  self.assertEqual(self.req("GET","/v1/devices/me",token=first["token"])[0],401)
+  status,second=self.register_device("B"*43)
+  self.assertEqual(status,201);self.assertEqual(second["address"],"nan://GM0:SC0:MC0:BS0:HW5")
+  self.assertNotEqual(first["device_id"],second["device_id"])
+ def test_device_release_waits_for_pending_work_then_revokes_and_frees_slot(self):
+  status,device=self.register_device("C"*43);self.assertEqual(status,201)
+  db=server.connect()
+  try:db.execute("INSERT INTO observations(event_id,endpoint_id,received_at,payload_json) VALUES(?,?,?,?)",("d"*64,device["address"],server.now(),"{}"));db.commit()
+  finally:db.close()
+  status,blocked=self.req("POST","/v1/devices/release",{},device["token"])
+  self.assertEqual(status,409);self.assertIn("pending_work",blocked["error"])
+  db=server.connect()
+  try:db.execute("UPDATE observations SET status='folded' WHERE event_id=?",("d"*64,));db.commit()
+  finally:db.close()
+  status,released=self.req("POST","/v1/devices/release",{},device["token"])
+  self.assertEqual(status,200);self.assertTrue(released["token_revoked"])
+  self.assertEqual(self.req("GET","/v1/address",token=device["token"])[0],401)
+  status,next_device=self.register_device("D"*43)
+  self.assertEqual(status,201);self.assertEqual(next_device["address"],device["address"])
+ def test_device_system_report_and_error_reporting(self):
+  status,device=self.register_device("E"*43);self.assertEqual(status,201)
+  status,me=self.req("GET","/v1/devices/me",token=device["token"])
+  self.assertEqual(status,200);self.assertEqual(me["system_report"]["abi"],"arm64-v8a")
+  status,report=self.req("POST","/v1/devices/report",{"report_type":"system_error","summary":"Thermal throttling detected","details":"CPU frequency drops during long training job","system_report":self.device_report()},device["token"])
+  self.assertEqual(status,202);self.assertEqual(report["state"],"received")
+  status,admin=self.req("GET","/admin/device/reports",token="a"*48)
+  self.assertEqual(status,200);self.assertEqual(admin["reports"][0]["report_id"],report["report_id"])
+ def test_device_registration_requires_consent_and_nonidentifying_report(self):
+  payload={"device_secret":"F"*43,"consent":False,"terms_version":"nannet-device-registration-v1","system_report":self.device_report()}
+  self.assertEqual(self.req("POST","/v1/devices/register",payload)[0],400)
+  payload["consent"]=True;payload["system_report"]["mac_address"]="aa:bb:cc:dd:ee:ff"
+  self.assertEqual(self.req("POST","/v1/devices/register",payload)[0],400)
+ def test_dynamic_node_slots_cannot_be_admin_token_bypassed(self):
+  self.assertEqual(self.req("POST","/admin/tokens",{"address":"nan://GM0:SC0:MC0:BS0:HW4","scopes":["intake"]},token="a"*48)[0],400)
+  token=self.issue("nan://GM0:SC0:MC0:BS0:HW1",["intake"])
+  self.assertEqual(self.req("GET","/v1/address",token=token)[0],200)
+
  def test_nan_address_identity_and_slot_translation(self):
   t=self.issue("nan://GM0:SC0:MC0:BS0:HW3",["intake"])
   status,identity=self.req("GET","/v1/address",token=t,headers={"X-NaN-Address":"nan://GM0:SC0:MC0:BS0:HW3"})
@@ -63,7 +114,7 @@ class NannetTests(unittest.TestCase):
   self.assertEqual(self.req("POST","/v1/intake/route",wrong_node,token)[0],400)
 
  def test_observation_unverified_and_idempotent(self):
-  t=self.issue("nan://GM0:SC0:MC0:BS0:HW7",["intake","observation"]);e={"protocol":"nanlm.endpoint-observation","version":1,"event_id":"b"*64,"base_generation":4,"active_heads":[1,1,255],"outcome_verified":False}
+  t=self.issue("nan://GM0:SC0:MC0:BS0:HW1",["intake","observation"]);e={"protocol":"nanlm.endpoint-observation","version":1,"event_id":"b"*64,"base_generation":4,"active_heads":[1,1,255],"outcome_verified":False}
   s,a=self.req("POST","/v1/observations",e,t);self.assertEqual(s,202);self.assertEqual(a["endpoint_id"],"nan://GM0:SC0:MC0:BS0:HW7");self.assertFalse(a["outcome_verified"])
   s,b=self.req("POST","/v1/observations",e,t);self.assertEqual(s,200);self.assertEqual(b["state"],"duplicate_noop")
   self.assertEqual(self.req("POST","/v1/observations",dict(e,event_id="c"*64,correct=True),t)[0],400)
