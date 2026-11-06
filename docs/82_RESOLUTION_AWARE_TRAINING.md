@@ -57,6 +57,22 @@ For each relation event and resolution L0-L9:
 Exact duplicate events do not add edges or mutate heads. The command reports
 `no_op` and re-evaluates the same held-out challenge.
 
+## Resolution-specific input features
+
+The learner does not train on SHA-256 bits as its predictive features. SHA-256
+is used only for stable routing, source identity and event deduplication. The
+native trainer computes an eight-bit surface feature vector for each subject,
+predicate and object. Feature families differ by resolution: Boolean/numeric
+bits at L0-L2; vowel, consonant, syllable and digraph features at L3; prefix,
+suffix and inflection features at L4; word-shape and lexical-affix features at
+L5-L6; syntax, agreement, pronoun and punctuation features at L7; cohesion,
+repetition and transition features at L8; temporal, causal, action and dialogue
+features at L9. The predicate head is evaluated on subject/object features;
+the other two routed heads learn complementary pairings.
+
+These are deterministic surface features, not a pretrained semantic encoder.
+Their held-out performance must be measured rather than assumed.
+
 ## Metrics
 
 Each populated resolution reports:
