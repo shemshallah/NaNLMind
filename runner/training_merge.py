@@ -392,7 +392,11 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                     authority.register_identity("admin", identity)
                     authority.revoke_token(bearer)
                     renewed = issue_token(authority._private_key("admin", identity), identity, scopes, 900, role="admin")
-                    self._json(HTTPStatus.OK, {"token": renewed, "token_type": "Bearer", "expires_in": 900, "identity": identity, "route": route_for_identity(identity).text(), "universe_point": 0, "translator": "N16B/1"})
+                    route = route_for_identity(identity)
+                    self._json(HTTPStatus.OK, {"token": renewed, "token_type": "Bearer",
+                        "expires_in": 900, "identity": identity, "route": route.text(),
+                        "route_bytes": route.bytes().hex(), "universe_point": 0,
+                        "translator": "N16B/1"})
                 except (ValueError, KeyError, TypeError, AuthError) as exc:
                     self._json(HTTPStatus.UNAUTHORIZED, {"error": str(exc)[:160]})
                 return
@@ -425,7 +429,11 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                     authority.register_identity("admin", identity)
                     scopes = ["training:execute", "universe:read", "universe:register", "snapshot:read", "snapshot:write", "corpus:write", "installation:admin"]
                     token = issue_token(authority._private_key("admin", identity), identity, scopes, 900, role="admin")
-                    self._json(HTTPStatus.OK, {"token": token, "token_type": "Bearer", "expires_in": 900, "identity": identity, "route": route_for_identity(identity).text(), "universe_point": 0, "translator": "N16B/1", "role": "admin", "scopes": scopes})
+                    route = route_for_identity(identity)
+                    self._json(HTTPStatus.OK, {"token": token, "token_type": "Bearer",
+                        "expires_in": 900, "identity": identity, "route": route.text(),
+                        "route_bytes": route.bytes().hex(), "universe_point": 0,
+                        "translator": "N16B/1", "role": "admin", "scopes": scopes})
                 except (ValueError, KeyError, TypeError, AuthError) as exc:
                     self._json(HTTPStatus.UNAUTHORIZED, {"error": str(exc)[:160]})
                 return
@@ -520,7 +528,12 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                             claims = authority.verify_access_token(bearer, required_scope=scope)
                     except (AuthError, ValueError) as exc:
                         self._json(HTTPStatus.UNAUTHORIZED, {'error': str(exc)[:160]}); return
-                    self._json(HTTPStatus.OK, {'authorized': True, 'installation_id': claims['sub'], 'scope': scope, 'expires_at': claims['exp'], 'route': route_for_identity(claims['sub']).text() if claims.get('role') == 'admin' and claims['sub'].startswith('github-actions:') else None, 'universe_point': 0}); return
+                    route = route_for_identity(claims['sub']) if claims.get('role') == 'admin' and claims['sub'].startswith('github-actions:') else None
+                    self._json(HTTPStatus.OK, {'authorized': True, 'installation_id': claims['sub'],
+                        'scope': scope, 'expires_at': claims['exp'],
+                        'route': route.text() if route else None,
+                        'route_bytes': route.bytes().hex() if route else None,
+                        'universe_point': 0, 'translator': 'N16B/1' if route else None}); return
                 if path == '/v1/revoke':
                     bearer = self._bearer()
                     if not bearer: self._json(HTTPStatus.UNAUTHORIZED, {'error': 'bearer_required'}); return
