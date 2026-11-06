@@ -81,6 +81,19 @@ class NannetTests(unittest.TestCase):
   status,state=self.req("GET","/v1/training/state/1",token="m"*48)
   self.assertEqual(status,200);self.assertEqual(state["generation"],1)
 
+ def test_corpus_receipts_survive_generic_replay_pruning(self):
+  store=server.get_merge_store()
+  for i in range(4096):
+   store.state["idempotency"]["generic-"+str(i)]={"body":"x","response":{"generation":1}}
+  payload={"source_endpoint":"bootstrap","node":1,"base_generation":0,"nanclock_tick":1,"dataset_id":"durable-corpus","dataset_sha256":"f"*64,"updates":[{"head":4,"layer":0,"epoch":1,"vector":[1]*16,"strength_delta":1}]}
+  key=hashlib.sha256(b"durable-corpus\\0"+b"f"*64).hexdigest()
+  status,merged=store.merge(payload,key,"bootstrap")
+  self.assertEqual(status,200);self.assertEqual(merged["generation"],1)
+  self.assertIsNotNone(store.receipt(key))
+  status,replay=store.merge(payload,key,"bootstrap")
+  self.assertEqual(status,200);self.assertEqual(replay,merged)
+  self.assertEqual(store.snapshot(1)["generation"],1)
+
  def test_training_merge_is_runner_only_and_idempotent(self):
   payload={"source_endpoint":"bootstrap","node":1,"base_generation":0,"nanclock_tick":7,"updates":[{"head":9,"strength_delta":2}]}
   status,body=self.req("POST","/v1/training/merge",payload,token="m"*48,headers={"Idempotency-Key":"runner-commit-1"})
