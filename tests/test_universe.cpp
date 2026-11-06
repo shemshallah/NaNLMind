@@ -140,7 +140,7 @@ int main() {
     CHECK_EQ(route_roundtrip.bs, runner_route.bs);
     CHECK_EQ(route_roundtrip.hw, runner_route.hw);
     CHECK_EQ(route_roundtrip.bsr, runner_route.bsr);
-    CHECK_EQ(u4->head_cell(0).meta[8], 5u);
+    CHECK_EQ(u4->head_cell(0).meta[9], 5u);
     CHECK(u4->verify(&err));
     const auto routed_snapshot = u4->serialize();
     auto routed_restore = Universe::from_bytes(routed_snapshot.data(), routed_snapshot.size());
