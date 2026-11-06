@@ -9,6 +9,7 @@ import hashlib, json, secrets, sqlite3, time, uuid
 from pathlib import Path
 
 TERMS_VERSION = "nannet-device-registration-v1"
+TOKEN_PREFIXES = ("nnt_", "hwh_")
 LEASE_SECONDS = 3600
 MAX_REPORT = 8192
 
@@ -24,7 +25,11 @@ class DeviceRegistry:
         with sqlite3.connect(self.database) as db:
             db.execute("""CREATE TABLE IF NOT EXISTS devices (
                 device_id TEXT PRIMARY KEY, secret_hash TEXT UNIQUE NOT NULL,
-                created_at INTEGER NOT NULL, last_seen INTEGER NOT NULL)""")
+                created_at INTEGER NOT NULL, last_seen INTEGER NOT NULL,
+                hardware_kind TEXT NOT NULL DEFAULT 'android')""")
+            columns = {row[1] for row in db.execute("PRAGMA table_info(devices)")}
+            if "hardware_kind" not in columns:
+                db.execute("ALTER TABLE devices ADD COLUMN hardware_kind TEXT NOT NULL DEFAULT 'android'")
             db.execute("""CREATE TABLE IF NOT EXISTS device_leases (
                 lease_id TEXT PRIMARY KEY, device_id TEXT NOT NULL,
                 hw_slot INTEGER UNIQUE, token_hash TEXT UNIQUE NOT NULL,
@@ -36,14 +41,16 @@ class DeviceRegistry:
                 details TEXT NOT NULL, system_report TEXT NOT NULL,
                 created_at INTEGER NOT NULL)""")
 
-    def _new_token(self, device_id: str, now: int | None = None) -> str:
+    def _new_token(self, device_id: str, now: int | None = None,
+                   hardware_kind: str = "android") -> str:
+        prefix = "hwh_" if hardware_kind == "hermes" else "nnt_"
         if self.authority is None:
-            return "nnt_" + secrets.token_urlsafe(32)
+            return prefix + secrets.token_urlsafe(32)
         issued = self.authority.issue_identity_token(
             "guest", device_id,
             ["universe:read", "snapshot:read", "corpus:write", "training:execute"],
             ttl_seconds=self.lease_seconds, now=now)
-        return "nnt_" + issued["token"]
+        return prefix + issued["token"]
 
     def _connect(self):
         db = sqlite3.connect(self.database, timeout=15, isolation_level="IMMEDIATE")
@@ -63,6 +70,9 @@ class DeviceRegistry:
             raise ValueError("invalid device credential")
         if not isinstance(report, dict) or len(json.dumps(report)) > 4096:
             raise ValueError("invalid system report")
+        hardware_kind = payload.get("hardware_kind", "android")
+        if hardware_kind not in ("android", "hermes"):
+            raise ValueError("unsupported hardware kind")
         secret_hash = _digest(secret)
         lease_id = str(uuid.uuid4())
         placeholder_hash = _digest("pending:" + secrets.token_urlsafe(32))
@@ -74,10 +84,12 @@ class DeviceRegistry:
                 active = db.execute("SELECT 1 FROM device_leases WHERE device_id=? AND released_at IS NULL AND expires_at>?", (device_id, now)).fetchone()
                 if active:
                     raise ValueError("device already has an active lease; cloned credentials are not eligible")
-                db.execute("UPDATE devices SET last_seen=? WHERE device_id=?", (now, device_id))
+                db.execute("UPDATE devices SET last_seen=?,hardware_kind=? WHERE device_id=?",
+                           (now, hardware_kind, device_id))
             else:
                 device_id = uuid.uuid4().hex
-                db.execute("INSERT INTO devices VALUES (?,?,?,?)", (device_id, secret_hash, now, now))
+                db.execute("INSERT INTO devices VALUES (?,?,?,?,?)",
+                           (device_id, secret_hash, now, now, hardware_kind))
             used = {r[0] for r in db.execute("SELECT hw_slot FROM device_leases WHERE hw_slot IS NOT NULL AND released_at IS NULL AND expires_at>?", (now,))}
             slot = next((n for n in range(4, 256) if n not in used), None)
             if slot is None:
@@ -85,7 +97,7 @@ class DeviceRegistry:
             expires = now + self.lease_seconds
             db.execute("INSERT INTO device_leases VALUES (?,?,?,?,?,?,NULL)", (lease_id, device_id, slot, placeholder_hash, now, expires))
         try:
-            token = self._new_token(device_id)
+            token = self._new_token(device_id, hardware_kind=hardware_kind)
             with self._connect() as db:
                 updated = db.execute("UPDATE device_leases SET token_hash=? WHERE lease_id=? AND token_hash=?", (_digest(token), lease_id, placeholder_hash))
                 if updated.rowcount != 1:
@@ -94,12 +106,12 @@ class DeviceRegistry:
             with self._connect() as db:
                 db.execute("UPDATE device_leases SET hw_slot=NULL,released_at=? WHERE lease_id=?", (int(time.time()), lease_id))
             raise
-        return {"device_id": device_id, "address": f"nan://GM0:SC0:MC0:BS0:HW{slot}", "lease_id": lease_id, "lease_expires_at": expires, "token": token, "head_count": 256}
+        return {"device_id": device_id, "address": f"nan://GM0:SC0:MC0:BS0:HW{slot}", "lease_id": lease_id, "lease_expires_at": expires, "token": token, "head_count": 256, "hardware_kind": hardware_kind}
 
     def _active(self, db, token: str, now: int):
-        if not isinstance(token, str) or not token.startswith("nnt_"):
+        if not isinstance(token, str) or not token.startswith(TOKEN_PREFIXES):
             raise ValueError("device bearer required")
-        row = db.execute("""SELECT l.*,d.device_id FROM device_leases l
+        row = db.execute("""SELECT l.*,d.device_id,d.hardware_kind FROM device_leases l
             JOIN devices d ON d.device_id=l.device_id
             WHERE l.token_hash=? AND l.released_at IS NULL AND l.expires_at>?""", (_digest(token), now)).fetchone()
         if not row:
@@ -116,7 +128,7 @@ class DeviceRegistry:
     def verify_scope(self, token: str, scope: str, now: int | None = None) -> dict:
         """Verify a device bearer and requested scope; strips the nnt_ prefix."""
         now = int(time.time()) if now is None else int(now)
-        if not isinstance(token, str) or not token.startswith("nnt_"):
+        if not isinstance(token, str) or not token.startswith(TOKEN_PREFIXES):
             raise ValueError("device bearer required")
         if self.authority is None:
             raise ValueError("authority is not configured")
@@ -129,8 +141,9 @@ class DeviceRegistry:
         with self._connect() as db:
             row = self._active(db, token, now)
             lease_id, device_id, slot = row["lease_id"], row["device_id"], row["hw_slot"]
+            kind = row["hardware_kind"] if "hardware_kind" in row.keys() else "android"
         expires = now + self.lease_seconds
-        replacement = self._new_token(device_id)
+        replacement = self._new_token(device_id, hardware_kind=kind)
         with self._connect() as db:
             updated = db.execute(
                 "UPDATE device_leases SET token_hash=?,expires_at=? WHERE lease_id=? AND token_hash=? AND released_at IS NULL AND expires_at>?",
@@ -160,7 +173,8 @@ class DeviceRegistry:
         with self._connect() as db:
             row = self._active(db, token, now)
             lease_id, device_id, slot = row["lease_id"], row["device_id"], row["hw_slot"]
-        replacement = self._new_token(device_id)
+            kind = row["hardware_kind"] if "hardware_kind" in row.keys() else "android"
+        replacement = self._new_token(device_id, hardware_kind=kind)
         expires = now + self.lease_seconds
         with self._connect() as db:
             updated = db.execute(

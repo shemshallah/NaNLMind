@@ -425,6 +425,16 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                     elif path.endswith('/release'): result = devices.release(bearer)
                     else: result = devices.report(bearer, payload)
                     self._json(HTTPStatus.OK, result); return
+                if path == '/v1/hermes/register':
+                    payload = self._body(16384)
+                    payload["hardware_kind"] = "hermes"
+                    if payload.get("consent") is not True or payload.get("terms_version") != "nannet-device-registration-v1":
+                        self._json(HTTPStatus.BAD_REQUEST, {'error': 'explicit consent and terms required'}); return
+                    try:
+                        self._json(HTTPStatus.CREATED, devices.register(payload))
+                    except ValueError as exc:
+                        self._json(HTTPStatus.CONFLICT, {'error': str(exc)[:200]})
+                    return
                 if path == '/v1/pair':
                     p = self._body(16384)
                     result = authority.pair(p['pairing_code'], p['installation_id'], p['public_key'])
@@ -434,7 +444,7 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                     if not bearer or not isinstance(scope, str):
                         self._json(HTTPStatus.UNAUTHORIZED, {'error': 'bearer_or_scope_required'}); return
                     try:
-                        if bearer.startswith("nnt_"):
+                        if bearer.startswith(("nnt_", "hwh_")):
                             if devices is None:
                                 raise AuthError("device authority disabled")
                             claims = devices.verify_scope(bearer, scope)
