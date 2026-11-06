@@ -27,6 +27,21 @@ int main() {
     CHECK_EQ(u->canonical_count(), 32896u);
     CHECK_EQ(u->pair_count(), 32640u);
 
+    // Every Universe owns a native point-zero NaNNet translation module.
+    const auto& point_zero = u->point_zero_translator();
+    CHECK_EQ(point_zero.point_index(), 0u);
+    CHECK_EQ(point_zero.protocol_version(), 1u);
+    CHECK_EQ(point_zero.local_route().bsr, 0u);
+    CHECK_EQ(point_zero.point_route().bsr, 0u);
+    CHECK(u->head_cell(0).is_portal());
+    CHECK_EQ(u->head_cell(0).meta[2], 0u);
+    CHECK_EQ(u->head_cell(0).meta[3], 1u);
+    CHECK(PointZeroTranslator::route_uri(NannetRoute{0, 0, 0, 0, 0, 5}) ==
+          "nan://GM0:SC0:MC0:BS0:HW0:BSR5");
+    const NanWord wire_word = NanWord::make(
+        NanType::SignalNegative, NanType::QuietPositive, 0xA1B2C3D4u);
+    CHECK_EQ(PointZeroTranslator::preserve_word(wire_word).raw, wire_word.raw);
+
     // Every one of the 256 palindromic addresses is a head.
     std::uint32_t heads = 0;
     for (std::uint32_t i = 0; i < 65536; ++i) {
@@ -112,6 +127,28 @@ int main() {
     auto u4 = std::make_unique<Universe>(0);
     CHECK(!(u4->digest() == u->digest()));
     CHECK(u4->verify(&err));
+
+    const NannetRoute runner_route{1, 2, 3, 4, 5, 5};
+    CHECK(u4->bind_point_zero_route(runner_route));
+    CHECK_EQ(u4->point_zero_translator().local_route().bsr, 5u);
+    const auto route_wire = PointZeroTranslator::encode_route(runner_route);
+    NannetRoute route_roundtrip{};
+    CHECK(PointZeroTranslator::decode_route(route_wire, route_roundtrip));
+    CHECK_EQ(route_roundtrip.gm, runner_route.gm);
+    CHECK_EQ(route_roundtrip.sc, runner_route.sc);
+    CHECK_EQ(route_roundtrip.mc, runner_route.mc);
+    CHECK_EQ(route_roundtrip.bs, runner_route.bs);
+    CHECK_EQ(route_roundtrip.hw, runner_route.hw);
+    CHECK_EQ(route_roundtrip.bsr, runner_route.bsr);
+    CHECK_EQ(u4->head_cell(0).meta[8], 5u);
+    CHECK(u4->verify(&err));
+    const auto routed_snapshot = u4->serialize();
+    auto routed_restore = Universe::from_bytes(routed_snapshot.data(), routed_snapshot.size());
+    CHECK(routed_restore != nullptr);
+    if (routed_restore) {
+        CHECK(routed_restore->verify(&err));
+        CHECK_EQ(routed_restore->point_zero_translator().local_route().bsr, 5u);
+    }
 
     // The four words are independent rails.
     auto& c = u->pair_cell(3, 7);
