@@ -205,9 +205,11 @@ class BridgeMailbox:
         if isinstance(sequence, bool) or not isinstance(sequence, int) or not 0 <= sequence <= 0xFFFFFFFF:
             raise ValueError("acknowledgement sequence must be uint32")
         with sqlite3.connect(self.database, timeout=15, isolation_level="IMMEDIATE") as db:
-            cursor = db.execute("DELETE FROM bridge_messages "
-                                "WHERE source=? AND destination=? AND sequence=?",
-                                (source.text(), destination.text(), sequence))
+            cursor = db.execute(
+                "DELETE FROM bridge_messages WHERE id=("
+                "SELECT id FROM bridge_messages WHERE source=? AND destination=? "
+                "AND sequence=? ORDER BY id LIMIT 1)",
+                (source.text(), destination.text(), sequence))
             return cursor.rowcount > 0
 
     def acknowledge_and_put(self, source: RunnerRoute, destination: RunnerRoute,
@@ -224,18 +226,22 @@ class BridgeMailbox:
         raw = receipt.encode()
         with sqlite3.connect(self.database, timeout=15) as db:
             db.execute("BEGIN IMMEDIATE")
+            cursor = db.execute(
+                "DELETE FROM bridge_messages WHERE id=("
+                "SELECT id FROM bridge_messages WHERE source=? AND destination=? "
+                "AND sequence=? ORDER BY id LIMIT 1)",
+                (source.text(), destination.text(), sequence))
+            if cursor.rowcount == 0:
+                return False
             pending = db.execute("SELECT COUNT(*) FROM bridge_messages WHERE destination=?",
                                  (receipt.destination.text(),)).fetchone()[0]
             if pending >= MAX_PENDING_PER_ROUTE:
                 raise OverflowError("N16B destination mailbox is full")
-            cursor = db.execute("DELETE FROM bridge_messages "
-                                "WHERE source=? AND destination=? AND sequence=?",
-                                (source.text(), destination.text(), sequence))
             db.execute("INSERT INTO bridge_messages(destination,source,frame,created_at,sequence,claimed_until) "
                        "VALUES(?,?,?,?,?,0)",
                        (receipt.destination.text(), receipt.source.text(), raw,
                         int(time.time()), receipt.sequence))
-            return cursor.rowcount > 0
+            return True
 
     def take(self, destination: RunnerRoute) -> bytes | None:
         """Compatibility destructive read; active transports should use claim/ack."""
