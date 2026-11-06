@@ -155,6 +155,12 @@ int relation_train_cli(int argc, char** argv) {
     }
     std::vector<Example> examples;
     if (!parse_examples(argv[2], examples)) return 2;
+    int epochs = 1;
+    if (argc > 4) {
+        try { epochs = std::stoi(argv[4]); }
+        catch (...) { std::cerr << "invalid relation epochs\\n"; return 2; }
+        if (epochs < 1 || epochs > 100) { std::cerr << "relation epochs must be 1..100\\n"; return 2; }
+    }
     const std::string state_path = argv[3];
     const auto parent = std::filesystem::path(state_path).parent_path();
     std::filesystem::create_directories(parent.empty() ? std::filesystem::path(".") : parent);
@@ -216,10 +222,12 @@ int relation_train_cli(int argc, char** argv) {
         std::uint8_t oh = distinct_head(base, static_cast<std::uint8_t>(base + e.oh[2]%25u), ph, sh);
         if (sh==ph || oh==ph || oh==sh) { std::cerr << "relation head collision\n"; return 7; }
         HeadView p = heads.at(ph), s = heads.at(sh), o = heads.at(oh);
-        for (unsigned lane=0; lane<8; ++lane) {
-            p.train_boolean(e.sh[lane]&1u, e.oh[lane]&1u, e.positive);
-            s.train_boolean(e.ph[lane]&1u, e.oh[lane]&1u, e.positive);
-            o.train_boolean(e.sh[lane]&1u, e.ph[lane]&1u, e.positive);
+        for (int epoch=0; epoch<epochs; ++epoch) {
+            for (unsigned lane=0; lane<8; ++lane) {
+                p.train_boolean(e.sh[lane]&1u, e.oh[lane]&1u, e.positive);
+                s.train_boolean(e.ph[lane]&1u, e.oh[lane]&1u, e.positive);
+                o.train_boolean(e.sh[lane]&1u, e.ph[lane]&1u, e.positive);
+            }
         }
         touched[ph]=touched[sh]=touched[oh]=true;
         ++train_n[e.resolution]; if (e.positive) ++train_pos[e.resolution];
@@ -250,7 +258,7 @@ int relation_train_cli(int argc, char** argv) {
             const std::uintmax_t existing_bytes = std::filesystem::exists(state_path)
                 ? std::filesystem::file_size(state_path) : 0u;
             const Hash256 current = topology->global_digest();
-            std::cout << "relation_train status=no_op train_events=0 duplicate_events=" << duplicates
+            std::cout << "relation_train status=no_op epochs=" << epochs << " train_events=0 duplicate_events=" << duplicates
                       << " changed_heads=0 mirror_pair_updates=0 hyperedges_added=0"
                       << " state_bytes=" << existing_bytes
                       << " state_digest_before=" << hex(current)
@@ -273,7 +281,7 @@ int relation_train_cli(int argc, char** argv) {
     std::error_code ec; std::filesystem::rename(tmp,state_path,ec);
     if (ec) { std::cerr << "relation state publish failed: " << ec.message() << "\n"; std::filesystem::remove(tmp); return 5; }
     std::uint64_t changed=0; for (bool v:touched) if (v) ++changed;
-    std::cout << "relation_train status=updated train_events=" << accepted
+    std::cout << "relation_train status=updated epochs=" << epochs << " train_events=" << accepted
               << " duplicate_events=" << duplicates << " changed_heads=" << changed
               << " mirror_pair_updates=" << pair_updates << " hyperedges_added=" << edges_added
               << " state_bytes=" << bytes.size() << " state_digest_before=" << hex(before)
