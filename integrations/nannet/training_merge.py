@@ -44,11 +44,40 @@ class MergeStore:
 
     def _save(self) -> None:
         tmp = self.path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(self.state, sort_keys=True, indent=2) + "\n")
+        with tmp.open("w", encoding="utf-8") as stream:
+            stream.write(json.dumps(self.state, sort_keys=True, indent=2) + "\n")
+            stream.flush()
+            os.fsync(stream.fileno())
         os.replace(tmp, self.path)
+        try:
+            fd = os.open(str(self.root), os.O_RDONLY)
+            try:
+                os.fsync(fd)
+            finally:
+                os.close(fd)
+        except OSError:
+            pass
 
     def digest(self) -> str:
         return hashlib.sha256(canonical(self.state["nodes"])).hexdigest()
+
+    def snapshot(self, node: int) -> dict[str, Any]:
+        if not 1 <= node <= 256:
+            raise ValueError("node out of range")
+        with self.lock:
+            state = self.state["nodes"].get(str(node), {})
+            return {
+                "node": node,
+                "generation": int(state.get("generation", 0)),
+                "nanclock_tick": int(state.get("last_clock", 0)),
+                "heads": len(state.get("heads", {})),
+                "digest": self.digest(),
+            }
+
+    def receipt(self, idempotency: str) -> dict[str, Any] | None:
+        with self.lock:
+            item = self.state["idempotency"].get(idempotency)
+            return item.get("response") if item else None
 
     def health(self) -> dict[str, Any]:
         with self.lock:
