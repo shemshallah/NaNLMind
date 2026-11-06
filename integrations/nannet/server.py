@@ -251,7 +251,7 @@ class Handler(BaseHTTPRequestHandler):
    if x is None:return
    if "n16t" not in x["scopes"] and "*" not in x["scopes"]:return self.reply(403,{"error":"scope_denied"})
    media=self.headers.get("Content-Type","").split(";",1)[0].strip()
-   if media!="application/vnd.nan16.n16t":return self.reply(415,{"error":"n16t_content_type_required"})
+   if media not in ("application/vnd.nan16.n16t","application/x-n16t"):return self.reply(415,{"error":"n16t_content_type_required"})
    try:
     size=self.length(65572)
     frame=self.rfile.read(size)
