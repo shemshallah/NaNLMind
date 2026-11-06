@@ -1,0 +1,20 @@
+name: NANNET universal intake
+on:
+  pull_request:
+    paths: ["integrations/nannet/**", ".github/workflows/nannet-universal.yml"]
+  push:
+    branches: [main, nannet-universal-intake]
+    paths: ["integrations/nannet/**", ".github/workflows/nannet-universal.yml"]
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m py_compile integrations/nannet/server.py integrations/nannet/test_server.py
+      - run: python -m unittest -v
+        working-directory: integrations/nannet
