@@ -115,7 +115,7 @@ class NannetTests(unittest.TestCase):
 
  def test_observation_unverified_and_idempotent(self):
   t=self.issue("nan://GM0:SC0:MC0:BS0:HW1",["intake","observation"]);e={"protocol":"nanlm.endpoint-observation","version":1,"event_id":"b"*64,"base_generation":4,"active_heads":[1,1,255],"outcome_verified":False}
-  s,a=self.req("POST","/v1/observations",e,t);self.assertEqual(s,202);self.assertEqual(a["endpoint_id"],"nan://GM0:SC0:MC0:BS0:HW7");self.assertFalse(a["outcome_verified"])
+  s,a=self.req("POST","/v1/observations",e,t);self.assertEqual(s,202);self.assertEqual(a["endpoint_id"],"nan://GM0:SC0:MC0:BS0:HW1");self.assertFalse(a["outcome_verified"])
   s,b=self.req("POST","/v1/observations",e,t);self.assertEqual(s,200);self.assertEqual(b["state"],"duplicate_noop")
   self.assertEqual(self.req("POST","/v1/observations",dict(e,event_id="c"*64,correct=True),t)[0],400)
  def test_dataset_quarantine_external_validation(self):
