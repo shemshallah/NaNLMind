@@ -341,9 +341,12 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                     frame = BridgeFrame.decode(raw)
                     if frame.source != expected:
                         raise AuthError('source route does not match authenticated BSR identity')
-                    if frame.payload in (b"BSR_ACK", b"ACK"):
+                    if frame.payload == b"BSR_ACK":
+                        bridge.acknowledge_and_put(frame.destination, frame.source,
+                                                   frame.sequence, frame)
+                    elif frame.payload == b"ACK":
                         bridge.acknowledge(frame.destination, frame.source, frame.sequence)
-                    if frame.payload != b"ACK":
+                    else:
                         bridge.put(frame)
                     ack = BridgeFrame.acknowledgement(frame).encode()
                     self.send_response(HTTPStatus.ACCEPTED)
