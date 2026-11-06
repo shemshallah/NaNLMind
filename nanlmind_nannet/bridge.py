@@ -135,3 +135,12 @@ class BridgeMailbox:
                 return None
             db.execute("DELETE FROM bridge_messages WHERE id=?", (row[0],))
             return bytes(row[1])
+
+
+def route_for_identity(identity: str) -> RunnerRoute:
+    """Resolve one of the six trusted GitHub Actions runner identities."""
+    import re
+    match = re.fullmatch(r"github-actions:shemshallah/nanlm-cpu-([1-6])", identity or "")
+    if not match:
+        raise ValueError("identity is not one of the six authorized BSR runners")
+    return RunnerRoute(bsr=int(match.group(1)) - 1)
