@@ -17,7 +17,7 @@ class BridgeTests(unittest.TestCase):
     def test_double_endian_frame_roundtrip(self):
         src = RunnerRoute(bsr=0)
         dst = RunnerRoute(bsr=5)
-        frame = BridgeFrame(src, dst, 17, NanWord.from_bits(2, 2, 0xA1B2C3D4),
+        frame = BridgeFrame(src, dst, 17, NanWord.from_bits(0, 0, 0xA1B2C3D4),
                             b"NaN16 bytes")
         raw = frame.encode()
         decoded = BridgeFrame.decode(raw)
@@ -25,6 +25,8 @@ class BridgeTests(unittest.TestCase):
         self.assertEqual(decoded.destination, dst)
         self.assertEqual(decoded.word.pack(), frame.word.pack())
         self.assertEqual(decoded.payload, b"NaN16 bytes")
+        self.assertEqual(decoded.direction, "away")
+        self.assertTrue(decoded.signaling)
         self.assertEqual(BridgeFrame.decode(BridgeFrame.acknowledgement(decoded).encode()).word.near_class, 3)
 
     def test_crc_rejects_corruption(self):
@@ -46,6 +48,14 @@ class BridgeTests(unittest.TestCase):
             box.put(reply)
             self.assertEqual(BridgeFrame.decode(box.take(a)).payload, b"reverse")
             self.assertIsNone(box.take(a))
+
+    def test_six_runner_identities(self):
+        from nanlmind_nannet.bridge import route_for_identity
+        for n in range(1, 7):
+            self.assertEqual(route_for_identity(f"github-actions:shemshallah/nanlm-cpu-{n}").text(),
+                             f"nan://GM0:SC0:MC0:BS0:HW0:BSR{n-1}")
+        with self.assertRaises(ValueError):
+            route_for_identity("github-actions:shemshallah/nanlm-cpu-7")
 
 
 if __name__ == "__main__":
