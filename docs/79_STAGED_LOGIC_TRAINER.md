@@ -17,6 +17,21 @@
    - held-out entity/ability relation queries;
    - byte completion is recorded as a diagnostic, not a promotion gate.
 
+## Failure is possible
+
+Each repetition exposes one truth-table row per head. With too few observations,
+the head cannot determine its hidden function:
+
+```text
+logic-train 1 1
+stage=boolean_foundation passed=no correct=595/1024 accuracy=0.581055
+detail=... distinct_rules=4 failed_heads=237
+result=FAIL
+```
+
+The gate also requires all 16 functions to be represented. A population that
+collapses to one rule fails even if its 1,024 row checks happen to score well.
+
 ## Last full run
 
 ```text
@@ -24,7 +39,7 @@ logic_train boolean_reps=32 circuit_reps=64
 stage=boolean_foundation passed=yes correct=1024/1024
 stage=deep_logic_circuits passed=yes correct=32/32
 stage=words_after_logic passed=yes correct=10/10
-byte_completion_top1=0.765766
+fixed_control_byte_heldout_top1=...
 result=PASS
 ```
 
