@@ -217,6 +217,10 @@ class BridgeMailbox:
             raise ValueError("acknowledgement routes must be canonical runner routes")
         if isinstance(sequence, bool) or not isinstance(sequence, int) or not 0 <= sequence <= 0xFFFFFFFF:
             raise ValueError("acknowledgement sequence must be uint32")
+        if (not isinstance(receipt, BridgeFrame) or receipt.source != destination or
+                receipt.destination != source or receipt.sequence != sequence or
+                receipt.payload != b"BSR_ACK"):
+            raise ValueError("reverse receipt does not match the acknowledged delivery")
         raw = receipt.encode()
         with sqlite3.connect(self.database, timeout=15) as db:
             db.execute("BEGIN IMMEDIATE")
