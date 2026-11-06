@@ -14,7 +14,7 @@ the returned manifest to its map.
 https://deeprepo-qtcl-9c8fea15.apps.mistral.run
 ```
 
-The intended Koyeb service name is `nannet-portal` (the live service must also be renamed in Koyeb; changing this repository manifest does not rename an already-created service). The current main-branch image now combines the merge API with NANNET pairing authority and consent-based device leases on the same HTTPS origin. Koyeb
+The intended Koyeb service name is `nannet-portal` (the live service must also be renamed in Koyeb; changing this repository manifest does not rename an already-created service). The current main-branch image combines the merge API with NANNET pairing authority, root-derived role-separated identities, and consent-based device leases on the same HTTPS origin. Koyeb
 rejected `free`. No persistent volume is attached, so merged JSON state is
 ephemeral until one is added. `NANLM_MERGE_TOKEN` is a Koyeb secret.
 
@@ -29,10 +29,10 @@ ephemeral until one is added. `NANLM_MERGE_TOKEN` is a Koyeb secret.
 
 ## NANNET routes on the same service
 
-- `POST /v1/devices/register` — explicit-consent enrollment, next free HW4–HW255 slot.
-- `POST /v1/devices/heartbeat` — renew lease.
-- `POST /v1/devices/rotate` — rotate bearer without creating a duplicate slot.
-- `POST /v1/devices/release` — return slot for next participant.
+- `POST /v1/devices/register` — explicit-consent enrollment, next free HW4–HW255 slot; issues a signed guest bearer using a per-device key derived from the authority master.
+- `POST /v1/devices/heartbeat` — renew lease, rotate the guest bearer, and revoke its predecessor.
+- `POST /v1/devices/rotate` — rotate bearer without creating a duplicate slot; old bearer is revoked.
+- `POST /v1/devices/release` — revoke active bearer and return slot for next participant.
 - `POST /v1/devices/report` — submit device/system/network/security issue.
 - `POST /v1/bootstrap/oidc` — verifies GitHub Actions OIDC for exactly `shemshallah/nanlm-cpu-1` through `nanlm-cpu-6`, on `main`, using `.github/workflows/runner.yml`; returns a 15-minute BSR admin bearer.
 - `POST /v1/bootstrap/heartbeat` — rotates the current BSR bearer and revokes the prior token.
