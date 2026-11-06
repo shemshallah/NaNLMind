@@ -342,6 +342,14 @@ The 508-state binary machine also runs through a compact direct table runtime
 Minsky source steps exactly and tracks 100 steps of the Minsky machine on its
 own default tape.
 
+### Logic curriculum runner
+
+The six-runner pipeline now has a `logic` op. It runs graded relation puzzles
+(direct, inheritance, exceptions, chains, mixed), repeats a level only while
+measured accuracy improves, and promotes at 0.75. Results are written to
+`nanlm/logic/<epoch>/<slot>` and can post a scoped delta to the Koyeb merge
+service when configured.
+
 ### UTM proof package
 
 The proof package composes Minsky's published 23x8 universality theorem with the

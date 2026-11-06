@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       op:
-        description: selftest | prewarm | headshift | handoff | status
+        description: selftest | prewarm | headshift | handoff | logic | status
         type: choice
-        options: [selftest, prewarm, headshift, handoff, loop, finalize, unlock, status]
+        options: [selftest, prewarm, headshift, handoff, logic, loop, finalize, unlock, status]
         default: selftest
       slot:
         description: runner slot 1..6
@@ -24,6 +24,14 @@ on:
         description: epochs for op=loop
         type: string
         default: "200"
+      rounds:
+        description: repetitions per logic level
+        type: string
+        default: "4"
+      start_level:
+        description: first logic level 0..4
+        type: string
+        default: "0"
 
 permissions:
   contents: read
@@ -43,6 +51,8 @@ env:
   NANLM_CORE: core
   NANLM_USE_CORE: "1"
   NANLM_LOCAL_STATE: ${{ github.workspace }}/state
+  NANLM_MERGE_URL: ${{ vars.NANLM_MERGE_URL }}
+  NANLM_MERGE_TOKEN: ${{ secrets.NANLM_MERGE_TOKEN }}
 
 jobs:
   runner:
@@ -73,7 +83,7 @@ jobs:
         run: pip install -r engine/requirements-core.txt
 
       - name: Build NaNLMind core
-        if: ${{ inputs.op == 'selftest' || inputs.op == 'prewarm' || inputs.op == 'headshift' || inputs.op == 'loop' }}
+        if: ${{ inputs.op == 'selftest' || inputs.op == 'prewarm' || inputs.op == 'headshift' || inputs.op == 'loop' || inputs.op == 'logic' }}
         run: make -C core -j2
 
       - name: Execute head shift
@@ -84,7 +94,9 @@ jobs:
             --slot "${{ inputs.slot }}" \
             --epoch "${{ inputs.epoch }}" \
             --minutes "${{ inputs.minutes }}" \
-            --epochs "${{ inputs.epochs }}"
+            --epochs "${{ inputs.epochs }}" \
+            --rounds "${{ inputs.rounds }}" \
+            --start-level "${{ inputs.start_level }}"
 
       - name: Summary
         run: |

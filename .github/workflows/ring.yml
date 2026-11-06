@@ -20,6 +20,11 @@ on:
         description: dispatch the next epoch when this one completes
         type: boolean
         default: true
+      op:
+        description: headshift or logic curriculum
+        type: choice
+        options: [headshift, logic]
+        default: headshift
 
 permissions:
   actions: write
@@ -100,6 +105,7 @@ jobs:
             --minutes "${{ inputs.minutes }}" \
             --epochs "${{ inputs.epochs }}" \
             --persistent \
+            --op "${{ inputs.op }}" \
             --slots 6 | tee ring.json
           next=$(python -c "import json; print(json.load(open('ring.json')).get('next_epoch', ${{ inputs.epoch }} + ${{ inputs.epochs }}))")
           echo "next=$next" >> "$GITHUB_OUTPUT"
@@ -111,5 +117,5 @@ jobs:
           gh variable set NANLM_EPOCH --body "$next" -R "${{ github.repository }}" || true
           gh workflow run ring.yml -R "${{ github.repository }}" \
             -f epoch="$next" -f minutes="${{ inputs.minutes }}" \
-            -f epochs="${{ inputs.epochs }}" -f loop=true
+            -f epochs="${{ inputs.epochs }}" -f loop=true -f op="${{ inputs.op }}"
           echo "next epoch $next dispatched"

@@ -5,6 +5,7 @@ Ops:
   selftest   build + verify the core, write the gate record
   prewarm    verify, print the head map, write no state
   headshift  process one slot's heads for one logical epoch
+  logic      run one slot of the graded logic curriculum
   handoff    alias for headshift (explicit preload/handoff intent)
   status     show ring state
 
@@ -277,6 +278,36 @@ def op_headshift(args):
     return 0
 
 
+def op_logic(args):
+    """Run one slot of the graded logic curriculum."""
+    script = Path(__file__).with_name("logic_curriculum.py")
+    state = local_path()
+    out = state / f"logic_{args.epoch}_{args.slot}.json"
+    cmd = [sys.executable, str(script),
+           "--slot", str(args.slot + 1),
+           "--epoch", str(args.epoch),
+           "--rounds", str(args.rounds),
+           "--start-level", str(args.start_level),
+           "--out", str(out)]
+    result = subprocess.run(cmd, text=True, capture_output=True)
+    if result.returncode != 0:
+        print(result.stderr.strip(), file=sys.stderr)
+        return result.returncode
+    print(result.stdout)
+    try:
+        record = json.loads(out.read_text())
+    except Exception as exc:
+        print(f"logic output unreadable: {exc}", file=sys.stderr)
+        return 5
+    env = connect_tiers(writer=True)
+    reg_put(env, f"nanlm/logic/{args.epoch}/{args.slot}",
+            {"ok": record.get("ok", False),
+             "improved": record.get("improved", False),
+             "levels": record.get("levels", []),
+             "slot": args.slot, "epoch": args.epoch})
+    return 0
+
+
 def op_loop(args):
     """Persistent C++ loop: every slot mutates the same chart snapshot."""
     if os.environ.get("NANLM_USE_CORE", "0").lower() not in ("1", "true", "yes"):
@@ -403,12 +434,14 @@ def portal_heartbeat():
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--op", choices=["selftest", "prewarm", "headshift", "handoff", "loop", "finalize", "unlock", "status"],
+    ap.add_argument("--op", choices=["selftest", "prewarm", "headshift", "handoff", "logic", "loop", "finalize", "unlock", "status"],
                     default="selftest")
     ap.add_argument("--slot", type=int, default=None)
     ap.add_argument("--epoch", type=int, default=0)
     ap.add_argument("--minutes", type=int, default=20)
     ap.add_argument("--epochs", type=int, default=10)
+    ap.add_argument("--rounds", type=int, default=4)
+    ap.add_argument("--start-level", type=int, default=0)
     args = ap.parse_args()
     verify_portal_identity()
     args.slot = parse_slot(args.slot)
@@ -417,6 +450,8 @@ def main():
         return op_selftest(args)
     if args.op == "prewarm":
         return op_prewarm(args)
+    if args.op == "logic":
+        return op_logic(args)
     if args.op == "loop":
         return op_loop(args)
     if args.op == "finalize":

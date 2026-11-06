@@ -45,6 +45,7 @@ checks the GitHub rate limit before dispatching and uses the existing
 | `prewarm` | verify the head map, no writes |
 | `headshift` | process one slot's 42–43 heads for one epoch |
 | `handoff` | alias for `headshift` |
+| `logic` | run one graded logic-curriculum slot |
 | `status` | print gate/clock/lease/manifest |
 
 ## Tiers
@@ -69,6 +70,15 @@ python3 runner/nanlm_worker.py --op selftest --slot 1 --epoch 0
 python3 runner/nanlm_worker.py --op prewarm --slot 1 --epoch 0
 python3 runner/nanlm_worker.py --op headshift --slot 1 --epoch 0
 ```
+
+For logic training:
+
+```sh
+python3 runner/nanlm_worker.py --op logic --slot 1 --epoch 0 --rounds 4
+```
+
+The curriculum writes `state/logic_<epoch>_<slot>.json` and publishes the same
+record to `nanlm/logic/<epoch>/<slot>` when tiers are available.
 
 Without `deepcore`/tiers the worker falls back to `state/*.json`. The fallback is
 for development, not 24/7 operation.

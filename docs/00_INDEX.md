@@ -81,6 +81,7 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 75 | [75_SELF_SIMULATION_PROBE.md](75_SELF_SIMULATION_PROBE.md) | What happens when the recursive self-run is executed? |
 | 76 | [76_COMPACT_BINARY_RUNTIME.md](76_COMPACT_BINARY_RUNTIME.md) | How does the compiled binary machine run without the Minsky scan? |
 | 77 | [77_UTM_PROOF_PACKAGE.md](77_UTM_PROOF_PACKAGE.md) | What is the UTM proof package and its remaining mechanization gap? |
+| 78 | [78_LOGIC_CURRICULUM.md](78_LOGIC_CURRICULUM.md) | How are graded logic puzzles run through the runners? |
 
 The short version:
 
