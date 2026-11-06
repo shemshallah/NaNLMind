@@ -46,4 +46,12 @@ class NannetTests(unittest.TestCase):
   t=self.issue();self.req("POST","/v1/datasets/bad/begin",{"chunk_count":1},t)
   s,_=self.req("PUT","/v1/datasets/bad/chunks/0",b"abc",t,{"Content-Type":"application/octet-stream","X-Chunk-SHA256":"0"*64});self.assertEqual(s,400)
 
+ def test_n16t_is_scoped_and_fails_closed_without_peer(self):
+  t=self.issue("my_android",["n16t"])
+  frame=b"x"*36
+  status,body=self.req("POST","/n16t",frame,t,{"Content-Type":"application/vnd.nan16.n16t"})
+  self.assertEqual(status,503)
+  self.assertEqual(body["error"],"n16t_peer_not_configured")
+  self.assertEqual(self.req("POST","/n16t",frame,t,{"Content-Type":"application/octet-stream"})[0],415)
+
 if __name__=="__main__":unittest.main()
