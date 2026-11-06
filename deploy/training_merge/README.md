@@ -14,7 +14,7 @@ the returned manifest to its map.
 https://deeprepo-qtcl-9c8fea15.apps.mistral.run
 ```
 
-Service `training-merge-v2` is running on the `nano` instance type. Koyeb
+Service `training-merge-v2` is running on the `nano` instance type. The current main-branch image now combines the merge API with NANNET pairing authority and consent-based device leases on the same HTTPS origin. Koyeb
 rejected `free`. No persistent volume is attached, so merged JSON state is
 ephemeral until one is added. `NANLM_MERGE_TOKEN` is a Koyeb secret.
 
@@ -23,11 +23,21 @@ ephemeral until one is added. `NANLM_MERGE_TOKEN` is a Koyeb secret.
 1. Build from this repository with Dockerfile
    `deploy/training_merge/Dockerfile`.
 2. Attach a persistent volume at `/data` (free Koyeb instances are ephemeral).
-3. Set `NANLM_MERGE_TOKEN` to a scoped, revocable service credential. Do **not**
-   set or use `DEEPREPO_PAT`.
+3. Set `NANLM_MERGE_TOKEN` to a scoped, revocable service credential and `NANNET_AUTHORITY_MASTER_KEY` to an independent random 32-byte base64url secret. Store both as Koyeb secrets. Set `NANNET_AUTHORITY_DB=/data/nannet-authority.sqlite`. Do **not** set or use `DEEPREPO_PAT`.
 4. Expose port `8080` over HTTPS.
 5. Point the bootstrap/Android merge client at
    `https://<service>.koyeb.app/v1/training/merge`.
+
+## NANNET routes on the same service
+
+- `POST /v1/devices/register` — explicit-consent enrollment, next free HW4–HW255 slot.
+- `POST /v1/devices/heartbeat` — renew lease.
+- `POST /v1/devices/rotate` — rotate bearer without creating a duplicate slot.
+- `POST /v1/devices/release` — return slot for next participant.
+- `POST /v1/devices/report` — submit device/system/network/security issue.
+- `POST /v1/pair`, `/v1/authorize`, `/v1/revoke` — scoped installation pairing and authority checks.
+
+`GET /healthz` includes `nannet_authority: ready` only when the authority key is configured. The SQLite authority database shares the `/data` persistent volume with merge state. MAC/IMEI/serial are not used as identity; copied random credentials are limited to one active lease. Replacing a credential with a fresh identity cannot be reliably linked to the same physical device without Android hardware attestation.
 
 ## API
 
