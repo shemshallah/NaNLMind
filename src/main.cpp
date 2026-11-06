@@ -14,6 +14,7 @@
 #include "nanlm/handoff.hpp"
 #include "nanlm/schedule.hpp"
 #include "nanlm/logic_session.hpp"
+#include "nanlm/relation_train.hpp"
 #include "nanlm/universe.hpp"
 
 #include <cctype>
@@ -1230,6 +1231,7 @@ void usage() {
               << "  bootstrap [path] [epochs] streaming byte bootstrap\n"
               << "  math-train CORPUS [epochs] [max_samples] [state] [trace] train all 256 heads and export discoveries\n"
               << "  logic-train [boolean_reps] [circuit_reps] [state] staged full Boolean -> deep logic -> words\n"
+              << "  relation-train RECORDS STATE typed L0-L9 relation learning; persists heads, mirror pairs and hyperedges\n"
               << "  snapshot    write state/chart.nmc\n"
               << "  headshift   real HeadView packets for one slot\n"
               << "  growth      child-chart growth and scratch consolidation\n"
@@ -1262,6 +1264,7 @@ int main(int argc, char** argv) {
     if (cmd == "warmup") return cmd_warmup(argc, argv);
     if (cmd == "bootstrap") return cmd_bootstrap(argc, argv);
     if (cmd == "math-train") return cmd_math_train(argc, argv);
+    if (cmd == "relation-train") return nanlm::relation_train_cli(argc, argv);
     if (cmd == "logic-train") return cmd_logic_train(argc, argv);
     if (cmd == "snapshot") return cmd_snapshot(argc, argv);
     if (cmd == "headshift") return cmd_headshift(argc, argv);
