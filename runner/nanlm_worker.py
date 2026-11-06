@@ -278,6 +278,29 @@ def op_headshift(args):
     return 0
 
 
+def op_logic_core(args):
+    """Run the staged core logic session through the runner."""
+    result = run_core(["logic-train", str(args.boolean_reps),
+                       str(args.circuit_reps)], check=False)
+    record = {
+        "ok": result.returncode == 0,
+        "op": "logic-core",
+        "slot": args.slot,
+        "epoch": args.epoch,
+        "boolean_reps": args.boolean_reps,
+        "circuit_reps": args.circuit_reps,
+        "stdout": result.stdout.strip().splitlines(),
+        "stderr": result.stderr.strip(),
+    }
+    state = local_path()
+    state.joinpath(f"logic_core_{args.epoch}_{args.slot}.json").write_text(
+        json.dumps(record, indent=1))
+    env = connect_tiers(writer=True)
+    reg_put(env, f"nanlm/logic-core/{args.epoch}/{args.slot}", record)
+    print(json.dumps(record, indent=1))
+    return 0 if record["ok"] else 4
+
+
 def op_logic(args):
     """Run one slot of the graded logic curriculum."""
     script = Path(__file__).with_name("logic_curriculum.py")
@@ -435,7 +458,7 @@ def portal_heartbeat():
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--op", choices=["selftest", "prewarm", "headshift", "handoff", "logic", "loop", "finalize", "unlock", "status"],
+    ap.add_argument("--op", choices=["selftest", "prewarm", "headshift", "handoff", "logic", "logic-core", "loop", "finalize", "unlock", "status"],
                     default="selftest")
     ap.add_argument("--slot", type=int, default=None)
     ap.add_argument("--epoch", type=int, default=0)
@@ -444,6 +467,8 @@ def main():
     ap.add_argument("--rounds", type=int, default=4)
     ap.add_argument("--session-rounds", type=int, default=0)
     ap.add_argument("--start-level", type=int, default=0)
+    ap.add_argument("--boolean-reps", type=int, default=32)
+    ap.add_argument("--circuit-reps", type=int, default=64)
     args = ap.parse_args()
     verify_portal_identity()
     args.slot = parse_slot(args.slot)
@@ -454,6 +479,8 @@ def main():
         return op_prewarm(args)
     if args.op == "logic":
         return op_logic(args)
+    if args.op == "logic-core":
+        return op_logic_core(args)
     if args.op == "loop":
         return op_loop(args)
     if args.op == "finalize":

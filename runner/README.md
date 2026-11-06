@@ -46,6 +46,7 @@ checks the GitHub rate limit before dispatching and uses the existing
 | `headshift` | process one slot's 42–43 heads for one epoch |
 | `handoff` | alias for `headshift` |
 | `logic` | run one graded logic-curriculum slot |
+| `logic-core` | run the staged Boolean/deep/word core session |
 | `status` | print gate/clock/lease/manifest |
 
 ## Tiers

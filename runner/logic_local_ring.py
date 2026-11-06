@@ -23,20 +23,21 @@ LEVELS = 5
 
 
 def run_slot(slot: int, epoch: int, rounds: int, session_rounds: int,
-             start_override: int, state_root: Path) -> dict:
+             start_override: int, op: str, state_root: Path) -> dict:
     state = state_root / f"slot{slot}"
     state.mkdir(parents=True, exist_ok=True)
     env = dict(os.environ)
     env["NANLM_LOCAL_STATE"] = str(state)
     start = start_override if start_override >= 0 else (slot - 1) % LEVELS
     cmd = [
-        sys.executable, str(WORKER), "--op", "logic",
+        sys.executable, str(WORKER), "--op", op,
         "--slot", str(slot), "--epoch", str(epoch),
         "--rounds", str(rounds), "--session-rounds", str(session_rounds),
         "--start-level", str(start),
     ]
     result = subprocess.run(cmd, text=True, capture_output=True, env=env)
-    out = state / f"logic_{epoch}_{slot - 1}.json"
+    prefix = "logic_core" if op == "logic-core" else "logic"
+    out = state / f"{prefix}_{epoch}_{slot - 1}.json"
     record = None
     if out.exists():
         try:
@@ -61,6 +62,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--session-rounds", type=int, default=0)
     parser.add_argument("--start-level", type=int, default=-1,
                         help="override the per-slot start level")
+    parser.add_argument("--op", choices=["logic", "logic-core"], default="logic")
     parser.add_argument("--state-root", default="state/logic_ring")
     parser.add_argument("--out", default="")
     args = parser.parse_args(argv)
@@ -71,7 +73,7 @@ def main(argv: list[str] | None = None) -> int:
     with ThreadPoolExecutor(max_workers=slots) as pool:
         futures = {
             pool.submit(run_slot, slot, args.epoch, args.rounds,
-                        args.session_rounds, args.start_level, root): slot
+                        args.session_rounds, args.start_level, args.op, root): slot
             for slot in range(1, slots + 1)
         }
         for future in as_completed(futures):

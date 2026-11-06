@@ -95,7 +95,7 @@ def main():
     ap.add_argument("--timeout", type=int, default=21600)
     ap.add_argument("--poll", type=int, default=60)
     ap.add_argument("--epochs", type=int, default=10)
-    ap.add_argument("--op", choices=["headshift", "logic"], default="headshift")
+    ap.add_argument("--op", choices=["headshift", "logic", "logic-core"], default="headshift")
     ap.add_argument("--persistent", action="store_true",
                     help="one loop job processes many epochs in one workspace")
     ap.add_argument("--dry-run", action="store_true")
@@ -119,16 +119,16 @@ def main():
     def repo_for(slot):
         return f"{args.owner}/nanlm-cpu-{slot + 1}"
 
-    if args.op == "logic":
+    if args.op in ("logic", "logic-core"):
         for slot in order:
             repo = repo_for(slot)
             base = latest_run(repo) if not args.dry_run else None
             base_id = base.get("databaseId") if base else None
-            print(f"epoch {args.epoch}: dispatch logic {repo}", flush=True)
+            print(f"epoch {args.epoch}: dispatch {args.op} {repo}", flush=True)
             if args.dry_run:
                 summary["slots"].append({"slot": slot, "repo": repo, "dry_run": True})
                 continue
-            dispatch(repo, "logic", slot, args.epoch, args.minutes)
+            dispatch(repo, args.op, slot, args.epoch, args.minutes)
             run = await_run(repo, base_id, timeout=args.timeout, poll=args.poll)
             ok = bool(run and run.get("conclusion") == "success")
             summary["slots"].append({"slot": slot, "repo": repo, "run": run, "ok": ok})

@@ -23,7 +23,7 @@ on:
       op:
         description: headshift or logic curriculum
         type: choice
-        options: [headshift, logic]
+        options: [headshift, logic, logic-core]
         default: headshift
 
 permissions:

@@ -82,6 +82,7 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 76 | [76_COMPACT_BINARY_RUNTIME.md](76_COMPACT_BINARY_RUNTIME.md) | How does the compiled binary machine run without the Minsky scan? |
 | 77 | [77_UTM_PROOF_PACKAGE.md](77_UTM_PROOF_PACKAGE.md) | What is the UTM proof package and its remaining mechanization gap? |
 | 78 | [78_LOGIC_CURRICULUM.md](78_LOGIC_CURRICULUM.md) | How are graded logic puzzles run through the runners? |
+| 79 | [79_STAGED_LOGIC_TRAINER.md](79_STAGED_LOGIC_TRAINER.md) | What happens in the Boolean -> deep logic -> word session? |
 
 The short version:
 

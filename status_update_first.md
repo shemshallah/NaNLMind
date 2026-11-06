@@ -342,6 +342,13 @@ The 508-state binary machine also runs through a compact direct table runtime
 Minsky source steps exactly and tracks 100 steps of the Minsky machine on its
 own default tape.
 
+### Staged logic trainer
+
+The core now has a staged session: 256-head Boolean foundation, composed
+circuits (half/full adder, majority, mux, depth-8 chain), then word relation
+training only after the logic stages pass. Last run: 1024/1024 Boolean checks,
+32/32 circuit checks, 10/10 word queries; byte completion was 0.7658.
+
 ### Logic curriculum runner
 
 The six-runner pipeline now has a `logic` op. It runs graded relation puzzles

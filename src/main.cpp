@@ -13,6 +13,7 @@
 #include "nanlm/word_memory.hpp"
 #include "nanlm/handoff.hpp"
 #include "nanlm/schedule.hpp"
+#include "nanlm/logic_session.hpp"
 #include "nanlm/universe.hpp"
 
 #include <cctype>
@@ -674,6 +675,26 @@ int cmd_math_train(int argc, char** argv) {
     return 0;
 }
 
+int cmd_logic_train(int argc, char** argv) {
+    const int boolean_reps = argc > 2 ? std::max(1, std::stoi(argv[2])) : 32;
+    const int circuit_reps = argc > 3 ? std::max(1, std::stoi(argv[3])) : 64;
+    Universe universe(0x4C4F474943303031ull);
+    HeadArray heads(universe, PageId::root());
+    LogicSessionTrainer trainer(heads);
+    const LogicSessionResult result = trainer.run(boolean_reps, circuit_reps);
+    std::cout << "logic_train boolean_reps=" << boolean_reps
+              << " circuit_reps=" << circuit_reps << "\n";
+    for (const auto& stage : result.stages) {
+        std::cout << "stage=" << stage.name
+                  << " passed=" << (stage.passed ? "yes" : "no")
+                  << " correct=" << stage.correct << "/" << stage.total
+                  << " accuracy=" << stage.accuracy
+                  << " detail=" << stage.detail << "\n";
+    }
+    std::cout << "result=" << (result.ok ? "PASS" : "FAIL") << "\n";
+    return result.ok ? 0 : 1;
+}
+
 int cmd_bootstrap(int argc, char** argv) {
     const char* path = argc > 2 ? argv[2] : "data/alice_full.txt";
     int epochs = argc > 3 ? std::stoi(argv[3]) : 1;
@@ -1108,6 +1129,7 @@ void usage() {
               << "  warmup [n]   bytewise relation warmup and hard query probe\n"
               << "  bootstrap [path] [epochs] streaming byte bootstrap\n"
               << "  math-train CORPUS [epochs] [max_samples] [state] [trace] train all 256 heads and export discoveries\n"
+              << "  logic-train [boolean_reps] [circuit_reps] staged Boolean -> deep logic -> words\n"
               << "  snapshot    write state/chart.nmc\n"
               << "  headshift   real HeadView packets for one slot\n"
               << "  growth      child-chart growth and scratch consolidation\n"
@@ -1140,6 +1162,7 @@ int main(int argc, char** argv) {
     if (cmd == "warmup") return cmd_warmup(argc, argv);
     if (cmd == "bootstrap") return cmd_bootstrap(argc, argv);
     if (cmd == "math-train") return cmd_math_train(argc, argv);
+    if (cmd == "logic-train") return cmd_logic_train(argc, argv);
     if (cmd == "snapshot") return cmd_snapshot(argc, argv);
     if (cmd == "headshift") return cmd_headshift(argc, argv);
     if (cmd == "growth") return cmd_growth();

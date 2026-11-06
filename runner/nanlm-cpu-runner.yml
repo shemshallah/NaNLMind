@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       op:
-        description: selftest | prewarm | headshift | handoff | logic | status
+        description: selftest | prewarm | headshift | handoff | logic | logic-core | status
         type: choice
-        options: [selftest, prewarm, headshift, handoff, logic, loop, finalize, unlock, status]
+        options: [selftest, prewarm, headshift, handoff, logic, logic-core, loop, finalize, unlock, status]
         default: selftest
       slot:
         description: runner slot 1..6
@@ -36,6 +36,14 @@ on:
         description: cumulative logic rounds; 0 uses per-level rounds
         type: string
         default: "5"
+      boolean_reps:
+        description: Boolean foundation repetitions per head
+        type: string
+        default: "32"
+      circuit_reps:
+        description: deep logic circuit repetitions
+        type: string
+        default: "64"
 
 permissions:
   contents: read
@@ -87,7 +95,7 @@ jobs:
         run: pip install -r engine/requirements-core.txt
 
       - name: Build NaNLMind core
-        if: ${{ inputs.op == 'selftest' || inputs.op == 'prewarm' || inputs.op == 'headshift' || inputs.op == 'loop' || inputs.op == 'logic' }}
+        if: ${{ inputs.op == 'selftest' || inputs.op == 'prewarm' || inputs.op == 'headshift' || inputs.op == 'loop' || inputs.op == 'logic' || inputs.op == 'logic-core' }}
         run: make -C core -j2
 
       - name: Execute head shift
@@ -101,7 +109,9 @@ jobs:
             --epochs "${{ inputs.epochs }}" \
             --rounds "${{ inputs.rounds }}" \
             --session-rounds "${{ inputs.session_rounds }}" \
-            --start-level "${{ inputs.start_level }}"
+            --start-level "${{ inputs.start_level }}" \
+            --boolean-reps "${{ inputs.boolean_reps }}" \
+            --circuit-reps "${{ inputs.circuit_reps }}"
 
       - name: Summary
         run: |
