@@ -23,7 +23,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
-from nanlmind_nannet.auth import AuthError, _unb64
+from nanlmind_nannet.auth import AuthError, _unb64, issue_token
 from nanlmind_nannet.pairing import PairingAuthority
 from nanlmind_nannet.devices import DeviceRegistry
 
@@ -152,6 +152,43 @@ class MergeStore:
             return HTTPStatus.OK, response
 
 
+
+def _verify_github_oidc(jwt: str, expected_repository: str) -> dict[str, Any]:
+    """Verify a GitHub Actions OIDC JWT against GitHub's published JWKS."""
+    import base64
+    import urllib.request
+    from cryptography.hazmat.primitives.asymmetric import padding, rsa
+    from cryptography.hazmat.primitives import hashes
+    try:
+        head, body, signature = jwt.split(".")
+        dec = lambda value: base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+        header, claims = json.loads(dec(head)), json.loads(dec(body))
+        if header.get("alg") != "RS256" or not header.get("kid"):
+            raise ValueError("unsupported OIDC signing header")
+        with urllib.request.urlopen("https://token.actions.githubusercontent.com/.well-known/jwks", timeout=5) as response:
+            keys = json.loads(response.read(65536)).get("keys", [])
+        jwk = next((item for item in keys if item.get("kid") == header["kid"]), None)
+        if not jwk or jwk.get("kty") != "RSA":
+            raise ValueError("unknown OIDC signing key")
+        n, e = int.from_bytes(dec(jwk["n"]), "big"), int.from_bytes(dec(jwk["e"]), "big")
+        public = rsa.RSAPublicNumbers(e, n).public_key()
+        public.verify(dec(signature), (head + "." + body).encode("ascii"), padding.PKCS1v15(), hashes.SHA256())
+        now = int(time.time())
+        if claims.get("iss") != "https://token.actions.githubusercontent.com":
+            raise ValueError("wrong OIDC issuer")
+        if claims.get("aud") not in ("nannet-portal", ["nannet-portal"]):
+            raise ValueError("wrong OIDC audience")
+        if int(claims.get("exp", 0)) <= now or int(claims.get("nbf", 0)) > now + 30:
+            raise ValueError("OIDC token expired or not yet valid")
+        if claims.get("repository") != expected_repository or claims.get("ref") != "refs/heads/main":
+            raise ValueError("runner repository or ref is not authorized")
+        if claims.get("workflow_ref") != expected_repository + "/.github/workflows/runner.yml@refs/heads/main":
+            raise ValueError("workflow identity is not authorized")
+        return claims
+    except Exception as exc:
+        raise AuthError("GitHub Actions identity rejected") from exc
+
+
 def make_server(host: str, port: int, root: Path, token: str, authority: PairingAuthority | None = None) -> ThreadingHTTPServer:
     store = MergeStore(root, token)
     devices = DeviceRegistry(authority.database) if authority else None
@@ -195,6 +232,21 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
             header = self.headers.get('Authorization', '')
             return header[7:] if header.startswith('Bearer ') else ''
         def do_POST(self) -> None:
+            if self.path == '/v1/bootstrap/oidc':
+                try:
+                    payload = self._body(16384)
+                    slot = payload.get("slot")
+                    if isinstance(slot, bool) or not isinstance(slot, int) or not 0 <= slot < 6:
+                        raise AuthError("invalid bootstrap slot")
+                    repository = f"shemshallah/nanlm-cpu-{slot + 1}"
+                    _verify_github_oidc(payload.get("id_token", ""), repository)
+                    identity = "github-actions:" + repository
+                    scopes = ["training:execute", "universe:read", "universe:register", "snapshot:read", "snapshot:write", "corpus:write", "installation:admin"]
+                    token = issue_token(authority._private_key(), identity, scopes, 900, role="admin")
+                    self._json(HTTPStatus.OK, {"token": token, "token_type": "Bearer", "expires_in": 900, "identity": identity, "role": "admin", "scopes": scopes})
+                except (ValueError, KeyError, TypeError, AuthError) as exc:
+                    self._json(HTTPStatus.UNAUTHORIZED, {"error": str(exc)[:160]})
+                return
             if self.path == '/v1/training/merge':
                 if not self._auth():
                     self._json(HTTPStatus.UNAUTHORIZED, {'error': 'unauthorized'}); return
