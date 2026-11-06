@@ -137,6 +137,19 @@ def point_zero_translator():
     return PORTAL_TRANSLATOR
 
 
+def verify_point_zero_descriptor(payload):
+    """Require the full text/binary identity and point-zero contract from authority."""
+    route = PORTAL_ROUTE
+    if route is None:
+        raise RuntimeError("runner route is not initialized")
+    expected = point_zero_translator().descriptor()
+    expected["route"] = route.text()
+    expected["route_bytes"] = route.bytes().hex()
+    for key, value in expected.items():
+        if payload.get(key) != value:
+            raise RuntimeError("NANNET authority point-zero descriptor mismatch: " + key)
+
+
 def run_core(args, check=True):
     core = Path(os.environ.get("NANLM_CORE", "core"))
     exe = core / "build" / "nanlm-universal"
@@ -478,7 +491,7 @@ def op_status(args):
 
 def verify_portal_identity(slot):
     """Verify both execution and binary-bridge scopes for the assigned BSR route."""
-    global PORTAL_TOKEN, PORTAL_ROUTE
+    global PORTAL_TOKEN, PORTAL_ROUTE, PORTAL_TRANSLATOR
     import urllib.request
     base = os.environ.get("NANNET_PORTAL_API", "").rstrip("/")
     token = os.environ.get("NANNET_BSR_TOKEN", "")
@@ -499,14 +512,7 @@ def verify_portal_identity(slot):
             result = json.load(response)
         if not result.get("authorized") or result.get("scope") != scope:
             raise RuntimeError("NANNET portal rejected BSR scope: " + scope)
-        advertised = result.get("route")
-        if advertised and RunnerRoute.parse(advertised) != PORTAL_ROUTE:
-            raise RuntimeError("NANNET route does not match this GitHub runner slot")
-        route_bytes = result.get("route_bytes")
-        if route_bytes and route_bytes != PORTAL_ROUTE.bytes().hex():
-            raise RuntimeError("NANNET route binary translation does not match canonical URI")
-        if result.get("universe_point", 0) != 0 or result.get("translator") != "N16B/1":
-            raise RuntimeError("NANNET authority did not advertise the point-zero N16B translator")
+        verify_point_zero_descriptor(result)
     PORTAL_TOKEN = token
     print("nannet-authenticated: " + result.get("installation_id", "unknown") +
           " route=" + PORTAL_ROUTE.text() +
@@ -629,17 +635,10 @@ def portal_heartbeat():
             renewed = json.load(response)
         if not renewed.get("token"):
             raise RuntimeError("NANNET BSR heartbeat did not rotate the credential")
-        if renewed.get("identity") and not renewed["identity"].endswith(
-                f"/nanlm-cpu-{PORTAL_ROUTE.bsr + 1}"):
+        expected_identity = f"github-actions:shemshallah/nanlm-cpu-{PORTAL_ROUTE.bsr + 1}"
+        if renewed.get("identity") != expected_identity:
             raise RuntimeError("NANNET heartbeat identity changed runner route")
-        advertised = renewed.get("route")
-        if advertised and RunnerRoute.parse(advertised) != PORTAL_ROUTE:
-            raise RuntimeError("NANNET heartbeat changed the canonical runner route")
-        route_bytes = renewed.get("route_bytes")
-        if route_bytes and route_bytes != PORTAL_ROUTE.bytes().hex():
-            raise RuntimeError("NANNET heartbeat route bytes do not match its URI")
-        if renewed.get("universe_point", 0) != 0 or renewed.get("translator") != "N16B/1":
-            raise RuntimeError("NANNET heartbeat did not preserve point-zero N16B translation")
+        verify_point_zero_descriptor(renewed)
         PORTAL_TOKEN = renewed["token"]
     portal_bridge_drain(int(time.time()))
 
