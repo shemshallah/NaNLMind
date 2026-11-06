@@ -52,8 +52,8 @@ class RunnerRoute:
         if not isinstance(value, str):
             raise ValueError("runner route must be text")
         m = re.fullmatch(
-            r"nan://GM(\\d{1,3}):SC(\\d{1,3}):MC(\\d{1,3}):"
-            r"BS(\\d{1,3}):HW(\\d{1,3}):BSR([0-5])", value)
+            r"nan://GM(\d{1,3}):SC(\d{1,3}):MC(\d{1,3}):"
+            r"BS(\d{1,3}):HW(\d{1,3}):BSR([0-5])", value)
         if not m:
             raise ValueError("runner route must be nan://GM:SC:MC:BS:HW:BSR0..5")
         route = cls(*(int(x) for x in m.groups()))
