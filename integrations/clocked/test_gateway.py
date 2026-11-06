@@ -68,20 +68,20 @@ class GatewayTests(unittest.TestCase):
         self.addCleanup(self.env.stop)
         self.addCleanup(self.tmp.cleanup)
 
-    def issue(self, max_requests=2):
+    def issue(self, max_requests=2, endpoint_id="clocked_demo"):
         status, result = invoke(self.app, "/admin/tokens", "POST",
-            {"tenant_id": "test-tenant", "max_requests": max_requests, "ttl_seconds": 600},
+            {"tenant_id": "test-tenant", "endpoint_id": endpoint_id, "max_requests": max_requests, "ttl_seconds": 600},
             "admin-test-token")
         self.assertEqual(status, "201 Created")
         self.assertEqual(result["token_type"], "CLOCKED_USER_API")
-        self.assertEqual(result["source_endpoint"], "clocked_demo")
+        self.assertEqual(result["source_endpoint"], endpoint_id)
         return result["token"]
 
     def test_health_does_not_require_credentials(self):
         status, result = invoke(self.app, "/healthz")
         self.assertEqual(status, "200 OK")
-        self.assertEqual(result["protocol"], "nanlm.clocked-experience")
-        self.assertEqual(result["source_endpoint"], "clocked_demo")
+        self.assertEqual(result["protocol"], "nanlm.endpoint-observation")
+        self.assertEqual(result["source_endpoints"], ["clocked_demo", "hermes_demo", "my_android"])
 
     def test_admin_issues_scoped_token_and_demo_returns_content_minimized_event(self):
         token = self.issue()
@@ -109,6 +109,55 @@ class GatewayTests(unittest.TestCase):
         self.assertEqual(status, "401 Unauthorized")
         self.assertEqual(result["error"], "unauthorized")
 
+
+    def test_android_token_cannot_claim_correctness_and_event_is_durable(self):
+        token = self.issue(endpoint_id="my_android")
+        payload = {
+            "protocol": "nanlm.endpoint-observation", "version": 1,
+            "event_id": "a" * 64, "base_generation": 7,
+            "active_heads": [3, 3, 255], "outcome_verified": False,
+        }
+        status, result = invoke(self.app, "/v1/observations", "POST", payload, token)
+        self.assertEqual(status, "202 Accepted")
+        self.assertEqual(result["source_endpoint"], "my_android")
+        self.assertEqual(result["learning_state"], "awaiting_runner_ring_ingest")
+        status, duplicate = invoke(self.app, "/v1/observations", "POST", payload, token)
+        self.assertEqual(status, "200 OK")
+        self.assertEqual(duplicate["learning_state"], "duplicate_noop")
+        status, queued = invoke(self.app, "/internal/observations", bearer="admin-test-token")
+        self.assertEqual(status, "200 OK")
+        self.assertEqual(queued["count"], 1)
+        event = queued["events"][0]
+        self.assertEqual(event["source_endpoint"], "my_android")
+        self.assertEqual(event["active_heads"], [3, 255])
+        self.assertFalse(event["outcome_verified"])
+
+    def test_endpoint_cannot_submit_its_own_correctness_label(self):
+        token = self.issue(endpoint_id="hermes_demo")
+        payload = {
+            "protocol": "nanlm.endpoint-observation", "version": 1,
+            "event_id": "b" * 64, "base_generation": 0,
+            "active_heads": [1], "outcome_verified": True, "correct": True,
+        }
+        status, result = invoke(self.app, "/v1/observations", "POST", payload, token)
+        self.assertEqual(status, "400 Bad Request")
+        self.assertEqual(result["error"], "endpoint_cannot_assert_correctness")
+
+    def test_clocked_token_cannot_use_generic_endpoint_ingest(self):
+        token = self.issue()
+        payload = {
+            "protocol": "nanlm.endpoint-observation", "version": 1,
+            "event_id": "c" * 64, "base_generation": 0, "active_heads": [],
+            "outcome_verified": False,
+        }
+        status, result = invoke(self.app, "/v1/observations", "POST", payload, token)
+        self.assertEqual(status, "202 Accepted")
+        self.assertEqual(result["source_endpoint"], "clocked_demo")
+
+    def test_internal_poll_requires_admin_token(self):
+        status, result = invoke(self.app, "/internal/observations")
+        self.assertEqual(status, "401 Unauthorized")
+        self.assertEqual(result["error"], "unauthorized")
 
 if __name__ == "__main__":
     unittest.main()
