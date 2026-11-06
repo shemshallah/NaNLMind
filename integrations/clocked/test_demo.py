@@ -43,6 +43,13 @@ class ClockedDemoTests(unittest.TestCase):
         self.assertFalse(result["source_text_persisted_in_event_log"])
         encoded = (output / "clocked-events.jsonl").read_text(encoding="utf-8")
         self.assertNotIn("technical architecture specification protocol", encoded)
+        event_rows = [json.loads(line) for line in encoded.splitlines()]
+        heldout = [row for row in event_rows if row["split"] == "test"]
+        self.assertEqual(len(heldout), 12)
+        self.assertTrue(all(row["event_id"] is None for row in heldout))
+        self.assertTrue(all(row["learning_state"] == "heldout_never_sent_to_clocked"
+                            for row in heldout))
+        self.assertEqual(result["clocked_samples"], 48)
 
 
 if __name__ == "__main__":
