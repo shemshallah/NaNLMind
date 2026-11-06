@@ -1,4 +1,5 @@
 #include "nanlm/global.hpp"
+#include "nanlm/sha256.hpp"
 #include "nanlm/ledger.hpp"
 #include "nanlm/pager.hpp"
 #include "nanlm/resonance.hpp"
@@ -19,6 +20,9 @@
 #include <cstring>
 #include <cmath>
 #include <fstream>
+#include <filesystem>
+#include <algorithm>
+#include <vector>
 #include <iterator>
 #include <iostream>
 #include <memory>
@@ -492,6 +496,143 @@ int cmd_headshift(int argc, char** argv) {
     return 0;
 }
 
+
+
+int cmd_math_train(int argc, char** argv) {
+    const std::string corpus_path = argc > 2 ? argv[2] : "";
+    const int epochs = argc > 3 ? std::max(1, std::stoi(argv[3])) : 3;
+    const std::size_t max_samples = argc > 4
+        ? static_cast<std::size_t>(std::max(1, std::stoi(argv[4]))) : 4096u;
+    const std::string state_path = argc > 5 ? argv[5] : "state/hermes-universe.nmg";
+    const std::string trace_path = argc > 6 ? argv[6] : "state/hermes-discoveries.jsonl";
+    if (corpus_path.empty()) {
+        std::cerr << "usage: nanlm-universal math-train CORPUS [EPOCHS] [MAX_SAMPLES_PER_HEAD] [STATE] [TRACE]\n";
+        return 2;
+    }
+
+    std::ifstream input(corpus_path, std::ios::binary);
+    if (!input) { std::cerr << "cannot open corpus " << corpus_path << "\n"; return 2; }
+    std::vector<std::uint8_t> data((std::istreambuf_iterator<char>(input)),
+                                   std::istreambuf_iterator<char>());
+    if (data.size() < 1000) { std::cerr << "corpus too small; need at least 1000 bytes\n"; return 2; }
+    const std::size_t split = (data.size() * 4u) / 5u;
+    if (split < 3 || data.size() - split < 3) {
+        std::cerr << "corpus split too small\n"; return 2;
+    }
+
+    const Hash256 source_hash = Sha256::hash(data.data(), data.size());
+    const std::string source_digest = hex(source_hash);
+    const std::size_t train_total = split - 2;
+    const std::size_t test_total = data.size() - split - 2;
+    const std::size_t train_count = std::min(max_samples, train_total);
+    const std::size_t test_count = std::min(max_samples, test_total);
+    const std::size_t train_stride = std::max<std::size_t>(1, train_total / train_count);
+    const std::size_t test_stride = std::max<std::size_t>(1, test_total / test_count);
+
+    std::filesystem::create_directories(std::filesystem::path(state_path).parent_path().empty()
+        ? std::filesystem::path(".") : std::filesystem::path(state_path).parent_path());
+    std::filesystem::create_directories(std::filesystem::path(trace_path).parent_path().empty()
+        ? std::filesystem::path(".") : std::filesystem::path(trace_path).parent_path());
+    std::ofstream trace(trace_path, std::ios::binary | std::ios::trunc);
+    if (!trace) { std::cerr << "cannot write trace " << trace_path << "\n"; return 3; }
+
+    GlobalTopology topology(0x4845524D45530001ull);
+    HeadArray heads = topology.root_heads();
+    std::uint64_t total_train = 0;
+    std::uint64_t total_test = 0;
+    std::uint64_t total_correct = 0;
+
+    std::cout << "hermes_math_train heads=" << HeadArray::size()
+              << " epochs=" << epochs << " corpus_bytes=" << data.size()
+              << " train_samples_per_head<=" << train_count
+              << " test_samples_per_head<=" << test_count
+              << " source_sha256=" << source_digest << "\n";
+
+    for (std::uint16_t index = 0; index < HeadArray::size(); ++index) {
+        HeadView head = heads.at(static_cast<std::uint8_t>(index));
+        const Hash256 before = Sha256::hash(&head.cell(), sizeof(NanCell));
+        const std::uint8_t previous_bit = static_cast<std::uint8_t>(index & 7u);
+        const std::uint8_t current_bit = static_cast<std::uint8_t>((index >> 3u) & 7u);
+        const std::uint8_t target_bit = static_cast<std::uint8_t>((index >> 6u) & 3u);
+
+        for (int epoch = 0; epoch < epochs; ++epoch) {
+            std::size_t seen = 0;
+            for (std::size_t i = 1; i + 1 < split && seen < train_count; i += train_stride, ++seen) {
+                const std::uint32_t a = (data[i - 1] >> previous_bit) & 1u;
+                const std::uint32_t b = (data[i] >> current_bit) & 1u;
+                const bool target = ((data[i + 1] >> target_bit) & 1u) != 0;
+                head.train_boolean(a, b, target);
+            }
+        }
+
+        std::size_t evaluated = 0;
+        std::size_t correct = 0;
+        for (std::size_t i = split + 1; i + 1 < data.size() && evaluated < test_count;
+             i += test_stride, ++evaluated) {
+            const std::uint32_t a = (data[i - 1] >> previous_bit) & 1u;
+            const std::uint32_t b = (data[i] >> current_bit) & 1u;
+            const bool target = ((data[i + 1] >> target_bit) & 1u) != 0;
+            const bool prediction = (NanWord::eval_bool(head.boolean_rule(), a, b) & 1u) != 0;
+            if (prediction == target) ++correct;
+        }
+        const Hash256 after = Sha256::hash(&head.cell(), sizeof(NanCell));
+        topology.commit(static_cast<std::uint8_t>(index), 0x31u, head.address().value,
+                        before, after, static_cast<std::uint64_t>(epochs));
+
+        total_train += train_count * static_cast<std::uint64_t>(epochs);
+        total_test += evaluated;
+        total_correct += correct;
+        const double accuracy = evaluated ? static_cast<double>(correct) / evaluated : 0.0;
+
+        trace << "{\"schema\":\"nanlm-hermes-discovery/1\""
+              << ",\"kind\":\"hypothesis\""
+              << ",\"subject\":\"byte-bit-transition/" << static_cast<unsigned>(previous_bit)
+              << "/" << static_cast<unsigned>(current_bit) << "/" << static_cast<unsigned>(target_bit) << "\""
+              << ",\"head\":" << index
+              << ",\"address\":" << head.address().value
+              << ",\"layer\":0"
+              << ",\"source_digest\":\"" << source_digest << "\""
+              << ",\"expression\":{\"op\":\"boolean_truth_table\",\"inputs\":["
+              << static_cast<unsigned>(previous_bit) << "," << static_cast<unsigned>(current_bit)
+              << "],\"target_bit\":" << static_cast<unsigned>(target_bit)
+              << ",\"selected_rule\":" << static_cast<unsigned>(head.boolean_rule())
+              << ",\"scores\":[";
+        for (std::uint8_t op = 0; op < 16; ++op) {
+            if (op) trace << ',';
+            trace << head.boolean_score(op);
+        }
+        trace << "]}"
+              << ",\"evidence\":{\"train_samples\":" << (train_count * static_cast<std::size_t>(epochs))
+              << ",\"test_samples\":" << evaluated
+              << ",\"correct\":" << correct
+              << ",\"accuracy\":" << accuracy << "}"
+              << ",\"provenance\":{\"trainer\":\"nanlm-universal/math-train\""
+              << ",\"epochs\":" << epochs << ",\"train_split\":0.8}"
+              << ",\"confidence\":" << accuracy
+              << ",\"polarity\":\"neutral\"}\n";
+    }
+    trace.flush();
+    if (!trace) { std::cerr << "failed writing discovery trace\n"; return 4; }
+
+    const auto state = topology.serialize();
+    std::ofstream output(state_path, std::ios::binary | std::ios::trunc);
+    if (!output) { std::cerr << "cannot write universe state " << state_path << "\n"; return 5; }
+    output.write(reinterpret_cast<const char*>(state.data()), static_cast<std::streamsize>(state.size()));
+    output.flush();
+    if (!output) { std::cerr << "failed writing universe state\n"; return 5; }
+
+    std::cout << "trained_heads=" << HeadArray::size()
+              << " train_observations=" << total_train
+              << " test_observations=" << total_test
+              << " heldout_accuracy=" << (total_test ? static_cast<double>(total_correct) / total_test : 0.0)
+              << " discoveries=256"
+              << " state_bytes=" << state.size()
+              << " state_digest=" << hex(topology.global_digest())
+              << " state_path=" << state_path
+              << " trace_path=" << trace_path << "\n";
+    return 0;
+}
+
 int cmd_bootstrap(int argc, char** argv) {
     const char* path = argc > 2 ? argv[2] : "data/alice_full.txt";
     int epochs = argc > 3 ? std::stoi(argv[3]) : 1;
@@ -925,6 +1066,7 @@ void usage() {
               << "  words        word layer over vector bins\n"
               << "  warmup [n]   bytewise relation warmup and hard query probe\n"
               << "  bootstrap [path] [epochs] streaming byte bootstrap\n"
+              << "  math-train CORPUS [epochs] [max_samples] [state] [trace] train all 256 heads and export discoveries\n"
               << "  snapshot    write state/chart.nmc\n"
               << "  headshift   real HeadView packets for one slot\n"
               << "  growth      child-chart growth and scratch consolidation\n"
@@ -956,6 +1098,7 @@ int main(int argc, char** argv) {
     if (cmd == "words") return cmd_words();
     if (cmd == "warmup") return cmd_warmup(argc, argv);
     if (cmd == "bootstrap") return cmd_bootstrap(argc, argv);
+    if (cmd == "math-train") return cmd_math_train(argc, argv);
     if (cmd == "snapshot") return cmd_snapshot(argc, argv);
     if (cmd == "headshift") return cmd_headshift(argc, argv);
     if (cmd == "growth") return cmd_growth();
