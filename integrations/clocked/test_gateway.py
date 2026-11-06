@@ -165,6 +165,17 @@ class GatewayTests(unittest.TestCase):
         self.assertEqual(event["active_heads"], [3, 255])
         self.assertFalse(event["outcome_verified"])
 
+    def test_observation_rejects_fields_outside_the_published_schema(self):
+        token = self.issue(endpoint_id="hermes_demo")
+        payload = {
+            "protocol": "nanlm.endpoint-observation", "version": 1,
+            "event_id": "d" * 64, "base_generation": 0, "active_heads": [],
+            "outcome_verified": False, "source_endpoint": "clocked_demo",
+        }
+        status, result = invoke(self.app, "/v1/observations", "POST", payload, token)
+        self.assertEqual(status, "400 Bad Request")
+        self.assertEqual(result["error"], "unknown_observation_fields")
+
     def test_endpoint_cannot_submit_its_own_correctness_label(self):
         token = self.issue(endpoint_id="hermes_demo")
         payload = {
