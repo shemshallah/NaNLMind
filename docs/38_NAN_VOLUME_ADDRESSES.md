@@ -178,3 +178,22 @@ deployment before moving production data.
 5. Keep a reversible mapping from old `/bs0db`, `/mc0db`, `/sc0db`,
    `/gm0db` paths to the new NaN paths for rollback.
 6. Do not delete or recreate any volume as part of this code change.
+
+
+## Runner-ring client hookup
+
+The six worker processes can acknowledge registry convergence through
+`runner/router_ring_client.py`. Configure these environment variables in each
+runner repository's secret/environment configuration:
+
+- `NANLM_ROUTER_URL`: HTTPS origin of the NaNROUTER Koyeb service
+- `NANLM_ROUTER_WORKER_TOKEN`: scoped worker bearer token accepted by the router
+- `NANLM_ROUTER_CLOCK_TIMEOUT`: optional time-source timeout (default 5 seconds)
+
+The worker calls the client from its existing portal heartbeat path. It first
+reads the signed volume-registry generation/digest, samples the anchored clock
+once per process, then acknowledges its own `MC0:0/R0..R5` slot. Missing both
+router variables leaves existing local/NANNET workflows unchanged; configuring
+only one is a hard configuration error. Heartbeats never mount or modify Koyeb
+volumes. The router reports green only after all six slots converge on the same
+registry generation and digest.
