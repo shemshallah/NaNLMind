@@ -360,7 +360,7 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                         bridge.acknowledge(frame.destination, frame.source, frame.sequence)
                     else:
                         bridge.put(frame)
-                    ack = BridgeFrame.acknowledgement(frame).encode()
+                    ack = point_zero.encode(BridgeFrame.acknowledgement(frame))
                     self.send_response(HTTPStatus.ACCEPTED)
                     self.send_header('Content-Type', N16B_MEDIA_TYPE)
                     self.send_header('Content-Length', str(len(ack)))
