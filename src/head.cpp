@@ -209,6 +209,21 @@ void HeadView::reset_boolean_learner() {
     for (std::size_t i = 0; i < kScoreBytes; ++i) w[i] = 0;
 }
 
+void HeadView::decay_boolean_scores(std::uint8_t right_shift) {
+    const unsigned shift = std::min<unsigned>(right_shift, 15u);
+    const std::int32_t divisor = static_cast<std::int32_t>(1u << shift);
+    std::uint8_t best = 0;
+    std::int16_t best_score = -32768;
+    for (std::uint8_t op = 0; op < 16; ++op) {
+        const std::int16_t old_score = read_score(scratch(), op);
+        const std::int16_t score = static_cast<std::int16_t>(
+            static_cast<std::int32_t>(old_score) / divisor);
+        write_score(scratch(), op, score);
+        if (score > best_score) { best_score = score; best = op; }
+    }
+    set_boolean_mask(static_cast<std::uint16_t>(1u << best));
+}
+
 void HeadView::train_boolean(std::uint32_t a, std::uint32_t b, bool target) {
     const std::uint32_t av = a & 1u;
     const std::uint32_t bv = b & 1u;
