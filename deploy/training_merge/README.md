@@ -1,4 +1,4 @@
-# Koyeb training merge
+# Koyeb NANNET portal + training merge
 
 This is the small training-delta merger. It is **not** the 2 GiB map and **not**
 a macrocluster.
@@ -14,19 +14,18 @@ the returned manifest to its map.
 https://deeprepo-qtcl-9c8fea15.apps.mistral.run
 ```
 
-Service `training-merge-v2` is running on the `nano` instance type. The current main-branch image now combines the merge API with NANNET pairing authority and consent-based device leases on the same HTTPS origin. Koyeb
+The intended Koyeb service name is `nannet-portal` (the live service must also be renamed in Koyeb; changing this repository manifest does not rename an already-created service). The current main-branch image now combines the merge API with NANNET pairing authority and consent-based device leases on the same HTTPS origin. Koyeb
 rejected `free`. No persistent volume is attached, so merged JSON state is
 ephemeral until one is added. `NANLM_MERGE_TOKEN` is a Koyeb secret.
 
 ## Deploy
 
-1. Build from this repository with Dockerfile
+1. Name the Koyeb web service `nannet-portal` and build from this repository with Dockerfile
    `deploy/training_merge/Dockerfile`.
 2. Attach a persistent volume at `/data` (free Koyeb instances are ephemeral).
 3. Set `NANLM_MERGE_TOKEN` to a scoped, revocable service credential and `NANNET_AUTHORITY_MASTER_KEY` to an independent random 32-byte base64url secret. Store both as Koyeb secrets. Set `NANNET_AUTHORITY_DB=/data/nannet-authority.sqlite`. Do **not** set or use `DEEPREPO_PAT`.
 4. Expose port `8080` over HTTPS.
-5. Point the bootstrap/Android merge client at
-   `https://<service>.koyeb.app/v1/training/merge`.
+5. Configure each `nanlm-cpu-N` repository with its matching `BSR(N-1)_PORTAL_API` Actions variable set to the portal HTTPS base URL. Point training clients at `https://<service-host>/v1/training/merge` and guest clients at the `/v1/devices/*` routes. The hostname must be taken from the actual Koyeb deployment, not guessed.
 
 ## NANNET routes on the same service
 
@@ -75,3 +74,8 @@ Repeating an idempotency key returns the same response.
 - Bootstrap runner: 2 GiB map, 8 MiB live image, 256 head arena.
 - Android: 8 MiB universe; no 2 GiB map.
 - No PAT enters this service.
+
+
+## Bootstrap runner trust
+
+`nanlm-cpu-1` through `nanlm-cpu-6` are BSR0 through BSR5 administrative/bootstrap runners. Each repository receives only its own portal base-URL variable (`BSR0_PORTAL_API` through `BSR5_PORTAL_API`). These values are URLs, not secrets. Give each runner a separate, revocable bootstrap credential with only the administrative scopes it needs; do not copy `NANNET_AUTHORITY_MASTER_KEY` to these runners. HW0–HW255 remain guest slots and must use guest enrollment credentials and guest scopes.
