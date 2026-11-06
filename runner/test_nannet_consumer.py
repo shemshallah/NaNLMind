@@ -1,6 +1,6 @@
 import unittest
 
-from nannet_consumer import add_features, make_updates
+from runner.nannet_consumer import add_features, make_updates
 
 
 class NannetConsumerTests(unittest.TestCase):
