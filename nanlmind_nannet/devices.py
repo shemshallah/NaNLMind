@@ -64,8 +64,8 @@ class DeviceRegistry:
         if not isinstance(report, dict) or len(json.dumps(report)) > 4096:
             raise ValueError("invalid system report")
         secret_hash = _digest(secret)
-        token = None
-        token_hash = None
+        lease_id = str(uuid.uuid4())
+        placeholder_hash = _digest("pending:" + secrets.token_urlsafe(32))
         with self._connect() as db:
             db.execute("UPDATE device_leases SET hw_slot=NULL,released_at=? WHERE released_at IS NULL AND expires_at<=?", (now, now))
             row = db.execute("SELECT device_id FROM devices WHERE secret_hash=?", (secret_hash,)).fetchone()
@@ -82,11 +82,18 @@ class DeviceRegistry:
             slot = next((n for n in range(4, 256) if n not in used), None)
             if slot is None:
                 raise ValueError("no hardware slots currently available")
-            token = self._new_token(device_id, now if self.authority is None else None)
-            token_hash = _digest(token)
-            lease_id = str(uuid.uuid4())
             expires = now + self.lease_seconds
-            db.execute("INSERT INTO device_leases VALUES (?,?,?,?,?,?,NULL)", (lease_id, device_id, slot, token_hash, now, expires))
+            db.execute("INSERT INTO device_leases VALUES (?,?,?,?,?,?,NULL)", (lease_id, device_id, slot, placeholder_hash, now, expires))
+        try:
+            token = self._new_token(device_id)
+            with self._connect() as db:
+                updated = db.execute("UPDATE device_leases SET token_hash=? WHERE lease_id=? AND token_hash=?", (_digest(token), lease_id, placeholder_hash))
+                if updated.rowcount != 1:
+                    raise ValueError("device lease changed during credential issuance")
+        except Exception:
+            with self._connect() as db:
+                db.execute("UPDATE device_leases SET hw_slot=NULL,released_at=? WHERE lease_id=?", (int(time.time()), lease_id))
+            raise
         return {"device_id": device_id, "address": f"nan://GM0:SC0:MC0:BS0:HW{slot}", "lease_id": lease_id, "lease_expires_at": expires, "token": token, "head_count": 256}
 
     def _active(self, db, token: str, now: int):
@@ -110,10 +117,18 @@ class DeviceRegistry:
         now = int(time.time()) if now is None else int(now)
         with self._connect() as db:
             row = self._active(db, token, now)
-            expires = now + self.lease_seconds
-            db.execute("UPDATE device_leases SET expires_at=? WHERE lease_id=?", (expires, row["lease_id"]))
-            db.execute("UPDATE devices SET last_seen=? WHERE device_id=?", (now, row["device_id"]))
-        return {"lease_id": row["lease_id"], "lease_expires_at": expires, "address": f"nan://GM0:SC0:MC0:BS0:HW{row['hw_slot']}"}
+            lease_id, device_id, slot = row["lease_id"], row["device_id"], row["hw_slot"]
+        expires = now + self.lease_seconds
+        replacement = self._new_token(device_id)
+        with self._connect() as db:
+            updated = db.execute(
+                "UPDATE device_leases SET token_hash=?,expires_at=? WHERE lease_id=? AND token_hash=? AND released_at IS NULL AND expires_at>?",
+                (_digest(replacement), expires, lease_id, _digest(token), now))
+            if updated.rowcount != 1:
+                raise ValueError("device lease changed during heartbeat")
+            db.execute("UPDATE devices SET last_seen=? WHERE device_id=?", (now, device_id))
+        return {"lease_id": lease_id, "lease_expires_at": expires,
+                "address": f"nan://GM0:SC0:MC0:BS0:HW{slot}", "token": replacement}
 
     def release(self, token: str, now: int | None = None) -> dict:
         now = int(time.time()) if now is None else int(now)
@@ -128,13 +143,18 @@ class DeviceRegistry:
         now = int(time.time()) if now is None else int(now)
         with self._connect() as db:
             row = self._active(db, token, now)
-            replacement = self._new_token(row["device_id"])
-            db.execute("UPDATE device_leases SET token_hash=? WHERE lease_id=?", (_digest(replacement), row["lease_id"]))
-            expires = now + self.lease_seconds
-            db.execute("UPDATE device_leases SET expires_at=? WHERE lease_id=?", (expires, row["lease_id"]))
-            db.execute("UPDATE devices SET last_seen=? WHERE device_id=?", (now, row["device_id"]))
-        return {"lease_id": row["lease_id"], "lease_expires_at": expires,
-                "address": f"nan://GM0:SC0:MC0:BS0:HW{row['hw_slot']}", "token": replacement}
+            lease_id, device_id, slot = row["lease_id"], row["device_id"], row["hw_slot"]
+        replacement = self._new_token(device_id)
+        expires = now + self.lease_seconds
+        with self._connect() as db:
+            updated = db.execute(
+                "UPDATE device_leases SET token_hash=?,expires_at=? WHERE lease_id=? AND token_hash=? AND released_at IS NULL AND expires_at>?",
+                (_digest(replacement), expires, lease_id, _digest(token), now))
+            if updated.rowcount != 1:
+                raise ValueError("device lease changed during token rotation")
+            db.execute("UPDATE devices SET last_seen=? WHERE device_id=?", (now, device_id))
+        return {"lease_id": lease_id, "lease_expires_at": expires,
+                "address": f"nan://GM0:SC0:MC0:BS0:HW{slot}", "token": replacement}
 
     def report(self, token: str, payload: dict, now: int | None = None) -> dict:
         now = int(time.time()) if now is None else int(now)
