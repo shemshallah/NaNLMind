@@ -146,6 +146,8 @@ int main() {
     const NannetRoute runner_route{1, 2, 3, 4, 5, 5};
     CHECK(u4->bind_point_zero_route(runner_route));
     CHECK_EQ(u4->point_zero_translator().local_route().bsr, 5u);
+    CHECK(!u4->bind_point_zero_route(NannetRoute{0, 0, 0, 0, 0, 6}));
+    CHECK_EQ(u4->point_zero_translator().local_route().bsr, 5u);
     const auto route_wire = PointZeroTranslator::encode_route(runner_route);
     NannetRoute route_roundtrip{};
     CHECK(PointZeroTranslator::decode_route(route_wire, route_roundtrip));
