@@ -1,0 +1,266 @@
+#!/usr/bin/env python3
+"""NANNET universal, disk-backed intake/control plane. Standard library only."""
+from __future__ import annotations
+import hashlib, json, os, re, secrets, sqlite3, tempfile, threading, time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from urllib.parse import urlparse
+
+ROOT=Path(os.environ.get("NANLM_DATA_DIR","/data/nannet"))
+BLOBS=ROOT/"blobs"; DB_PATH=ROOT/"nannet.sqlite3"
+MAX_JSON=65536
+CHUNK_BYTES=int(os.environ.get("NANLM_CHUNK_BYTES",str(8*1024*1024)))
+DATASET_QUOTA=int(os.environ.get("NANLM_DATASET_QUOTA_BYTES",str(6*1024**3)))
+EVENT_ID=re.compile(r"^[a-f0-9]{64}$"); HEX=EVENT_ID
+ID_RE=re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$")
+ENDPOINTS={f"bootstrap-{i:03d}" for i in range(256)}|{"my_android","hermes_demo","clocked_demo"}
+ROUTES={
+ "training.merge":{"audience":["runner","admin"],"description":"Generation-safe evidence merge; runner ring owns commits"},
+ "training.validate":{"audience":["validator","admin"],"description":"Validate quarantined corpus packages"},
+ "n16t.peer":{"audience":["my_android","hermes_demo","clocked_demo","bootstrap"],"description":"NaN16 transport peer and capability exchange"},
+ "deeprepo.keeper":{"audience":["admin","keeper"],"description":"DeepRepo keeper and GitHub forwarding control"},
+ "models.status":{"audience":["admin","keeper","runner"],"description":"Read-only status for preserved Qwen deployments"}}
+
+def now(): return int(time.time())
+def connect():
+ ROOT.mkdir(parents=True,exist_ok=True); BLOBS.mkdir(parents=True,exist_ok=True)
+ db=sqlite3.connect(DB_PATH,timeout=20); db.row_factory=sqlite3.Row
+ db.execute("PRAGMA journal_mode=WAL"); db.execute("PRAGMA synchronous=NORMAL"); db.execute("PRAGMA busy_timeout=20000")
+ db.executescript("""
+ CREATE TABLE IF NOT EXISTS tokens(token_hash TEXT PRIMARY KEY,endpoint_id TEXT NOT NULL,scopes_json TEXT NOT NULL,expires_at INTEGER NOT NULL,max_requests INTEGER NOT NULL,used_requests INTEGER NOT NULL DEFAULT 0,revoked INTEGER NOT NULL DEFAULT 0,created_at INTEGER NOT NULL);
+ CREATE TABLE IF NOT EXISTS observations(event_id TEXT PRIMARY KEY,endpoint_id TEXT NOT NULL,received_at INTEGER NOT NULL,payload_json TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'pending');
+ CREATE TABLE IF NOT EXISTS datasets(dataset_id TEXT PRIMARY KEY,endpoint_id TEXT NOT NULL,created_at INTEGER NOT NULL,expected_chunks INTEGER NOT NULL,total_bytes INTEGER NOT NULL DEFAULT 0,dataset_sha256 TEXT,status TEXT NOT NULL DEFAULT 'uploading',validation_json TEXT,last_error TEXT);
+ CREATE TABLE IF NOT EXISTS chunks(dataset_id TEXT NOT NULL,chunk_index INTEGER NOT NULL,sha256 TEXT NOT NULL,size_bytes INTEGER NOT NULL,blob_path TEXT NOT NULL,status TEXT NOT NULL,PRIMARY KEY(dataset_id,chunk_index));
+ """); db.commit(); return db
+
+def token_hash(token):
+ pepper=os.environ.get("NANLM_TOKEN_PEPPER","")
+ if len(pepper)<32: raise RuntimeError("token pepper missing")
+ return hashlib.sha256((pepper+token).encode()).hexdigest()
+def jbytes(v): return json.dumps(v,sort_keys=True,separators=(",",":")).encode()
+
+class Handler(BaseHTTPRequestHandler):
+ server_version="NANNET/1"
+ def log_message(self,fmt,*args): print("nannet "+(fmt%args),flush=True)
+ def reply(self,code,obj,ctype="application/json; charset=utf-8"):
+  raw=jbytes(obj) if ctype.startswith("application/json") else obj
+  self.send_response(code); self.send_header("Content-Type",ctype); self.send_header("Content-Length",str(len(raw))); self.send_header("Cache-Control","no-store"); self.send_header("X-Content-Type-Options","nosniff"); self.end_headers(); self.wfile.write(raw)
+ def length(self,limit):
+  x=self.headers.get("Content-Length","")
+  if not x.isdigit() or int(x)<1 or int(x)>limit: raise ValueError("body_size_out_of_range")
+  return int(x)
+ def json_body(self):
+  raw=self.rfile.read(self.length(MAX_JSON))
+  try: v=json.loads(raw.decode("utf-8"))
+  except (UnicodeDecodeError,json.JSONDecodeError): raise ValueError("invalid_json")
+  if not isinstance(v,dict): raise ValueError("json_object_required")
+  return v
+ def auth(self,role="endpoint"):
+  header=self.headers.get("Authorization","")
+  if not header.startswith("Bearer ") or len(header)>512: return None
+  tok=header[7:]
+  if role in ("admin","validator"):
+   expected=os.environ.get("NANLM_"+role.upper()+"_TOKEN","")
+   return {"endpoint_id":role,"scopes":["*"]} if len(expected)>=32 and secrets.compare_digest(tok,expected) else None
+  try: th=token_hash(tok)
+  except RuntimeError: return None
+  db=connect()
+  try:
+   db.execute("BEGIN IMMEDIATE"); row=db.execute("SELECT * FROM tokens WHERE token_hash=?",(th,)).fetchone()
+   if not row or row["revoked"] or row["expires_at"]<=now() or row["used_requests"]>=row["max_requests"]: db.rollback(); return None
+   db.execute("UPDATE tokens SET used_requests=used_requests+1 WHERE token_hash=?",(th,)); db.commit()
+   return {"endpoint_id":row["endpoint_id"],"scopes":json.loads(row["scopes_json"])}
+  finally: db.close()
+ def need(self,role="endpoint"):
+  ident=self.auth(role)
+  if ident is None: self.reply(401,{"error":"unauthorized"})
+  return ident
+ def do_GET(self):
+  p=urlparse(self.path).path
+  if p=="/healthz": return self.reply(200,{"status":"ok","service":"nannet","protocol":"nanlm.universal-intake","version":1,"bootstrap_endpoints":256,"dataset_quota_bytes":DATASET_QUOTA,"chunk_limit_bytes":CHUNK_BYTES})
+  if p=="/v1/routes":
+   x=self.need()
+   if x is None:return
+   scopes=set(x["scopes"]); visible={k:v for k,v in ROUTES.items() if "*" in scopes or x["endpoint_id"] in v["audience"] or scopes.intersection(v["audience"])}
+   return self.reply(200,{"routes":visible})
+  if p=="/internal/datasets":
+   if self.need("validator") is None:return
+   db=connect()
+   try:
+    rows=db.execute("SELECT dataset_id,endpoint_id,created_at,expected_chunks,total_bytes,dataset_sha256,status FROM datasets WHERE status='quarantine' ORDER BY created_at LIMIT 32").fetchall()
+    return self.reply(200,{"datasets":[dict(r) for r in rows]})
+   finally: db.close()
+  m=re.fullmatch(r"/internal/datasets/([A-Za-z0-9._-]{1,96})/chunks/(\d+)",p)
+  if m:
+   if self.need("validator") is None:return
+   db=connect()
+   try: row=db.execute("SELECT blob_path,size_bytes,sha256 FROM chunks WHERE dataset_id=? AND chunk_index=? AND status='stored'",(m.group(1),int(m.group(2)))).fetchone()
+   finally: db.close()
+   if not row:return self.reply(404,{"error":"chunk_not_found"})
+   f=Path(row["blob_path"])
+   if not f.is_file():return self.reply(410,{"error":"blob_missing"})
+   self.send_response(200); self.send_header("Content-Type","application/octet-stream"); self.send_header("Content-Length",str(row["size_bytes"])); self.send_header("X-Chunk-SHA256",row["sha256"]); self.end_headers()
+   with f.open("rb") as stream:
+    while True:
+     b=stream.read(65536)
+     if not b:break
+     self.wfile.write(b)
+   return
+  if p=="/internal/observations":
+   if self.need("validator") is None:return
+   db=connect()
+   try:
+    rows=db.execute("SELECT event_id,endpoint_id,received_at,payload_json FROM observations WHERE status='pending' ORDER BY received_at LIMIT 100").fetchall()
+    return self.reply(200,{"events":[{"event_id":r["event_id"],"endpoint_id":r["endpoint_id"],"received_at":r["received_at"],"observation":json.loads(r["payload_json"])} for r in rows]})
+   finally:db.close()
+  return self.reply(404,{"error":"not_found"})
+ def do_POST(self):
+  p=urlparse(self.path).path
+  if p=="/admin/tokens":
+   if self.need("admin") is None:return
+   try:
+    d=self.json_body(); endpoint=d.get("endpoint_id"); scopes=d.get("scopes",["intake"]); ttl=int(d.get("ttl_seconds",86400)); quota=int(d.get("max_requests",10000))
+    if endpoint not in ENDPOINTS or not isinstance(scopes,list) or not scopes or any(s not in {"intake","dataset","observation","heartbeat","runner","keeper"} for s in scopes):raise ValueError("invalid_endpoint_or_scopes")
+    if not 60<=ttl<=7776000 or not 1<=quota<=10000000:raise ValueError("token_policy_out_of_range")
+   except (ValueError,TypeError) as e:return self.reply(400,{"error":str(e)[:80]})
+   token="nnt_"+secrets.token_urlsafe(36); db=connect()
+   try: db.execute("INSERT INTO tokens(token_hash,endpoint_id,scopes_json,expires_at,max_requests,created_at) VALUES(?,?,?,?,?,?)",(token_hash(token),endpoint,json.dumps(sorted(set(scopes))),now()+ttl,quota,now())); db.commit()
+   finally:db.close()
+   return self.reply(201,{"token":token,"endpoint_id":endpoint,"scopes":sorted(set(scopes)),"expires_at":now()+ttl,"max_requests":quota})
+  if p=="/v1/observations":
+   x=self.need()
+   if x is None:return
+   if not ({"intake","observation"}&set(x["scopes"]) or "*" in x["scopes"]):return self.reply(403,{"error":"scope_denied"})
+   try:
+    d=self.json_body(); eid=d.get("event_id"); gen=d.get("base_generation"); heads=d.get("active_heads",[])
+    if d.get("protocol")!="nanlm.endpoint-observation" or d.get("version")!=1:raise ValueError("unsupported_protocol")
+    if not isinstance(eid,str) or not EVENT_ID.fullmatch(eid):raise ValueError("invalid_event_id")
+    if isinstance(gen,bool) or not isinstance(gen,int) or gen<0:raise ValueError("invalid_base_generation")
+    if not isinstance(heads,list) or len(heads)>256 or any(isinstance(h,bool) or not isinstance(h,int) or not 0<=h<=255 for h in heads):raise ValueError("invalid_active_heads")
+    if d.get("outcome_verified",False) is not False or "correct" in d or "head_deltas" in d:raise ValueError("endpoint_cannot_assert_correctness")
+    payload={"protocol":"nanlm.endpoint-observation","version":1,"event_id":eid,"base_generation":gen,"active_heads":sorted(set(heads)),"outcome_verified":False}
+   except (ValueError,TypeError) as e:return self.reply(400,{"error":str(e)[:80]})
+   db=connect()
+   try:
+    db.execute("INSERT OR IGNORE INTO observations(event_id,endpoint_id,received_at,payload_json) VALUES(?,?,?,?)",(eid,x["endpoint_id"],now(),json.dumps(payload,sort_keys=True,separators=(",",":")))); inserted=db.execute("SELECT changes()").fetchone()[0]; db.commit()
+   finally:db.close()
+   return self.reply(202 if inserted else 200,{"event_id":eid,"endpoint_id":x["endpoint_id"],"state":"pending_unverified" if inserted else "duplicate_noop","outcome_verified":False})
+  m=re.fullmatch(r"/v1/datasets/([A-Za-z0-9._-]{1,96})/begin",p)
+  if m:
+   x=self.need()
+   if x is None:return
+   if not ({"intake","dataset"}&set(x["scopes"]) or "*" in x["scopes"]):return self.reply(403,{"error":"scope_denied"})
+   try:
+    count=int(self.json_body().get("chunk_count",0))
+    if not 1<=count<=100000:raise ValueError("invalid_chunk_count")
+   except (ValueError,TypeError) as e:return self.reply(400,{"error":str(e)[:80]})
+   db=connect()
+   try:db.execute("INSERT INTO datasets(dataset_id,endpoint_id,created_at,expected_chunks) VALUES(?,?,?,?)",(m.group(1),x["endpoint_id"],now(),count));db.commit()
+   except sqlite3.IntegrityError:return self.reply(409,{"error":"dataset_id_exists"})
+   finally:db.close()
+   return self.reply(201,{"dataset_id":m.group(1),"state":"uploading","chunk_limit_bytes":CHUNK_BYTES,"dataset_quota_bytes":DATASET_QUOTA})
+  m=re.fullmatch(r"/v1/datasets/([A-Za-z0-9._-]{1,96})/seal",p)
+  if m:
+   x=self.need()
+   if x is None:return
+   try:
+    d=self.json_body(); total=int(d.get("total_bytes",-1)); sha=d.get("sha256")
+    if total<1 or not isinstance(sha,str) or not HEX.fullmatch(sha):raise ValueError("invalid_manifest")
+   except (ValueError,TypeError) as e:return self.reply(400,{"error":str(e)[:80]})
+   db=connect()
+   try:
+    ds=db.execute("SELECT * FROM datasets WHERE dataset_id=? AND endpoint_id=?",(m.group(1),x["endpoint_id"])).fetchone()
+    if not ds:return self.reply(404,{"error":"dataset_not_found"})
+    chunks=db.execute("SELECT chunk_index,size_bytes,blob_path FROM chunks WHERE dataset_id=? AND status='stored' ORDER BY chunk_index",(m.group(1),)).fetchall()
+    if len(chunks)!=ds["expected_chunks"] or [c["chunk_index"] for c in chunks]!=list(range(ds["expected_chunks"])):return self.reply(409,{"error":"chunks_incomplete"})
+    if sum(c["size_bytes"] for c in chunks)!=total:return self.reply(409,{"error":"total_size_mismatch"})
+    h=hashlib.sha256()
+    for c in chunks:
+     with open(c["blob_path"],"rb") as f:
+      while True:
+       b=f.read(65536)
+       if not b:break
+       h.update(b)
+    if h.hexdigest()!=sha:return self.reply(422,{"error":"dataset_digest_mismatch"})
+    db.execute("UPDATE datasets SET total_bytes=?,dataset_sha256=?,status='quarantine' WHERE dataset_id=?",(total,sha,m.group(1)));db.commit()
+   finally:db.close()
+   return self.reply(202,{"dataset_id":m.group(1),"state":"quarantine_pending_external_validation","sha256":sha,"bytes":total})
+  return self.reply(404,{"error":"not_found"})
+ def do_PUT(self):
+  m=re.fullmatch(r"/v1/datasets/([A-Za-z0-9._-]{1,96})/chunks/(\d+)",urlparse(self.path).path)
+  if not m:return self.reply(404,{"error":"not_found"})
+  x=self.need()
+  if x is None:return
+  if not ({"intake","dataset"}&set(x["scopes"]) or "*" in x["scopes"]):return self.reply(403,{"error":"scope_denied"})
+  try:size=self.length(CHUNK_BYTES)
+  except ValueError as e:return self.reply(400,{"error":str(e)})
+  expected=self.headers.get("X-Chunk-SHA256","")
+  if not HEX.fullmatch(expected):return self.reply(400,{"error":"chunk_sha256_required"})
+  dsid,idx=m.group(1),int(m.group(2)); db=connect(); temp=None; final=None
+  try:
+   db.execute("BEGIN IMMEDIATE"); ds=db.execute("SELECT * FROM datasets WHERE dataset_id=? AND endpoint_id=? AND status='uploading'",(dsid,x["endpoint_id"])).fetchone()
+   if not ds:db.rollback();return self.reply(404,{"error":"dataset_not_uploading"})
+   if idx>=ds["expected_chunks"]:db.rollback();return self.reply(400,{"error":"chunk_index_out_of_range"})
+   if db.execute("SELECT 1 FROM chunks WHERE dataset_id=? AND chunk_index=?",(dsid,idx)).fetchone():db.rollback();return self.reply(409,{"error":"chunk_already_exists"})
+   used=db.execute("SELECT COALESCE(SUM(size_bytes),0) FROM chunks WHERE status IN ('receiving','stored')").fetchone()[0]
+   if used+size>DATASET_QUOTA:db.rollback();return self.reply(507,{"error":"disk_quota_exceeded"})
+   final=BLOBS/(hashlib.sha256((dsid+":"+str(idx)).encode()).hexdigest()+".blob")
+   db.execute("INSERT INTO chunks VALUES(?,?,?,?,?,'receiving')",(dsid,idx,expected,size,str(final)));db.commit()
+   fd,temp=tempfile.mkstemp(prefix="part-",dir=str(BLOBS)); h=hashlib.sha256()
+   with os.fdopen(fd,"wb") as out:
+    left=size
+    while left:
+     b=self.rfile.read(min(65536,left))
+     if not b:raise ValueError("truncated_chunk")
+     out.write(b);h.update(b);left-=len(b)
+    out.flush();os.fsync(out.fileno())
+   if h.hexdigest()!=expected:raise ValueError("chunk_digest_mismatch")
+   os.replace(temp,final);temp=None
+   db.execute("UPDATE chunks SET status='stored' WHERE dataset_id=? AND chunk_index=?",(dsid,idx));db.commit()
+   return self.reply(201,{"dataset_id":dsid,"chunk_index":idx,"bytes":size,"sha256":expected})
+  except (OSError,ValueError) as e:
+   if temp and os.path.exists(temp):os.unlink(temp)
+   if final and final.exists():final.unlink()
+   db.execute("DELETE FROM chunks WHERE dataset_id=? AND chunk_index=? AND status='receiving'",(dsid,idx));db.commit()
+   return self.reply(400,{"error":str(e)[:80]})
+  finally:db.close()
+ def do_PATCH(self):
+  m=re.fullmatch(r"/internal/datasets/([A-Za-z0-9._-]{1,96})/validation",urlparse(self.path).path)
+  if not m:return self.reply(404,{"error":"not_found"})
+  if self.need("validator") is None:return
+  try:
+   d=self.json_body(); passed=d.get("passed"); report=d.get("report",{})
+   if not isinstance(passed,bool) or not isinstance(report,dict) or len(jbytes(report))>MAX_JSON:raise ValueError("invalid_validation_result")
+  except (ValueError,TypeError) as e:return self.reply(400,{"error":str(e)[:80]})
+  db=connect()
+  try:
+   state="validated" if passed else "rejected"
+   n=db.execute("UPDATE datasets SET status=?,validation_json=?,last_error=? WHERE dataset_id=? AND status='quarantine'",(state,jbytes(report).decode(),None if passed else "external_validation_failed",m.group(1))).rowcount;db.commit()
+  finally:db.close()
+  if not n:return self.reply(409,{"error":"dataset_not_in_quarantine"})
+  return self.reply(200,{"dataset_id":m.group(1),"state":state,"training_eligible":passed})
+ def do_DELETE(self):
+  m=re.fullmatch(r"/admin/datasets/([A-Za-z0-9._-]{1,96})",urlparse(self.path).path)
+  if not m:return self.reply(404,{"error":"not_found"})
+  if self.need("admin") is None:return
+  db=connect()
+  try:
+   ds=db.execute("SELECT status FROM datasets WHERE dataset_id=?",(m.group(1),)).fetchone()
+   if not ds:return self.reply(404,{"error":"dataset_not_found"})
+   if ds["status"]=="validated":return self.reply(409,{"error":"validated_dataset_requires_retention_workflow"})
+   paths=db.execute("SELECT blob_path FROM chunks WHERE dataset_id=?",(m.group(1),)).fetchall()
+   db.execute("DELETE FROM chunks WHERE dataset_id=?",(m.group(1),));db.execute("DELETE FROM datasets WHERE dataset_id=?",(m.group(1),));db.commit()
+   for r in paths:Path(r["blob_path"]).unlink(missing_ok=True)
+  finally:db.close()
+  return self.reply(200,{"deleted":m.group(1)})
+ def do_OPTIONS(self):
+  self.send_response(204);self.send_header("Allow","GET,POST,PUT,PATCH,DELETE,OPTIONS");self.send_header("Content-Length","0");self.end_headers()
+
+def main():
+ for name in ("NANLM_ADMIN_TOKEN","NANLM_VALIDATOR_TOKEN","NANLM_TOKEN_PEPPER"):
+  if len(os.environ.get(name,""))<32:raise SystemExit(name+" must be a server-side secret of at least 32 characters")
+ ROOT.mkdir(parents=True,exist_ok=True);BLOBS.mkdir(parents=True,exist_ok=True);connect().close()
+ port=int(os.environ.get("PORT",os.environ.get("NANLM_PORT","8000")))
+ print("NANNET listening on 0.0.0.0:%d; disk quota=%d; chunk=%d"%(port,DATASET_QUOTA,CHUNK_BYTES),flush=True)
+ ThreadingHTTPServer(("0.0.0.0",port),Handler).serve_forever()
+if __name__=="__main__":main()
