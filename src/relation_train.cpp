@@ -30,6 +30,9 @@ struct Example {
     std::uint64_t label = 0;
 };
 
+std::array<std::uint8_t,8> relation_features(std::uint8_t resolution,
+                                             const std::string& value);
+
 bool unhex(const std::string& in, std::string& out) {
     if (in.empty() || (in.size() & 1u)) return false;
     auto nibble = [](char c) -> int {
