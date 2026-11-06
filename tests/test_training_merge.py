@@ -252,7 +252,30 @@ class TrainingMergeTest(unittest.TestCase):
                     data=json.dumps({"id_token": "mock", "slot": slot}).encode(),
                     method="POST", headers={"Content-Type": "application/json"})
                 with urllib.request.urlopen(request, timeout=5) as response:
-                    tokens.append(json.loads(response.read())["token"])
+                    bootstrap = json.loads(response.read())
+                    tokens.append(bootstrap["token"])
+                self.assertEqual(bootstrap["universe_point"], 0)
+                self.assertEqual(bootstrap["translator"], "N16B/1")
+                self.assertEqual(bootstrap["point_zero_route"],
+                                 "nan://GM0:SC0:MC0:BS0:HW0:BSR0")
+                self.assertEqual(bootstrap["point_zero_bytes"],
+                                 RunnerRoute(bsr=0).bytes().hex())
+                self.assertEqual(bootstrap["local_route"], RunnerRoute(bsr=slot).text())
+                self.assertEqual(bootstrap["local_route_bytes"],
+                                 RunnerRoute(bsr=slot).bytes().hex())
+                for scope in ("training:execute", "universe:register"):
+                    auth_request = urllib.request.Request(
+                        base + "/v1/authorize",
+                        data=json.dumps({"scope": scope}).encode(),
+                        method="POST",
+                        headers={"Authorization": "Bearer " + bootstrap["token"],
+                                 "Content-Type": "application/json"})
+                    with urllib.request.urlopen(auth_request, timeout=5) as auth_response:
+                        authorization = json.loads(auth_response.read())
+                    self.assertEqual(authorization["scope"], scope)
+                    self.assertEqual(authorization["point_zero_route"],
+                                     bootstrap["point_zero_route"])
+                    self.assertEqual(authorization["local_route"], bootstrap["local_route"])
             source, destination = RunnerRoute(bsr=0), RunnerRoute(bsr=1)
             original = BridgeFrame(source, destination, 501,
                                    NanWord.from_bits(0, 0, 501), b"test-payload")
