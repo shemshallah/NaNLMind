@@ -29,7 +29,7 @@ class NannetTests(unittest.TestCase):
   self.assertEqual(server.address_node_point("nan://GM255:SC255:MC255:BS255:HW255"),256)
  def test_portal_served_without_credentials(self):
   status,body=self.req("GET","/")
-  self.assertEqual(status,200);self.assertIn(b"NANNET",body);self.assertIn(b"connectEndpoint",body)
+  self.assertEqual(status,200);self.assertIn(b"NANNET",body);self.assertIn(b"connectEndpoint",body);self.assertIn(b"loadQuarantine",body);self.assertIn(b"reviewDataset",body)
   status,body=self.req("GET","/portal")
   self.assertEqual(status,200);self.assertIn(b"nan://GM0",body)
 
