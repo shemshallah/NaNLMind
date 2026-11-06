@@ -27,6 +27,20 @@ and exposes the canonical runner merge boundary.
 The 256 bootstrap identities are endpoint/slot identities, not 256 separate
 models. NaNLMind's six-runner ring remains the sole canonical 256-head learner.
 
+Issue a device token once, then deliver it to that endpoint's secret store:
+
+\`\`\`sh
+curl -fsS -X POST "$NANNET_URL/admin/tokens" \
+  -H "Authorization: Bearer $NANLM_ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"endpoint_id":"my_android","scopes":["intake","observation"],"ttl_seconds":2592000,"max_requests":100000}'
+\`\`\`
+
+For NaN0S transport, issue a separate my_android token with only the n16t
+scope. Tokens are returned once; store them securely and never paste them into
+source control or logs. Bootstrap slots use endpoint IDs bootstrap-000 through
+bootstrap-255.
+
 ## API
 
 - GET /healthz
