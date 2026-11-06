@@ -369,7 +369,8 @@ class RawRouteMesh:
     def __init__(self, root: str | Path | None = None,
                  quota_bytes: int = DEFAULT_QUOTA_BYTES,
                  mounts: Mapping[str, Sequence[str | Path] | str | Path] | None = None,
-                 physical_reserve_bytes: int = 256 * 1024 * 1024):
+                 physical_reserve_bytes: int = 256 * 1024 * 1024,
+                 require_mounts: bool = False):
         self.quota_bytes = _uint(quota_bytes, "quota_bytes")
         self.physical_reserve_bytes = _uint(physical_reserve_bytes, "physical_reserve_bytes")
         if self.quota_bytes == 0:
@@ -399,7 +400,11 @@ class RawRouteMesh:
                     if key in seen:
                         raise ValueError("each rawroute volume must have a distinct mount path")
                     seen.add(key)
-                    path.mkdir(parents=True, exist_ok=True)
+                    if require_mounts:
+                        if not path.is_dir() or not os.path.ismount(path):
+                            raise ValueError("configured rawroute path is not an active mount: " + str(path))
+                    else:
+                        path.mkdir(parents=True, exist_ok=True)
                     paths.append(path)
                 normalized[namespace] = paths
         self.mounts = normalized
@@ -440,8 +445,9 @@ class RawRouteMesh:
                 "NANLM_RAWROUTE_QUOTA_BYTES", str(DEFAULT_QUOTA_BYTES)))
         reserve = int(os.environ.get(
             "NANLM_RAWROUTE_PHYSICAL_RESERVE_BYTES", str(256 * 1024 * 1024)))
+        require_mounts = os.environ.get("NANLM_RAWROUTE_REQUIRE_MOUNTS", "0").strip().lower() in ("1", "true", "yes", "on")
         return cls(quota_bytes=configured_quota, mounts=mounts,
-                   physical_reserve_bytes=reserve)
+                   physical_reserve_bytes=reserve, require_mounts=require_mounts)
 
     def _shards(self, namespace: str) -> list[RawRouteDB]:
         try:
