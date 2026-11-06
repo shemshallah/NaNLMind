@@ -273,8 +273,8 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                     query = parse_qs(self.path.split('?', 1)[1] if '?' in self.path else '')
                     namespace = query.get('namespace', [''])[0]
                     route = query.get('route', [''])[0]
-                    if not namespace or not route:
-                        raise ValueError('namespace and route query parameters are required')
+                    if not namespace:
+                        raise ValueError('namespace query parameter is required')
                     if path.endswith('/reverse'):
                         target_kind = query.get('target_kind', [''])[0]
                         target_id = query.get('target_id', [''])[0]
@@ -285,6 +285,8 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                                                    'target_kind': target_kind,
                                                    'target_id': target_id,
                                                    'routes': routes}); return
+                    if not route:
+                        raise ValueError('route query parameter is required')
                     resolved = rawroute_mesh.resolve(namespace, route)
                     self._json(HTTPStatus.OK, {'found': resolved is not None,
                                                'route': resolved}); return
