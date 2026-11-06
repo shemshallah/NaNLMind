@@ -34,6 +34,9 @@ ephemeral until one is added. `NANLM_MERGE_TOKEN` is a Koyeb secret.
 - `POST /v1/devices/rotate` — rotate bearer without creating a duplicate slot.
 - `POST /v1/devices/release` — return slot for next participant.
 - `POST /v1/devices/report` — submit device/system/network/security issue.
+- `POST /v1/bootstrap/oidc` — verifies GitHub Actions OIDC for exactly `shemshallah/nanlm-cpu-1` through `nanlm-cpu-6`, on `main`, using `.github/workflows/runner.yml`; returns a 15-minute BSR admin bearer.
+- `POST /v1/bootstrap/heartbeat` — rotates the current BSR bearer and revokes the prior token.
+- `POST /v1/admin/identities/revoke` — admin-only, persistent identity-wide revocation.
 - `POST /v1/pair`, `/v1/authorize`, `/v1/revoke` — scoped installation pairing and authority checks.
 
 `GET /healthz` includes `nannet_authority: ready` only when the authority key is configured. The SQLite authority database shares the `/data` persistent volume with merge state. MAC/IMEI/serial are not used as identity; copied random credentials are limited to one active lease. Replacing a credential with a fresh identity cannot be reliably linked to the same physical device without Android hardware attestation.
@@ -78,4 +81,4 @@ Repeating an idempotency key returns the same response.
 
 ## Bootstrap runner trust
 
-`nanlm-cpu-1` through `nanlm-cpu-6` are BSR0 through BSR5 administrative/bootstrap runners. Each repository receives only its own portal base-URL variable (`BSR0_PORTAL_API` through `BSR5_PORTAL_API`). These values are URLs, not secrets. Give each runner a separate, revocable bootstrap credential with only the administrative scopes it needs; do not copy `NANNET_AUTHORITY_MASTER_KEY` to these runners. HW0–HW255 remain guest slots and must use guest enrollment credentials and guest scopes.
+`nanlm-cpu-1` through `nanlm-cpu-6` are BSR0 through BSR5 administrative/bootstrap runners. Each repository receives only its own portal base-URL variable (`BSR0_PORTAL_API` through `BSR5_PORTAL_API`). These values are URLs, not secrets. Each BSR workflow requests a GitHub OIDC token with audience `nannet-portal`; the portal verifies its signature, repository, main ref, and exact workflow path before issuing a short-lived admin bearer. Each BSR has a distinct root-derived Ed25519 identity key. Workers rotate the bearer during long-running epochs; the prior bearer is revoked on each rotation. Do not provision a static BSR secret or copy `NANNET_AUTHORITY_MASTER_KEY` to a runner. Pairing codes default to the guest role; guest scopes cannot include `snapshot:write`, `universe:register`, or `installation:admin`. HW guest enrollment remains consent-based and separate from BSR OIDC.
