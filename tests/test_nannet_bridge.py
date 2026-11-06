@@ -1,0 +1,52 @@
+import tempfile
+import unittest
+from pathlib import Path
+
+from nanlmind_nannet.bridge import BridgeFrame, BridgeMailbox, RunnerRoute
+from nanlmind_nannet.nan16de import NanWord
+
+
+class BridgeTests(unittest.TestCase):
+    def test_runner_route_is_canonical_and_numeric(self):
+        route = RunnerRoute.parse("nan://GM0:SC0:MC0:BS0:HW0:BSR5")
+        self.assertEqual(route.bsr, 5)
+        self.assertEqual(route.text(), "nan://GM0:SC0:MC0:BS0:HW0:BSR5")
+        with self.assertRaises(ValueError):
+            RunnerRoute.parse("nan://GM0:SC0:MC0:BS0:HW0:BSR(5*)")
+
+    def test_double_endian_frame_roundtrip(self):
+        src = RunnerRoute(bsr=0)
+        dst = RunnerRoute(bsr=5)
+        frame = BridgeFrame(src, dst, 17, NanWord.from_bits(2, 2, 0xA1B2C3D4),
+                            b"NaN16 bytes")
+        raw = frame.encode()
+        decoded = BridgeFrame.decode(raw)
+        self.assertEqual(decoded.source, src)
+        self.assertEqual(decoded.destination, dst)
+        self.assertEqual(decoded.word.pack(), frame.word.pack())
+        self.assertEqual(decoded.payload, b"NaN16 bytes")
+        self.assertEqual(BridgeFrame.decode(BridgeFrame.acknowledgement(decoded).encode()).word.near_class, 3)
+
+    def test_crc_rejects_corruption(self):
+        frame = BridgeFrame(RunnerRoute(bsr=0), RunnerRoute(bsr=1), 1,
+                            NanWord.from_bits(0, 0, 7), b"x")
+        raw = bytearray(frame.encode())
+        raw[-5] ^= 1
+        with self.assertRaises(ValueError):
+            BridgeFrame.decode(bytes(raw))
+
+    def test_mailbox_routes_both_directions(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            box = BridgeMailbox(Path(tmp) / "bridge.sqlite")
+            a, b = RunnerRoute(bsr=0), RunnerRoute(bsr=1)
+            outbound = BridgeFrame(a, b, 9, NanWord.from_bits(2, 2, 9), b"forward")
+            box.put(outbound)
+            self.assertEqual(BridgeFrame.decode(box.take(b)).payload, b"forward")
+            reply = BridgeFrame(b, a, 10, NanWord.from_bits(3, 3, 10), b"reverse")
+            box.put(reply)
+            self.assertEqual(BridgeFrame.decode(box.take(a)).payload, b"reverse")
+            self.assertIsNone(box.take(a))
+
+
+if __name__ == "__main__":
+    unittest.main()
