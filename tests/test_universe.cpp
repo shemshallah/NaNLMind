@@ -123,6 +123,21 @@ int main() {
         CHECK(u3->digest() == u->digest());
     }
 
+    // Snapshots from before point-zero metadata existed are upgraded on load.
+    NanCell& legacy_point = u2->head_cell(0);
+    for (std::size_t i = 2; i < 10; ++i) legacy_point.meta[i] = 0;
+    u2->descriptor_at_addr(matrix_addr(0, 0)).checksum =
+        Universe::cell_checksum(legacy_point);
+    const auto legacy_bytes = u2->serialize();
+    auto legacy_restore = Universe::from_bytes(legacy_bytes.data(), legacy_bytes.size());
+    CHECK(legacy_restore != nullptr);
+    if (legacy_restore) {
+        CHECK(legacy_restore->verify(&err));
+        CHECK_EQ(legacy_restore->point_zero_translator().point_index(), 0u);
+        CHECK_EQ(legacy_restore->point_zero_translator().protocol_version(), 1u);
+        CHECK_EQ(legacy_restore->head_cell(0).meta[3], 1u);
+    }
+
     // A different genome changes the state but keeps the topology.
     auto u4 = std::make_unique<Universe>(0);
     CHECK(!(u4->digest() == u->digest()));
