@@ -61,7 +61,7 @@ class Handler(BaseHTTPRequestHandler):
   header=self.headers.get("Authorization","")
   if not header.startswith("Bearer ") or len(header)>512: return None
   tok=header[7:]
-  if role in ("admin","validator"):
+  if role in ("admin","validator","runner"):
    expected=os.environ.get("NANLM_"+role.upper()+"_TOKEN","")
    return {"endpoint_id":role,"scopes":["*"]} if len(expected)>=32 and secrets.compare_digest(tok,expected) else None
   try: th=token_hash(tok)
