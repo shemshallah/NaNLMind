@@ -183,9 +183,15 @@ class MergeStore:
                 "body": body_hash,
                 "response": response,
             }
-            # Keep the replay table bounded; old keys can be retried after expiry.
+            # Corpus commits are permanent audit/idempotency records: a retry
+            # after staging cleanup must never apply the same dataset twice.
+            # Only generic short-lived request keys are eligible for pruning.
             if len(self.state["idempotency"]) > 4096:
-                for k in list(self.state["idempotency"])[:1024]:
+                candidates = [
+                    k for k, item in self.state["idempotency"].items()
+                    if not item.get("response", {}).get("dataset_id")
+                ]
+                for k in candidates[:1024]:
                     del self.state["idempotency"][k]
             self._save()
             return HTTPStatus.OK, response
