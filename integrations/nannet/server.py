@@ -294,6 +294,31 @@ class Handler(BaseHTTPRequestHandler):
     db.commit()
    finally:db.close()
    return self.reply(200,{"folded":changed})
+  if p=="/v1/intake/route":
+   x=self.need()
+   if x is None:return
+   if not ({"intake","observation"}&set(x["scopes"]) or "*" in x["scopes"]):return self.reply(403,{"error":"scope_denied"})
+   try:
+    d=self.json_body()
+    required=("universe","node","layer","control_point","base_generation","epoch","entries","digest")
+    if any(k not in d for k in required):raise ValueError("route_diff_fields_required")
+    integers=("universe","node","layer","control_point","base_generation","epoch")
+    if any(isinstance(d[k],bool) or not isinstance(d[k],int) or d[k]<0 for k in integers):raise ValueError("invalid_route_diff_integer")
+    if d["universe"]!=x["coordinates"]["bs"] or d["node"]!=x["node_point"]:raise ValueError("route_diff_address_mismatch")
+    if d["layer"]>255 or not 1<=d["control_point"]<=256 or d["base_generation"]>2**63-1 or d["epoch"]>2**63-1:raise ValueError("route_diff_value_out_of_range")
+    entries=d["entries"]
+    if not isinstance(entries,list) or len(entries)>256 or any(not isinstance(item,dict) for item in entries):raise ValueError("invalid_route_entries")
+    digest=d["digest"]
+    if not isinstance(digest,str) or not HEX.fullmatch(digest):raise ValueError("invalid_route_digest")
+    canonical={k:d[k] for k in required if k!="digest"}
+    if hashlib.sha256(jbytes(canonical)).hexdigest()!=digest:raise ValueError("route_digest_mismatch")
+    payload={"protocol":"nanlm.route-diff","version":1,"universe":d["universe"],"node":d["node"],"layer":d["layer"],"control_point":d["control_point"],"base_generation":d["base_generation"],"epoch":d["epoch"],"entries":entries,"digest":digest,"outcome_verified":False}
+   except (ValueError,TypeError) as e:return self.reply(400,{"error":str(e)[:80]})
+   db=connect()
+   try:
+    db.execute("INSERT OR IGNORE INTO observations(event_id,endpoint_id,received_at,payload_json) VALUES(?,?,?,?)",(digest,x["endpoint_id"],now(),json.dumps(payload,sort_keys=True,separators=(",",":"))));inserted=db.execute("SELECT changes()").fetchone()[0];db.commit()
+   finally:db.close()
+   return self.reply(202 if inserted else 200,{"event_id":digest,"endpoint_id":x["endpoint_id"],"state":"pending_unverified" if inserted else "duplicate_noop","outcome_verified":False,"base_generation":d["base_generation"]})
   if p=="/v1/observations":
    x=self.need()
    if x is None:return
