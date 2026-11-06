@@ -48,6 +48,10 @@ class RawRouteStoreTests(unittest.TestCase):
                                 idempotency_key="stable-route-1")
             self.assertEqual(first["generation"], 1)
             self.assertIn(first["shard"], {str(p) for p in mounts["MC0"]})
+            replay = mesh.commit("MC0", route, 0, 100,
+                                 idempotency_key="stable-route-1")
+            self.assertTrue(replay["replay"])
+            self.assertEqual(replay["generation"], 1)
 
             expanded = dict(mounts)
             expanded["MC0"] = [*mounts["MC0"], root / "mc0db-c"]
