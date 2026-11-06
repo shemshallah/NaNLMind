@@ -56,7 +56,7 @@ bool parse_examples(const std::string& path, std::vector<Example>& examples) {
     while (std::getline(in, line)) {
         ++line_no;
         if (line.empty()) continue;
-        std::array<std::string, 7> f{};
+        std::array<std::string, 8> f{};
         std::size_t n = 0, start = 0;
         for (std::size_t i = 0; i <= line.size(); ++i) {
             if (i == line.size() || line[i] == '\t') {
@@ -65,7 +65,7 @@ bool parse_examples(const std::string& path, std::vector<Example>& examples) {
                 start = i + 1u;
             }
         }
-        if (n != 7 || (f[0] != "train" && f[0] != "test") ||
+        if (n != 8 || (f[0] != "train" && f[0] != "test") ||
             (f[2] != "+" && f[2] != "-")) {
             std::cerr << "invalid relation row at " << line_no << "\n"; return false;
         }
@@ -79,8 +79,15 @@ bool parse_examples(const std::string& path, std::vector<Example>& examples) {
         } catch (...) { std::cerr << "invalid resolution/confidence at " << line_no << "\n"; return false; }
         e.train = f[0] == "train";
         e.positive = f[2] == "+";
-        if (!unhex(f[4], e.subject) || !unhex(f[5], e.predicate) || !unhex(f[6], e.object)) {
-            std::cerr << "invalid hex field at " << line_no << "\n"; return false;
+        if (!unhex(f[4], e.subject) || !unhex(f[5], e.predicate) ||
+            !unhex(f[6], e.object) || f[7].size() != 64u) {
+            std::cerr << "invalid hex/source digest field at " << line_no << "\n"; return false;
+        }
+        for (char c : f[7]) {
+            if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') ||
+                  (c >= 'A' && c <= 'F'))) {
+                std::cerr << "invalid source digest at " << line_no << "\n"; return false;
+            }
         }
         e.sh = Sha256::hash(e.subject.data(), e.subject.size());
         e.ph = Sha256::hash(e.predicate.data(), e.predicate.size());
@@ -143,7 +150,7 @@ int relation_train_cli(int argc, char** argv) {
     if (argc < 4) {
         std::cerr << "usage: nanlm-universal relation-train RECORDS STATE\n"
                   << "N16REL/1 rows: split<TAB>resolution(0..9)<TAB>polarity(+|-)"
-                  << "<TAB>confidence<TAB>subject_hex<TAB>predicate_hex<TAB>object_hex\n";
+                  << "<TAB>confidence<TAB>subject_hex<TAB>predicate_hex<TAB>object_hex<TAB>source_sha256\n";
         return 2;
     }
     std::vector<Example> examples;
