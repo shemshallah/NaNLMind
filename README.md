@@ -109,6 +109,22 @@ answered on the reverse rail. The persistent runner loop drains the mailbox
 during heartbeats. Both transports use the same canonical route and frame
 contract.
 
+The authority returns both the canonical URI and its six-byte route encoding.
+Runner startup verifies that the text and binary forms agree, and that the
+authority identifies point zero and the `N16B/1` translator. Credential
+rotation repeats those checks. The service health response exposes queued
+frames by destination; each destination mailbox is bounded at 4,096 frames
+and returns HTTP 429 when full.
+
+For a Koyeb deployment, mount a persistent volume at `/data` and configure
+`NANLM_MERGE_ROOT=/data`, `NANNET_AUTHORITY_DB=/data/nannet-authority.sqlite`,
+`NANLM_MERGE_TOKEN`, and `NANNET_AUTHORITY_MASTER_KEY` as service environment
+settings (the last two are secrets; the authority key must decode from
+base64url to 32 bytes). The service listens on Koyeb's `PORT`. The persistent
+volume is required so the bridge mailbox and identity authority survive
+instance restarts. This documents the expected runtime configuration; it
+does not claim that a live Koyeb service has already been deployed.
+
 ### The 256-Head Array
 
 There is one canonical head implementation, instantiated exactly 256 times,
