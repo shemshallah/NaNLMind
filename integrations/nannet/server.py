@@ -186,7 +186,7 @@ class Handler(BaseHTTPRequestHandler):
    if self.need("admin") is None:return
    try:
     d=self.json_body(); endpoint=d.get("endpoint_id"); scopes=d.get("scopes",["intake"]); ttl=int(d.get("ttl_seconds",86400)); quota=int(d.get("max_requests",10000))
-    if endpoint not in ENDPOINTS or not isinstance(scopes,list) or not scopes or any(s not in {"intake","dataset","observation","heartbeat","runner","keeper","n16t"} for s in scopes):raise ValueError("invalid_endpoint_or_scopes")
+    if endpoint not in ENDPOINTS or not isinstance(scopes,list) or not scopes or any(s not in {"intake","dataset","observation","heartbeat","n16t"} for s in scopes):raise ValueError("invalid_endpoint_or_scopes")
     if not 60<=ttl<=7776000 or not 1<=quota<=10000000:raise ValueError("token_policy_out_of_range")
    except (ValueError,TypeError) as e:return self.reply(400,{"error":str(e)[:80]})
    token="nnt_"+secrets.token_urlsafe(36); db=connect()
