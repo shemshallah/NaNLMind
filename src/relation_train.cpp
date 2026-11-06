@@ -437,11 +437,15 @@ int relation_train_cli(int argc, char** argv) {
             const double spec=test_neg[r]?double(tn[r])/test_neg[r]:0.0;
             const double before_sens=pre_test_pos[r]?double(pre_tp[r])/pre_test_pos[r]:0.0;
             const double before_spec=pre_test_neg[r]?double(pre_tn[r])/pre_test_neg[r]:0.0;
+            const bool before_balanced_valid = pre_test_pos[r] && pre_test_neg[r];
+            const bool balanced_valid = test_pos[r] && test_neg[r];
             std::cout << "resolution_L" << r << " train=" << train_n[r] << " test=" << test_n[r]
                       << " before_accuracy=" << before_acc << " accuracy=" << acc
                       << " delta=" << (acc-before_acc)
-                      << " before_balanced_accuracy=" << (before_sens+before_spec)/2.0
-                      << " balanced_accuracy=" << (sens+spec)/2.0
+                      << " before_balanced_accuracy=" << (before_balanced_valid ? (before_sens+before_spec)/2.0 : 0.0)
+                      << " before_balanced_accuracy_valid=" << (before_balanced_valid ? "yes" : "no")
+                      << " balanced_accuracy=" << (balanced_valid ? (sens+spec)/2.0 : 0.0)
+                      << " balanced_accuracy_valid=" << (balanced_valid ? "yes" : "no")
                       << " majority_baseline=" << baseacc << "\n";
         }
     };
