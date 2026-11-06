@@ -80,7 +80,7 @@ class Handler(BaseHTTPRequestHandler):
   return ident
  def do_GET(self):
   p=urlparse(self.path).path
-  if p=="/healthz": return self.reply(200,{"status":"ok","service":"nannet","protocol":"nanlm.universal-intake","version":1,"bootstrap_endpoints":256,"dataset_quota_bytes":DATASET_QUOTA,"chunk_limit_bytes":CHUNK_BYTES})
+  if p=="/healthz": return self.reply(200,{"status":"ok","service":"nannet","protocol":"nanlm.universal-intake","version":1,"bootstrap_endpoints":256,"dataset_quota_bytes":DATASET_QUOTA,"chunk_limit_bytes":CHUNK_BYTES,"training_merge_enabled":bool(os.environ.get("NANLM_MERGE_TOKEN"))})
   if p=="/v1/routes":
    x=self.need()
    if x is None:return
