@@ -9,12 +9,14 @@
 #include <array>
 #include <cctype>
 #include <cstdint>
+#include <cstdlib>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
+#include <utility>
 
 namespace {
 using namespace nanlm;
