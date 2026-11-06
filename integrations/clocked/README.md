@@ -4,7 +4,7 @@ The CLOCKED service implementation lives in the dedicated repository:
 https://github.com/shemshallah/NaNLMind_CLOCKED
 
 This directory retains only NaNLMind-side interface material:
-- `endpoint-observation.schema.json`: generic authenticated endpoint observation contract consumed by the NaNLMind evidence intake.
+- `protocol.schema.json`: canonical CLOCKED result-envelope contract consumed by NaNLMind.\n- `endpoint-observation.schema.json`: generic authenticated endpoint observation contract consumed by the NaNLMind evidence intake.
 - `endpoint_client.py`: standard-library publisher for the NaNLMind observation intake; it does not call the CLOCKED SDK.
 - `native_demo.cpp`: native learner demonstration using the NaNLMind head/evidence implementation.
 - `training_endpoints.json`: canonical NaNLMind endpoint/learner registry.
