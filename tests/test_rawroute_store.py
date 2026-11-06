@@ -67,6 +67,14 @@ class RawRouteStoreTests(unittest.TestCase):
             self.assertEqual(health["route_count"], 1)
             self.assertEqual(len(health["shards"]), 3)
 
+    def test_production_mount_guard_rejects_unmounted_paths(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            mounts = {ns: [root / ns.lower()] for ns in ("BS0", "MC0", "SC0", "GM0")}
+            with self.assertRaisesRegex(ValueError, "not an active mount"):
+                RawRouteMesh(mounts=mounts, require_mounts=True)
+            self.assertFalse((root / "bs0").exists())
+
     def test_mount_manifest_rejects_shared_or_relative_paths(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
