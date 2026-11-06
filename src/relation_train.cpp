@@ -258,7 +258,7 @@ int relation_train_cli(int argc, char** argv) {
         }
         pair_updates += 3;
         Hyperedge edge;
-        edge.flags=kHyperLearned|kHyperDirected|kHyperTemporal|kHyperMirror;
+        edge.flags=kHyperLearned|kHyperTemporal|kHyperMirror;
         edge.weight=std::max<std::uint32_t>(1u,e.confidence);
         edge.epoch=epoch; edge.label=e.label;
         edge.members={Ref::from_bit(sb),Ref::from_bit(pb),Ref::from_bit(ob),sp,po,so};
