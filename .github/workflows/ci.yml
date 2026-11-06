@@ -26,10 +26,14 @@ jobs:
           assert len(events) == 256, len(events)
           assert {event["head"] for event in events} == set(range(256))
           assert len({event["source_digest"] for event in events}) == 1
-          print("validated 256 unique head discoveries")
+          assert all(isinstance(event.get("hyperedge_id"), int) and event["hyperedge_id"] > 0 for event in events)
+          assert len({event["hyperedge_id"] for event in events}) == 256
+          print("validated 256 unique head discoveries and native hyperedges")
           PY
           ./build/nanlm-universal math-train data/alice_full.txt 1 64 state/hermes-universe.nmg state/hermes-discoveries-2.jsonl | tee state/hermes-resume.log
           grep -q resumed_state_bytes state/hermes-resume.log
+          grep -q native_hyperedges_added=256 state/hermes-first.log
+          grep -q native_hyperedges_added=256 state/hermes-resume.log
           test -s state/hermes-universe.nmg
           python3 - <<'PY'
           import json, pathlib, re
