@@ -562,6 +562,7 @@ int cmd_math_train(int argc, char** argv) {
     std::uint64_t total_train = 0;
     std::uint64_t total_test = 0;
     std::uint64_t total_correct = 0;
+    std::uint64_t total_baseline_correct = 0;
 
     std::cout << "hermes_math_train heads=" << HeadArray::size()
               << " epochs=" << epochs << " corpus_bytes=" << data.size()
@@ -582,18 +583,24 @@ int cmd_math_train(int argc, char** argv) {
         const std::uint8_t current_bit = static_cast<std::uint8_t>((index >> 3u) & 7u);
         const std::uint8_t target_bit = static_cast<std::uint8_t>((index >> 6u) & 3u);
 
+        std::size_t train_ones = 0;
+        std::size_t train_seen = 0;
         for (int epoch = 0; epoch < epochs; ++epoch) {
             std::size_t seen = 0;
             for (std::size_t i = 1; i + 1 < split && seen < train_count; i += train_stride, ++seen) {
                 const std::uint32_t a = (data[i - 1] >> previous_bit) & 1u;
                 const std::uint32_t b = (data[i] >> current_bit) & 1u;
                 const bool target = ((data[i + 1] >> target_bit) & 1u) != 0;
+                if (target) ++train_ones;
+                ++train_seen;
                 head.train_boolean(a, b, target);
             }
         }
 
         std::size_t evaluated = 0;
         std::size_t correct = 0;
+        std::size_t baseline_correct = 0;
+        const bool baseline_prediction = train_ones * 2u >= train_seen;
         for (std::size_t i = split + 1; i + 1 < data.size() && evaluated < test_count;
              i += test_stride, ++evaluated) {
             const std::uint32_t a = (data[i - 1] >> previous_bit) & 1u;
@@ -601,6 +608,7 @@ int cmd_math_train(int argc, char** argv) {
             const bool target = ((data[i + 1] >> target_bit) & 1u) != 0;
             const bool prediction = (NanWord::eval_bool(head.boolean_rule(), a, b) & 1u) != 0;
             if (prediction == target) ++correct;
+            if (baseline_prediction == target) ++baseline_correct;
         }
         const Hash256 after = hash_head_learning_state(head);
         topology->commit(static_cast<std::uint8_t>(index), 0x31u, head.address().value,
@@ -609,7 +617,10 @@ int cmd_math_train(int argc, char** argv) {
         total_train += train_count * static_cast<std::uint64_t>(epochs);
         total_test += evaluated;
         total_correct += correct;
+        total_baseline_correct += baseline_correct;
         const double accuracy = evaluated ? static_cast<double>(correct) / evaluated : 0.0;
+        const double baseline_accuracy = evaluated
+            ? static_cast<double>(baseline_correct) / evaluated : 0.0;
 
         trace << "{\"schema\":\"nanlm-hermes-discovery/1\""
               << ",\"kind\":\"hypothesis\""
@@ -632,7 +643,9 @@ int cmd_math_train(int argc, char** argv) {
               << ",\"evidence\":{\"train_samples\":" << (train_count * static_cast<std::size_t>(epochs))
               << ",\"test_samples\":" << evaluated
               << ",\"correct\":" << correct
-              << ",\"accuracy\":" << accuracy << "}"
+              << ",\"accuracy\":" << accuracy
+              << ",\"majority_baseline_correct\":" << baseline_correct
+              << ",\"majority_baseline_accuracy\":" << baseline_accuracy << "}"
               << ",\"provenance\":{\"trainer\":\"nanlm-universal/math-train\""
               << ",\"epochs\":" << epochs << ",\"train_split\":0.8}"
               << ",\"confidence\":" << accuracy
@@ -667,6 +680,7 @@ int cmd_math_train(int argc, char** argv) {
               << " train_observations=" << total_train
               << " test_observations=" << total_test
               << " heldout_accuracy=" << (total_test ? static_cast<double>(total_correct) / total_test : 0.0)
+              << " majority_baseline_accuracy=" << (total_test ? static_cast<double>(total_baseline_correct) / total_test : 0.0)
               << " discoveries=256"
               << " state_bytes=" << state.size()
               << " state_digest=" << hex(topology->global_digest())
