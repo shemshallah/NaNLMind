@@ -11,12 +11,14 @@ concurrency:
 jobs:
   consume:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Install vectorized corpus fold
+        run: pip install --disable-pip-version-check numpy
       - name: Drain validated datasets into bootstrap head bank
         env:
           NANNET_URL: ${{ vars.NANNET_URL }}
