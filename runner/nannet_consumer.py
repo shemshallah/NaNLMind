@@ -119,9 +119,9 @@ class TextCorpusFold:
         self.canonical_bytes = 0
 
     def _line(self, raw: bytes) -> None:
-        if raw.endswith(b"\\r"):
+        if raw.endswith(b"\r"):
             raw = raw[:-1]
-        if b"\\r" in raw:
+        if b"\r" in raw:
             raise RuntimeError("bare CR is not a canonical line ending")
         if self.first_line:
             self.first_line = False
