@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import shutil
 import sqlite3
 import time
 from pathlib import Path
@@ -44,12 +45,16 @@ def _uint(value: int, label: str, maximum: int = (1 << 63) - 1) -> int:
 
 class RawRouteDB:
     def __init__(self, path: str | Path, namespace: str,
-                 quota_bytes: int = DEFAULT_QUOTA_BYTES):
+                 quota_bytes: int = DEFAULT_QUOTA_BYTES,
+                 physical_root: str | Path | None = None,
+                 physical_reserve_bytes: int = 128 * 1024 * 1024):
         if namespace not in NAMESPACE_FILES:
             raise ValueError("unknown NaN route namespace")
         self.path = Path(path)
         self.namespace = namespace
         self.quota_bytes = _uint(quota_bytes, "quota_bytes")
+        self.physical_root = Path(physical_root) if physical_root is not None else self.path.parent
+        self.physical_reserve_bytes = _uint(physical_reserve_bytes, "physical_reserve_bytes")
         if self.quota_bytes == 0:
             raise ValueError("quota_bytes must be greater than zero")
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -227,6 +232,9 @@ class RawRouteDB:
             next_used = used - old_bytes + record_bytes + event_bytes
             if next_used > self.quota_bytes:
                 raise RouteQuotaExceeded("namespace logical quota exceeded")
+            free_bytes = shutil.disk_usage(self.physical_root).free
+            if free_bytes < record_bytes + event_bytes + self.physical_reserve_bytes:
+                raise RouteQuotaExceeded("shared Koyeb volume physical reserve reached")
             generation = current_generation + 1
 
             db.execute("""INSERT INTO route_definitions(
@@ -362,7 +370,8 @@ class RawRouteMesh:
         if self.quota_bytes == 0:
             raise ValueError("quota_bytes must be greater than zero")
         self.databases = {
-            namespace: RawRouteDB(self.root / filename, namespace, self.quota_bytes)
+            namespace: RawRouteDB(self.root / filename, namespace, self.quota_bytes,
+                                  physical_root=self.root)
             for namespace, filename in NAMESPACE_FILES.items()
         }
 
@@ -373,5 +382,15 @@ class RawRouteMesh:
             raise ValueError("unknown NaN route namespace") from exc
 
     def health(self) -> dict:
-        return {namespace: database.health()
-                for namespace, database in self.databases.items()}
+        disk = shutil.disk_usage(self.root)
+        return {
+            "namespaces": {namespace: database.health()
+                           for namespace, database in self.databases.items()},
+            "filesystem": {
+                "total_bytes": disk.total,
+                "used_bytes": disk.used,
+                "free_bytes": disk.free,
+                "logical_quota_total_bytes": self.quota_bytes * len(self.databases),
+                "preallocated": False,
+            },
+        }
