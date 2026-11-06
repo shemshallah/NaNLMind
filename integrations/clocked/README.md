@@ -2,6 +2,8 @@
 
 This adapter makes Clocked a **supervisory observation source** for NaNLMind. It does not train Clocked, replace the 256-head universe, or write directly into the NaN16 guest.
 
+**Topology:** the NaNLMind six-runner ring is the primary training universe and owns the canonical 256-head state. Overbootstrap aggregates verified evidence from four environments: the bootstrap ring, MY Android, Hermes demo, and Clocked demo. Clocked is only endpoint 4; it is not the model owner or coordinator. See [the canonical training topology](../../docs/72_CANONICAL_TRAINING_UNIVERSE.md) and [the endpoint registry](training_endpoints.json).
+
 ## Hardware-neutral boundary
 
 All clients use the same versioned HTTP/JSON contract:
@@ -23,7 +25,7 @@ Protocol version 1 is architecture-neutral JSONL/JSON. Integers, hashes, labels,
 - Never put the upstream Clocked key in source, GitHub variables, Android resources, CLI arguments, corpus files, JSONL events, logs, or screenshots.
 - Participants receive a short-lived `CLOCKED_USER_API` token from the gateway. It is a gateway-only credential, not a wrapped or encrypted Clocked key.
 - The gateway stores only a peppered SHA-256 digest of each participant token, enforces expiry and request quotas, and returns the token only once.
-- The Android app and cloned universes call the gateway; they never call Clocked with the privileged key.
+- Clocked demo clients call this gateway; Android and Hermes use their own endpoint adapters and scoped credentials. No endpoint receives the privileged Clocked key.
 
 The key shared during setup should be rotated. Add the replacement to the actual server's secret store as `CLOCKED_API_KEY`. The GitHub integration used for this change cannot create repository Actions secrets.
 
@@ -90,7 +92,7 @@ Each JSONL event is a credential-free, content-minimized external observation:
 - endpoint status/timing summaries
 - allowlisted task labels and verdict flags, never arbitrary extracted values
 - credit/cost metadata when supplied by the SDK
-- tenant attribution at the gateway boundary
+- trusted source endpoint identity (`clocked_demo`) and tenant attribution at the gateway boundary
 - explicit `learning_state: awaiting_nanlmind_ingest`
 
 It deliberately does **not** invent active heads, head deltas, correctness labels, or a committed NaNLMind generation. Those are produced only after the native learner evaluates the observation against its own baseline and a verified outcome.
@@ -101,4 +103,4 @@ The Clocked SDK sends an idempotency key and reuses it for retries. The direct a
 
 ## Current integration boundary
 
-This adds the server-side gateway, participant-token issuance, quota enforcement, an architecture-neutral protocol envelope, a standard-library participant client, a normative JSON schema, and offline tests. Native ingestion into the C++ 256-head/Overbootstrap state, durable ledger commits, Android controls, and held-out learning benchmarks remain subsequent integration steps. No claim of end-to-end training is made by this adapter.
+This adds the server-side gateway, participant-token issuance, quota enforcement, an architecture-neutral protocol envelope, a standard-library participant client, a normative JSON schema, and offline tests. Native ingestion into the runner ring's Overbootstrap evidence fold, durable ledger commits, Android/Hermes endpoint adapters, and held-out cross-endpoint learning benchmarks remain subsequent integration steps. No claim of end-to-end training is made by this adapter.
