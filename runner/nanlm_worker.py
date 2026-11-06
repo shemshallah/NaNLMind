@@ -460,7 +460,7 @@ def op_status(args):
 
 
 def verify_portal_identity(slot):
-    """Require a short-lived, portal-issued BSR credential when portal mode is configured."""
+    """Verify both execution and binary-bridge scopes for the assigned BSR route."""
     global PORTAL_TOKEN, PORTAL_ROUTE
     import urllib.request
     base = os.environ.get("NANNET_PORTAL_API", "").rstrip("/")
@@ -471,22 +471,23 @@ def verify_portal_identity(slot):
         return
     if not token:
         raise RuntimeError("NANNET portal is configured but no BSR token was issued")
-    body = json.dumps({"scope": "training:execute"}).encode()
-    request = urllib.request.Request(
-        base + "/v1/authorize", data=body,
-        headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
-        method="POST")
-    with urllib.request.urlopen(request, timeout=20) as response:
-        result = json.load(response)
-    if not result.get("authorized") or result.get("scope") != "training:execute":
-        raise RuntimeError("NANNET portal rejected BSR identity")
-    advertised = result.get("route")
-    if advertised and RunnerRoute.parse(advertised) != PORTAL_ROUTE:
-        raise RuntimeError("NANNET route does not match this GitHub runner slot")
+    for scope in ("training:execute", "universe:register"):
+        body = json.dumps({"scope": scope}).encode()
+        request = urllib.request.Request(
+            base + "/v1/authorize", data=body,
+            headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
+            method="POST")
+        with urllib.request.urlopen(request, timeout=20) as response:
+            result = json.load(response)
+        if not result.get("authorized") or result.get("scope") != scope:
+            raise RuntimeError("NANNET portal rejected BSR scope: " + scope)
+        advertised = result.get("route")
+        if advertised and RunnerRoute.parse(advertised) != PORTAL_ROUTE:
+            raise RuntimeError("NANNET route does not match this GitHub runner slot")
     PORTAL_TOKEN = token
     print("nannet-authenticated: " + result.get("installation_id", "unknown") +
-          " route=" + PORTAL_ROUTE.text(), file=sys.stderr)
-
+          " route=" + PORTAL_ROUTE.text() +
+          " scopes=training:execute,universe:register", file=sys.stderr)
 
 
 def portal_bridge_send(frame):
