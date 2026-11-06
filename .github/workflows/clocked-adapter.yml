@@ -8,6 +8,9 @@ on:
       - "include/nanlm/endpoint_evidence.hpp"
       - "src/endpoint_evidence.cpp"
       - "tests/test_endpoint_evidence.cpp"
+      - "include/nanlm/learning_mesh.hpp"
+      - "src/learning_mesh.cpp"
+      - "tests/test_learning_mesh.cpp"
       - "Makefile"
       - "docs/72_CANONICAL_TRAINING_UNIVERSE.md"
   push:
