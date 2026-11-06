@@ -337,9 +337,10 @@ formal finite-control/self-encoding proof is still open (doc 69).
 The Neary-Woods U6,4 6-state/4-symbol table is loaded as ordinary chart
 transitions and cross-checked against an independent map-based reference for
 200 steps. The complete Minsky 23-state/8-symbol universal table is also loaded
-as 184 transitions and matches a Python reference for 100 steps. This is an
-explicit finite universal table, but its tape compiler/self-encoding remains
-open.
+as 184 transitions and matches a Python reference for 100 steps. A normal
+encoded binary machine (two writes, then undefined halt) runs through the same
+Minsky table and matches its final tape/head. The tape compiler for arbitrary
+machines and self-encoding remain open.
 
 ### UTM proof harness
 

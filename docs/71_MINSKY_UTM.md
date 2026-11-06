@@ -38,6 +38,21 @@ PASS Minsky 23-state/8-symbol table matches Python reference
 The agreed final state is UTM state 3 (zero-based 2), head position 38, with the
 expected 73-symbol tape.
 
+A second test encodes a normal, non-exploit binary machine:
+
+```text
+q0,0 -> write 1, right, q1
+q1,0 -> write 1, right, q2
+q2,0 -> undefined (halt)
+```
+
+It runs the Minsky table to its halt transition and checks the final 73-symbol
+tape and head:
+
+```text
+PASS Minsky UTM executes a normally encoded binary machine
+```
+
 ## 3. Tape format
 
 The UTM tape is:

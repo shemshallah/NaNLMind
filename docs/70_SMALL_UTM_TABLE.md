@@ -34,6 +34,8 @@ independent map-based reference.
   within its state/symbol limits.
 - The table is stored as ordinary chart transition entries, not a host
   task-specific branch.
+- The companion Minsky 23-state/8-symbol table now executes a normally encoded
+  binary machine; see doc 71.
 
 ## What it does not close
 
