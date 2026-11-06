@@ -143,7 +143,7 @@ class GatewayTests(unittest.TestCase):
         self.assertEqual(status, "400 Bad Request")
         self.assertEqual(result["error"], "endpoint_cannot_assert_correctness")
 
-    def test_clocked_token_cannot_use_generic_endpoint_ingest(self):
+    def test_clocked_identity_is_server_assigned_for_generic_events(self):
         token = self.issue()
         payload = {
             "protocol": "nanlm.endpoint-observation", "version": 1,
