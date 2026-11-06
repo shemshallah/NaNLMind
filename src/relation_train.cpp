@@ -230,7 +230,21 @@ int relation_train_cli(int argc, char** argv) {
         topology->temporal().link(Ref::from_bit(ob),so,epoch);
         ++accepted; ++edges_added;
     }
-    if (!accepted) { std::cerr << "no new relation events; duplicates=" << duplicates << "\n"; return 8; }
+    if (!accepted) {
+        if (duplicates) {
+            const std::uintmax_t existing_bytes = std::filesystem::exists(state_path)
+                ? std::filesystem::file_size(state_path) : 0u;
+            const Hash256 current = topology->global_digest();
+            std::cout << "relation_train status=no_op train_events=0 duplicate_events=" << duplicates
+                      << " changed_heads=0 mirror_pair_updates=0 hyperedges_added=0"
+                      << " state_bytes=" << existing_bytes
+                      << " state_digest_before=" << hex(current)
+                      << " state_digest_after=" << hex(current) << "\\n";
+            return 0;
+        }
+        std::cerr << "no new relation events; duplicates=0\\n";
+        return 8;
+    }
     topology->commit(0x48u,0x41u,0,before,topology->global_digest(),
                      static_cast<std::uint64_t>(topology->ledger().size()+1u));
     const auto bytes=topology->serialize();
