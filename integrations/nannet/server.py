@@ -90,11 +90,23 @@ class Handler(BaseHTTPRequestHandler):
     rows=db.execute("SELECT dataset_id,endpoint_id,created_at,expected_chunks,total_bytes,dataset_sha256,status FROM datasets WHERE status='quarantine' ORDER BY created_at LIMIT 32").fetchall()
     return self.reply(200,{"datasets":[dict(r) for r in rows]})
    finally: db.close()
+  if p=="/internal/datasets/validated":
+   if self.need("runner") is None:return
+   db=connect()
+   try:
+    rows=db.execute("SELECT dataset_id,endpoint_id,created_at,expected_chunks,total_bytes,dataset_sha256,status,validation_json FROM datasets WHERE status='validated' ORDER BY created_at LIMIT 32").fetchall()
+    return self.reply(200,{"datasets":[dict(r) for r in rows]})
+   finally: db.close()
   m=re.fullmatch(r"/internal/datasets/([A-Za-z0-9._-]{1,96})/chunks/(\d+)",p)
   if m:
-   if self.need("validator") is None:return
+   validator=self.auth("validator"); runner=self.auth("runner")
+   if validator is None and runner is None:return self.reply(401,{"error":"unauthorized"})
    db=connect()
-   try: row=db.execute("SELECT blob_path,size_bytes,sha256 FROM chunks WHERE dataset_id=? AND chunk_index=? AND status='stored'",(m.group(1),int(m.group(2)))).fetchone()
+   try:
+    ds=db.execute("SELECT status FROM datasets WHERE dataset_id=?",(m.group(1),)).fetchone()
+    if not ds:return self.reply(404,{"error":"dataset_not_found"})
+    if runner is not None and ds["status"]!="validated":return self.reply(403,{"error":"dataset_not_validated"})
+    row=db.execute("SELECT blob_path,size_bytes,sha256 FROM chunks WHERE dataset_id=? AND chunk_index=? AND status='stored'",(m.group(1),int(m.group(2)))).fetchone()
    finally: db.close()
    if not row:return self.reply(404,{"error":"chunk_not_found"})
    f=Path(row["blob_path"])
@@ -107,7 +119,7 @@ class Handler(BaseHTTPRequestHandler):
      self.wfile.write(b)
    return
   if p=="/internal/observations":
-   if self.need("validator") is None:return
+   if self.need("runner") is None:return
    db=connect()
    try:
     rows=db.execute("SELECT event_id,endpoint_id,received_at,payload_json FROM observations WHERE status='pending' ORDER BY received_at LIMIT 100").fetchall()
@@ -127,6 +139,19 @@ class Handler(BaseHTTPRequestHandler):
    try: db.execute("INSERT INTO tokens(token_hash,endpoint_id,scopes_json,expires_at,max_requests,created_at) VALUES(?,?,?,?,?,?)",(token_hash(token),endpoint,json.dumps(sorted(set(scopes))),now()+ttl,quota,now())); db.commit()
    finally:db.close()
    return self.reply(201,{"token":token,"endpoint_id":endpoint,"scopes":sorted(set(scopes)),"expires_at":now()+ttl,"max_requests":quota})
+  if p=="/internal/observations/ack":
+   if self.need("runner") is None:return
+   try:
+    ids=self.json_body().get("event_ids")
+    if not isinstance(ids,list) or len(ids)>100 or any(not isinstance(v,str) or not EVENT_ID.fullmatch(v) for v in ids):raise ValueError("invalid_event_ids")
+   except (ValueError,TypeError) as e:return self.reply(400,{"error":str(e)[:80]})
+   db=connect()
+   try:
+    changed=0
+    for eid in ids: changed+=db.execute("UPDATE observations SET status='folded' WHERE event_id=? AND status='pending'",(eid,)).rowcount
+    db.commit()
+   finally:db.close()
+   return self.reply(200,{"folded":changed})
   if p=="/v1/observations":
    x=self.need()
    if x is None:return
@@ -257,7 +282,7 @@ class Handler(BaseHTTPRequestHandler):
   self.send_response(204);self.send_header("Allow","GET,POST,PUT,PATCH,DELETE,OPTIONS");self.send_header("Content-Length","0");self.end_headers()
 
 def main():
- for name in ("NANLM_ADMIN_TOKEN","NANLM_VALIDATOR_TOKEN","NANLM_TOKEN_PEPPER"):
+ for name in ("NANLM_ADMIN_TOKEN","NANLM_VALIDATOR_TOKEN","NANLM_RUNNER_TOKEN","NANLM_TOKEN_PEPPER"):
   if len(os.environ.get(name,""))<32:raise SystemExit(name+" must be a server-side secret of at least 32 characters")
  ROOT.mkdir(parents=True,exist_ok=True);BLOBS.mkdir(parents=True,exist_ok=True);connect().close()
  port=int(os.environ.get("PORT",os.environ.get("NANLM_PORT","8000")))
