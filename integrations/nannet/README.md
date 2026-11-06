@@ -47,7 +47,7 @@ distinct hierarchy levels, not hardware aliases.
 
 ## Operator portal
 
-The same-origin portal is served at `/` and `/portal`. It provides health, authenticated identity/routes, endpoint-token issuance, corpus upload, and admin-only keeper/model status. Credentials remain in page memory only and are not written to local storage or cookies. Use HTTPS only. The portal never proxies Qwen requests.
+The same-origin portal is served at `/` and `/portal`. It provides health, authenticated identity/routes, endpoint-token issuance, a separate validator queue with explicit approve/reject actions, corpus upload, and admin-only keeper/model status. Credentials remain in page memory only and are not written to local storage or cookies. Use HTTPS only. The portal never proxies Qwen requests.
 
 Corpus upload uses browser SHA-256, sends bounded chunks, and seals the manifest after every chunk is acknowledged. Upload means **quarantined**, not trained. Independent validation and a runner commit receipt are required before staging bytes are released.
 
