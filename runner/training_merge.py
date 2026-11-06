@@ -232,6 +232,20 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
             header = self.headers.get('Authorization', '')
             return header[7:] if header.startswith('Bearer ') else ''
         def do_POST(self) -> None:
+            if self.path == '/v1/bootstrap/heartbeat':
+                try:
+                    bearer = self._bearer()
+                    claims = authority.verify_access_token(bearer, required_scope="training:execute")
+                    identity = claims.get("sub", "")
+                    if claims.get("role") != "admin" or not identity.startswith("github-actions:shemshallah/nanlm-cpu-"):
+                        raise AuthError("BSR identity required")
+                    scopes = claims["scope"]
+                    authority.revoke_token(bearer)
+                    renewed = issue_token(authority._private_key("admin", identity), identity, scopes, 900, role="admin")
+                    self._json(HTTPStatus.OK, {"token": renewed, "token_type": "Bearer", "expires_in": 900, "identity": identity})
+                except (ValueError, KeyError, TypeError, AuthError) as exc:
+                    self._json(HTTPStatus.UNAUTHORIZED, {"error": str(exc)[:160]})
+                return
             if self.path == '/v1/admin/identities/revoke':
                 try:
                     bearer = self._bearer()
