@@ -297,6 +297,7 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
             if path == "/healthz":
                 health = store.health()
                 health["nannet_authority"] = "ready" if authority else "disabled"
+                health["nannet_bridge"] = bridge.stats()
                 if authority:
                     import sqlite3
                     with sqlite3.connect(authority.database) as db:
