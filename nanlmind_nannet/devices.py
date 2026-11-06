@@ -91,7 +91,11 @@ class DeviceRegistry:
                 db.execute("INSERT INTO devices VALUES (?,?,?,?,?)",
                            (device_id, secret_hash, now, now, hardware_kind))
             used = {r[0] for r in db.execute("SELECT hw_slot FROM device_leases WHERE hw_slot IS NOT NULL AND released_at IS NULL AND expires_at>?", (now,))}
-            slot = next((n for n in range(4, 256) if n not in used), None)
+            # HW2 is the Hermes demo slot, HW3 is reserved for Clocked.
+            # Android/test devices never claim either reserved slot.
+            candidates = ([2] + list(range(4, 256))
+                          if hardware_kind == "hermes" else list(range(4, 256)))
+            slot = next((n for n in candidates if n not in used), None)
             if slot is None:
                 raise ValueError("no hardware slots currently available")
             expires = now + self.lease_seconds
