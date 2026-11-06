@@ -1,0 +1,70 @@
+{
+  "schema": "nanlm.training-endpoints",
+  "version": 1,
+  "primary_training_universe": {
+    "id": "bootstrap",
+    "role": "canonical_runner_ring",
+    "repository": "shemshallah/NaNLMind",
+    "runners": [
+      "nanlm-cpu-1",
+      "nanlm-cpu-2",
+      "nanlm-cpu-3",
+      "nanlm-cpu-4",
+      "nanlm-cpu-5",
+      "nanlm-cpu-6"
+    ],
+    "head_count": 256,
+    "owns_canonical_generation": true,
+    "description": "The six-runner ring is the main NaNLMind training universe. It bootstraps and trains the single canonical 256-head state."
+  },
+  "overbootstrap": {
+    "role": "cross_endpoint_meta_learner",
+    "consumes": [
+      "bootstrap",
+      "my_android",
+      "hermes_demo",
+      "clocked_demo"
+    ],
+    "accepts_only": "verified_mergeable_trace_summaries",
+    "owns_endpoint_raw_state": false,
+    "description": "Aggregates evidence across endpoint environments, learns reliability and routing policy, and returns bounded policy to the canonical runner ring."
+  },
+  "endpoints": [
+    {
+      "id": "bootstrap",
+      "kind": "primary",
+      "transport": "runner_ring",
+      "submits_to_overbootstrap": true,
+      "state_owner": "canonical_runner_ring"
+    },
+    {
+      "id": "my_android",
+      "kind": "edge",
+      "transport": "versioned_http_json",
+      "submits_to_overbootstrap": true,
+      "state_owner": "local_edge_universe"
+    },
+    {
+      "id": "hermes_demo",
+      "kind": "demo",
+      "transport": "versioned_http_json",
+      "submits_to_overbootstrap": true,
+      "state_owner": "demo_endpoint"
+    },
+    {
+      "id": "clocked_demo",
+      "kind": "demo",
+      "transport": "clocked_gateway",
+      "submits_to_overbootstrap": true,
+      "state_owner": "clocked_gateway_observation"
+    }
+  ],
+  "merge_rules": {
+    "raw_text_persisted": false,
+    "endpoint_local_state_overwritten": false,
+    "duplicate_delivery": "idempotent_noop",
+    "stale_generation": "reject_and_rebase",
+    "unverified_outcome": "evidence_only_no_correctness_credit",
+    "head_deltas": "only_created_by_canonical_training_or_verified_native_ingest"
+  }
+}

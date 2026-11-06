@@ -19,12 +19,22 @@ void OverbootstrapLearner::observe(const BootstrapTrace& trace) {
     }
 }
 
+EndpointIngestResult OverbootstrapLearner::observe_endpoint(
+    const EndpointObservation& observation) {
+    return endpoint_evidence_.observe(observation);
+}
+
+EndpointEvidenceStats OverbootstrapLearner::endpoint_stats(EndpointId endpoint) const {
+    return endpoint_evidence_.stats(endpoint);
+}
+
 std::array<std::int16_t, 256> OverbootstrapLearner::feedback() const {
     std::array<std::int16_t, 256> out{};
+    const auto endpoint = endpoint_evidence_.feedback();
     for (std::size_t h = 0; h < out.size(); ++h) {
         // Bounded bias: enough to steer top-k, not enough to rewrite the
         // bootstrap's local association.
-        out[h] = static_cast<std::int16_t>(std::clamp(evidence_[h] / 8, -8, 8));
+        out[h] = static_cast<std::int16_t>(std::clamp(evidence_[h] / 8 + endpoint[h], -8, 8));
     }
     return out;
 }
@@ -39,6 +49,8 @@ Hash256 OverbootstrapLearner::digest() const {
     h.update(tag, sizeof(tag));
     h.update(&traces_, sizeof(traces_));
     h.update(evidence_.data(), evidence_.size() * sizeof(std::int32_t));
+    const Hash256 endpoint_digest = endpoint_evidence_.digest();
+    h.update(endpoint_digest.data(), endpoint_digest.size());
     return h.final();
 }
 

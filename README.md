@@ -351,3 +351,16 @@ The R23 VM is a host interpreter over topology cells; the cognitive suite is hos
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).
+
+
+## Clocked evidence integration
+
+The isolated `integrations/clocked/` adapter provides a deterministic offline
+fixture and an authenticated live gateway. It validates task-family labels
+against independent gold labels before admitting observations, keeps held-out
+evaluation isolated from live Clocked calls, and sends provenance-bound
+endpoint evidence to the native Overbootstrap learner. Unverified observations
+remain evidence-only; only independently verified outcomes contribute bounded
+feedback. This is a routing/evidence integration, not a general language-model
+accuracy claim. See `docs/72_CANONICAL_TRAINING_UNIVERSE.md` and
+`specs/CLOCKED_CHAINABLE_TRAINING.md`.

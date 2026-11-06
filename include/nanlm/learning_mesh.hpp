@@ -4,6 +4,7 @@
 #pragma once
 
 #include "nanlm/bootstrap_router.hpp"
+#include "nanlm/endpoint_evidence.hpp"
 
 #include <array>
 #include <cstdint>
@@ -20,6 +21,8 @@ struct BootstrapTrace {
 class OverbootstrapLearner {
 public:
     void observe(const BootstrapTrace& trace);
+    EndpointIngestResult observe_endpoint(const EndpointObservation& observation);
+    EndpointEvidenceStats endpoint_stats(EndpointId endpoint) const;
     std::array<std::int16_t, 256> feedback() const;
     std::int32_t evidence(std::uint8_t head) const;
     std::uint64_t traces() const { return traces_; }
@@ -30,6 +33,7 @@ private:
     std::array<std::uint64_t, 256> correct_{};
     std::array<std::uint64_t, 256> wrong_{};
     std::uint64_t traces_ = 0;
+    EndpointEvidenceFold endpoint_evidence_;
 };
 
 // L1 hyperparameter learner: a small integer bandit over top-k candidates.
