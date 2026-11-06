@@ -147,6 +147,9 @@ public:
     // Integer score learning over the 16 Boolean functions. Scores live in
     // scratch.work()[16..47] as 16 little-endian int16 values. No gradients.
     void reset_boolean_learner();
+    // Decay accumulated operator evidence toward zero before a new task batch,
+    // preventing int16 score saturation from freezing later learning.
+    void decay_boolean_scores(std::uint8_t right_shift = 1);
     void train_boolean(std::uint32_t a, std::uint32_t b, bool target);
     std::int16_t boolean_score(std::uint8_t op) const;
     std::uint16_t learned_mask() const;
