@@ -108,6 +108,7 @@ class NannetTests(unittest.TestCase):
   status,body=self.req("POST","/n16t",frame,t,{"Content-Type":"application/vnd.nan16.n16t"})
   self.assertEqual(status,503)
   self.assertEqual(body["error"],"n16t_peer_not_configured")
+  self.assertEqual(self.req("POST","/n16t",frame,t,{"Content-Type":"application/x-n16t"})[0],503)
   self.assertEqual(self.req("POST","/n16t",frame,t,{"Content-Type":"application/octet-stream"})[0],415)
 
 if __name__=="__main__":unittest.main()
