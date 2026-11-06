@@ -13,6 +13,16 @@ class BridgeTests(unittest.TestCase):
         self.assertEqual(route.text(), "nan://GM0:SC0:MC0:BS0:HW0:BSR5")
         with self.assertRaises(ValueError):
             RunnerRoute.parse("nan://GM0:SC0:MC0:BS0:HW0:BSR(5*)")
+        with self.assertRaises(ValueError):
+            RunnerRoute.parse("nan://GM00:SC0:MC0:BS0:HW0:BSR5")
+        with self.assertRaises(ValueError):
+            RunnerRoute.parse("nan://GM0:SC0:MC0:BS0:HW0:BSR05")
+        with self.assertRaises(ValueError):
+            RunnerRoute.parse(None)
+        for index in range(6):
+            expected = f"nan://GM0:SC0:MC0:BS0:HW0:BSR{index}"
+            self.assertEqual(RunnerRoute(bsr=index).text(), expected)
+            self.assertEqual(RunnerRoute.parse(expected).text(), expected)
 
     def test_double_endian_frame_roundtrip(self):
         src = RunnerRoute(bsr=0)
@@ -28,6 +38,16 @@ class BridgeTests(unittest.TestCase):
         self.assertEqual(decoded.direction, "away")
         self.assertTrue(decoded.signaling)
         self.assertEqual(BridgeFrame.decode(BridgeFrame.acknowledgement(decoded).encode()).word.near_class, 3)
+
+    def test_frame_rejects_non_wire_values(self):
+        route = RunnerRoute(bsr=0)
+        word = NanWord.from_bits(0, 0, 1)
+        with self.assertRaises(ValueError):
+            BridgeFrame(route, route, True, word, b"x").encode()
+        with self.assertRaises(ValueError):
+            BridgeFrame(route, route, 1, word, "not bytes").encode()
+        with self.assertRaises(ValueError):
+            BridgeFrame(route, route, 1, object(), b"x").encode()
 
     def test_crc_rejects_corruption(self):
         frame = BridgeFrame(RunnerRoute(bsr=0), RunnerRoute(bsr=1), 1,
