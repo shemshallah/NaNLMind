@@ -30,6 +30,8 @@ from nanlmind_nannet.pairing import PairingAuthority
 from nanlmind_nannet.devices import DeviceRegistry
 from nanlmind_nannet.nan16de import decode_envelope
 from nanlmind_nannet.crypto_compat import Ed25519PublicKey
+from nanlmind_nannet.bridge import (BridgeFrame, BridgeMailbox, RunnerRoute,
+                                    MEDIA_TYPE as N16B_MEDIA_TYPE, route_for_identity)
 
 
 N16T_MEDIA_TYPE = "application/vnd.nan16.n16t"
@@ -227,6 +229,7 @@ def _verify_github_oidc(jwt: str, expected_repository: str) -> dict[str, Any]:
 def make_server(host: str, port: int, root: Path, token: str, authority: PairingAuthority | None = None) -> ThreadingHTTPServer:
     store = MergeStore(root, token)
     devices = DeviceRegistry(authority.database, authority=authority) if authority else None
+    bridge = BridgeMailbox(root / "nannet-bridge.sqlite")
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, fmt: str, *args: Any) -> None:
@@ -250,6 +253,31 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
 
         def do_GET(self) -> None:
             path = self.path.split('?', 1)[0].rstrip('/') or '/'
+            if path == '/v1/nannet/bridge/poll':
+                if authority is None:
+                    self._json(HTTPStatus.SERVICE_UNAVAILABLE, {'error': 'nannet authority disabled'}); return
+                try:
+                    bearer = self._bearer()
+                    claims = authority.verify_access_token(bearer, required_scope='universe:register')
+                    if claims.get('role') != 'admin':
+                        raise AuthError('BSR runner identity required')
+                    expected = route_for_identity(claims.get('sub', ''))
+                    from urllib.parse import parse_qs
+                    query = parse_qs(self.path.split('?', 1)[1] if '?' in self.path else '')
+                    requested = RunnerRoute.parse(query['route'][0]) if query.get('route') else expected
+                    if requested != expected:
+                        raise AuthError('poll route does not match authenticated BSR identity')
+                    raw = bridge.take(requested)
+                    if raw is None:
+                        self.send_response(HTTPStatus.NO_CONTENT); self.send_header('Cache-Control', 'no-store'); self.end_headers(); return
+                    self.send_response(HTTPStatus.OK)
+                    self.send_header('Content-Type', N16B_MEDIA_TYPE)
+                    self.send_header('Content-Length', str(len(raw)))
+                    self.send_header('Cache-Control', 'no-store')
+                    self.end_headers(); self.wfile.write(raw)
+                except (ValueError, KeyError, TypeError, AuthError) as exc:
+                    self._json(HTTPStatus.UNAUTHORIZED, {'error': str(exc)[:160]})
+                return
             if path in ("/", "/portal"):
                 page = ("<!doctype html><meta charset=utf-8><title>NaNNet N16T Portal</title>"
                         "<main style='font:16px system-ui;max-width:48rem;margin:3rem auto'>"
@@ -293,6 +321,35 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
             return header[7:] if header.startswith('Bearer ') else ''
         def do_POST(self) -> None:
             path = self.path.split('?', 1)[0].rstrip('/') or '/'
+            if path == '/v1/nannet/bridge':
+                if authority is None:
+                    self._json(HTTPStatus.SERVICE_UNAVAILABLE, {'error': 'nannet authority disabled'}); return
+                try:
+                    claims = authority.verify_access_token(self._bearer(), required_scope='universe:register')
+                    if claims.get('role') != 'admin':
+                        raise AuthError('BSR runner identity required')
+                    expected = route_for_identity(claims.get('sub', ''))
+                    if self.headers.get('Content-Type', '').split(';', 1)[0].strip() != N16B_MEDIA_TYPE:
+                        self._json(HTTPStatus.UNSUPPORTED_MEDIA_TYPE, {'error': 'N16B binary media type required'}); return
+                    length = int(self.headers.get('Content-Length', '0'))
+                    if length <= 0 or length > 1_048_576 + 64:
+                        self._json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {'error': 'N16B frame size rejected'}); return
+                    raw = self.rfile.read(length)
+                    if len(raw) != length:
+                        raise ValueError('truncated N16B frame')
+                    frame = BridgeFrame.decode(raw)
+                    if frame.source != expected:
+                        raise AuthError('source route does not match authenticated BSR identity')
+                    bridge.put(frame)
+                    ack = BridgeFrame.acknowledgement(frame).encode()
+                    self.send_response(HTTPStatus.ACCEPTED)
+                    self.send_header('Content-Type', N16B_MEDIA_TYPE)
+                    self.send_header('Content-Length', str(len(ack)))
+                    self.send_header('Cache-Control', 'no-store')
+                    self.end_headers(); self.wfile.write(ack)
+                except (ValueError, TypeError, AuthError) as exc:
+                    self._json(HTTPStatus.UNAUTHORIZED, {'error': str(exc)[:160]})
+                return
             if path in ("/portal", "/n16t"):
                 try:
                     if self.headers.get("Content-Type", "").split(";", 1)[0].strip() != N16T_MEDIA_TYPE:
@@ -312,7 +369,7 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                         return
                     # CAPABILITIES(type=2) advertises only the runner portal point.
                     # Corpus streaming/merge remains on the separately authenticated JSON API.
-                    response = _n16t_encode(2, session, 1, struct.pack("<H6B", 1, 0, 0, 0, 0, 0, 0))
+                    response = _n16t_encode(2, session, 1, struct.pack("<H6B", 0x000F, 0, 0, 0, 0, 0, 0))
                     self.send_response(HTTPStatus.OK)
                     self.send_header("Content-Type", N16T_MEDIA_TYPE)
                     self.send_header("Content-Length", str(len(response)))
@@ -335,7 +392,7 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                     authority.register_identity("admin", identity)
                     authority.revoke_token(bearer)
                     renewed = issue_token(authority._private_key("admin", identity), identity, scopes, 900, role="admin")
-                    self._json(HTTPStatus.OK, {"token": renewed, "token_type": "Bearer", "expires_in": 900, "identity": identity})
+                    self._json(HTTPStatus.OK, {"token": renewed, "token_type": "Bearer", "expires_in": 900, "identity": identity, "route": route_for_identity(identity).text(), "universe_point": 0, "translator": "N16B/1"})
                 except (ValueError, KeyError, TypeError, AuthError) as exc:
                     self._json(HTTPStatus.UNAUTHORIZED, {"error": str(exc)[:160]})
                 return
@@ -368,7 +425,7 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                     authority.register_identity("admin", identity)
                     scopes = ["training:execute", "universe:read", "universe:register", "snapshot:read", "snapshot:write", "corpus:write", "installation:admin"]
                     token = issue_token(authority._private_key("admin", identity), identity, scopes, 900, role="admin")
-                    self._json(HTTPStatus.OK, {"token": token, "token_type": "Bearer", "expires_in": 900, "identity": identity, "role": "admin", "scopes": scopes})
+                    self._json(HTTPStatus.OK, {"token": token, "token_type": "Bearer", "expires_in": 900, "identity": identity, "route": route_for_identity(identity).text(), "universe_point": 0, "translator": "N16B/1", "role": "admin", "scopes": scopes})
                 except (ValueError, KeyError, TypeError, AuthError) as exc:
                     self._json(HTTPStatus.UNAUTHORIZED, {"error": str(exc)[:160]})
                 return
@@ -463,7 +520,7 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                             claims = authority.verify_access_token(bearer, required_scope=scope)
                     except (AuthError, ValueError) as exc:
                         self._json(HTTPStatus.UNAUTHORIZED, {'error': str(exc)[:160]}); return
-                    self._json(HTTPStatus.OK, {'authorized': True, 'installation_id': claims['sub'], 'scope': scope, 'expires_at': claims['exp']}); return
+                    self._json(HTTPStatus.OK, {'authorized': True, 'installation_id': claims['sub'], 'scope': scope, 'expires_at': claims['exp'], 'route': route_for_identity(claims['sub']).text() if claims.get('role') == 'admin' and claims['sub'].startswith('github-actions:') else None, 'universe_point': 0}); return
                 if path == '/v1/revoke':
                     bearer = self._bearer()
                     if not bearer: self._json(HTTPStatus.UNAUTHORIZED, {'error': 'bearer_required'}); return
