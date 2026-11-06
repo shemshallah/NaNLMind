@@ -342,6 +342,15 @@ The 508-state binary machine also runs through a compact direct table runtime
 Minsky source steps exactly and tracks 100 steps of the Minsky machine on its
 own default tape.
 
+### Staged corpus pipeline
+
+The runner now has a `training` op for six bounded stages: inverse/Boolean,
+deep logic, common words, repetitive words, word choice, and sentence next-word
+choice. It writes a strict N16TXT/1 corpus plus native companion, supports
+`--single` and per-stage seconds, and emits HERMES layer-tagged discoveries.
+The HERMES adapter can ingest them into `MemoryStore` and supports prompt-to-plan
+training; `ClockedAdapter` attaches the same session to an epoch.
+
 ### Staged logic trainer
 
 The core now has a staged session: 256-head Boolean foundation, composed

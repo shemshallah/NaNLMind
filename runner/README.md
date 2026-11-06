@@ -47,6 +47,7 @@ checks the GitHub rate limit before dispatching and uses the existing
 | `handoff` | alias for `headshift` |
 | `logic` | run one graded logic-curriculum slot |
 | `logic-core` | run the staged Boolean/deep/word core session |
+| `training` | run the bounded Boolean/deep/word/sentence corpus pipeline |
 | `status` | print gate/clock/lease/manifest |
 
 ## Tiers

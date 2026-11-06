@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       op:
-        description: selftest | prewarm | headshift | handoff | logic | logic-core | status
+        description: selftest | prewarm | headshift | handoff | logic | logic-core | training | status
         type: choice
-        options: [selftest, prewarm, headshift, handoff, logic, logic-core, loop, finalize, unlock, status]
+        options: [selftest, prewarm, headshift, handoff, logic, logic-core, training, loop, finalize, unlock, status]
         default: selftest
       slot:
         description: runner slot 1..6
@@ -44,6 +44,18 @@ on:
         description: deep logic circuit repetitions
         type: string
         default: "64"
+      stage_seconds:
+        description: per-stage wall budget for training
+        type: string
+        default: "1.0"
+      single:
+        description: optional single stage for op=training
+        type: string
+        default: ""
+      max_samples:
+        description: optional cap for op=training
+        type: string
+        default: "0"
 
 permissions:
   contents: read
@@ -95,7 +107,7 @@ jobs:
         run: pip install -r engine/requirements-core.txt
 
       - name: Build NaNLMind core
-        if: ${{ inputs.op == 'selftest' || inputs.op == 'prewarm' || inputs.op == 'headshift' || inputs.op == 'loop' || inputs.op == 'logic' || inputs.op == 'logic-core' }}
+        if: ${{ inputs.op == 'selftest' || inputs.op == 'prewarm' || inputs.op == 'headshift' || inputs.op == 'loop' || inputs.op == 'logic' || inputs.op == 'logic-core' || inputs.op == 'training' }}
         run: make -C core -j2
 
       - name: Execute head shift
@@ -111,7 +123,10 @@ jobs:
             --session-rounds "${{ inputs.session_rounds }}" \
             --start-level "${{ inputs.start_level }}" \
             --boolean-reps "${{ inputs.boolean_reps }}" \
-            --circuit-reps "${{ inputs.circuit_reps }}"
+            --circuit-reps "${{ inputs.circuit_reps }}" \
+            --stage-seconds "${{ inputs.stage_seconds }}" \
+            --single "${{ inputs.single }}" \
+            --max-samples "${{ inputs.max_samples }}"
 
       - name: Summary
         run: |

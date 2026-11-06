@@ -94,6 +94,9 @@ merge-test:
 logic-test:
 	PYTHONPATH=runner python3 -m unittest discover -s tests -p 'test_logic*.py' -v
 
+training-test:
+	PYTHONPATH=runner python3 -m unittest discover -s tests -p 'test_*pipeline.py' -v
+
 byte-mesh: $(BUILD)/test_byte_stream_learning
 	./$(BUILD)/test_byte_stream_learning
 

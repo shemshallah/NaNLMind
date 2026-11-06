@@ -278,6 +278,40 @@ def op_headshift(args):
     return 0
 
 
+def op_training(args):
+    """Run the staged corpus pipeline through one runner slot."""
+    script = Path(__file__).with_name("training_pipeline.py")
+    state = local_path()
+    corpus = state / f"curriculum_{args.epoch}_{args.slot}.n16txt"
+    out = state / f"training_{args.epoch}_{args.slot}.json"
+    cmd = [sys.executable, str(script),
+           "--slot", str(args.slot + 1), "--epoch", str(args.epoch),
+           "--stage-seconds", str(args.stage_seconds),
+           "--corpus", str(corpus),
+           "--state-dir", str(state),
+           "--out", str(out)]
+    if args.single:
+        cmd += ["--single", args.single]
+    if args.max_samples > 0:
+        cmd += ["--max-samples", str(args.max_samples)]
+    result = subprocess.run(cmd, text=True, capture_output=True)
+    if result.returncode != 0:
+        print(result.stderr.strip(), file=sys.stderr)
+        return result.returncode
+    print(result.stdout)
+    try:
+        record = json.loads(out.read_text())
+    except Exception as exc:
+        print(f"training output unreadable: {exc}", file=sys.stderr)
+        return 5
+    env = connect_tiers(writer=True)
+    reg_put(env, f"nanlm/training/{args.epoch}/{args.slot}",
+            {"ok": record.get("ok", False), "stages": record.get("stages", []),
+             "corpus": record.get("corpus_path"), "slot": args.slot,
+             "epoch": args.epoch})
+    return 0 if record.get("ok") else 4
+
+
 def op_logic_core(args):
     """Run the staged core logic session through the runner."""
     result = run_core(["logic-train", str(args.boolean_reps),
@@ -458,7 +492,7 @@ def portal_heartbeat():
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--op", choices=["selftest", "prewarm", "headshift", "handoff", "logic", "logic-core", "loop", "finalize", "unlock", "status"],
+    ap.add_argument("--op", choices=["selftest", "prewarm", "headshift", "handoff", "logic", "logic-core", "training", "loop", "finalize", "unlock", "status"],
                     default="selftest")
     ap.add_argument("--slot", type=int, default=None)
     ap.add_argument("--epoch", type=int, default=0)
@@ -469,6 +503,9 @@ def main():
     ap.add_argument("--start-level", type=int, default=0)
     ap.add_argument("--boolean-reps", type=int, default=32)
     ap.add_argument("--circuit-reps", type=int, default=64)
+    ap.add_argument("--stage-seconds", default="1.0")
+    ap.add_argument("--single", default="")
+    ap.add_argument("--max-samples", type=int, default=0)
     args = ap.parse_args()
     verify_portal_identity()
     args.slot = parse_slot(args.slot)
@@ -481,6 +518,8 @@ def main():
         return op_logic(args)
     if args.op == "logic-core":
         return op_logic_core(args)
+    if args.op == "training":
+        return op_training(args)
     if args.op == "loop":
         return op_loop(args)
     if args.op == "finalize":

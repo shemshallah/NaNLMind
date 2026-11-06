@@ -95,7 +95,7 @@ def main():
     ap.add_argument("--timeout", type=int, default=21600)
     ap.add_argument("--poll", type=int, default=60)
     ap.add_argument("--epochs", type=int, default=10)
-    ap.add_argument("--op", choices=["headshift", "logic", "logic-core"], default="headshift")
+    ap.add_argument("--op", choices=["headshift", "logic", "logic-core", "training"], default="headshift")
     ap.add_argument("--persistent", action="store_true",
                     help="one loop job processes many epochs in one workspace")
     ap.add_argument("--dry-run", action="store_true")
@@ -119,7 +119,7 @@ def main():
     def repo_for(slot):
         return f"{args.owner}/nanlm-cpu-{slot + 1}"
 
-    if args.op in ("logic", "logic-core"):
+    if args.op in ("logic", "logic-core", "training"):
         for slot in order:
             repo = repo_for(slot)
             base = latest_run(repo) if not args.dry_run else None

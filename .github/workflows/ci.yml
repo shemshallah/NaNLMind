@@ -55,6 +55,8 @@ jobs:
         run: make merge-test
       - name: Logic curriculum tests
         run: make logic-test
+      - name: Training corpus and HERMES adapter tests
+        run: make training-test
       - name: Universe training gate
         run: make universe-check
       - name: Legacy logic suite

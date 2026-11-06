@@ -233,6 +233,7 @@ baseline — a plain RNN matching the 256-head topology — is in
 | `docs/77_UTM_PROOF_PACKAGE.md` | Minsky universality plus implementation lemma package |
 | `docs/78_LOGIC_CURRICULUM.md` | graded logic puzzles through the runner ring |
 | `docs/79_STAGED_LOGIC_TRAINER.md` | Boolean -> deep circuits -> words staged core trainer |
+| `docs/80_TRAINING_CORPUS_PIPELINE.md` | staged N16TXT corpus, budgets, HERMES and Clocked adapters |
 | `docs/18_HEAD_RING.md` | six-runner handoff, preload, map-back, workflows |
 | `docs/19_LEGACY_TESTS.md` | R18T language tests and R21–R23 logic regressions |
 | `docs/20_META_ROUTER.md` | universes as heads, routes as pairs, qNaN/sNaN BE/LE portals |

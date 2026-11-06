@@ -83,6 +83,7 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 77 | [77_UTM_PROOF_PACKAGE.md](77_UTM_PROOF_PACKAGE.md) | What is the UTM proof package and its remaining mechanization gap? |
 | 78 | [78_LOGIC_CURRICULUM.md](78_LOGIC_CURRICULUM.md) | How are graded logic puzzles run through the runners? |
 | 79 | [79_STAGED_LOGIC_TRAINER.md](79_STAGED_LOGIC_TRAINER.md) | What happens in the Boolean -> deep logic -> word session? |
+| 80 | [80_TRAINING_CORPUS_PIPELINE.md](80_TRAINING_CORPUS_PIPELINE.md) | How do HERMES and Clocked drive the staged corpus? |
 
 The short version:
 
