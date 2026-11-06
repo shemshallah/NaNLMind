@@ -125,6 +125,23 @@ class BridgeTests(unittest.TestCase):
             self.assertFalse(box.acknowledge(source, destination, 123))
             self.assertIsNone(box.claim(destination, lease_seconds=0))
 
+    def test_duplicate_reverse_receipt_is_idempotent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            box = BridgeMailbox(Path(tmp) / "idempotent.sqlite")
+            source, destination = RunnerRoute(bsr=1), RunnerRoute(bsr=5)
+            original = BridgeFrame(source, destination, 0xAABBCCDD,
+                                   NanWord.from_bits(0, 0, 1), b"once")
+            receipt = BridgeFrame(destination, source, 0xAABBCCDD,
+                                  NanWord.from_bits(3, 3, 1), b"BSR_ACK")
+            box.put(original)
+            self.assertTrue(box.acknowledge_and_put(
+                source, destination, original.sequence, receipt))
+            self.assertFalse(box.acknowledge_and_put(
+                source, destination, original.sequence, receipt))
+            delivered = BridgeFrame.decode(box.claim(source, lease_seconds=0))
+            self.assertEqual(delivered.payload, b"BSR_ACK")
+            self.assertEqual(box.stats()["queued"], 1)
+
     def test_mailbox_applies_per_runner_backpressure(self):
         from nanlmind_nannet.bridge import MAX_PENDING_PER_ROUTE
         with tempfile.TemporaryDirectory() as tmp:
