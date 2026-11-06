@@ -109,6 +109,13 @@ answered on the reverse rail. The persistent runner loop drains the mailbox
 during heartbeats. Both transports use the same canonical route and frame
 contract.
 
+Deliveries are leased for 30 seconds rather than deleted on poll. If a runner
+fails before persisting and acknowledging a frame, the lease expires and the
+frame is delivered again. The receiver persists the inbox before sending
+`BSR_ACK`; the sender consumes that receipt with `ACK`. Receipt insertion and
+retirement of the original frame are one SQLite transaction, so queue pressure
+cannot silently discard an unacknowledged delivery.
+
 The authority returns both the canonical URI and its six-byte route encoding.
 Runner startup verifies that the text and binary forms agree, and that the
 authority identifies point zero and the `N16B/1` translator. Credential
