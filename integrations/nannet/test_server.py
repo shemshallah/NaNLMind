@@ -43,6 +43,20 @@ class NannetTests(unittest.TestCase):
   s,d=self.req("GET","/healthz");self.assertEqual(s,200);self.assertEqual(d["bootstrap_endpoints"],256);self.assertEqual(len(server.ENDPOINTS),256);self.assertIn("nan://GM0:SC0:MC0:BS0:HW0",server.ENDPOINTS);self.assertTrue(server.valid_nan_address("nan://GM255:SC255:MC255:BS255:HW255"));self.assertFalse(server.valid_nan_address("nan://GM256:SC0:MC0:BS0:HW0"))
   t=self.issue("nan://GM0:SC0:MC0:BS0:HW1",["intake"]);s,r=self.req("GET","/v1/routes",token=t);self.assertEqual(s,200);self.assertIn("n16t.peer",r["routes"]);self.assertNotIn("deeprepo.keeper",r["routes"])
   self.assertEqual(self.req("POST","/admin/tokens",{"address":"nan://GM0:SC0:MC0:BS0:HW1","scopes":["runner"]},token="a"*48)[0],400)
+ def test_android_route_diff_intake_is_address_bound_and_unverified(self):
+  token=self.issue("nan://GM0:SC0:MC0:BS0:HW1",["intake"])
+  diff={"universe":0,"node":2,"layer":0,"control_point":1,"base_generation":0,"epoch":123,"entries":[]}
+  diff["digest"]=hashlib.sha256(server.jbytes(diff)).hexdigest()
+  status,body=self.req("POST","/v1/intake/route",diff,token)
+  self.assertEqual(status,202);self.assertFalse(body["outcome_verified"])
+  status,replay=self.req("POST","/v1/intake/route",diff,token)
+  self.assertEqual(status,200);self.assertEqual(replay["state"],"duplicate_noop")
+  tampered=dict(diff,epoch=124)
+  self.assertEqual(self.req("POST","/v1/intake/route",tampered,token)[0],400)
+  wrong_node=dict(diff,node=3)
+  wrong_node["digest"]=hashlib.sha256(server.jbytes({k:v for k,v in wrong_node.items() if k!="digest"})).hexdigest()
+  self.assertEqual(self.req("POST","/v1/intake/route",wrong_node,token)[0],400)
+
  def test_observation_unverified_and_idempotent(self):
   t=self.issue("nan://GM0:SC0:MC0:BS0:HW7",["intake","observation"]);e={"protocol":"nanlm.endpoint-observation","version":1,"event_id":"b"*64,"base_generation":4,"active_heads":[1,1,255],"outcome_verified":False}
   s,a=self.req("POST","/v1/observations",e,t);self.assertEqual(s,202);self.assertEqual(a["endpoint_id"],"nan://GM0:SC0:MC0:BS0:HW7");self.assertFalse(a["outcome_verified"])
