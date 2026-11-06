@@ -112,6 +112,7 @@ jobs:
           NANLM_BOOTSTRAP_TOKEN: ${{ secrets.NANLM_BOOTSTRAP_TOKEN }}
         run: |
           if [ -n "$NANLM_RUNNER_TOKEN" ] && [ -n "$NANLM_BOOTSTRAP_TOKEN" ]; then
+            pip install --disable-pip-version-check numpy
             python3 runner/nannet_consumer.py
           else
             echo "NANNET credentials are not configured; validated datasets remain queued."
