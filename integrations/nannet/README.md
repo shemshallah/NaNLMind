@@ -19,7 +19,7 @@ and exposes the canonical runner merge boundary.
   runner token.
 - Endpoint tokens cannot assert correctness, submit head deltas, or call the
   canonical training merge.
-- The canonical merge endpoint accepts only the dedicated NANLM_MERGE_TOKEN
+- The canonical merge endpoint accepts only the dedicated NANLM_BOOTSTRAP_TOKEN
   and forces source_endpoint=bootstrap.
 - N16T frames are relayed opaquely to one explicitly configured HTTPS peer.
 - No arbitrary URL proxy, model weights, Qwen inference, or weight-page proxy.
@@ -33,7 +33,7 @@ models. NaNLMind's six-runner ring remains the sole canonical 256-head learner.
 - POST /admin/tokens (NANLM_ADMIN_TOKEN)
 - GET /v1/routes (endpoint bearer)
 - POST /v1/observations (endpoint bearer; metadata-only, unverified evidence)
-- POST /v1/training/merge (NANLM_MERGE_TOKEN only; canonical runner deltas)
+- POST /v1/training/merge (NANLM_BOOTSTRAP_TOKEN only; canonical runner deltas)
 - POST /n16t (endpoint bearer with n16t scope; opaque binary relay)
 - POST /v1/datasets/{id}/begin (declare expected chunk count)
 - PUT /v1/datasets/{id}/chunks/{index} (binary chunk + X-Chunk-SHA256)
@@ -61,15 +61,14 @@ Never commit these values:
 - NANLM_VALIDATOR_TOKEN (at least 32 characters; quarantine review only)
 - NANLM_RUNNER_TOKEN (at least 32 characters; validated-data/evidence consumer)
 - NANLM_TOKEN_PEPPER (at least 32 characters; endpoint token hashing)
-- NANLM_MERGE_TOKEN (existing canonical runner merge credential; never expose
-  to endpoint clients)
+- NANLM_BOOTSTRAP_TOKEN (canonical runner merge credential; never expose to endpoint clients)
 - GH_TOKEN (existing DeepRepo keeper credential)
 
 Optional secrets only when those integrations are active:
 
 - NANLM_N16T_PEER_TOKEN (trusted N16T peer credential)
 - DEEPREPO_MIDDLE_TOKEN (with DEEPREPO_MIDDLE_URL)
-- NANNET_AUTHORITY_MASTER_KEY (preserve the existing stable 32-byte master key)
+- NANLM_MERGE_TOKEN (preserve the existing Android/legacy merge credential; NANNET does not use it for canonical writes)\n- NANLM_HERMES_TOKEN / NANLM_CLOCKED_TOKEN (preserve legacy endpoint merge credentials if still referenced)\n- NANNET_AUTHORITY_MASTER_KEY (preserve the existing stable 32-byte master key)
 - CLOCKED_GATEWAY_ADMIN_TOKEN
 - CLOCKED_TOKEN_PEPPER
 - CLOCKED_API_KEY (only for the separate Clocked SDK adapter)
