@@ -116,12 +116,15 @@ frame is delivered again. The receiver persists the inbox before sending
 retirement of the original frame are one SQLite transaction, so queue pressure
 cannot silently discard an unacknowledged delivery.
 
-Every runner universe now instantiates a `PointZeroTranslator` bound to
-its own BSR route and anchored at `BSR0`. The adapter converts canonical
-`nan://` coordinates to and from the six-byte NaN16DE route representation,
-and validates both frame endpoints on every encode/decode. The Koyeb service
-instantiates the same adapter as its central point-zero translation endpoint;
-hosted ingress and egress pass through that codec rather than bypassing it.
+Every native C++ `Universe` owns a `PointZeroTranslator` at diagonal
+point `(0,0)`; the point-zero cell stores its protocol version and six-byte
+local route, and that binding survives universe snapshots. The runner-side
+adapter is also instantiated per BSR universe and anchored at `BSR0`. Both
+adapters convert canonical `nan://` coordinates to and from the six-byte
+NaN16DE route representation while preserving NaN16 words bit-for-bit. The
+Koyeb service instantiates the same adapter as its central point-zero
+translation endpoint; hosted ingress and egress pass through that codec
+rather than bypassing it.
 The authority returns the canonical URI, local route bytes, point-zero URI,
 and point-zero bytes. Runner startup verifies the route translation and
 `N16B/1` descriptor, and credential rotation repeats those checks. The
