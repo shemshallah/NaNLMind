@@ -332,6 +332,11 @@ verifies restore into a fresh UTM. Tapes can allocate new pages through an
 attached `Atlas`. The journal stores page hashes, not the mutable page map; the
 formal finite-control/self-encoding proof is still open (doc 69).
 
+The recursive self-simulation probe encodes the 508-state binary compiler back
+into the Minsky format. After 100 million chart Minsky steps it has not completed
+a full description pass; the run is reproducible with `make self-sim-probe`.
+This is a partial self-run, not a completed self-simulation.
+
 ### TM-to-binary compiler
 
 The 23-state/8-symbol Minsky table now compiles to a 505-state binary TM with
