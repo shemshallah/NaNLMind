@@ -37,7 +37,10 @@ def run_slot(slot: int, epoch: int, rounds: int, session_rounds: int,
     ]
     result = subprocess.run(cmd, text=True, capture_output=True, env=env)
     prefix = "logic_core" if op == "logic-core" else "logic"
-    out = state / f"{prefix}_{epoch}_{slot - 1}.json"
+    # nanlm_worker parses public slots into its internal 0-based index before
+    # invoking either producer. Both output files therefore use slot - 1.
+    output_slot = slot - 1
+    out = state / f"{prefix}_{epoch}_{output_slot}.json"
     record = None
     if out.exists():
         try:
