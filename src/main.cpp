@@ -682,6 +682,12 @@ int cmd_math_train(int argc, char** argv) {
     trace.flush();
     if (!trace) { std::cerr << "failed writing discovery trace\n"; return 4; }
 
+    const Hash256 hypergraph_after = topology->hypergraph().digest();
+    if (!(hypergraph_before == hypergraph_after)) {
+        topology->commit(0x31u, 0x32u, 0, hypergraph_before, hypergraph_after,
+                         static_cast<std::uint64_t>(epochs));
+    }
+
     const auto state = topology->serialize();
     const std::string state_tmp = state_path + ".tmp";
     {
