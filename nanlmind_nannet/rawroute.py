@@ -17,7 +17,7 @@ _RAWROUTE = re.compile(
     rf"nan://GM({_COORD}):SC({_COORD}):MC({_COORD}):"
     rf"BS({_COORD}):({_COORD}):HW({_COORD}):({_COORD})"
     rf"::HW({_COORD}):({_HEADS})"
-    rf"(?:::([a-z][a-z0-9_-]*)({_COORD}))?"
+    rf"(?:::([a-z][a-z0-9_-]*)(0|[1-9][0-9]{0,9}))?"
 )
 
 
