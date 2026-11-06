@@ -42,6 +42,8 @@ jobs:
         run: python -m unittest discover -s integrations/clocked -p "test_*.py" -v
       - name: Build native Overbootstrap tests through the project Makefile
         run: |
-          make -j2 build/test_endpoint_evidence build/test_learning_mesh
+          make -j2 build/test_endpoint_evidence build/test_learning_mesh build/clocked-demo
           ./build/test_endpoint_evidence
           ./build/test_learning_mesh
+      - name: Run offline Clocked-to-native learning demo
+        run: make clocked-demo-test
