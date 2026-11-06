@@ -59,7 +59,7 @@ Required server-side secrets (never commit):
 
 Non-secret settings:
 - NANLM_DATA_DIR (default /data/nannet; mount persistent storage here)
-- NANLM_DATASET_QUOTA_BYTES (default 6442450944)
+- NANLM_MERGE_ROOT (default /data/nannet/merge; set to the old training-merge state directory during cutover to preserve its JSON ledger)\n- NANLM_DATASET_QUOTA_BYTES (default 6442450944)
 - NANLM_CHUNK_BYTES (default 8388608)
 - NANLM_N16T_PEER_URL (HTTPS URL of the trusted N16T peer; optional until deployed)
 - PORT (platform supplied)
