@@ -276,6 +276,19 @@ class TrainingMergeTest(unittest.TestCase):
                     self.assertEqual(authorization["point_zero_route"],
                                      bootstrap["point_zero_route"])
                     self.assertEqual(authorization["local_route"], bootstrap["local_route"])
+            heartbeat_request = urllib.request.Request(
+                base + "/v1/bootstrap/heartbeat", data=b"{}",
+                method="POST",
+                headers={"Authorization": "Bearer " + tokens[0],
+                         "Content-Type": "application/json"})
+            with urllib.request.urlopen(heartbeat_request, timeout=5) as heartbeat_response:
+                renewed = json.loads(heartbeat_response.read())
+            self.assertEqual(renewed["identity"], "github-actions:shemshallah/nanlm-cpu-1")
+            self.assertEqual(renewed["point_zero_route"],
+                             "nan://GM0:SC0:MC0:BS0:HW0:BSR0")
+            self.assertEqual(renewed["local_route"], RunnerRoute(bsr=0).text())
+            self.assertEqual(renewed["point_zero_bytes"], RunnerRoute(bsr=0).bytes().hex())
+            tokens[0] = renewed["token"]
             source, destination = RunnerRoute(bsr=0), RunnerRoute(bsr=1)
             original = BridgeFrame(source, destination, 501,
                                    NanWord.from_bits(0, 0, 501), b"test-payload")
