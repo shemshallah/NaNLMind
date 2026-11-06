@@ -18,6 +18,8 @@ from nanlmind_nannet.devices import TERMS_VERSION
 from nanlmind_nannet.auth import AuthError, identity_public_key
 from nanlmind_nannet.crypto_compat import serialization
 from nanlmind_nannet.crypto_compat import Ed25519PrivateKey
+from nanlmind_nannet.bridge import BridgeFrame, RunnerRoute
+from nanlmind_nannet.nan16de import NanWord
 
 
 class TrainingMergeTest(unittest.TestCase):
@@ -208,6 +210,73 @@ class TrainingMergeTest(unittest.TestCase):
         finally:
             training_merge._verify_github_oidc = original_verifier
             server.shutdown(); server.server_close(); thread.join(timeout=2)
+
+    def test_n16b_leased_delivery_and_two_phase_ack(self):
+        db = Path(self.tmp.name) / "n16b-authority.sqlite"
+        authority = PairingAuthority(db, _unb64(generate_master_key()))
+        server = training_merge.make_server("127.0.0.1", 0, Path(self.tmp.name),
+                                            "test-token", authority)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        original_verifier = training_merge._verify_github_oidc
+        training_merge._verify_github_oidc = lambda jwt, repo: {
+            "repository": repo, "jti": "n16b-" + repo,
+            "exp": int(__import__("time").time()) + 300,
+            "event_name": "workflow_dispatch"}
+        base = "http://127.0.0.1:" + str(server.server_address[1])
+
+        def post_frame(token, frame):
+            request = urllib.request.Request(
+                base + "/v1/nannet/bridge", data=frame.encode(), method="POST",
+                headers={"Authorization": "Bearer " + token,
+                         "Content-Type": "application/vnd.nan16.n16b"})
+            with urllib.request.urlopen(request, timeout=5) as response:
+                self.assertEqual(response.status, 202)
+                return BridgeFrame.decode(response.read())
+
+        def poll(token, route):
+            query = urllib.parse.urlencode({"route": route.text()})
+            request = urllib.request.Request(
+                base + "/v1/nannet/bridge/poll?" + query,
+                headers={"Authorization": "Bearer " + token})
+            with urllib.request.urlopen(request, timeout=5) as response:
+                raw = response.read()
+                return BridgeFrame.decode(raw) if raw else None
+
+        thread.start()
+        try:
+            tokens = []
+            for slot in (0, 1):
+                request = urllib.request.Request(
+                    base + "/v1/bootstrap/oidc",
+                    data=json.dumps({"id_token": "mock", "slot": slot}).encode(),
+                    method="POST", headers={"Content-Type": "application/json"})
+                with urllib.request.urlopen(request, timeout=5) as response:
+                    tokens.append(json.loads(response.read())["token"])
+            source, destination = RunnerRoute(bsr=0), RunnerRoute(bsr=1)
+            original = BridgeFrame(source, destination, 501,
+                                   NanWord.from_bits(0, 0, 501), b"test-payload")
+            accepted = post_frame(tokens[0], original)
+            self.assertEqual(accepted.payload, b"ACK")
+            delivered = poll(tokens[1], destination)
+            self.assertEqual(delivered.payload, b"test-payload")
+            self.assertIsNone(poll(tokens[1], destination))
+
+            receipt = BridgeFrame(destination, source, 501,
+                                  NanWord.from_bits(3, 3, 501), b"BSR_ACK")
+            post_frame(tokens[1], receipt)
+            receipt_delivery = poll(tokens[0], source)
+            self.assertEqual(receipt_delivery.payload, b"BSR_ACK")
+
+            consumed = BridgeFrame(source, destination, 501,
+                                   NanWord.from_bits(3, 3, 501), b"ACK")
+            post_frame(tokens[0], consumed)
+            self.assertIsNone(poll(tokens[0], source))
+            self.assertIsNone(poll(tokens[1], destination))
+        finally:
+            training_merge._verify_github_oidc = original_verifier
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
 
     def test_n16t_hello_capabilities_and_portal_alias(self):
         session = bytes(range(1, 17))
