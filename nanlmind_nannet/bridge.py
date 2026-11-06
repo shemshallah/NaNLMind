@@ -210,6 +210,29 @@ class BridgeMailbox:
                                 (source.text(), destination.text(), sequence))
             return cursor.rowcount > 0
 
+    def acknowledge_and_put(self, source: RunnerRoute, destination: RunnerRoute,
+                            sequence: int, receipt: BridgeFrame) -> bool:
+        """Atomically retire a delivery and enqueue its reverse-rail receipt."""
+        if not isinstance(source, RunnerRoute) or not isinstance(destination, RunnerRoute):
+            raise ValueError("acknowledgement routes must be canonical runner routes")
+        if isinstance(sequence, bool) or not isinstance(sequence, int) or not 0 <= sequence <= 0xFFFFFFFF:
+            raise ValueError("acknowledgement sequence must be uint32")
+        raw = receipt.encode()
+        with sqlite3.connect(self.database, timeout=15) as db:
+            db.execute("BEGIN IMMEDIATE")
+            pending = db.execute("SELECT COUNT(*) FROM bridge_messages WHERE destination=?",
+                                 (receipt.destination.text(),)).fetchone()[0]
+            if pending >= MAX_PENDING_PER_ROUTE:
+                raise OverflowError("N16B destination mailbox is full")
+            cursor = db.execute("DELETE FROM bridge_messages "
+                                "WHERE source=? AND destination=? AND sequence=?",
+                                (source.text(), destination.text(), sequence))
+            db.execute("INSERT INTO bridge_messages(destination,source,frame,created_at,sequence,claimed_until) "
+                       "VALUES(?,?,?,?,?,0)",
+                       (receipt.destination.text(), receipt.source.text(), raw,
+                        int(time.time()), receipt.sequence))
+            return cursor.rowcount > 0
+
     def take(self, destination: RunnerRoute) -> bytes | None:
         """Compatibility destructive read; active transports should use claim/ack."""
         with sqlite3.connect(self.database, timeout=15, isolation_level="IMMEDIATE") as db:
