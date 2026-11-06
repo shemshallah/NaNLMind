@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <vector>
 
 using namespace nanlm;
 
@@ -31,7 +32,7 @@ int main() {
     std::string corpus_arg = corpus.string(), state_arg = state.string();
     char* argv[] = {arg0, arg1, corpus_arg.data(), state_arg.data()};
     CHECK_EQ(relation_train_cli(4, argv), 0);
-    CHECK(std::filesystem::is_file(state));
+    CHECK(std::filesystem::is_regular_file(state));
     std::ifstream in(state, std::ios::binary);
     std::vector<std::uint8_t> bytes((std::istreambuf_iterator<char>(in)),
                                     std::istreambuf_iterator<char>());
