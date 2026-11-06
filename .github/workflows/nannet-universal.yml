@@ -18,3 +18,10 @@ jobs:
       - run: python -m py_compile integrations/nannet/server.py integrations/nannet/test_server.py
       - run: python -m unittest -v
         working-directory: integrations/nannet
+
+  container-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build combined NANNET + DeepRepo keeper image
+        run: docker build --pull -t nannet-universal:test .
