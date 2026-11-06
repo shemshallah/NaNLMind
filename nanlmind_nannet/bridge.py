@@ -141,7 +141,8 @@ class BridgeMailbox:
 
     def put(self, frame: BridgeFrame) -> None:
         raw = frame.encode()
-        with sqlite3.connect(self.database, timeout=15, isolation_level="IMMEDIATE") as db:
+        with sqlite3.connect(self.database, timeout=15) as db:
+            db.execute("BEGIN IMMEDIATE")
             pending = db.execute("SELECT COUNT(*) FROM bridge_messages WHERE destination=?",
                                  (frame.destination.text(),)).fetchone()[0]
             if pending >= MAX_PENDING_PER_ROUTE:
