@@ -39,6 +39,24 @@ class RunnerBridgeIntegrationTests(unittest.TestCase):
                 self.assertEqual(frame.destination, RunnerRoute(bsr=0))
                 self.assertEqual(frame.payload, b"BSR_ONLINE")
 
+    def test_point_zero_drains_late_runner_announcement(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            mailbox_path = str(Path(tmp) / "shared-native.sqlite")
+            with patch.dict(os.environ, {"NANNET_PORTAL_API": "",
+                                          "NANNET_NATIVE_MAILBOX": mailbox_path}):
+                nanlm_worker.verify_portal_identity(0)
+                root_result = nanlm_worker.portal_bridge_startup(0, 1)
+                self.assertEqual(root_result["received"], 0)
+                nanlm_worker.verify_portal_identity(1)
+                runner_result = nanlm_worker.portal_bridge_startup(1, 2)
+                self.assertTrue(runner_result["announced_to_root"])
+                nanlm_worker.verify_portal_identity(0)
+                self.assertEqual(nanlm_worker.portal_bridge_drain(3), 1)
+                ack = BridgeFrame.decode(BridgeMailbox(mailbox_path).take(RunnerRoute(bsr=1)))
+                self.assertEqual(ack.source, RunnerRoute(bsr=0))
+                self.assertEqual(ack.destination, RunnerRoute(bsr=1))
+                self.assertEqual(ack.payload, b"BSR_ACK")
+
     def test_native_transport_polls_and_returns_reverse_ack(self):
         with tempfile.TemporaryDirectory() as tmp:
             mailbox_path = str(Path(tmp) / "shared-native.sqlite")
