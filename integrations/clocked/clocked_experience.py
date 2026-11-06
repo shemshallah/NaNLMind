@@ -13,6 +13,10 @@ from typing import Any, Dict, Iterable, Optional
 
 SCHEMA = "nanlm.clocked-experience"
 VERSION = 1
+TASK_FAMILIES = {
+    "technical_document", "code_or_script", "support_request",
+    "general_prose", "structured_record", "unknown",
+}
 
 
 def canonical_json(value: Any) -> bytes:
@@ -30,34 +34,45 @@ def bounded_label(value: Any, limit: int = 96) -> Optional[str]:
     return None
 
 
+def safe_number(value: Any) -> Optional[float]:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    if value != value or value in (float("inf"), float("-inf")):
+        return None
+    return float(value)
+
+
 def summarize_step(step: Dict[str, Any]) -> Dict[str, Any]:
-    """Keep metadata and verdicts; never copy extracted values or source text."""
+    """Keep bounded metadata and allowlisted verdicts; never copy source text."""
     result = step.get("result")
     if not isinstance(result, dict):
         result = {}
     summary: Dict[str, Any] = {
         "endpoint": bounded_label(step.get("endpoint"), 32),
         "name": bounded_label(step.get("name"), 48),
-        "status": step.get("status"),
-        "model_ms": step.get("ms"),
+        "status": step.get("status") if isinstance(step.get("status"), int) else None,
+        "model_ms": safe_number(step.get("ms")),
         "skipped": bounded_label(step.get("skipped"), 64),
     }
     for key in ("verdict", "injection", "answers_question", "stopped"):
-        if key in result:
-            summary[key] = bounded_label(result[key], 96)
+        value = result.get(key)
+        if isinstance(value, bool):
+            summary[key] = value
+        elif key == "verdict" and value in ("safe", "unsafe", "unknown", "pass", "fail"):
+            summary[key] = value
     # Only retain field names, not field values.
     fields = result.get("fields")
     if isinstance(fields, dict):
         summary["extracted_field_names"] = sorted(str(k)[:64] for k in fields.keys())[:64]
     answers = result.get("answers")
     if isinstance(answers, dict):
-        summary["decision_labels"] = sorted(str(k)[:64] for k in answers.keys())[:64]
-        # Keep only primitive decision values; no free-form response text.
         decisions = {}
-        for key, value in list(answers.items())[:32]:
-            label = bounded_label(value)
-            if label is not None:
-                decisions[str(key)[:64]] = label
+        family = answers.get("task_family")
+        if isinstance(family, str) and family in TASK_FAMILIES:
+            decisions["task_family"] = family
+        claims = answers.get("contains_claims")
+        if isinstance(claims, bool):
+            decisions["contains_claims"] = claims
         if decisions:
             summary["decisions"] = decisions
     if "error" in step:
@@ -88,12 +103,8 @@ def build_pipeline(text: str) -> list[dict]:
                         "type": "choice",
                         "instructions": "Classify the primary kind of material or task.",
                         "options": [
-                            "technical_document",
-                            "code_or_script",
-                            "support_request",
-                            "general_prose",
-                            "structured_record",
-                            "unknown",
+                            "technical_document", "code_or_script", "support_request",
+                            "general_prose", "structured_record", "unknown",
                         ],
                     },
                     "contains_claims": {
@@ -127,26 +138,35 @@ def make_event(source_text: str, response: Dict[str, Any], result_meta: Any) -> 
     for item in summaries:
         decision_labels.update(item.get("decisions", {}))
     now = datetime.now(timezone.utc).isoformat()
-    event_id = digest({"input": digest(source_text.encode("utf-8")), "response": digest(response)})
+    input_hash = digest(source_text.encode("utf-8"))
+    response_hash = digest(response)
+    event_id = digest({"input": input_hash, "response": response_hash})
+    timing = response.get("timing")
+    if not isinstance(timing, dict):
+        timing = None
+    else:
+        timing = {str(k)[:32]: safe_number(v) for k, v in timing.items()
+                  if safe_number(v) is not None}
+    stopped = response.get("stopped")
     event = {
         "schema": SCHEMA,
         "version": VERSION,
         "event_id": event_id,
         "observed_at": now,
-        "input_sha256": digest(source_text.encode("utf-8")),
-        "response_sha256": digest(response),
+        "input_sha256": input_hash,
+        "response_sha256": response_hash,
         "pipeline": summaries,
         "task_labels": decision_labels,
-        "stopped": response.get("stopped"),
-        "timing": response.get("timing"),
-        "credits": getattr(result_meta, "credits", None),
-        "cost_usd": getattr(result_meta, "cost_usd", None),
-        "cost_basis": getattr(result_meta, "cost_basis", None),
+        "stopped": stopped if isinstance(stopped, bool) else None,
+        "timing": timing,
+        "credits": safe_number(getattr(result_meta, "credits", None)),
+        "cost_usd": safe_number(getattr(result_meta, "cost_usd", None)),
+        "cost_basis": bounded_label(getattr(result_meta, "cost_basis", None), 64),
         "learning_state": "awaiting_nanlmind_ingest",
         "raw_text_persisted": False,
         "raw_response_persisted": False,
     }
-    return event
+    return {k: v for k, v in event.items() if v is not None}
 
 
 def process_file(path: Path, output, client) -> Dict[str, Any]:
@@ -182,7 +202,6 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
         print(json.dumps({"event_id": event["event_id"], "learning_state": event["learning_state"]}), file=sys.stderr)
         return 0
     except Exception as exc:
-        # Do not print request bodies, response bodies, headers, or credentials.
         print(f"Clocked adapter failed ({type(exc).__name__}); inspect server-side diagnostics.", file=sys.stderr)
         return 1
     finally:
