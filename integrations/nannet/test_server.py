@@ -38,7 +38,7 @@ class NannetTests(unittest.TestCase):
   self.assertEqual(self.req("POST","/v1/observations",dict(e,event_id="c"*64,correct=True),t)[0],400)
  def test_dataset_quarantine_external_validation(self):
   t=self.issue("hermes_demo");raw=[b"abc",b"defg"];full=b"".join(raw)
-  self.assertEqual(self.req("POST","/v1/datasets/demo-1/begin",{"chunk_count":2},t)[0],201)
+  self.assertEqual(self.req("POST","/v1/datasets/demo-1/begin",{"chunk_count":2,"metadata":{"protocol":"nanlm.dataset","version":1,"content_type":"text/plain","encoding":"utf-8","license":"CC0-1.0","provenance":"synthetic unit-test corpus","split":"train"}},t)[0],201)
   for i,b in enumerate(raw):
    self.assertEqual(self.req("PUT",f"/v1/datasets/demo-1/chunks/{i}",b,t,{"Content-Type":"application/octet-stream","X-Chunk-SHA256":hashlib.sha256(b).hexdigest()})[0],201)
   s,d=self.req("POST","/v1/datasets/demo-1/seal",{"total_bytes":len(full),"sha256":hashlib.sha256(full).hexdigest()},t);self.assertEqual(s,202);self.assertEqual(d["state"],"quarantine_pending_external_validation")
@@ -50,7 +50,7 @@ class NannetTests(unittest.TestCase):
   s,runner_blob=self.req("GET","/internal/datasets/demo-1/chunks/0",token="r"*48);self.assertEqual(s,200);self.assertEqual(runner_blob,raw[0])
   self.assertEqual(self.req("DELETE","/admin/datasets/demo-1",token="a"*48)[0],409)
  def test_bad_chunk_digest(self):
-  t=self.issue();self.req("POST","/v1/datasets/bad/begin",{"chunk_count":1},t)
+  t=self.issue();self.req("POST","/v1/datasets/bad/begin",{"chunk_count":1,"metadata":{"protocol":"nanlm.dataset","version":1,"content_type":"text/plain","encoding":"utf-8","license":"CC0-1.0","provenance":"synthetic unit-test corpus","split":"train"}},t)
   s,_=self.req("PUT","/v1/datasets/bad/chunks/0",b"abc",t,{"Content-Type":"application/octet-stream","X-Chunk-SHA256":"0"*64});self.assertEqual(s,400)
 
  def test_training_merge_is_runner_only_and_idempotent(self):
