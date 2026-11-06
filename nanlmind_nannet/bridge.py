@@ -74,8 +74,14 @@ class BridgeFrame:
         return self.word.far_class in (0, 1)
 
     def encode(self) -> bytes:
-        if not 0 <= self.sequence <= 0xFFFFFFFF:
+        if isinstance(self.sequence, bool) or not isinstance(self.sequence, int) or not 0 <= self.sequence <= 0xFFFFFFFF:
             raise ValueError("sequence must be uint32")
+        if not isinstance(self.source, RunnerRoute) or not isinstance(self.destination, RunnerRoute):
+            raise ValueError("source and destination must be runner routes")
+        if not isinstance(self.word, NanWord):
+            raise ValueError("bridge word must be a NaN16 word")
+        if not isinstance(self.payload, bytes):
+            raise ValueError("bridge payload must be bytes")
         if len(self.payload) > MAX_PAYLOAD:
             raise ValueError("bridge payload exceeds 1 MiB")
         header = HEADER.pack(
