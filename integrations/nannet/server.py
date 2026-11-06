@@ -122,6 +122,22 @@ class Handler(BaseHTTPRequestHandler):
    except OSError:return self.reply(503,{"error":"portal_unavailable"})
    return self.reply(200,raw,"text/html; charset=utf-8")
   if p=="/healthz": return self.reply(200,{"status":"ok","service":"nannet","protocol":"nanlm.universal-intake","version":2,"addressing":"nan.global-mesh.v1","bootstrap_endpoints":256,"dataset_quota_bytes":DATASET_QUOTA,"chunk_limit_bytes":CHUNK_BYTES,"training_merge_enabled":bool(os.environ.get("NANLM_BOOTSTRAP_TOKEN")),"keeper_enabled":os.environ.get("DEEPREPO_KEEPER_ENABLED","0")=="1"})
+  m=re.fullmatch(r"/v1/training/state/([0-9]{1,3})",p)
+  if m:
+   if self.need("canonical") is None:return
+   node=int(m.group(1))
+   if not 1<=node<=256:return self.reply(400,{"error":"node_out_of_range"})
+   store=get_merge_store()
+   if store is None:return self.reply(503,{"error":"training_merge_not_configured"})
+   return self.reply(200,store.snapshot(node))
+  m=re.fullmatch(r"/v1/training/receipts/([a-f0-9]{64})",p)
+  if m:
+   if self.need("canonical") is None:return
+   store=get_merge_store()
+   if store is None:return self.reply(503,{"error":"training_merge_not_configured"})
+   receipt=store.receipt(m.group(1))
+   if receipt is None:return self.reply(404,{"error":"training_receipt_not_found"})
+   return self.reply(200,receipt)
   if p=="/v1/address":
    x=self.need()
    if x is None:return
