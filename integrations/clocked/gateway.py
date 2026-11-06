@@ -70,9 +70,16 @@ def connect_db(path: str) -> sqlite3.Connection:
             base_generation INTEGER NOT NULL,
             payload_json TEXT NOT NULL,
             received_at INTEGER NOT NULL,
-            status TEXT NOT NULL DEFAULT 'pending'
+            status TEXT NOT NULL DEFAULT 'pending',
+            lease_id TEXT,
+            lease_until INTEGER
         )
     """)
+    inbox_columns = {row["name"] for row in db.execute("PRAGMA table_info(endpoint_inbox)")}
+    if "lease_id" not in inbox_columns:
+        db.execute("ALTER TABLE endpoint_inbox ADD COLUMN lease_id TEXT")
+    if "lease_until" not in inbox_columns:
+        db.execute("ALTER TABLE endpoint_inbox ADD COLUMN lease_until INTEGER")
     db.commit()
     return db
 
@@ -133,6 +140,11 @@ class Gateway:
         admin = os.environ.get("CLOCKED_GATEWAY_ADMIN_TOKEN", "")
         supplied = environ.get("HTTP_AUTHORIZATION", "")
         return bool(admin) and secrets.compare_digest(supplied, "Bearer " + admin)
+
+    def runner_ok(self, environ):
+        runner = os.environ.get("NANLM_RUNNER_INGEST_TOKEN", "")
+        supplied = environ.get("HTTP_AUTHORIZATION", "")
+        return bool(runner) and secrets.compare_digest(supplied, "Bearer " + runner)
 
     def issue_token(self, environ, start_response):
         pepper = os.environ.get("CLOCKED_TOKEN_PEPPER", "")
@@ -347,6 +359,8 @@ class Gateway:
                 "protocol", "version", "event_id", "base_generation",
                 "active_heads", "outcome_verified",
             }
+            if data.get("outcome_verified", False) is not False or "correct" in data:
+                raise ValueError("endpoint_cannot_assert_correctness")
             if set(data) - allowed_fields:
                 raise ValueError("unknown_observation_fields")
             if data.get("protocol") != "nanlm.endpoint-observation" or data.get("version") != 1:
@@ -362,8 +376,6 @@ class Gateway:
                 isinstance(h, bool) or not isinstance(h, int) or h < 0 or h > 255 for h in heads
             ):
                 raise ValueError("invalid_active_heads")
-            if data.get("outcome_verified", False) is not False or "correct" in data:
-                raise ValueError("endpoint_cannot_assert_correctness")
             payload = {
                 "protocol": "nanlm.endpoint-observation", "version": 1,
                 "event_id": event_id, "base_generation": generation,
@@ -392,32 +404,49 @@ class Gateway:
         })
 
     def poll_observations(self, environ, start_response):
-        if not self.admin_ok(environ):
-            return json_response(start_response, "401 Unauthorized", {"error": "unauthorized"})
+        if not self.runner_ok(environ):
+            return json_response(start_response, "401 Unauthorized", {"error": "runner_unauthorized"})
+        now = int(time.time())
+        lease_id = secrets.token_hex(16)
         db = connect_db(self.db_path)
         try:
+            db.execute("BEGIN IMMEDIATE")
             rows = db.execute(
                 "SELECT event_id,tenant_id,source_endpoint,base_generation,payload_json,received_at "
-                "FROM endpoint_inbox WHERE status='pending' ORDER BY received_at,event_id LIMIT 100"
+                "FROM endpoint_inbox WHERE status='pending' OR "
+                "(status='leased' AND lease_until<=?) ORDER BY received_at,event_id LIMIT 100",
+                (now,),
             ).fetchall()
+            for row in rows:
+                db.execute(
+                    "UPDATE endpoint_inbox SET status='leased',lease_id=?,lease_until=? "
+                    "WHERE event_id=?",
+                    (lease_id, now + 120, row["event_id"]),
+                )
+            db.commit()
             events = [{
                 "tenant_id": row["tenant_id"], "source_endpoint": row["source_endpoint"],
                 "received_at": row["received_at"], **json.loads(row["payload_json"]),
             } for row in rows]
         finally:
             db.close()
-        return json_response(start_response, "200 OK", {"events": events, "count": len(events)})
+        return json_response(start_response, "200 OK", {
+            "events": events, "count": len(events), "lease_id": lease_id,
+            "lease_seconds": 120,
+        })
 
     def ack_observations(self, environ, start_response):
-        if not self.admin_ok(environ):
-            return json_response(start_response, "401 Unauthorized", {"error": "unauthorized"})
+        if not self.runner_ok(environ):
+            return json_response(start_response, "401 Unauthorized", {"error": "runner_unauthorized"})
         try:
             data = self.read_body(environ)
             ids = data.get("event_ids")
-            if not isinstance(ids, list) or len(ids) > 100 or any(
-                not isinstance(value, str) or not EVENT_ID.fullmatch(value) for value in ids
-            ):
-                raise ValueError("invalid_event_ids")
+            lease_id = data.get("lease_id")
+            if (not isinstance(lease_id, str) or not re.fullmatch(r"[a-f0-9]{32}", lease_id)
+                    or not isinstance(ids, list) or len(ids) > 100 or any(
+                        not isinstance(value, str) or not EVENT_ID.fullmatch(value) for value in ids
+                    )):
+                raise ValueError("invalid_lease_or_event_ids")
         except (ValueError, TypeError) as exc:
             return json_response(start_response, "400 Bad Request", {"error": str(exc)[:64]})
         db = connect_db(self.db_path)
@@ -425,13 +454,17 @@ class Gateway:
             changed = 0
             for event_id in ids:
                 changed += db.execute(
-                    "UPDATE endpoint_inbox SET status='accepted' WHERE event_id=? AND status='pending'",
-                    (event_id,),
+                    "UPDATE endpoint_inbox SET status='accepted',lease_id=NULL,lease_until=NULL "
+                    "WHERE event_id=? AND status='leased' AND lease_id=?",
+                    (event_id, lease_id),
                 ).rowcount
             db.commit()
         finally:
             db.close()
-        return json_response(start_response, "200 OK", {"acknowledged": changed})
+        complete = changed == len(ids)
+        return json_response(start_response, "200 OK", {
+            "acknowledged": changed, "complete": complete,
+        })
 
 def main():
     for name in ("CLOCKED_GATEWAY_ADMIN_TOKEN", "CLOCKED_TOKEN_PEPPER"):
