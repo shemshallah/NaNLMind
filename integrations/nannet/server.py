@@ -351,7 +351,7 @@ class Handler(BaseHTTPRequestHandler):
     if not isinstance(encoding,str) or not 1<=len(encoding)<=64:raise ValueError("encoding_required")
     if not isinstance(license_name,str) or not 1<=len(license_name.strip())<=256:raise ValueError("license_required")
     if not isinstance(provenance,str) or not 1<=len(provenance.strip())<=512:raise ValueError("provenance_required")
-    clean={"protocol":"nanlm.dataset","version":1,"content_type":content_type,"encoding":encoding,"license":license_name.strip(),"provenance":provenance.strip(),"split":str(meta.get("split","unassigned"))[:32],"source":str(meta.get("source",""))[:1024]}
+    clean={"protocol":"nanlm.dataset","version":1,"content_type":content_type,"encoding":encoding,"format":str(meta.get("format","plain-text/utf8"))[:32],"license":license_name.strip(),"provenance":provenance.strip(),"split":str(meta.get("split","unassigned"))[:32],"source":str(meta.get("source",""))[:1024]}
    except (ValueError,TypeError) as e:return self.reply(400,{"error":str(e)[:80]})
    db=connect()
    try:db.execute("INSERT INTO datasets(dataset_id,endpoint_id,created_at,expected_chunks,metadata_json) VALUES(?,?,?,?,?)",(m.group(1),x["endpoint_id"],now(),count,json.dumps(clean,sort_keys=True)));db.commit()
