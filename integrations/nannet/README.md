@@ -91,3 +91,60 @@ copied into repository files. Deploy only after preserving the current keeper
 configuration and checking the existing training-merge-v2 service. This
 repository branch contains the NANNET intake service; it does not itself prove
 that the live Koyeb service has been changed.
+
+
+## Single Koyeb service profile
+
+The repository-root Dockerfile builds this NANNET server and installs the existing
+DeepRepo core (no weights) from its public repository. When
+DEEPREPO_KEEPER_ENABLED=1, the same Python process starts the lightweight keeper
+in a background thread with tiny metadata caches. It does not run Qwen inference
+or proxy model pages.
+
+Recommended plaintext service settings:
+
+- DEEPREPO_KEEPER_ENABLED=1
+- KEEPER_INTERVAL=600
+- KEEPER_DISPATCH=1
+- DEEPREPO_MAIN=shemshallah/deeprepo
+- DEEPREPO_RAM=shemshallah/reporam
+- DEEPREPO_VRAM=shemshallah/repovram
+- DEEPREPO_RAM_BACKEND=github
+- DEEPREPO_VRAM_BACKEND=github
+- NANLM_DATASET_QUOTA_BYTES=6442450944
+- NANLM_CHUNK_BYTES=8388608
+- PORT=8000 (Koyeb supplies PORT; do not hardcode a conflicting value)
+
+Required NANNET service secrets:
+
+- NANLM_ADMIN_TOKEN
+- NANLM_VALIDATOR_TOKEN
+- NANLM_RUNNER_TOKEN
+- NANLM_TOKEN_PEPPER
+
+DeepRepo keeper secret:
+
+- GH_TOKEN (existing keeper token; preserve it, do not substitute DEEPREPO_PAT)
+
+Optional secrets/settings if the corresponding services are already used:
+
+- DEEPREPO_MIDDLE_TOKEN (with DEEPREPO_MIDDLE_URL)
+- NANLM_N16T_PEER_TOKEN (with NANLM_N16T_PEER_URL)
+- NANLM_MERGE_TOKEN
+- NANNET_AUTHORITY_MASTER_KEY
+- CLOCKED_GATEWAY_ADMIN_TOKEN
+- CLOCKED_TOKEN_PEPPER
+- CLOCKED_API_KEY (only for the separate Clocked SDK adapter)
+
+Keep DEEPREPO_PAT as a GitHub Actions secret on deeprepo and the five CPU
+repositories. It is not a Koyeb keeper credential. Do not overwrite CHAT_MODEL:
+the keeper reads the existing DeepRepo repository variable when no service-level
+override is provided. This preserves the active Qwen selection and the existing
+Qwen3-30B / Qwen1.5B deployment state.
+
+For a Nano, keep the payload quota at zero or route dataset chunks to an external
+durable VPS/runner store unless a suitable persistent volume is attached. The
+Koyeb Nano's own local disk is smaller than 6 GiB. A Koyeb 10 GB volume can hold
+the staged corpus for testing, but Koyeb currently documents volumes as public
+preview with a restricted region set; treat it as non-authoritative and back it
+up. Do not put the Qwen model weights on this service.
