@@ -1,5 +1,6 @@
 #include "nanlm/head_candidate.hpp"
 #include "nanlm/global.hpp"
+#include "nanlm/sha256.hpp"
 
 #include <cstdint>
 #include <filesystem>
