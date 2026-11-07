@@ -401,7 +401,6 @@ class Gateway:
         return json_response(start_response, "201 Created", {
             "token_type": "CLOCKED_DEMO_INSTANCE",
             "token": token,
-            "nannet_token": nannet_token,
             "nannet_address": address,
             "instance_id": instance_id,
             "instance_label": label.strip(),
@@ -665,6 +664,62 @@ class Gateway:
         finally:
             db.close()
 
+    def publish_to_nannet(self, identity, event_id: str, base_generation: int = 0):
+        """Write a minimized Clocked receipt into the existing NANNET evidence inbox."""
+        instance_id = identity.get("instance_id")
+        if not isinstance(instance_id, str) or not instance_id:
+            return {"state": "not_routed_no_nannet_lease"}
+        db = connect_db(self.db_path)
+        try:
+            instance = db.execute(
+                "SELECT node_point,nannet_address,nannet_lease_id,expires_at,revoked "
+                "FROM demo_instances WHERE instance_id=?",
+                (instance_id,),
+            ).fetchone()
+        finally:
+            db.close()
+        if (instance is None or instance["revoked"]
+                or int(instance["expires_at"]) <= int(time.time())
+                or not instance["nannet_address"] or not instance["nannet_lease_id"]):
+            raise RuntimeError("nannet_instance_lease_not_active")
+
+        # Same-process database handoff into NANNET; no second service or queue.
+        import server as nannet_server
+        ndb = nannet_server.connect()
+        try:
+            lease = ndb.execute(
+                "SELECT lease_id FROM device_leases "
+                "WHERE lease_id=? AND address=? AND status='active' AND expires_at>?",
+                (instance["nannet_lease_id"], instance["nannet_address"], int(time.time())),
+            ).fetchone()
+            if lease is None:
+                raise RuntimeError("nannet_authoritative_lease_not_active")
+            payload = {
+                "protocol": "nanlm.endpoint-observation",
+                "version": 1,
+                "event_id": event_id,
+                "base_generation": max(0, int(base_generation)),
+                "active_heads": [],
+                "outcome_verified": False,
+            }
+            ndb.execute(
+                "INSERT OR IGNORE INTO observations(event_id,endpoint_id,received_at,payload_json) "
+                "VALUES(?,?,?,?)",
+                (event_id, instance["nannet_address"], int(time.time()),
+                 json.dumps(payload, sort_keys=True, separators=(",", ":"))),
+            )
+            inserted = ndb.execute("SELECT changes()").fetchone()[0]
+            ndb.commit()
+        finally:
+            ndb.close()
+        return {
+            "state": "pending_unverified" if inserted else "duplicate_noop",
+            "node_point": int(instance["node_point"]),
+            "address": instance["nannet_address"],
+            "event_id": event_id,
+            "outcome_verified": False,
+        }
+
     def run_experience(self, environ, start_response):
         try:
             data = self.read_body(environ)
@@ -716,7 +771,11 @@ class Gateway:
                 event["node_point"] = identity["node_point"]
                 event["instance_id"] = identity["instance_id"]
             event["protocol_version"] = SCHEMA_VERSION
-            event["learning_state"] = "awaiting_nanlmind_ingest"
+            event["nannet_ingest"] = self.publish_to_nannet(
+                identity, event["event_id"],
+                int(os.environ.get("NANLM_CLOCKED_BASE_GENERATION", "0")),
+            )
+            event["learning_state"] = "awaiting_runner_ring_ingest"
             payload = {
                 "protocol": "nanlm.clocked-experience", "protocol_version": SCHEMA_VERSION,
                 "event": event, "quota_remaining": identity["remaining"],
@@ -843,6 +902,10 @@ class Gateway:
                         "steps": [{"endpoint": endpoint, "status": 200,
                                    "result": result_data}],
                     }, response)
+                    nannet_ingest = self.publish_to_nannet(
+                        identity, event["event_id"],
+                        int(os.environ.get("NANLM_CLOCKED_BASE_GENERATION", "0")),
+                    )
                     item = {
                         "task_id": task["id"], "endpoint": endpoint,
                         "source_id": task.get("source_id"),
@@ -856,6 +919,7 @@ class Gateway:
                             "cost_usd": event.get("cost_usd"),
                             "cost_basis": event.get("cost_basis"),
                             "model_ms": event.get("timing"),
+                            "nannet_ingest": nannet_ingest,
                         },
                     }
                     results.append(item)
