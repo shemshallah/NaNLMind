@@ -621,7 +621,7 @@ stale-base rejection. The bootstrap runner keeps the 2 GiB map; Koyeb holds only
 the small merge state. `make merge-test` passes. Deploy files are under
 `deploy/training_merge/`; `DEEPREPO_PAT` is never used. The live service is
 `training-merge-v2` at
-`https://deeprepo-qtcl-9c8fea15.apps.mistral.run` with `/healthz` and the
+`https://nannet.apps.mistral.run` with `/healthz` and the
 authenticated merge endpoint returning 200. Koyeb rejected `free`, so it runs on
 `nano`; state is ephemeral until a volume is attached.
 

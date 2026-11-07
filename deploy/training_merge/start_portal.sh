@@ -43,6 +43,10 @@ PORT=18081 python -m nannet_router.http_service &
 router_pid=$!
 PORT=18082 CLOCKED_GATEWAY_HOST=127.0.0.1 python -m nannet_clocked.gateway &
 clocked_pid=$!
-trap 'kill "$router_pid" "$clocked_pid" 2>/dev/null || true' EXIT INT TERM
+NANNET_AUTH_URL="${NANNET_AUTH_URL:-https://nannet.apps.mistral.run}" \
+NANLM_HEAD_CANDIDATE_DIR="${NANLM_HEAD_CANDIDATE_DIR:-/data/head-candidates}" \
+python /app/head_cortex_service.py &
+head_pid=$!
+trap 'kill "$router_pid" "$clocked_pid" "$head_pid" 2>/dev/null || true' EXIT INT TERM
 
 exec python /app/training_merge.py --root /data --port 8080

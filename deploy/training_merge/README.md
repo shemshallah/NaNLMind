@@ -11,7 +11,7 @@ the returned manifest to its map.
 ## Live service
 
 ```text
-https://deeprepo-qtcl-9c8fea15.apps.mistral.run
+https://nannet.apps.mistral.run
 ```
 
 The live Koyeb service is `nannet-portal` and currently runs on a `nano`

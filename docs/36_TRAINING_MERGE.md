@@ -79,7 +79,7 @@ service:  nannet-portal
 app:      deeprepo
 instance: nano
 volume:   /data (persistent)
-URL:      https://deeprepo-qtcl-9c8fea15.apps.mistral.run
+URL:      https://nannet.apps.mistral.run
 health:   /healthz -> 200
 merge:    /v1/training/merge -> 200
 ```
