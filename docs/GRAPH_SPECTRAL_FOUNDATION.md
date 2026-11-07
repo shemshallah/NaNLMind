@@ -272,3 +272,10 @@ CSR has 257 U32 row offsets and up to 65,280 U32 neighbor indices. The graph pag
 NaNROUTER implementation branch: `mth-sparse-graph-laplacian`. Native source and path/disconnected/atomicity fixtures passed canonical NaN16 CI run #58 (20,737 guest steps; expected HALT). The exact kernel SHA-256 is `013048435c1026643554fb20e3434934cf059dd47cf2857577cac13ed5be6b8f`. NAN-RSS-1 now has a `sparse_graph_laplacian_q16_16_capability()` evidence factory that binds status `native_verified`, operator version 1, Q format `Q16.16/I32`, and a 4,096-byte workspace ceiling. The worker must opt into this capability only when its execution path is backed by the canonical NaN16 runtime; it is not automatically added to every runner. The runner also binds capability operator version and Q format to the job, and tests reject version, format, and workspace mismatches.
 
 Weighted CSR is a separately versioned next ABI. Do not label this unweighted kernel as a weighted operator or promote it before native execution and digest registration.
+
+
+## 15. Native weighted CSR v2 evidence
+
+NaNROUTER's weighted sparse Laplacian v2 is native-verified by canonical NaN16 CI run #107. It consumes Q16.16/I32 state, U8 integer weights 1..255, and emits signed I64 Q16.16 rows. The native fixture passed two weighted path oracles and invalid-zero-weight output atomicity (41,253 guest steps). Exact kernel SHA-256: `8958bf432cd4052576d9b950d9e50c1853bc96d90bc3c50680bf9013ab36d613`.
+
+NAN-RSS-1 registers this as `sparse_weighted_graph_laplacian_q16_16_i64_v2`, operator version 2, Q/weight ABI `Q16.16/I32->I64;U8W`, with a 4,096-byte workspace ceiling. The worker status advertises this evidence but keeps `native_math_dispatch_enabled=false`; end-to-end RSS job dispatch is still not implemented. The capability factory is opt-in and must only be used by a runner backed by the canonical NaN16 runtime.
