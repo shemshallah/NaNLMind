@@ -128,7 +128,8 @@ class SQLiteSourceInbox:
         return event_id
 
     def lease_next(self, *, owner: str, now_tick: int,
-                   lease_ticks: int = 64, max_attempts: int = 8) -> LeasedSource | None:
+                   lease_ticks: int = 64, max_attempts: int = 8,
+                   source_kind: str | None = None) -> LeasedSource | None:
         if not owner or lease_ticks < 1 or now_tick < 0 or max_attempts < 1:
             raise InboxError("invalid lease parameters")
         with self._connect() as db:
@@ -136,10 +137,11 @@ class SQLiteSourceInbox:
             row = db.execute("""
                 SELECT * FROM source_event
                 WHERE attempts < ?
+                  AND (? IS NULL OR source_kind = ?)
                   AND (state = 'queued' OR
                        (state = 'leased' AND lease_until_tick <= ?))
                 ORDER BY nanclock_tick, event_id LIMIT 1
-            """, (max_attempts, now_tick)).fetchone()
+            """, (max_attempts, source_kind, source_kind, now_tick)).fetchone()
             if row is None:
                 db.commit()
                 return None
