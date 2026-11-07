@@ -150,7 +150,7 @@ Embedded router endpoints:
 - POST `/v1/riddle/feedback` and `/v1/riddle/feedback/ack` (signed candidate-only feedback)
 - POST `/v1/riddle/routes/resolve` and `/v1/riddle/plan` (read-only signed route/range planning)
 
-The embedded adapter reuses `NANLM_ADMIN_TOKEN`, `NANLM_RUNNER_TOKEN`, and `NANLM_TOKEN_PEPPER` for its internal intake, worker, and feedback boundaries unless explicit `RIDDLE_*` values are supplied. No extra deployment or new authentication service is introduced. Set `RIDDLE_DATA_DIR=/data/nannet/router` to pin the router's SQLite state on the same persistent volume.
+The embedded adapter reuses `NANLM_ADMIN_TOKEN`, `NANLM_RUNNER_TOKEN`, and `NANLM_TOKEN_PEPPER` for its internal intake, worker, and feedback boundaries unless explicit `RIDDLE_*` values are supplied. If `RIDDLE_WORKER_TOKEN` is overridden, set the same value as `NANLM_ROUTER_WORKER_TOKEN` in all six `nanlm-cpu-*` runner repositories. Their workflow now falls back to `BSR0_PORTAL_API` for `NANLM_ROUTER_URL`, so the router heartbeat reaches this same Koyeb origin. No extra deployment or new authentication service is introduced. Set `RIDDLE_DATA_DIR=/data/nannet/router` to pin the router's SQLite state on the same persistent volume.
 
 ## Required service secrets
 
