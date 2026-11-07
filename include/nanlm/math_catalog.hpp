@@ -37,6 +37,13 @@ struct OperationDescriptor {
     CatalogStatus status;
     bool deterministic;
     bool side_effect_free;
+    // An entry is metadata-only until these proof-bearing contract fields are
+    // populated and its status is explicitly Verified.
+    std::string_view preconditions = "UNSPECIFIED: not executable";
+    std::string_view postconditions = "UNSPECIFIED: not executable";
+    std::string_view law_set = "UNSPECIFIED: not executable";
+    std::string_view inverse_id = "";
+    std::string_view complexity = "UNMEASURED";
 };
 
 // Family coverage is explicit. "Planned" is intentionally distinct from
@@ -81,6 +88,14 @@ constexpr const OperationDescriptor* find_operation(std::string_view id) {
     for (const auto& op : kCoreMathCatalog)
         if (op.id == id) return &op;
     return nullptr;
+}
+
+constexpr bool catalog_entry_executable(const OperationDescriptor& op) {
+    return op.status == CatalogStatus::Verified &&
+           op.preconditions != "UNSPECIFIED: not executable" &&
+           op.postconditions != "UNSPECIFIED: not executable" &&
+           op.law_set != "UNSPECIFIED: not executable" &&
+           op.complexity != "UNMEASURED";
 }
 
 // Truth-table bit order follows NaN16: for two variables index = 2*a+b.
