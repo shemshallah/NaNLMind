@@ -69,10 +69,10 @@ jobs:
           grep -q 'status=no_op' state/relation-replay.log
           grep -q 'resolution_L5' state/relation-replay.log
           test -s state/relation-universe.nmg
-          printf '%b\\n' \
+          printf '%b\n' \
             'N16REL/1' \
-            'test\\t5\\t+\\t60000\\t6f737472696368\\t69735f61\\t62697264\\t3333333333333333333333333333333333333333333333333333333333333333' \
-            'test\\t7\\t+\\t50000\\t73747265616d\\t636f6e7461696e73\\t7761746572\\t6666666666666666666666666666666666666666666666666666666666666666' \
+            'test\t5\t+\t60000\t6f737472696368\t69735f61\t62697264\t3333333333333333333333333333333333333333333333333333333333333333' \
+            'test\t7\t+\t50000\t73747265616d\t636f6e7461696e73\t7761746572\t6666666666666666666666666666666666666666666666666666666666666666' \
             > state/relation-query.n16rel
           before=$(sha256sum state/relation-universe.nmg | cut -d' ' -f1)
           ./build/nanlm-universal relation-eval state/relation-query.n16rel state/relation-universe.nmg | tee state/relation-eval.log
