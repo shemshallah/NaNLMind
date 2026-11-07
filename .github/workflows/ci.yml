@@ -14,6 +14,8 @@ jobs:
         run: c++ --version
       - name: Build
         run: make -j2
+      - name: HERMES head-cortex service contract tests
+        run: python3 -m unittest runner.test_head_cortex_service -v
       - name: Hermes native 256-head train and resume smoke
         run: |
           mkdir -p state
