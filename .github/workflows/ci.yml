@@ -82,6 +82,14 @@ jobs:
           test "$before" = "$after"
           grep -q 'relation_eval_row index=0' state/relation-eval.log
           grep -q 'truth_state=' state/relation-eval.log
+          base_before=$(sha256sum state/relation-universe.nmg | cut -d' ' -f1)
+          ./build/nanlm-universal head-candidate state/relation-universe.nmg 42 0x0001 state/relation-candidate.nmg | tee state/head-candidate.log
+          base_after=$(sha256sum state/relation-universe.nmg | cut -d' ' -f1)
+          test "$base_before" = "$base_after"
+          grep -q '"status":"candidate_only"' state/head-candidate.log
+          grep -q '"canonical_state_modified":false' state/head-candidate.log
+          ./build/nanlm-universal relation-eval state/relation-query.n16rel state/relation-candidate.nmg > state/relation-candidate-eval.log
+          grep -q 'relation_eval_row index=0' state/relation-candidate-eval.log
       - name: Test suite
         run: make test
       - name: Install NANNET authority dependency
