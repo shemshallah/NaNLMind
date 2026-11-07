@@ -11,6 +11,7 @@ import hmac
 import json
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 import urllib.request
@@ -61,7 +62,8 @@ class HeadCortexService:
                                    "read_only": True})
         if method != "POST" or path not in (
                 "/v1/head-cortex/process", "/v1/head-cortex/candidate",
-                "/v1/head-cortex/candidate/evaluate"):
+                "/v1/head-cortex/candidate/evaluate",
+                "/v1/head-cortex/candidate/learn"):
             return _json_response(start_response, "404 Not Found", {"error": "not_found"})
         auth = environ.get("HTTP_AUTHORIZATION", "")
         supplied = auth[7:] if auth.startswith("Bearer ") else ""
@@ -76,6 +78,8 @@ class HeadCortexService:
             package = json.loads(raw.decode("utf-8"))
             if path.endswith("/candidate/evaluate"):
                 result = self._evaluate_candidate(package)
+            elif path.endswith("/candidate/learn"):
+                result = self._create_learning_candidate(package)
             elif path.endswith("/candidate"):
                 result = self._create_candidate(package)
             else:
@@ -183,6 +187,124 @@ class HeadCortexService:
             "boolean_mask_after": receipt.get("boolean_mask_after"),
             "boolean_rule_before": receipt.get("boolean_rule_before"),
             "boolean_rule_after": receipt.get("boolean_rule_after"),
+            "canonical_state_modified": False, "promotion_allowed": False,
+        }
+
+    def _create_learning_candidate(self, request):
+        if not isinstance(request, dict) or request.get("schema") != "nanlm.head-learning-candidate-request/1":
+            raise ValueError("unsupported_head_learning_candidate_request")
+        mutation_id = request.get("mutation_id")
+        if not isinstance(mutation_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", mutation_id):
+            raise ValueError("invalid_mutation_id")
+        if request.get("split") != "train" or request.get("teacher_outputs_are_ground_truth") is not False:
+            raise ValueError("weak_teacher_training_policy_required")
+        teacher = request.get("teacher")
+        if teacher != "CLOCKED":
+            raise ValueError("unsupported_teacher")
+        records = request.get("records")
+        if not isinstance(records, list) or not 1 <= len(records) <= 512:
+            raise ValueError("training_records_must_contain_1_to_512_rows")
+        dataset_digest = request.get("dataset_sha256")
+        if not isinstance(dataset_digest, str) or not HEX64.fullmatch(dataset_digest):
+            raise ValueError("invalid_training_dataset_digest")
+        if hashlib.sha256(canonical(records)).hexdigest() != dataset_digest:
+            raise ValueError("training_dataset_digest_mismatch")
+        epochs = request.get("epochs", 1)
+        if isinstance(epochs, bool) or not isinstance(epochs, int) or not 1 <= epochs <= 8:
+            raise ValueError("epochs_must_be_1_to_8")
+        candidate_dir = Path(os.environ.get("NANLM_HEAD_CANDIDATE_DIR", str(Path(self.state_path).parent / "candidates"))).expanduser()
+        candidate_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+        os.chmod(candidate_dir, 0o700)
+        candidate_state = candidate_dir / (mutation_id + ".nmg")
+        manifest_path = candidate_dir / (mutation_id + ".json")
+        if candidate_state.exists() or manifest_path.exists():
+            raise ValueError("mutation_id_already_exists")
+        if not Path(self.native_binary).is_file() or not Path(self.state_path).is_file():
+            raise OSError("native_state_or_binary_missing")
+        lines = ["N16REL/1"]
+        fingerprints = []
+        for index, row in enumerate(records):
+            if not isinstance(row, dict):
+                raise ValueError("invalid_training_record_%d" % index)
+            resolution, polarity = row.get("resolution"), row.get("polarity")
+            subject, predicate, obj = row.get("subject"), row.get("predicate"), row.get("object")
+            source_digest, observation_id = row.get("source_digest"), row.get("observation_id")
+            confidence = row.get("confidence", 1)
+            if isinstance(resolution, bool) or not isinstance(resolution, int) or not 0 <= resolution <= 9:
+                raise ValueError("invalid_resolution_%d" % index)
+            if polarity not in ("+", "-"):
+                raise ValueError("invalid_polarity_%d" % index)
+            if not all(isinstance(v, str) and v.strip() and len(v.encode("utf-8")) <= 2048 and chr(0) not in v for v in (subject, predicate, obj)):
+                raise ValueError("invalid_relation_text_%d" % index)
+            if not isinstance(source_digest, str) or not HEX64.fullmatch(source_digest):
+                raise ValueError("invalid_source_digest_%d" % index)
+            if not isinstance(observation_id, str) or not re.fullmatch(r"[A-Za-z0-9_.:-]{1,128}", observation_id):
+                raise ValueError("invalid_observation_id_%d" % index)
+            if isinstance(confidence, bool) or not isinstance(confidence, int) or not 0 <= confidence <= 65535:
+                raise ValueError("invalid_confidence_%d" % index)
+            lines.append("\t".join(("train", str(resolution), polarity, str(confidence),
+                                    _hex_text(subject), _hex_text(predicate),
+                                    _hex_text(obj), source_digest)))
+            fingerprints.append(hashlib.sha256(canonical({
+                "resolution": resolution, "polarity": polarity,
+                "subject": subject, "predicate": predicate, "object": obj,
+                "source_digest": source_digest,
+            })).hexdigest())
+        # Bind the mutation to the exact canonical generation before cloning it.
+        with tempfile.TemporaryDirectory(prefix="nanlm-learn-candidate-") as temp:
+            probe = Path(temp) / "probe.n16rel"
+            probe.write_text("N16REL/1\ntest\t5\t+\t0\t70726f6265\t7374617465\t646967657374\t" + "0" * 64 + "\n", encoding="ascii")
+            base = subprocess.run([self.native_binary, "relation-eval", str(probe), self.state_path],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8",
+                errors="replace", timeout=30, check=False)
+            match = re.search(r"generation=(\d+) state_digest=([a-f0-9]{64})", base.stdout)
+            if base.returncode != 0 or not match:
+                raise OSError("cannot_read_base_topology_digest")
+            if match.group(2) != request.get("base_topology_digest"):
+                raise ValueError("stale_base_topology_digest")
+            records_path = Path(temp) / "teacher-train.n16rel"
+            records_path.write_text("\n".join(lines) + "\n", encoding="ascii")
+            shutil.copyfile(self.state_path, candidate_state)
+            os.chmod(candidate_state, 0o600)
+            trained = subprocess.run(
+                [self.native_binary, "relation-train", str(records_path), str(candidate_state), str(epochs)],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                encoding="utf-8", errors="replace", timeout=120, check=False)
+        trained_match = re.search(
+            r"relation_train status=updated .*?changed_heads=(\d+).*?state_digest_after=([a-f0-9]{64})",
+            trained.stdout)
+        if trained.returncode != 0 or not trained_match:
+            candidate_state.unlink(missing_ok=True)
+            raise ValueError("native_relation_training_rejected")
+        candidate_digest = trained_match.group(2)
+        summary = {
+            "changed_heads": int(trained_match.group(1)),
+            "train_events": len(records), "epochs": epochs,
+        }
+        manifest = {
+            "schema": "nanlm.head-candidate-manifest/1",
+            "kind": "learned_candidate", "mutation_id": mutation_id,
+            "base_topology_digest": match.group(2),
+            "candidate_digest": candidate_digest,
+            "candidate_state_file": candidate_state.name,
+            "created_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(),
+            "status": "candidate_only", "promotion_allowed": False,
+            "teacher": "CLOCKED", "teacher_outputs_are_ground_truth": False,
+            "training_split": "train", "training_dataset_sha256": dataset_digest,
+            "training_record_fingerprints": fingerprints,
+            "training_summary": summary,
+        }
+        manifest_path.write_bytes(canonical(manifest))
+        os.chmod(manifest_path, 0o600)
+        return {
+            "schema": "nanlm.head-learning-candidate-response/1",
+            "mutation_id": mutation_id, "status": "candidate_only",
+            "kind": "learned_candidate",
+            "base_topology_digest": match.group(2),
+            "candidate_digest": candidate_digest,
+            "training_dataset_sha256": dataset_digest,
+            "training_summary": summary,
+            "teacher": "CLOCKED", "teacher_outputs_are_ground_truth": False,
             "canonical_state_modified": False, "promotion_allowed": False,
         }
 
