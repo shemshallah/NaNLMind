@@ -101,6 +101,6 @@ def run_preflight(*, runner_id: str, timeout_seconds: int = 90) -> dict[str, Any
             "registry_source_sha256": _bundle_digest(nan0s_root, registry_sources),
             "assembler_sha256": _digest(assembler),
             "nan_cli_sha256": _digest(nan_cli),
-            "assembly_words": sum(1 for line in assembled.stdout.splitlines() if line.strip()),
+            "assembly_image_lines": sum(1 for line in assembled.stdout.splitlines() if line.strip()),
             "guest_stdout_tail": executed.stdout.strip().splitlines()[-4:],
         }
