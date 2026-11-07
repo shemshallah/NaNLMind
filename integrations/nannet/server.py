@@ -194,7 +194,7 @@ class Handler(BaseHTTPRequestHandler):
    try: raw=Path(__file__).with_name("portal.html").read_bytes()
    except OSError:return self.reply(503,{"error":"portal_unavailable"})
    return self.reply(200,raw,"text/html; charset=utf-8")
-  if p=="/healthz": return self.reply(200,{"status":"ok","service":"nannet","protocol":"nanlm.universal-intake","version":2,"addressing":"nan.global-mesh.v1","bootstrap_endpoints":256,"dataset_quota_bytes":DATASET_QUOTA,"chunk_limit_bytes":CHUNK_BYTES,"training_merge_enabled":bool(os.environ.get("NANLM_BOOTSTRAP_TOKEN")),"keeper_enabled":os.environ.get("DEEPREPO_KEEPER_ENABLED","0")=="1"})
+  if p=="/healthz": return self.reply(200,{"status":"ok","service":"nannet","protocol":"nanlm.universal-intake","version":2,"addressing":"nan.global-mesh.v1","bootstrap_endpoints":256,"dataset_quota_bytes":DATASET_QUOTA,"chunk_limit_bytes":CHUNK_BYTES,"training_merge_enabled":bool(os.environ.get("NANLM_BOOTSTRAP_TOKEN")),"clocked_gateway_enabled":bool(os.environ.get("CLOCKED_API_KEY")),"clocked_enrollment_enabled":bool(os.environ.get("CLOCKED_DEMO_ENROLLMENT_TOKEN")),"keeper_enabled":os.environ.get("DEEPREPO_KEEPER_ENABLED","0")=="1"})
   m=re.fullmatch(r"/v1/training/state/([0-9]{1,3})",p)
   if m:
    if self.need("canonical") is None:return
