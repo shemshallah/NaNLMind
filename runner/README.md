@@ -97,3 +97,10 @@ advertises this one capability as `native_verified`, with its SHA-256 kernel
 digest and a 4096-byte maximum input/output workspace. All general sparse
 graph, pair-space, filter, Lanczos, wave and fold capabilities remain
 `specified`; no broader RSS execution is implied.
+
+
+## Native mathematical preflight
+
+The CPU runner supports `--op math-preflight` (also exposed as a workflow-dispatch choice). This launches the canonical NaN16 `::` linker → NaN0S contract registry → NaNROUTER preflight guest. Python performs assembly/process orchestration and hashes evidence; it does not implement the mathematical checks.
+
+The operation writes `state/math-preflight.json` with fixture, router-source, registry-source, assembler, and guest-runner SHA-256 digests, plus the NaN16 result marker and halt status. A successful preflight attestation is not yet RSS job authorization; native RSS dispatch remains disabled until job-specific receipt binding and a native kernel executor are implemented.
