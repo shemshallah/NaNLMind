@@ -27,6 +27,45 @@ class NannetTests(unittest.TestCase):
  def register_device(self,secret):
   payload={"device_secret":secret,"consent":True,"terms_version":"nannet-device-registration-v1","system_report":self.device_report()}
   return self.req("POST","/v1/devices/register",payload)
+ def test_clocked_gateway_is_mounted_in_same_nannet_process(self):
+  status,health=self.req("GET","/clocked/healthz")
+  self.assertEqual(status,200);self.assertEqual(health["status"],"ok")
+  status,body=self.req("POST","/auth/demo-token",{"consent":True})
+  self.assertEqual(status,401);self.assertEqual(body["error"],"unauthorized")
+  status,health=self.req("GET","/healthz")
+  self.assertEqual(status,200);self.assertTrue(health["clocked_gateway_enabled"] is False)
+
+ def test_clocked_observation_handoff_uses_active_nannet_lease(self):
+  import clocked_gateway
+  status,device=self.register_device("Z"*43)
+  self.assertEqual(status,201)
+  clocked_db=os.environ["CLOCKED_GATEWAY_DB"]
+  gateway=clocked_gateway.Gateway(clocked_db)
+  instance_id="clocked-test-instance"
+  token_hash="a"*64
+  db=clocked_gateway.connect_db(clocked_db)
+  try:
+   db.execute("INSERT INTO demo_tokens(token_hash,tenant_id,endpoint_id,expires_at,max_requests,created_at,node_point,instance_id) VALUES(?,?,?,?,?,?,?,?)",(token_hash,"demo","clocked_demo",server.now()+3600,10,server.now(),device["node_point"],instance_id))
+   db.execute("INSERT INTO demo_instances(node_point,instance_id,token_hash,expires_at,created_at,nannet_address,nannet_lease_id) VALUES(?,?,?,?,?,?,?)",(device["node_point"],instance_id,token_hash,server.now()+3600,server.now(),device["address"],device["lease_id"]))
+   db.commit()
+  finally:db.close()
+  event_id="e"*64
+  receipt=gateway.publish_to_nannet({"instance_id":instance_id},event_id,7)
+  self.assertEqual(receipt["state"],"pending_unverified")
+  self.assertEqual(receipt["node_point"],device["node_point"])
+  self.assertFalse(receipt["outcome_verified"])
+  db=server.connect()
+  try:
+   row=db.execute("SELECT endpoint_id,payload_json,status FROM observations WHERE event_id=?",(event_id,)).fetchone()
+   self.assertIsNotNone(row);self.assertEqual(row["endpoint_id"],device["address"])
+   self.assertEqual(row["status"],"pending")
+   observation=json.loads(row["payload_json"])
+   self.assertEqual(observation["base_generation"],7)
+   self.assertFalse(observation["outcome_verified"])
+  finally:db.close()
+  duplicate=gateway.publish_to_nannet({"instance_id":instance_id},event_id,7)
+  self.assertEqual(duplicate["state"],"duplicate_noop")
+
  def test_device_registration_allocates_exclusive_first_available_slots_and_resumes(self):
   secret="A"*43
   status,first=self.register_device(secret)
