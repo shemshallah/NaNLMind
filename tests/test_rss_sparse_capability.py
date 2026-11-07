@@ -1,11 +1,14 @@
 """RSS sparse capability contract tests; no host-side graph math."""
 import unittest
+import sys
+from pathlib import Path
 import json
 from contextlib import redirect_stdout
 from io import StringIO
 from types import SimpleNamespace
 
 from runner.relational_spectral import (Capability, RSSJob, capability_manifest, dispatchable, sparse_graph_laplacian_q16_16_capability)
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "runner"))
 from runner.nanlm_worker import op_rss_status
 
 
