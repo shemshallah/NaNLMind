@@ -294,6 +294,8 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
 
         def do_GET(self) -> None:
             path = self.path.split('?', 1)[0].rstrip('/') or '/'
+            if path == '/v1/riddle' or path.startswith('/v1/riddle/'):
+                self._proxy_router(); return
             if path in ('/v1/rawroute/health', '/v1/rawroute/resolve', '/v1/rawroute/reverse'):
                 if not self._auth():
                     self._json(HTTPStatus.UNAUTHORIZED, {'error': 'unauthorized'}); return
