@@ -187,7 +187,7 @@ class Handler(BaseHTTPRequestHandler):
     except ValueError as exc:raise ValueError("payload_hex_must_be_even_length_hex") from exc
     event_id=service.inbox.enqueue(universe_id=str(data["universe_id"]),node_point=int(data["node_point"]),head_index=int(data["head_index"]),source_kind=str(data.get("source_kind","nan-source")),payload=payload,acl_digest=str(data["acl_digest"]),nanclock_tick=int(data["nanclock_tick"]))
     return self.reply(202,{"event_id":event_id,"accepted":True}) or True
-   if self.need("runner") is None:return True
+   if not self.router_need(service,"worker"):return True
    data=self.json_body(2_097_152)
    if p=="/v1/riddle/lease":
     event=service.inbox.lease_next(owner=str(data["owner"]),now_tick=int(data["now_tick"]),lease_ticks=int(data.get("lease_ticks",64)))
