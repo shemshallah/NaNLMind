@@ -502,3 +502,10 @@ The implementation verifies:
 16. The global digest is deterministic.
 
 A claim that cannot be expressed as one of these invariants is not yet a claim.
+
+
+---
+
+## 11. Graph-spectral foundation
+
+The reusable graph-wave, inverse-square void operator, pair-space product graph, eigensystem, pattern-analysis, NaN16/MTH, runner, and NaNNet contracts are specified in [GRAPH_SPECTRAL_FOUNDATION.md](GRAPH_SPECTRAL_FOUNDATION.md). That specification explicitly distinguishes directed W from symmetric coupling A/L and does not infer centrosymmetry from address reversal.
