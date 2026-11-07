@@ -193,8 +193,15 @@ class HeadCortexService:
         if not isinstance(mutation_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", mutation_id):
             raise ValueError("invalid_mutation_id")
         records = request.get("records")
+        if request.get("split") != "test":
+            raise ValueError("candidate_evaluation_requires_test_split")
+        dataset_digest = request.get("dataset_sha256")
+        if not isinstance(dataset_digest, str) or not HEX64.fullmatch(dataset_digest):
+            raise ValueError("invalid_dataset_digest")
         if not isinstance(records, list) or not 1 <= len(records) <= 512:
             raise ValueError("records_must_contain_1_to_512_rows")
+        if hashlib.sha256(canonical(records)).hexdigest() != dataset_digest:
+            raise ValueError("dataset_digest_mismatch")
         candidate_dir = Path(os.environ.get("NANLM_HEAD_CANDIDATE_DIR", str(Path(self.state_path).parent / "candidates"))).expanduser()
         candidate_state = candidate_dir / (mutation_id + ".nmg")
         manifest_path = candidate_dir / (mutation_id + ".json")
@@ -282,6 +289,7 @@ class HeadCortexService:
         return {
             "schema": "nanlm.head-candidate-evaluation-response/1",
             "mutation_id": mutation_id, "status": "evaluated_candidate",
+            "split": "test", "dataset_sha256": dataset_digest,
             "base_state_digest": baseline["state_digest"],
             "candidate_digest": candidate["state_digest"],
             "baseline": baseline_score, "candidate": candidate_score,
@@ -289,7 +297,7 @@ class HeadCortexService:
             "balanced_accuracy_nonregression": nonregression,
             "recommendation": "review_candidate" if recommend else "retain_baseline",
             "promotion_allowed": False, "canonical_state_modified": False,
-            "evaluation_policy": "heldout_only_no_automatic_promotion",
+            "evaluation_policy": "caller_declared_test_split_no_automatic_promotion",
         }
 
     def _evaluate_state(self, records_path, state_path, expected_rows):
