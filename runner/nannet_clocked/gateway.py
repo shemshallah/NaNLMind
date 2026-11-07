@@ -17,7 +17,7 @@ import time
 from typing import Any, Dict
 from wsgiref.simple_server import make_server
 
-from .clocked_experience import build_pipeline, make_event
+from clocked_experience import build_pipeline, make_event
 
 MAX_BODY = 64 * 1024
 MAX_TASK_RESULT_BYTES = 262_144
@@ -488,7 +488,25 @@ class Gateway:
                         operation = getattr(active_client, endpoint, None)
                         if not callable(operation):
                             raise RuntimeError("clocked_endpoint_not_available:" + endpoint)
-                        response = operation(text=source_text, **options)
+                        # The SDK methods do not share a universal `text`
+                        # parameter. Adapt the typed source text to each
+                        # endpoint instead of sending an invalid keyword.
+                        if endpoint == "decide":
+                            options.setdefault("state", source_text)
+                            options.pop("text", None)
+                        elif endpoint in ("grounding", "compare"):
+                            options.setdefault("documents", [source_text])
+                            options.pop("text", None)
+                        elif endpoint == "rerank":
+                            options.setdefault("documents", [source_text])
+                            options.setdefault("query", source_text)
+                            options.pop("text", None)
+                        elif endpoint == "script":
+                            options.setdefault("script", source_text)
+                            options.pop("text", None)
+                        else:
+                            options.setdefault("text", source_text)
+                        response = operation(**options)
                     try:
                         result_data = dict(response)
                     except (TypeError, ValueError):
