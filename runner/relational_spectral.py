@@ -15,6 +15,7 @@ PROTOCOL = "NAN-RSS-1"
 CAPABILITIES = (
     "k256_laplacian_u16",
     "sparse_graph_apply",
+    "sparse_graph_laplacian_q16_16",
     "pair_space_apply",
     "fixed_point_vector",
     "polynomial_filter",
@@ -30,6 +31,8 @@ class Capability:
     status: str
     max_workspace_bytes: int = 0
     kernel_digest: str = ""
+    operator_version: int = 1
+    q_format: str = ""
 
     def __post_init__(self):
         if self.name not in CAPABILITIES:
@@ -38,6 +41,10 @@ class Capability:
             raise ValueError("invalid capability status")
         if self.max_workspace_bytes < 0:
             raise ValueError("negative workspace")
+        if type(self.operator_version) is not int or self.operator_version < 1:
+            raise ValueError("invalid capability operator version")
+        if self.q_format and not isinstance(self.q_format, str):
+            raise ValueError("invalid capability Q format")
         if self.status == "native_verified" and not self.kernel_digest:
             raise ValueError("verified capability requires a kernel digest")
 
@@ -128,7 +135,9 @@ def capability_manifest(runner_id: str, capabilities: list[Capability]) -> dict[
         "capabilities": [
             {"name": c.name, "status": c.status,
              "max_workspace_bytes": c.max_workspace_bytes,
-             "kernel_digest": c.kernel_digest}
+             "kernel_digest": c.kernel_digest,
+             "operator_version": c.operator_version,
+             "q_format": c.q_format}
             for c in sorted(capabilities, key=lambda x: x.name)
         ],
     }
@@ -142,7 +151,9 @@ def dispatchable(manifest: Mapping[str, Any], job: RSSJob) -> bool:
         if (item.get("name") == job.operator
                 and item.get("status") == "native_verified"
                 and item.get("max_workspace_bytes", -1) >= job.workspace_bytes
-                and bool(item.get("kernel_digest"))):
+                and bool(item.get("kernel_digest"))
+                and item.get("operator_version", 1) == job.operator_version
+                and (not item.get("q_format") or item.get("q_format") == job.q_format)):
             return True
     return False
 
