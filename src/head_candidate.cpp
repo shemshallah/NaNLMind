@@ -49,14 +49,14 @@ int head_candidate_cli(int argc, char** argv) {
     const Hash256 base_digest = topology->global_digest();
     HeadArray heads = topology->root_heads();
     HeadView head = heads.at(static_cast<std::uint8_t>(head_index));
-    const std::uint16_t mask_before = head.boolean_mask();
-    const std::uint8_t rule_before = head.boolean_rule();
+    const std::uint16_t mask_before = head.cell().ops;
+    const std::uint8_t rule_before = head.cell().rule;
     if (!head.self_modify_boolean(static_cast<std::uint16_t>(patch))) {
         std::cerr << "head rejected candidate Boolean mutation (ACL or address protection)\n";
         return 5;
     }
-    const std::uint16_t mask_after = head.boolean_mask();
-    const std::uint8_t rule_after = head.boolean_rule();
+    const std::uint16_t mask_after = head.cell().ops;
+    const std::uint8_t rule_after = head.cell().rule;
     if (mask_before == mask_after) {
         std::cerr << "candidate mutation produced no state change\n";
         return 5;
@@ -100,7 +100,7 @@ int head_candidate_cli(int argc, char** argv) {
               << "\"boolean_rule_after\":" << static_cast<unsigned>(rule_after) << ","
               << "\"base_digest\":\"" << hex(base_digest) << "\","
               << "\"candidate_digest\":\"" << hex(candidate_digest) << "\","
-              << "\"candidate_state_path\":\"" << candidate_path << "\""
+              << "\"candidate_state_created\":true"
               << "}\n";
     return 0;
 }
