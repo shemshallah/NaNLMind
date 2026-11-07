@@ -65,7 +65,7 @@ class HeadCortexService:
             return _json_response(start_response, "404 Not Found", {"error": "not_found"})
         auth = environ.get("HTTP_AUTHORIZATION", "")
         supplied = auth[7:] if auth.startswith("Bearer ") else ""
-        required_scope = "training:execute" if path.endswith("/candidate") else "universe:read"
+        required_scope = "training:execute" if path.startswith("/v1/head-cortex/candidate") else "universe:read"
         if not self._authorized(supplied, required_scope):
             return _json_response(start_response, "401 Unauthorized", {"error": "unauthorized"})
         try:
