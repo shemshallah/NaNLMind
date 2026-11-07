@@ -13,10 +13,12 @@ import json
 
 PROTOCOL = "NAN-RSS-1"
 SPARSE_GRAPH_LAPLACIAN_Q16_16_SHA256 = "013048435c1026643554fb20e3434934cf059dd47cf2857577cac13ed5be6b8f"
+SPARSE_WEIGHTED_GRAPH_LAPLACIAN_Q16_16_I64_V2_SHA256 = "8958bf432cd4052576d9b950d9e50c1853bc96d90bc3c50680bf9013ab36d613"
 CAPABILITIES = (
     "k256_laplacian_u16",
     "sparse_graph_apply",
     "sparse_graph_laplacian_q16_16",
+    "sparse_weighted_graph_laplacian_q16_16_i64_v2",
     "pair_space_apply",
     "fixed_point_vector",
     "polynomial_filter",
@@ -159,6 +161,19 @@ def sparse_graph_laplacian_q16_16_capability() -> Capability:
         kernel_digest=SPARSE_GRAPH_LAPLACIAN_Q16_16_SHA256,
         operator_version=1,
         q_format="Q16.16/I32",
+    )
+
+
+
+def sparse_weighted_graph_laplacian_q16_16_i64_v2_capability() -> Capability:
+    """Evidence for the canonical NaN16 weighted CSR v2 kernel."""
+    return Capability(
+        name="sparse_weighted_graph_laplacian_q16_16_i64_v2",
+        status="native_verified",
+        max_workspace_bytes=4096,
+        kernel_digest=SPARSE_WEIGHTED_GRAPH_LAPLACIAN_Q16_16_I64_V2_SHA256,
+        operator_version=2,
+        q_format="Q16.16/I32->I64;U8W",
     )
 
 
