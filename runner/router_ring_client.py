@@ -70,3 +70,45 @@ def submit_heartbeat(base_url: str, token: str, slot: int,
     if response.get("accepted") is not True or not isinstance(response.get("runner_ring"), dict):
         raise RouterRingClientError("router did not accept runner-ring heartbeat")
     return response["runner_ring"]
+
+def _checked_origin(base_url: str, token: str) -> str:
+    if not token or len(token) < 32:
+        raise RouterRingClientError("router worker token must be 32+ characters")
+    parsed = urlsplit(base_url)
+    if parsed.scheme not in ("https", "http") or not parsed.netloc or parsed.query or parsed.fragment:
+        raise RouterRingClientError("router URL must be an absolute HTTP(S) origin")
+    if parsed.scheme != "https" and parsed.hostname not in ("127.0.0.1", "localhost", "::1"):
+        raise RouterRingClientError("non-local router endpoints require HTTPS")
+    return base_url.rstrip("/")
+
+def lease_source(base_url: str, token: str, owner: str, now_tick: int,
+                 source_kind: str = "clocked-evidence", lease_ticks: int = 64,
+                 timeout: float = 10.0) -> dict | None:
+    if not owner or not isinstance(now_tick, int) or now_tick < 0 or lease_ticks < 1:
+        raise RouterRingClientError("invalid source lease parameters")
+    base = _checked_origin(base_url, token)
+    response = _request_json(base + "/v1/riddle/lease", token, method="POST",
+        payload={"owner": owner, "now_tick": now_tick, "lease_ticks": lease_ticks,
+                 "source_kind": source_kind}, timeout=timeout)
+    if response.get("event") is None and "event_id" not in response:
+        return None
+    if not isinstance(response.get("event_id"), str) or not isinstance(response.get("payload_hex"), str):
+        raise RouterRingClientError("router lease omitted event identity or payload")
+    return response
+
+def ack_source(base_url: str, token: str, event_id: str, owner: str,
+               result_digest: str, result_generation: int, trace: dict,
+               timeout: float = 10.0) -> dict:
+    base = _checked_origin(base_url, token)
+    response = _request_json(base + "/v1/riddle/ack", token, method="POST",
+        payload={"event_id": event_id, "owner": owner, "result_digest": result_digest,
+                 "result_generation": result_generation, "trace": trace}, timeout=timeout)
+    if response.get("acknowledged") is not True:
+        raise RouterRingClientError("router did not acknowledge the source receipt")
+    return response
+
+def retry_source(base_url: str, token: str, event_id: str, owner: str,
+                 timeout: float = 10.0) -> dict:
+    base = _checked_origin(base_url, token)
+    return _request_json(base + "/v1/riddle/retry", token, method="POST",
+        payload={"event_id": event_id, "owner": owner}, timeout=timeout)
