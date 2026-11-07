@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/shemshallah/NaNLMind/blob/main/integrations/clocked/hermes-evidence-package.schema.json",
+  "title": "HERMES to NaNLMind evidence package",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "version",
+    "purpose",
+    "scratch_id",
+    "scratch_revision",
+    "question",
+    "truth_states",
+    "evidence_entries",
+    "result_type_semantics",
+    "policy",
+    "package_sha256"
+  ],
+  "properties": {
+    "schema": {
+      "const": "nanlm.hermes-evidence-package"
+    },
+    "version": {
+      "const": 1
+    },
+    "purpose": {
+      "enum": [
+        "EVIDENCE_COGNITION",
+        "ANSWER_VALIDATION"
+      ]
+    },
+    "scratch_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "scratch_revision": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "question": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 65536
+    },
+    "truth_states": {
+      "const": [
+        "TRUE",
+        "FALSE",
+        "UNKNOWN",
+        "CONFLICT"
+      ]
+    },
+    "evidence_entries": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": {
+        "type": "object",
+        "required": [
+          "entry_id",
+          "lane",
+          "writer",
+          "revision",
+          "payload"
+        ],
+        "properties": {
+          "entry_id": {
+            "type": "string"
+          },
+          "lane": {
+            "enum": [
+              "user",
+              "hermes_plan",
+              "clocked_result",
+              "evidence_atoms",
+              "conflict_map",
+              "hermes_synthesis",
+              "head_response"
+            ]
+          },
+          "writer": {
+            "enum": [
+              "user",
+              "hermes",
+              "clocked",
+              "nanlmind",
+              "policy"
+            ]
+          },
+          "revision": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "payload": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "result_type_semantics": {
+      "type": "object"
+    },
+    "policy": {
+      "type": "object",
+      "required": [
+        "clocked_outputs_are_teacher_observations",
+        "clocked_outputs_are_not_ground_truth",
+        "unknown_is_not_false",
+        "conflict_is_not_averaged"
+      ],
+      "properties": {
+        "clocked_outputs_are_teacher_observations": {
+          "const": true
+        },
+        "clocked_outputs_are_not_ground_truth": {
+          "const": true
+        },
+        "unknown_is_not_false": {
+          "const": true
+        },
+        "conflict_is_not_averaged": {
+          "const": true
+        }
+      }
+    },
+    "package_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}
