@@ -360,14 +360,17 @@ Koyeb service; there is one service and one HTTP process, not a separate Clocked
 deployment. The adapter code and its SDK boundary live under
 `integrations/nannet/clocked_*`. The same service owns NANNET identity,
 lowest-free HW8–HW254 allocation (node points 9–255), scoped participant
-credentials, and Clocked request routing. `CLOCKED_API_KEY` remains server-side
+credentials, and Clocked request routing. The same process embeds NaNLMROUTER's
+BS0:0 source inbox and MC0:0 six-runner heartbeat routes; the six CPU runner
+workflows use this same Koyeb origin. `CLOCKED_API_KEY` remains server-side
 and is never returned to participants, Android clients, or runners.
 
 The demo validates task-family labels against independent gold labels before
 admitting examples, keeps held-out evaluation isolated from live Clocked calls,
-and sends evidence through the native NaNLMind learner boundary. Unverified
-observations remain evidence-only; only independently verified outcomes may
-contribute bounded feedback. This is a routing/evidence integration, not a
+and sends digest-only evidence to both NANNET's observation queue and the
+embedded NaNLMROUTER inbox. Unverified observations remain evidence-only; they
+do not update model heads. Only independently verified outcomes may contribute
+bounded feedback through the canonical runner ring. This is a routing/evidence integration, not a
 general language-model accuracy claim. Configure the Clocked secrets on the
 existing Koyeb service as documented in
 `integrations/nannet/README.md`. See
