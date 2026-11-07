@@ -45,10 +45,11 @@ def consume_clocked_sources(base_url: str, token: str, slot: int, now_tick: int,
                     raise ValueError("clocked_router_digest_invalid:" + field)
             if payload.get("outcome_verified") is not False or payload.get("raw_text_persisted") is not False:
                 raise ValueError("clocked_router_must_remain_unverified_and_digest_only")
+            head_index = int(event["head_index"])
             trace = {
                 "schema": "nanrouter.trace.v1",
                 "source_ref": "clocked:" + payload["clocked_event_id"],
-                "target_ref": f"BS0:0/MC0:0/R{slot}/HW{int(event["head_index"])}",
+                "target_ref": f"BS0:0/MC0:0/R{slot}/HW{head_index}",
                 "source_hash": event["source_hash"],
                 "acl_digest": event["acl_digest"],
                 "universe_id": event["universe_id"],
