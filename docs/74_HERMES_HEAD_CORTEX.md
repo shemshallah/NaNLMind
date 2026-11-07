@@ -123,3 +123,23 @@ created. Evaluation and six-runner generation promotion remain separate gates.
 The request/response schemas are
 `integrations/clocked/head-candidate-request.schema.json` and
 `integrations/clocked/head-candidate-response.schema.json`.
+
+## Held-out candidate evaluation
+
+After creating a candidate, HERMES may submit a bounded held-out relation set
+to `POST /v1/head-cortex/candidate/evaluate`. The route requires NANNET
+`training:execute` scope. Every row is converted to an N16REL test record;
+the service runs the same read-only native `relation-eval` command against
+both the canonical base and the candidate topology.
+
+The response reports decisive accuracy, coverage, balanced accuracy,
+confusion counts, and resolution-bucket metrics for both states. UNKNOWN
+predictions reduce coverage rather than being silently counted as FALSE.
+Evaluation is bound to the base and candidate digests recorded when the
+candidate was created; either digest changing rejects the comparison.
+
+A positive utility delta and non-regressing balanced accuracy produce only
+`review_candidate`. This is a review signal, not permission to promote.
+The endpoint never modifies canonical topology and always returns
+`promotion_allowed=false`. Candidate request/response schemas are in
+`integrations/clocked/head-candidate-evaluation-*.schema.json`.
