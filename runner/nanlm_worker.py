@@ -710,7 +710,11 @@ def op_rss_status(args):
     )
     manifest["universe_id"] = os.environ.get("NANLM_UNIVERSE_ID", "local")
     manifest["native_math_dispatch_enabled"] = False
-    manifest["reason"] = "No RSS kernel is native_verified by the canonical NaN16 toolchain yet."
+    manifest["dispatchable_operators"] = ["k256_laplacian_u16"]
+    manifest["reason"] = (
+        "K256 is native_verified, but worker-level RSS job dispatch is not wired yet; "
+        "this status operation only advertises capability evidence."
+    )
     print(json.dumps(manifest, sort_keys=True, indent=2))
     return 0
 
