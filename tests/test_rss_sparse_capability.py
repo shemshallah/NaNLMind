@@ -1,7 +1,12 @@
 """RSS sparse capability contract tests; no host-side graph math."""
 import unittest
+import json
+from contextlib import redirect_stdout
+from io import StringIO
+from types import SimpleNamespace
 
 from runner.relational_spectral import (Capability, RSSJob, capability_manifest, dispatchable, sparse_graph_laplacian_q16_16_capability)
+from runner.nanlm_worker import op_rss_status
 
 
 class SparseCapabilityContractTests(unittest.TestCase):
@@ -22,6 +27,22 @@ class SparseCapabilityContractTests(unittest.TestCase):
             "cancellation_epoch": 7,
             "parameters": {"layout": "symmetric-csr-u16-v1"},
         })
+
+
+    def test_worker_status_advertises_only_verified_sparse_evidence(self):
+        output = StringIO()
+        with redirect_stdout(output):
+            self.assertEqual(op_rss_status(SimpleNamespace(slot_name="R0")), 0)
+        manifest = json.loads(output.getvalue())
+        sparse = next(c for c in manifest["capabilities"]
+                      if c["name"] == "sparse_graph_laplacian_q16_16")
+        self.assertEqual(sparse["status"], "native_verified")
+        self.assertEqual(sparse["operator_version"], 1)
+        self.assertEqual(sparse["q_format"], "Q16.16/I32")
+        self.assertEqual(sparse["kernel_digest"],
+                         "013048435c1026643554fb20e3434934cf059dd47cf2857577cac13ed5be6b8f")
+        self.assertFalse(manifest["native_math_dispatch_enabled"])
+        self.assertIn("sparse_graph_laplacian_q16_16", manifest["dispatchable_operators"])
 
     def test_source_written_kernel_is_not_dispatchable(self):
         manifest = capability_manifest("R0", [Capability(
