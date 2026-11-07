@@ -121,8 +121,8 @@ candidate receipt. It never updates the base state and always returns
 created. Evaluation and six-runner generation promotion remain separate gates.
 
 The request/response schemas are
-`integrations/clocked/head-candidate-request.schema.json` and
-`integrations/clocked/head-candidate-response.schema.json`.
+`schemas/head-cortex/candidate-request.schema.json` and
+`schemas/head-cortex/candidate-response.schema.json`.
 
 ## Held-out candidate evaluation
 
@@ -142,4 +142,4 @@ A positive utility delta and non-regressing balanced accuracy produce only
 `review_candidate`. This is a review signal, not permission to promote.
 The endpoint never modifies canonical topology and always returns
 `promotion_allowed=false`. Candidate request/response schemas are in
-`integrations/clocked/head-candidate-evaluation-*.schema.json`.
+`schemas/head-cortex/candidate-evaluation-*.schema.json`.
