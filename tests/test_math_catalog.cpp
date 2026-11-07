@@ -53,6 +53,31 @@ int main() {
     CHECK(!bad_alignment.valid(4096));
     CHECK(!bad_owner.valid(4096));
 
+    ScratchArena scratch(7, 1024);
+    const auto lease = scratch.allocate(128, 64, 9, 1001, 2, true);
+    CHECK(lease.has_value());
+    CHECK_EQ(lease->offset % 64, 0u);
+    const auto second = scratch.allocate(256, 128, 9, 1002, 3, true);
+    CHECK(second.has_value());
+    CHECK(lease->offset + lease->bytes <= second->offset ||
+          second->offset + second->bytes <= lease->offset);
+    const std::array<std::uint8_t, 4> payload{0x11, 0x22, 0x33, 0x44};
+    CHECK(scratch.write(*lease, 12, payload.data(), payload.size()));
+    std::array<std::uint8_t, 4> recovered{};
+    CHECK(scratch.read(*lease, 12, recovered.data(), recovered.size()));
+    CHECK(recovered == payload);
+    auto forged = *lease;
+    forged.writable = false;
+    CHECK(!scratch.write(forged, 12, payload.data(), payload.size()));
+    auto stale = *lease;
+    stale.generation += 1;
+    CHECK(!scratch.read(stale, 12, recovered.data(), recovered.size()));
+    CHECK(!scratch.write(*lease, 127, payload.data(), payload.size()));
+    CHECK_EQ(scratch.active_allocations(), 2u);
+    CHECK(scratch.release(*lease));
+    CHECK(!scratch.release(*lease));
+    CHECK_EQ(scratch.active_allocations(), 1u);
+
     // Ten mathematical bands are stable identifiers, separate from L0-L9.
     std::array<std::uint8_t, 10> math_layers{};
     for (std::uint8_t i = 0; i < math_layers.size(); ++i) math_layers[i] = i;
