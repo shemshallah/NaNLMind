@@ -68,7 +68,7 @@ class NannetTests(unittest.TestCase):
   payload["consent"]=True;payload["system_report"]["mac_address"]="aa:bb:cc:dd:ee:ff"
   self.assertEqual(self.req("POST","/v1/devices/register",payload)[0],400)
  def test_dynamic_node_slots_cannot_be_admin_token_bypassed(self):
-  self.assertEqual(self.req("POST","/admin/tokens",{"address":"nan://GM0:SC0:MC0:BS0:HW4","scopes":["intake"]},token="a"*48)[0],400)
+  self.assertEqual(self.req("POST","/admin/tokens",{"address":"nan://GM0:SC0:MC0:BS0:HW8","scopes":["intake"]},token="a"*48)[0],400)
   token=self.issue("nan://GM0:SC0:MC0:BS0:HW1",["intake"])
   self.assertEqual(self.req("GET","/v1/address",token=token)[0],200)
 
