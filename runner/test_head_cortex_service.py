@@ -54,7 +54,8 @@ class HeadCortexServiceTests(unittest.TestCase):
         self.binary.write_text(
             "#!/usr/bin/env python3\n"
             "print('relation_eval schema=N16REL-EVAL/1 generation=12 state_digest=' + 'd'*64 + ' rows=1')\n"
-            "print('relation_eval_row index=0 head=42 votes=7 truth_state=TRUE rule=3')\n",
+            "print('relation_eval_row index=0 head=42 votes=7 truth_state=TRUE rule=3')\n"
+            "print('relation_eval_row index=1 head=43 votes=6 truth_state=TRUE rule=2')\n",
             encoding="utf-8")
         self.binary.chmod(0o755)
         self.app = HeadCortexService(str(self.binary), str(self.state), "t" * 40)
@@ -73,6 +74,24 @@ class HeadCortexServiceTests(unittest.TestCase):
         self.assertEqual(result["relations"][0]["premises"], ["entry-1"])
         self.assertTrue(result["provenance"]["read_only"])
         self.assertEqual(hashlib.sha256(self.state.read_bytes()).hexdigest(), self.before)
+
+    def test_answer_draft_is_processed_as_native_relation_input(self):
+        value = package()
+        value["purpose"] = "ANSWER_VALIDATION"
+        value["evidence_entries"].append({
+            "entry_id": "draft-1", "lane": "hermes_synthesis", "writer": "hermes",
+            "revision": "e" * 64, "payload": {"draft": "The river flows."},
+        })
+        unsigned = dict(value)
+        unsigned.pop("package_sha256")
+        value["package_sha256"] = hashlib.sha256(canonical(unsigned)).hexdigest()
+        status, result = invoke(self.app, payload=value)
+        self.assertEqual(status, "200 OK")
+        self.assertTrue(result["provenance"]["answer_draft_processed"])
+        draft_rows = [row for row in result["relations"] if row["predicate"] == "asserts_claim"]
+        self.assertEqual(len(draft_rows), 1)
+        self.assertEqual(draft_rows[0]["subject"], "hermes_answer")
+        self.assertEqual(draft_rows[0]["coverage_signal"], "heuristic_only")
 
     def test_rejects_invalid_package_digest(self):
         value = package()
