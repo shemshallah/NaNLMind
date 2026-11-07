@@ -273,3 +273,6 @@ The shared gate is `NaNROUTER/mth/nan16/mth_preflight.nas`. The existing NaN0S `
 The integration CI in `.github/workflows/ci.yml` checks out the shared NaNROUTER source and canonical NaN0S toolchain, assembles the actual `.nas` fixture, and executes it in the NaN16 guest. This is a cross-repository native execution gate, not a Python/C++ mathematical reimplementation.
 
 Evidence status: source and fixture are committed on the integration branch; native verification is pending the GitHub Actions run. The gate currently supports rank-0 through rank-2 shape contracts and five shape rules. Higher-rank tensor contracts, durable MC0DB rule persistence, and end-to-end RSS job dispatch remain separate work.
+
+
+The native integration now includes a second fixture that parses a literal `nan://...::op:77::nan://...` expression through the existing NaN0S route resolver and expression linker. The linker returns its canonical typed contract pointer in r10; the exact pointer is passed to NaNROUTER's NaN16 preflight guest. This tests the real route/operator/contract/preflight handoff rather than a hardcoded contract record.
