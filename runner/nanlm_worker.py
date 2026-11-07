@@ -696,6 +696,28 @@ def portal_heartbeat():
     drain_clocked_router_sources()
 
 
+def op_math_preflight(args):
+    """Run the canonical NaN16 linker/preflight guest; Python does no math."""
+    try:
+        from runner.math_preflight import run_preflight
+    except ModuleNotFoundError:
+        from math_preflight import run_preflight
+    record = run_preflight(runner_id=args.slot_name)
+    record.update({
+        "op": "math-preflight",
+        "slot": args.slot,
+        "epoch": args.epoch,
+        "at": int(time.time()),
+    })
+    destination = local_path()
+    destination.mkdir(parents=True, exist_ok=True)
+    destination.joinpath("math-preflight.json").write_text(
+        json.dumps(record, indent=1, sort_keys=True), encoding="utf-8"
+    )
+    print(json.dumps(record, indent=1, sort_keys=True))
+    return 0 if record.get("ok") else 1
+
+
 def op_rss_status(args):
     """Report only kernel capabilities backed by canonical NaN16 evidence."""
     try:
@@ -746,7 +768,7 @@ def op_rss_status(args):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--op", choices=["selftest", "prewarm", "headshift", "handoff", "logic", "logic-core", "training", "loop", "finalize", "unlock", "status", "rss-status"],
+    ap.add_argument("--op", choices=["selftest", "prewarm", "headshift", "handoff", "logic", "logic-core", "training", "loop", "finalize", "unlock", "status", "rss-status", "math-preflight"],
                     default="selftest")
     ap.add_argument("--slot", type=int, default=None)
     ap.add_argument("--epoch", type=int, default=0)
@@ -765,6 +787,8 @@ def main():
     args.slot_name = SLOT_NAMES[args.slot]
     if args.op == "rss-status":
         return op_rss_status(args)
+    if args.op == "math-preflight":
+        return op_math_preflight(args)
     verify_portal_identity(args.slot)
     ring_status = router_ring_heartbeat()
     if ring_status is not None:

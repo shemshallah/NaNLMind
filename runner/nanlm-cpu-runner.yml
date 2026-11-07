@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       op:
-        description: selftest | prewarm | headshift | handoff | logic | logic-core | training | status
+        description: selftest | prewarm | headshift | handoff | logic | logic-core | training | status | rss-status | math-preflight
         type: choice
-        options: [selftest, prewarm, headshift, handoff, logic, logic-core, training, loop, finalize, unlock, status]
+        options: [selftest, prewarm, headshift, handoff, logic, logic-core, training, loop, finalize, unlock, status, rss-status, math-preflight]
         default: selftest
       slot:
         description: runner slot 1..6
@@ -97,6 +97,22 @@ jobs:
           token: ${{ secrets.DEEPREPO_PAT || github.token }}
           path: engine
 
+      - name: Checkout NaNROUTER native mathematical runtime
+        if: ${{ inputs.op == 'math-preflight' }}
+        uses: actions/checkout@v4
+        with:
+          repository: shemshallah/NaNROUTER
+          ref: math-linker-preflight
+          path: nanrouter
+
+      - name: Checkout canonical NaN0S registry and guest runtime
+        if: ${{ inputs.op == 'math-preflight' }}
+        uses: actions/checkout@v4
+        with:
+          repository: shemshallah/NaN0S
+          ref: math-contract-registry
+          path: nanrouter/nan0s
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -111,6 +127,9 @@ jobs:
         run: make -C core -j2
 
       - name: Execute head shift
+        env:
+          NANROUTER_ROOT: ${{ github.workspace }}/nanrouter
+          NAN0S_ROOT: ${{ github.workspace }}/nanrouter/nan0s
         run: |
           set -euo pipefail
           PYTHONPATH=engine:core python3 core/runner/nanlm_worker.py \
