@@ -156,16 +156,16 @@ jobs:
         with:
           repository: shemshallah/NaN0S
           ref: math-contract-registry
-          path: nan0s
+          path: nanrouter/nan0s
       - name: Build canonical NaN16 guest runner
-        run: make -s -C nan0s/aarch64/android nan_cli
+        run: make -s -C nanrouter/nan0s/aarch64/android nan_cli
       - name: Assemble and execute NaNROUTER preflight guest
         run: |
           mkdir -p state/mth
           cd nanrouter
-          awk -f ../nan0s/tools/nmk.awk -v CMD=emit mth/tests/mth_preflight_test.nas > ../state/mth/preflight.nan
+          awk -f nan0s/tools/nmk.awk -v CMD=emit mth/tests/mth_preflight_test.nas > ../state/mth/preflight.nan
           cd ..
-          nan0s/aarch64/android/nan_cli --img state/mth/preflight.nan --steps 2000000 --serial > state/mth/preflight.out 2> state/mth/preflight.err
+          nanrouter/nan0s/aarch64/android/nan_cli --img state/mth/preflight.nan --steps 2000000 --serial > state/mth/preflight.out 2> state/mth/preflight.err
           cat state/mth/preflight.out
           cat state/mth/preflight.err
           grep -q '^MTH TYPED PREFLIGHT PASS' state/mth/preflight.out
