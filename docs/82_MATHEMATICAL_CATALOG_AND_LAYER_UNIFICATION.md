@@ -272,7 +272,10 @@ The shared gate is `NaNROUTER/mth/nan16/mth_preflight.nas`. The existing NaN0S `
 
 The integration CI in `.github/workflows/ci.yml` checks out the shared NaNROUTER source and canonical NaN0S toolchain, assembles the actual `.nas` fixture, and executes it in the NaN16 guest. This is a cross-repository native execution gate, not a Python/C++ mathematical reimplementation.
 
-Evidence status: source and fixture are committed on the integration branch; native verification is pending the GitHub Actions run. The gate currently supports rank-0 through rank-2 shape contracts and five shape rules. Higher-rank tensor contracts, durable MC0DB rule persistence, and end-to-end RSS job dispatch remain separate work.
+Evidence status: the NaN16 fixture and worker-side `--op math-preflight` both passed in the NaNLMind GitHub Actions integration job. The worker report records fixture, router-source, registry-source, assembler, and guest-runner SHA-256 digests plus the guest halt code/program counter. The gate currently supports rank-0 through rank-2 shape contracts and five shape rules. Higher-rank tensor contracts, durable MC0DB rule persistence, and end-to-end RSS job dispatch remain separate work.
 
 
 The native integration now includes a second fixture that parses a literal `nan://...::op:77::nan://...` expression through the existing NaN0S route resolver and expression linker. The linker returns its canonical typed contract pointer in r10; the exact pointer is passed to NaNROUTER's NaN16 preflight guest. This tests the real route/operator/contract/preflight handoff rather than a hardcoded contract record.
+
+
+The CPU runner workflow also exposes `math-preflight` as a manual operation. It checks out the canonical NaNROUTER and NaN0S sources, launches the NaN16 guest, and writes a local evidence report. This attestation does not enable RSS dispatch: `native_math_dispatch_enabled` remains false until a real worker-side job executor and per-job preflight receipt binding exist.
