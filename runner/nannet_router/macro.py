@@ -122,7 +122,7 @@ class MacroJob:
 class BootstrapMacroPlanner:
     """Plans bounded work; it does not directly mutate the master route cache."""
 
-    def __init__(self, universe_id: str = "overbootstrap-mc0"):
+    def __init__(self, universe_id: str = "HW0::BS0"):
         self.universe_id = universe_id
 
     def next_job(self, state: CurriculumState,
@@ -145,7 +145,7 @@ class BootstrapMacroPlanner:
             if state.boolean_heads_verified >= 250 and state.distinct_boolean_rules == 16:
                 raise PolicyError("Boolean state is complete but its gate is not marked passed")
             return MacroJob(
-                "LEARN_BOOLEAN", self.universe_id, "MC0:0", BOOLEAN_HEADS,
+                "LEARN_BOOLEAN", self.universe_id, "HW0::BS0", BOOLEAN_HEADS,
                 (0,), training_ranges, training_candidates, state.base_generation, False
             )
         if not state.routing_gate_passed:
@@ -154,7 +154,7 @@ class BootstrapMacroPlanner:
             if not route_ranges or not route_candidates:
                 raise PolicyError("NANNET route input and candidate ranges are both required")
             return MacroJob(
-                "LEARN_ROUTING", self.universe_id, "MC0:0", BOOLEAN_HEADS,
+                "LEARN_ROUTING", self.universe_id, "HW0::BS0", BOOLEAN_HEADS,
                 tuple(range(10)), route_ranges, route_candidates, state.base_generation, False
             )
         # Language is deliberately deferred until the logic and mapping gates pass.
@@ -165,7 +165,7 @@ class BootstrapMacroPlanner:
         if not language_ranges or not language_candidates:
             raise PolicyError("language demo remains disabled until its own bin is authorized")
         return MacroJob(
-            "LANGUAGE_DEMO", self.universe_id, "MC0:0", BOOLEAN_HEADS,
+            "LANGUAGE_DEMO", self.universe_id, "HW0::BS0", BOOLEAN_HEADS,
             tuple(range(10)), language_ranges, language_candidates, state.base_generation, False
         )
 
@@ -182,7 +182,7 @@ class BootstrapMacroPlanner:
         feedback = {
             "schema": "nanrouter.bootstrap-feedback.v1",
             "universe_id": universe_id,
-            "macrocluster": "MC0:0",
+            "macrocluster": "HW0::BS0",
             "stage": stage,
             "completed_steps": completed_steps,
             "base_generation": base_generation,
