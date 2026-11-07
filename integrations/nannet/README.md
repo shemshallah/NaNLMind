@@ -10,7 +10,7 @@ and exposes the canonical runner merge boundary.
 - Canonical address form: `nan://GM0:SC0:MC0:BS0:HW0`.
 - Each GM, SC, MC, BS, and HW coordinate is an unsigned integer from 0 through 255.
 - Initial identities: HW0=NaNLMind runner ring; HW1=Android; HW2=Hermes; HW3=Clocked, all initially under GM0/SC0/MC0/BS0.
-- Fixed HW0–HW3 identities are reserved for the runner ring, Android, Hermes, and Clocked. Community device installations receive the next free HW4–HW255 slot in BS0.
+- Fixed HW0–HW3 identities are reserved for the runner ring, Android, Hermes, and Clocked. Community and virtual demo installations receive the next free HW8–HW254 slot in BS0, mapping to node points 9–255.
 - A device installation key is generated locally and stored only as a server-side keyed hash. One active lease is allowed per installation key and one installation per active HW slot. Re-registration resumes the same lease; explicit release revokes its tokens and frees the slot only after pending work is committed or rejected.
 - The issued bearer token binds the endpoint to its canonical NaN address; optional `X-NaN-Address` claims are checked against that binding.
 - MAC addresses, IMEI, serial numbers, Android IDs, phone numbers, and email addresses are not collected or used for device identity. Network MAC randomization therefore does not create a second device identity.
@@ -58,7 +58,7 @@ Corpus upload uses browser SHA-256, sends bounded chunks, and seals the manifest
 
 - GET /healthz
 - POST /admin/tokens (NANLM_ADMIN_TOKEN; fixed HW0–HW3 only)
-- POST /v1/devices/register (public HTTPS registration; explicit consent + bounded system report + client-generated 256-bit installation secret; assigns HW4–HW255)
+- POST /v1/devices/register (public HTTPS registration; explicit consent + bounded system report + client-generated 256-bit installation secret; assigns HW8–HW254)
 - GET /v1/devices/me (device bearer; own registration and lease)
 - POST /v1/devices/heartbeat (device bearer; renews lease)
 - POST /v1/devices/release (device bearer; revokes tokens and frees slot only after no pending uploads/observations)
@@ -208,7 +208,7 @@ request bodies.
 A clone does not receive a hard-coded identity. On first run it creates a
 random 256-bit installation secret locally and registers over HTTPS with
 explicit consent and a small system-capability report. The server assigns the
-lowest free community slot, initially HW4, then HW5, through HW255. HW0–HW3
+lowest free community slot, initially HW8, then HW9, through HW254 (node points 9–255). HW0–HW3
 remain reserved for the runner ring, Android reference endpoint, Hermes, and
 Clocked.
 
