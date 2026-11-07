@@ -6,6 +6,8 @@
   "required": [
     "schema",
     "mutation_id",
+    "split",
+    "dataset_sha256",
     "records"
   ],
   "properties": {
@@ -64,6 +66,13 @@
           }
         }
       }
+    },
+    "split": {
+      "const": "test"
+    },
+    "dataset_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
     }
   }
 }
