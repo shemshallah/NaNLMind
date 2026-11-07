@@ -436,7 +436,10 @@ class HeadCortexService:
                     "endpoint": endpoint, "status": str(status)[:32],
                     "result_type": str(result_type)[:32], "signals": summary,
                 }
-                source_digest = observation.get("provenance", {}).get("input_sha256")
+                provenance = observation.get("provenance", {})
+                if not isinstance(provenance, dict):
+                    provenance = {}
+                source_digest = provenance.get("input_sha256")
                 if not isinstance(source_digest, str) or not HEX64.fullmatch(source_digest):
                     source_digest = hashlib.sha256(canonical(observation)).hexdigest()
                 source_id = observation.get("source_id") or "cross_source"
