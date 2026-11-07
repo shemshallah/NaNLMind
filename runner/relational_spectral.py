@@ -13,6 +13,7 @@ import json
 
 PROTOCOL = "NAN-RSS-1"
 CAPABILITIES = (
+    "k256_laplacian_u16",
     "sparse_graph_apply",
     "pair_space_apply",
     "fixed_point_vector",
