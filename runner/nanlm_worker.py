@@ -708,7 +708,7 @@ def op_rss_status(args):
             declared.append(Capability(
                 name, "native_verified", 4096,
                 "7288547abb4ef7e7d9c259ce991d9dccbdd4a0575ce1233bab80968f1278291f",
-                operator_version=1, q_format="U16/I32"))
+                operator_version=1))
         elif name == "sparse_graph_laplacian_q16_16":
             declared.append(sparse_graph_laplacian_q16_16_capability())
         else:
