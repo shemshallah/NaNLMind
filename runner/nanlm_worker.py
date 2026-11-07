@@ -702,6 +702,7 @@ def op_rss_status(args):
         from runner.relational_spectral import (
             CAPABILITIES, Capability, capability_manifest,
             sparse_graph_laplacian_q16_16_capability,
+            sparse_weighted_graph_laplacian_q16_16_i64_v2_capability,
         )
     except ModuleNotFoundError:
         # Support direct worker execution with PYTHONPATH=runner.
@@ -718,16 +719,19 @@ def op_rss_status(args):
                 operator_version=1))
         elif name == "sparse_graph_laplacian_q16_16":
             declared.append(sparse_graph_laplacian_q16_16_capability())
+        elif name == "sparse_weighted_graph_laplacian_q16_16_i64_v2":
+            declared.append(sparse_weighted_graph_laplacian_q16_16_i64_v2_capability())
         else:
             declared.append(Capability(name, "specified", 0))
     manifest = capability_manifest(args.slot_name, declared)
     manifest["universe_id"] = os.environ.get("NANLM_UNIVERSE_ID", "local")
     manifest["native_math_dispatch_enabled"] = False
     manifest["dispatchable_operators"] = [
-        "k256_laplacian_u16", "sparse_graph_laplacian_q16_16"]
+        "k256_laplacian_u16", "sparse_graph_laplacian_q16_16",
+        "sparse_weighted_graph_laplacian_q16_16_i64_v2"]
     manifest["reason"] = (
-        "K256 and sparse Q16.16 CSR Laplacian are native_verified, but "
-        "worker-level RSS job dispatch is not wired yet; this operation "
+        "K256, sparse Q16.16 CSR v1, and weighted CSR v2 are native_verified, "
+        "but worker-level RSS job dispatch is not wired yet; this operation "
         "advertises evidence only."
     )
     print(json.dumps(manifest, sort_keys=True, indent=2))
