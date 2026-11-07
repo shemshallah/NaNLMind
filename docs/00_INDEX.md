@@ -95,3 +95,5 @@ The short version:
    ledger.
 4. The next decisive experiments are substrate-only: hyperedge completion,
    bidirectional sequence memory, resonance learning, and a local-rule VM.
+
+| 74 | [74_HERMES_HEAD_CORTEX.md](74_HERMES_HEAD_CORTEX.md) | How does HERMES submit typed evidence to read-only Boolean-head inference through NANNET? |
