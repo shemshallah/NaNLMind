@@ -152,6 +152,13 @@ class Handler(BaseHTTPRequestHandler):
   ident=self.auth(role)
   if ident is None: self.reply(401,{"error":"unauthorized"})
   return ident
+ def router_need(self,service,role):
+  expected=service.intake_token if role=="intake" else service.worker_token
+  supplied=self.headers.get("Authorization","")
+  if not expected or not secrets.compare_digest(supplied,"Bearer "+expected):
+   self.reply(401,{"error":"unauthorized"})
+   return False
+  return True
  def dispatch_router(self,p):
   routes={
    ("GET","/v1/riddle/healthz"),("GET","/v1/riddle/volumes"),
@@ -167,12 +174,12 @@ class Handler(BaseHTTPRequestHandler):
    if self.command=="GET" and p=="/v1/riddle/healthz":
     return self.reply(200,{"status":"ok","service":"nannet-router-embedded","same_process":True,"inbox":service.inbox.stats()}) or True
    if self.command=="GET" and p=="/v1/riddle/volumes":
-    if self.need("runner") is None:return True
+    if not self.router_need(service,"worker"):return True
     registry=service.volume_registry()
     if registry is None:return self.reply(503,{"error":"signed_volume_registry_not_installed"}) or True
     return self.reply(200,{"registry":{"generation":registry.document["generation"],"registry_digest":registry.document["registry_digest"]}}) or True
    if self.command=="POST" and p=="/v1/riddle/intake":
-    if self.need("admin") is None:return True
+    if not self.router_need(service,"intake"):return True
     data=self.json_body(2_097_152)
     payload_hex=data.get("payload_hex","")
     if not isinstance(payload_hex,str) or len(payload_hex)>2_097_152:raise ValueError("payload_hex_invalid_or_too_large")
