@@ -59,11 +59,13 @@ class HeadCortexService:
                                   {"status": "ok" if ready else "not_ready",
                                    "protocol": "nanlm.head-cortex-response",
                                    "read_only": True})
-        if method != "POST" or path != "/v1/head-cortex/process":
+        if method != "POST" or path not in (
+                "/v1/head-cortex/process", "/v1/head-cortex/candidate"):
             return _json_response(start_response, "404 Not Found", {"error": "not_found"})
         auth = environ.get("HTTP_AUTHORIZATION", "")
         supplied = auth[7:] if auth.startswith("Bearer ") else ""
-        if not self._authorized(supplied):
+        required_scope = "training:execute" if path.endswith("/candidate") else "universe:read"
+        if not self._authorized(supplied, required_scope):
             return _json_response(start_response, "401 Unauthorized", {"error": "unauthorized"})
         try:
             length = int(environ.get("CONTENT_LENGTH") or "0")
@@ -71,8 +73,11 @@ class HeadCortexService:
                 raise ValueError("body_size_out_of_range")
             raw = environ["wsgi.input"].read(length)
             package = json.loads(raw.decode("utf-8"))
-            self._validate_package(package)
-            result = self._infer(package)
+            if path.endswith("/candidate"):
+                result = self._create_candidate(package)
+            else:
+                self._validate_package(package)
+                result = self._infer(package)
             return _json_response(start_response, "200 OK", result)
         except ValueError as exc:
             return _json_response(start_response, "400 Bad Request",
@@ -81,12 +86,12 @@ class HeadCortexService:
             return _json_response(start_response, "503 Service Unavailable",
                                   {"error": "native_inference_unavailable"})
 
-    def _authorized(self, supplied: str) -> bool:
+    def _authorized(self, supplied: str, scope: str = "universe:read") -> bool:
         if not supplied or len(supplied) > 512:
             return False
         if self.auth_url:
             try:
-                body = canonical({"scope": "universe:read"})
+                body = canonical({"scope": scope})
                 request = urllib.request.Request(
                     self.auth_url + "/v1/authorize", data=body,
                     headers={"Authorization": "Bearer " + supplied,
@@ -94,10 +99,89 @@ class HeadCortexService:
                              "Accept": "application/json"}, method="POST")
                 with urllib.request.urlopen(request, timeout=10) as response:
                     result = json.loads(response.read(16384).decode("utf-8"))
-                return result.get("authorized") is True and result.get("scope") == "universe:read"
+                return result.get("authorized") is True and result.get("scope") == scope
             except Exception:
                 return False
         return bool(self.token) and hmac.compare_digest(supplied, self.token)
+
+    def _create_candidate(self, request):
+        if not isinstance(request, dict) or request.get("schema") != "nanlm.head-candidate-request/1":
+            raise ValueError("unsupported_candidate_request")
+        mutation_id = request.get("mutation_id")
+        if not isinstance(mutation_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", mutation_id):
+            raise ValueError("invalid_mutation_id")
+        head_index = request.get("head_index")
+        patch_mask = request.get("patch_mask")
+        if isinstance(head_index, bool) or not isinstance(head_index, int) or not 0 <= head_index <= 255:
+            raise ValueError("invalid_head_index")
+        if isinstance(patch_mask, bool) or not isinstance(patch_mask, int) or not 1 <= patch_mask <= 65535:
+            raise ValueError("invalid_patch_mask")
+        base_digest = request.get("base_topology_digest")
+        if not isinstance(base_digest, str) or not HEX64.fullmatch(base_digest):
+            raise ValueError("invalid_base_topology_digest")
+        if not Path(self.native_binary).is_file() or not Path(self.state_path).is_file():
+            raise OSError("native_state_or_binary_missing")
+        candidate_dir = Path(os.environ.get(
+            "NANLM_HEAD_CANDIDATE_DIR",
+            str(Path(self.state_path).parent / "candidates"))).expanduser()
+        candidate_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+        os.chmod(candidate_dir, 0o700)
+        candidate_state = candidate_dir / (mutation_id + ".nmg")
+        manifest_path = candidate_dir / (mutation_id + ".json")
+        if candidate_state.exists() or manifest_path.exists():
+            raise ValueError("mutation_id_already_exists")
+        with tempfile.TemporaryDirectory(prefix="nanlm-head-candidate-") as temp:
+            probe = Path(temp) / "probe.n16rel"
+            probe.write_text(
+                "N16REL/1\\ntest\\t5\\t+\\t0\\t70726f6265\\t7374617465\\t646967657374\\t" + "0" * 64 + "\\n",
+                encoding="ascii")
+            base = subprocess.run(
+                [self.native_binary, "relation-eval", str(probe), self.state_path],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                encoding="utf-8", errors="replace", timeout=30, check=False)
+        match = re.search(r"generation=(\\d+) state_digest=([a-f0-9]{64})", base.stdout)
+        if base.returncode != 0 or not match:
+            raise OSError("cannot_read_base_topology_digest")
+        if match.group(2) != base_digest:
+            raise ValueError("stale_base_topology_digest")
+        candidate = subprocess.run(
+            [self.native_binary, "head-candidate", self.state_path,
+             str(head_index), hex(patch_mask), str(candidate_state)],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            encoding="utf-8", errors="replace", timeout=30, check=False)
+        if candidate.returncode != 0:
+            raise ValueError("native_candidate_mutation_rejected")
+        try:
+            receipt = json.loads(candidate.stdout)
+        except json.JSONDecodeError as exc:
+            raise OSError("native_candidate_receipt_invalid") from exc
+        if receipt.get("status") != "candidate_only" or receipt.get("canonical_state_modified") is not False:
+            raise OSError("native_candidate_receipt_invalid")
+        manifest = {
+            "schema": "nanlm.head-candidate-manifest/1",
+            "mutation_id": mutation_id, "head_index": head_index,
+            "patch_mask": patch_mask, "base_topology_digest": base_digest,
+            "candidate_digest": receipt.get("candidate_digest"),
+            "candidate_state_file": candidate_state.name,
+            "created_at": __import__("datetime").datetime.now(
+                __import__("datetime").timezone.utc).isoformat(),
+            "status": "candidate_only", "promotion_allowed": False,
+        }
+        manifest_path.write_bytes(canonical(manifest))
+        os.chmod(candidate_state, 0o600)
+        os.chmod(manifest_path, 0o600)
+        return {
+            "schema": "nanlm.head-candidate-response/1",
+            "mutation_id": mutation_id, "status": "candidate_only",
+            "head_index": head_index, "patch_mask": patch_mask,
+            "base_topology_digest": base_digest,
+            "candidate_digest": receipt.get("candidate_digest"),
+            "boolean_mask_before": receipt.get("boolean_mask_before"),
+            "boolean_mask_after": receipt.get("boolean_mask_after"),
+            "boolean_rule_before": receipt.get("boolean_rule_before"),
+            "boolean_rule_after": receipt.get("boolean_rule_after"),
+            "canonical_state_modified": False, "promotion_allowed": False,
+        }
 
     def _validate_package(self, package):
         if not isinstance(package, dict) or package.get("schema") != "nanlm.hermes-evidence-package":
