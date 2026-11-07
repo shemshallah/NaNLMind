@@ -133,13 +133,13 @@ class HeadCortexService:
         with tempfile.TemporaryDirectory(prefix="nanlm-head-candidate-") as temp:
             probe = Path(temp) / "probe.n16rel"
             probe.write_text(
-                "N16REL/1\\ntest\\t5\\t+\\t0\\t70726f6265\\t7374617465\\t646967657374\\t" + "0" * 64 + "\\n",
+                "N16REL/1\ntest\t5\t+\t0\t70726f6265\t7374617465\t646967657374\t" + "0" * 64 + "\n",
                 encoding="ascii")
             base = subprocess.run(
                 [self.native_binary, "relation-eval", str(probe), self.state_path],
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
                 encoding="utf-8", errors="replace", timeout=30, check=False)
-        match = re.search(r"generation=(\\d+) state_digest=([a-f0-9]{64})", base.stdout)
+        match = re.search(r"generation=(\d+) state_digest=([a-f0-9]{64})", base.stdout)
         if base.returncode != 0 or not match:
             raise OSError("cannot_read_base_topology_digest")
         if match.group(2) != base_digest:
