@@ -18,5 +18,6 @@ RUN mkdir -p /opt/deeprepo \
 
 WORKDIR /app
 COPY integrations/nannet/ /app/
+RUN pip install --no-cache-dir -r /app/clocked-requirements.txt
 EXPOSE 8000
 CMD ["python", "server.py"]
