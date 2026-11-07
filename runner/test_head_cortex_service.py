@@ -168,6 +168,68 @@ class HeadCortexServiceTests(unittest.TestCase):
             else:
                 os.environ["NANLM_HEAD_CANDIDATE_DIR"] = old
 
+    def test_clocked_weak_supervision_trains_isolated_candidate_and_blocks_leakage(self):
+        candidate_binary = self.binary
+        candidate_binary.write_text(
+            "#!/usr/bin/env python3\n"
+            "import pathlib, sys\n"
+            "if sys.argv[1] == 'relation-eval':\n"
+            " candidate = 'candidates' in sys.argv[3]\n"
+            " digest = 'e' if candidate else 'd'\n"
+            " print('relation_eval schema=N16REL-EVAL/1 generation=12 state_digest=' + digest*64 + ' rows=1')\n"
+            "elif sys.argv[1] == 'relation-train':\n"
+            " pathlib.Path(sys.argv[3]).write_bytes(b'trained-candidate-state')\n"
+            " print('relation_train status=updated epochs=1 train_events=2 changed_heads=3 mirror_pair_updates=6 hyperedges_added=2 state_digest_before=' + 'd'*64 + ' state_digest_after=' + 'e'*64)\n",
+            encoding="utf-8")
+        candidate_binary.chmod(0o755)
+        candidate_dir = Path(self.tmp.name) / "candidates"
+        old = os.environ.get("NANLM_HEAD_CANDIDATE_DIR")
+        os.environ["NANLM_HEAD_CANDIDATE_DIR"] = str(candidate_dir)
+        try:
+            records = [
+                {"observation_id": "clocked-1", "resolution": 5, "polarity": "+",
+                 "confidence": 600, "subject": "river", "predicate": "states_claim",
+                 "object": "The river flows.", "source_digest": "a" * 64},
+                {"observation_id": "clocked-2", "resolution": 5, "polarity": "-",
+                 "confidence": 400, "subject": "river", "predicate": "states_claim",
+                 "object": "The river is dry.", "source_digest": "b" * 64},
+            ]
+            request = {
+                "schema": "nanlm.head-learning-candidate-request/1",
+                "mutation_id": "weak-learn-1", "split": "train",
+                "teacher": "CLOCKED", "teacher_outputs_are_ground_truth": False,
+                "dataset_sha256": hashlib.sha256(canonical(records)).hexdigest(),
+                "base_topology_digest": "d" * 64, "epochs": 1, "records": records,
+            }
+            status, result = invoke(self.app, path="/v1/head-cortex/candidate/learn",
+                                    payload=request)
+            self.assertEqual(status, "200 OK")
+            self.assertEqual(result["kind"], "learned_candidate")
+            self.assertEqual(result["training_summary"]["changed_heads"], 3)
+            self.assertFalse(result["teacher_outputs_are_ground_truth"])
+            self.assertFalse(result["canonical_state_modified"])
+            self.assertTrue((candidate_dir / "weak-learn-1.nmg").is_file())
+            manifest = json.loads((candidate_dir / "weak-learn-1.json").read_text())
+            self.assertEqual(len(manifest["training_record_fingerprints"]), 2)
+            heldout = {key: records[0][key] for key in (
+                "resolution", "polarity", "subject", "predicate", "object", "source_digest")}
+            evaluation = {
+                "schema": "nanlm.head-candidate-evaluation-request/1",
+                "mutation_id": "weak-learn-1", "split": "test",
+                "dataset_sha256": hashlib.sha256(canonical([heldout])).hexdigest(),
+                "records": [heldout],
+            }
+            status, rejected = invoke(self.app, path="/v1/head-cortex/candidate/evaluate",
+                                      payload=evaluation)
+            self.assertEqual(status, "400 Bad Request")
+            self.assertEqual(rejected["error"], "training_test_record_overlap")
+            self.assertEqual(hashlib.sha256(self.state.read_bytes()).hexdigest(), self.before)
+        finally:
+            if old is None:
+                os.environ.pop("NANLM_HEAD_CANDIDATE_DIR", None)
+            else:
+                os.environ["NANLM_HEAD_CANDIDATE_DIR"] = old
+
     def test_candidate_evaluation_compares_heldout_baseline_without_promotion(self):
         candidate_binary = self.binary
         candidate_binary.write_text(
