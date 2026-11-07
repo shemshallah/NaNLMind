@@ -80,3 +80,27 @@ HERMES owns the revisioned scratch, source reconciliation and natural-language
 synthesis. NaNLMind owns the native Boolean heads, relation evaluator and
 canonical state. Only the existing six-runner generation barrier may promote
 future candidate mutations.
+
+## Candidate-only head self-modification
+
+The native CLI also exposes a bounded Boolean-mask mutation on an isolated
+copy of an existing topology:
+
+```sh
+./build/nanlm-universal head-candidate BASE_STATE HEAD_INDEX PATCH_MASK CANDIDATE_STATE
+```
+
+Example:
+
+```sh
+./build/nanlm-universal head-candidate state/hermes-universe.nmg 42 0x0001 state/candidates/head-42-candidate.nmg
+./build/nanlm-universal relation-eval state/heldout.n16rel state/candidates/head-42-candidate.nmg
+```
+
+The command uses `HeadView::self_modify_boolean`, serializes a separate
+candidate topology, and emits before/after masks and digests. It refuses to
+overwrite the base state or an existing candidate. The base topology remains
+unchanged. Candidate evaluation is read-only; this command does not promote
+the mutation. Candidate promotion, full regression/control evaluation and
+six-runner generation-barrier integration remain required before any
+canonical head state changes.
