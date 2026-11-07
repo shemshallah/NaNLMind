@@ -107,6 +107,7 @@ merge-test:
 	PYTHONPATH=runner python3 -m unittest discover -s tests -p 'test_nannet_runner_bridge.py' -v
 	PYTHONPATH=runner python3 -m unittest discover -s tests -p 'test_training_merge.py' -v
 	PYTHONPATH=runner python3 -m unittest discover -s tests -p 'test_router_ring_client.py' -v
+	PYTHONPATH=runner python3 -m unittest discover -s tests -p 'test_clocked_router_consumer.py' -v
 	cd integrations/nannet && python3 -m unittest test_server -v
 
 logic-test:
