@@ -56,7 +56,7 @@ Corpus upload uses browser SHA-256, sends bounded chunks, and seals the manifest
 
 ## API
 
-- GET /healthz
+- GET /healthz (includes Clocked gateway and enrollment readiness)
 - POST /admin/tokens (NANLM_ADMIN_TOKEN; fixed HW0–HW3 only)
 - POST /v1/devices/register (public HTTPS registration; explicit consent + bounded system report + client-generated 256-bit installation secret; assigns HW8–HW254)
 - GET /v1/devices/me (device bearer; own registration and lease)
@@ -119,6 +119,23 @@ duplicates, provenance/licensing, contamination, safety, and held-out quality.
 An endpoint's own assertion is never proof. A successful upload means
 quarantined, not trained. A successful validation means training-eligible, not yet committed to the canonical mind. After the runner has copied, verified, encoded, and committed a dataset into a canonical generation, it posts the generation and exact SHA-256 receipt. NANNET then removes staged chunk files and chunk rows while retaining the manifest, validation report, digest, and generation receipt. A repeated identical receipt is idempotent.
 
+## Clocked gateway in this same Koyeb service
+
+The Clocked SDK gateway is mounted inside this NANNET HTTP process. It is not a second Koyeb service or deployment. The root Dockerfile installs `integrations/nannet/clocked-requirements.txt`; `server.py` dispatches `/auth/demo-token`, `/v1/experience`, `/v1/tasks`, and the Clocked instance administration routes to the embedded adapter. The Clocked database defaults to `/data/clocked_gateway.sqlite3`, on the same persistent Koyeb volume as NANNET state.
+
+Set `NANNET_URL` to this service's own public HTTPS origin. The embedded adapter uses that same-origin route to ask the existing allocator to register and release demo instances; it does not contact a separate NANNET deployment. Registration is explicit-consent-only and the allocator remains authoritative for lowest-free HW8–HW254 / node-point 9–255 leases.
+
+Required Clocked Koyeb secrets: `CLOCKED_API_KEY` (upstream master credential, server-only), `CLOCKED_DEMO_ENROLLMENT_TOKEN` (demo enrollment gate), `CLOCKED_TOKEN_PEPPER` (participant-token hashing), `CLOCKED_RESULT_ENCRYPTION_KEY` (Fernet key for encrypted stored NANNET lease credentials), and `CLOCKED_GATEWAY_ADMIN_TOKEN` (instance administration). The returned `clu_` and `nnt_` credentials are scoped/expiring participant credentials; the upstream `CLOCKED_API_KEY` is never returned. Keep the Clocked database and encryption key stable across restarts.
+
+Endpoints added to this service:
+- POST `/auth/demo-token` (enrollment bearer + explicit consent; obtains NANNET lease and issues scoped Clocked token)
+- POST `/v1/experience` and POST `/v1/tasks` (scoped Clocked participant token; server-side SDK calls)
+- GET `/admin/instances` and POST `/admin/instances/revoke` (Clocked admin bearer)
+- POST `/clocked/admin/tokens` (optional administrative participant token issuance; avoids collision with NANNET `/admin/tokens`)
+- GET `/clocked/healthz` (embedded adapter readiness)
+
+The `CLOCKED_API_KEY` GitHub Actions secret remains for CI/live smoke tests. GitHub Actions secrets are not automatically injected into Koyeb: configure the same value as a Koyeb secret on this existing service. No client, runner, or Android app receives it.
+
 ## Required service secrets
 
 Never commit these values:
@@ -137,9 +154,11 @@ Optional secrets only when those integrations are active:
 - NANLM_MERGE_TOKEN (preserve the existing Android/legacy merge credential; NANNET does not use it for canonical writes)
 - NANLM_HERMES_TOKEN / NANLM_CLOCKED_TOKEN (preserve legacy endpoint merge credentials if still referenced)
 - NANNET_AUTHORITY_MASTER_KEY (preserve the existing stable 32-byte master key)
-- CLOCKED_GATEWAY_ADMIN_TOKEN
-- CLOCKED_TOKEN_PEPPER
-- CLOCKED_API_KEY (only for the separate Clocked SDK adapter)
+- CLOCKED_GATEWAY_ADMIN_TOKEN (embedded Clocked instance administration)
+- CLOCKED_TOKEN_PEPPER (embedded Clocked participant-token hashing)
+- CLOCKED_API_KEY (embedded Clocked SDK; server-side only)
+- CLOCKED_DEMO_ENROLLMENT_TOKEN (explicit demo enrollment gate)
+- CLOCKED_RESULT_ENCRYPTION_KEY (Fernet key; preserve across restarts)
 
 Keep DEEPREPO_PAT as a GitHub Actions secret on deeprepo and its five CPU
 repositories. It is not interchangeable with GH_TOKEN and is not required by
@@ -148,6 +167,8 @@ the Koyeb keeper.
 ## Non-secret service settings
 
 - NANNET_PUBLIC_URL (public HTTPS service origin, e.g. the Koyeb service URL)
+- NANNET_URL (same public HTTPS origin as this service; embedded Clocked adapter calls its own NANNET routes)
+- CLOCKED_GATEWAY_DB=/data/clocked_gateway.sqlite3
 - DEEPREPO_KEEPER_ENABLED=1
 - KEEPER_INTERVAL=600
 - KEEPER_DISPATCH=1
