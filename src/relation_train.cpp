@@ -500,4 +500,51 @@ int relation_train_cli(int argc, char** argv) {
     return 0;
 }
 
+
+int relation_eval_cli(int argc, char** argv) {
+    if (argc < 4) {
+        std::cerr << "usage: nanlm-universal relation-eval RECORDS STATE\\n"
+                  << "N16REL/1 rows must all use the test split; state is read-only.\\n";
+        return 2;
+    }
+    std::vector<Example> examples;
+    if (!parse_examples(argv[2], examples)) return 2;
+    if (std::any_of(examples.begin(), examples.end(),
+                    [](const Example& e) { return e.train; })) {
+        std::cerr << "relation-eval refuses training rows\\n";
+        return 2;
+    }
+    const std::string state_path = argv[3];
+    if (!std::filesystem::exists(state_path)) {
+        std::cerr << "relation-eval requires an existing serialized topology\\n";
+        return 4;
+    }
+    std::ifstream prior(state_path, std::ios::binary);
+    std::vector<std::uint8_t> bytes((std::istreambuf_iterator<char>(prior)),
+                                    std::istreambuf_iterator<char>());
+    auto topology = GlobalTopology::from_bytes(bytes.data(), bytes.size());
+    if (!topology) {
+        std::cerr << "invalid relation state\\n";
+        return 6;
+    }
+    HeadArray heads = topology->root_heads();
+    std::cout << "relation_eval schema=N16REL-EVAL/1 generation="
+              << topology->ledger().size() << " state_digest="
+              << hex(topology->global_digest()) << " rows=" << examples.size() << "\\n";
+    for (std::size_t index = 0; index < examples.size(); ++index) {
+        const auto& e = examples[index];
+        const std::uint8_t head_id = predicate_head(e.resolution, e.ph);
+        HeadView head = heads.at(head_id);
+        unsigned votes = 0;
+        for (unsigned lane = 0; lane < 8; ++lane)
+            votes += (NanWord::eval_bool(head.boolean_rule(), e.sf[lane], e.of[lane]) & 1u) ? 1u : 0u;
+        const char* state = votes > 4u ? "TRUE" : (votes < 4u ? "FALSE" : "UNKNOWN");
+        std::cout << "relation_eval_row index=" << index
+                  << " head=" << static_cast<unsigned>(head_id)
+                  << " votes=" << votes << " truth_state=" << state
+                  << " rule=" << static_cast<unsigned>(head.boolean_rule()) << "\\n";
+    }
+    return 0;
+}
+
 } // namespace nanlm
