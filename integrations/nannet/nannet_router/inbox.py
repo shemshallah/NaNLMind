@@ -181,6 +181,12 @@ class SQLiteSourceInbox:
             raise InboxError("result generation must be nonnegative")
         if trace.get("source_hash") != event.source_hash or trace.get("acl_digest") != event.acl_digest:
             raise InboxError("trace provenance does not match leased source")
+        if event.source_kind == "clocked-evidence":
+            if (trace.get("schema") != "nanrouter.trace.v1"
+                    or trace.get("correct") is not False
+                    or trace.get("outcome_verified") is not False
+                    or trace.get("evidence_only") is not True):
+                raise InboxError("Clocked evidence ACK must remain explicitly unverified and evidence-only")
         trace_json = json.dumps(trace, sort_keys=True, separators=(",", ":"))
         with self._connect() as db:
             db.execute("BEGIN IMMEDIATE")
