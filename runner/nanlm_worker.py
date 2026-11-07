@@ -696,9 +696,32 @@ def portal_heartbeat():
     drain_clocked_router_sources()
 
 
+def op_rss_status(args):
+    """Report RSS protocol support without claiming unverified math kernels."""
+    from relational_spectral import CAPABILITIES, Capability, capability_manifest
+    manifest = capability_manifest(
+        args.slot_name,
+        [Capability(
+            name,
+            "native_verified" if name == "k256_laplacian_u16" else "specified",
+            4096 if name == "k256_laplacian_u16" else 0,
+            "7288547abb4ef7e7d9c259ce991d9dccbdd4a0575ce1233bab80968f1278291f" if name == "k256_laplacian_u16" else "",
+        ) for name in CAPABILITIES],
+    )
+    manifest["universe_id"] = os.environ.get("NANLM_UNIVERSE_ID", "local")
+    manifest["native_math_dispatch_enabled"] = False
+    manifest["dispatchable_operators"] = ["k256_laplacian_u16"]
+    manifest["reason"] = (
+        "K256 is native_verified, but worker-level RSS job dispatch is not wired yet; "
+        "this status operation only advertises capability evidence."
+    )
+    print(json.dumps(manifest, sort_keys=True, indent=2))
+    return 0
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--op", choices=["selftest", "prewarm", "headshift", "handoff", "logic", "logic-core", "training", "loop", "finalize", "unlock", "status"],
+    ap.add_argument("--op", choices=["selftest", "prewarm", "headshift", "handoff", "logic", "logic-core", "training", "loop", "finalize", "unlock", "status", "rss-status"],
                     default="selftest")
     ap.add_argument("--slot", type=int, default=None)
     ap.add_argument("--epoch", type=int, default=0)
@@ -715,6 +738,8 @@ def main():
     args = ap.parse_args()
     args.slot = parse_slot(args.slot)
     args.slot_name = SLOT_NAMES[args.slot]
+    if args.op == "rss-status":
+        return op_rss_status(args)
     verify_portal_identity(args.slot)
     ring_status = router_ring_heartbeat()
     if ring_status is not None:
@@ -741,6 +766,8 @@ def main():
         return op_unlock(args)
     if args.op == "status":
         return op_status(args)
+    if args.op == "rss-status":
+        return op_rss_status(args)
     return op_headshift(args)
 
 
