@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Read-only NaNLMind Boolean-head inference service for HERMES evidence packages.
+"""NaNLMind Boolean-head inference and isolated candidate service for HERMES.
 
-This service delegates to the canonical native relation-eval command. It never
-runs relation-train, changes the topology, or participates in the runner ring.
+Inference is read-only against the canonical topology. Explicitly approved
+candidate routes may clone that topology and run native relation learning only
+against the isolated candidate file. Canonical state is never mutated here;
+promotion remains a separate generation-barrier operation.
 """
 from __future__ import annotations
 
@@ -59,7 +61,8 @@ class HeadCortexService:
             return _json_response(start_response, "200 OK" if ready else "503 Service Unavailable",
                                   {"status": "ok" if ready else "not_ready",
                                    "protocol": "nanlm.head-cortex-response",
-                                   "read_only": True})
+                                   "canonical_state_immutable": True,
+                                   "candidate_mutations": True})
         if method != "POST" or path not in (
                 "/v1/head-cortex/process", "/v1/head-cortex/candidate",
                 "/v1/head-cortex/candidate/evaluate",
