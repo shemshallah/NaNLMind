@@ -6,7 +6,7 @@ import server
 class NannetTests(unittest.TestCase):
  def setUp(self):
   self.tmp=tempfile.TemporaryDirectory()
-  self.env=patch.dict(os.environ,{"NANLM_DATA_DIR":self.tmp.name,"NANLM_TOKEN_PEPPER":"p"*48,"NANLM_ADMIN_TOKEN":"a"*48,"NANLM_VALIDATOR_TOKEN":"v"*48,"NANLM_RUNNER_TOKEN":"r"*48,"NANLM_BOOTSTRAP_TOKEN":"m"*48,"NANLM_MERGE_ROOT":self.tmp.name+"/merge","CLOCKED_GATEWAY_DB":self.tmp.name+"/clocked.sqlite3","RIDDLE_DATA_DIR":self.tmp.name+"/router"})
+  self.env=patch.dict(os.environ,{"NANLM_DATA_DIR":self.tmp.name,"NANLM_TOKEN_PEPPER":"p"*48,"NANLM_ADMIN_TOKEN":"a"*48,"NANLM_VALIDATOR_TOKEN":"v"*48,"NANLM_RUNNER_TOKEN":"r"*48,"NANLM_BOOTSTRAP_TOKEN":"m"*48,"NANLM_MERGE_ROOT":self.tmp.name+"/merge","CLOCKED_GATEWAY_DB":self.tmp.name+"/clocked.sqlite3","RIDDLE_DATA_DIR":self.tmp.name+"/router","RIDDLE_INTAKE_TOKEN":"i"*48,"RIDDLE_WORKER_TOKEN":"w"*48})
   self.env.start(); server._RIDDLE_SERVICE=None; server.MERGE_STORE=None; server.ROOT=server.Path(self.tmp.name);server.BLOBS=server.ROOT/"blobs";server.DB_PATH=server.ROOT/"test.sqlite3";server.DATASET_QUOTA=1024*1024;server.CHUNK_BYTES=65536
   self.httpd=server.BoundedHTTPServer(("127.0.0.1",0),server.Handler);self.thread=threading.Thread(target=self.httpd.serve_forever,daemon=True);self.thread.start();self.port=self.httpd.server_address[1]
  def tearDown(self):
@@ -38,6 +38,10 @@ class NannetTests(unittest.TestCase):
   self.assertEqual(status,200);self.assertEqual(router["service"],"nannet-router-embedded")
   self.assertTrue(router["same_process"])
 
+ def test_router_intake_uses_explicit_router_token(self):
+  status,body=self.req("POST","/v1/riddle/intake",{"universe_id":"BS0:0","node_point":9,"head_index":17,"source_kind":"raw-nan16","payload_hex":"4e313654","acl_digest":"a"*64,"nanclock_tick":1},token="i"*48)
+  self.assertEqual(status,202);self.assertTrue(body["accepted"])
+  self.assertEqual(self.req("POST","/v1/riddle/intake",{"universe_id":"BS0:0","node_point":9,"head_index":17,"source_kind":"raw-nan16","payload_hex":"4e313654","acl_digest":"a"*64,"nanclock_tick":1},token="a"*48)[0],401)
  def test_clocked_observation_handoff_uses_active_nannet_lease(self):
   import clocked_gateway
   status,device=self.register_device("Z"*43)
@@ -60,11 +64,11 @@ class NannetTests(unittest.TestCase):
   self.assertEqual(receipt["router_state"],"queued")
   router=server.get_riddle_service()
   self.assertEqual(router.inbox.stats()["queued"],1)
-  status,leased=self.req("POST","/v1/riddle/lease",{"owner":"MC0:0/R0","now_tick":server.now()},token="r"*48)
+  status,leased=self.req("POST","/v1/riddle/lease",{"owner":"MC0:0/R0","now_tick":server.now()},token="w"*48)
   self.assertEqual(status,200);self.assertEqual(leased["source_kind"],"clocked-evidence")
   self.assertEqual(leased["node_point"],device["node_point"])
   router_trace={"schema":"nanrouter.trace.v1","source_ref":"clocked_demo","target_ref":"BS0:0/MC0:0/R0","source_hash":leased["source_hash"],"acl_digest":leased["acl_digest"],"universe_id":"BS0:0","correct":False,"nanclock_tick":leased["nanclock_tick"]}
-  status,acked=self.req("POST","/v1/riddle/ack",{"event_id":leased["event_id"],"owner":"MC0:0/R0","result_digest":"f"*64,"result_generation":0,"trace":router_trace},token="r"*48)
+  status,acked=self.req("POST","/v1/riddle/ack",{"event_id":leased["event_id"],"owner":"MC0:0/R0","result_digest":"f"*64,"result_generation":0,"trace":router_trace},token="w"*48)
   self.assertEqual(status,200);self.assertTrue(acked["acknowledged"])
   db=server.connect()
   try:
