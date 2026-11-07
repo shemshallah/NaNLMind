@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NaNLMind CLOCKED weak-supervision candidate response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "mutation_id",
+    "status",
+    "kind",
+    "base_topology_digest",
+    "candidate_digest",
+    "training_dataset_sha256",
+    "training_summary",
+    "teacher",
+    "teacher_outputs_are_ground_truth",
+    "canonical_state_modified",
+    "promotion_allowed"
+  ],
+  "properties": {
+    "schema": {
+      "const": "nanlm.head-learning-candidate-response/1"
+    },
+    "mutation_id": {
+      "type": "string"
+    },
+    "status": {
+      "const": "candidate_only"
+    },
+    "kind": {
+      "const": "learned_candidate"
+    },
+    "base_topology_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "candidate_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "training_dataset_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "training_summary": {
+      "type": "object"
+    },
+    "teacher": {
+      "const": "CLOCKED"
+    },
+    "teacher_outputs_are_ground_truth": {
+      "const": false
+    },
+    "canonical_state_modified": {
+      "const": false
+    },
+    "promotion_allowed": {
+      "const": false
+    }
+  }
+}
