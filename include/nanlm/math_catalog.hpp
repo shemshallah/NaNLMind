@@ -7,6 +7,10 @@
 #include <cstddef>
 #include <cstdint>
 #include <string_view>
+#include <algorithm>
+#include <mutex>
+#include <optional>
+#include <vector>
 
 namespace nanlm {
 
@@ -142,6 +146,101 @@ struct ScratchDescriptor {
         if (bytes > arena_bytes - offset) return false;
         return owner_runner == 0xff || owner_runner < 6;
     }
+};
+
+// Bounded runner scratch, deliberately separate from the 8 MiB palindrome
+// chart. It is an in-process scratch arena only; persistence/RAM spill are
+// separate adapters and cannot be inferred from this class.
+class ScratchArena {
+public:
+    explicit ScratchArena(std::uint32_t arena_id, std::size_t capacity)
+        : arena_id_(arena_id), storage_(capacity, 0) {}
+
+    std::optional<ScratchDescriptor> allocate(
+        std::uint64_t bytes, std::uint32_t alignment,
+        std::uint64_t generation, std::uint64_t lease,
+        std::uint8_t owner_runner, bool writable = true) {
+        std::lock_guard<std::mutex> guard(mutex_);
+        ScratchDescriptor probe{arena_id_, 0, bytes, alignment, generation,
+                                 lease, owner_runner, writable};
+        if (!bytes || !alignment || (alignment & (alignment - 1u)) != 0 ||
+            (owner_runner != 0xff && owner_runner >= 6) ||
+            bytes > storage_.size()) return std::nullopt;
+        std::vector<ScratchDescriptor> ordered = allocations_;
+        std::sort(ordered.begin(), ordered.end(),
+                  [](const auto& a, const auto& b) { return a.offset < b.offset; });
+        std::uint64_t candidate = 0;
+        for (const auto& used : ordered) {
+            candidate = (candidate + alignment - 1u) &
+                        ~static_cast<std::uint64_t>(alignment - 1u);
+            if (candidate <= used.offset && bytes <= used.offset - candidate) break;
+            if (candidate < used.offset + used.bytes)
+                candidate = used.offset + used.bytes;
+        }
+        candidate = (candidate + alignment - 1u) &
+                    ~static_cast<std::uint64_t>(alignment - 1u);
+        probe.offset = candidate;
+        if (!probe.valid(storage_.size())) return std::nullopt;
+        allocations_.push_back(probe);
+        return probe;
+    }
+
+    bool write(const ScratchDescriptor& ref, std::uint64_t offset,
+               const std::uint8_t* data, std::size_t bytes) {
+        std::lock_guard<std::mutex> guard(mutex_);
+        if (!matches(ref) || !ref.writable || (!data && bytes) ||
+            offset > ref.bytes || bytes > ref.bytes - offset) return false;
+        std::copy(data, data + bytes,
+                  storage_.begin() + static_cast<std::ptrdiff_t>(ref.offset + offset));
+        return true;
+    }
+
+    bool read(const ScratchDescriptor& ref, std::uint64_t offset,
+              std::uint8_t* out, std::size_t bytes) const {
+        std::lock_guard<std::mutex> guard(mutex_);
+        if (!matches(ref) || (!out && bytes) ||
+            offset > ref.bytes || bytes > ref.bytes - offset) return false;
+        std::copy(storage_.begin() + static_cast<std::ptrdiff_t>(ref.offset + offset),
+                  storage_.begin() + static_cast<std::ptrdiff_t>(ref.offset + offset + bytes),
+                  out);
+        return true;
+    }
+
+    bool release(const ScratchDescriptor& ref) {
+        std::lock_guard<std::mutex> guard(mutex_);
+        for (auto it = allocations_.begin(); it != allocations_.end(); ++it) {
+            if (same_lease(*it, ref)) {
+                std::fill(storage_.begin() + static_cast<std::ptrdiff_t>(ref.offset),
+                          storage_.begin() + static_cast<std::ptrdiff_t>(ref.offset + ref.bytes), 0);
+                allocations_.erase(it);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    std::size_t capacity() const { return storage_.size(); }
+    std::size_t active_allocations() const {
+        std::lock_guard<std::mutex> guard(mutex_);
+        return allocations_.size();
+    }
+
+private:
+    static bool same_lease(const ScratchDescriptor& a, const ScratchDescriptor& b) {
+        return a.arena == b.arena && a.offset == b.offset && a.bytes == b.bytes &&
+               a.generation == b.generation && a.lease == b.lease &&
+               a.owner_runner == b.owner_runner;
+    }
+    bool matches(const ScratchDescriptor& ref) const {
+        if (ref.arena != arena_id_ || !ref.valid(storage_.size())) return false;
+        return std::any_of(allocations_.begin(), allocations_.end(),
+                           [&](const auto& item) { return same_lease(item, ref); });
+    }
+
+    std::uint32_t arena_id_;
+    std::vector<std::uint8_t> storage_;
+    std::vector<ScratchDescriptor> allocations_;
+    mutable std::mutex mutex_;
 };
 
 } // namespace nanlm
