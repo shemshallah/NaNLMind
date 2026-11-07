@@ -229,6 +229,10 @@ class HeadCortexService:
             records_path.write_text("\n".join(lines) + "\n", encoding="ascii")
             baseline = self._evaluate_state(records_path, self.state_path, len(records))
             candidate = self._evaluate_state(records_path, str(candidate_state), len(records))
+        if baseline["state_digest"] != manifest.get("base_topology_digest"):
+            raise ValueError("base_topology_changed_since_candidate_creation")
+        if candidate["state_digest"] != manifest.get("candidate_digest"):
+            raise ValueError("candidate_state_digest_mismatch")
 
         def score(predictions):
             decisive = correct = tp = tn = fp = fn = 0
@@ -273,6 +277,8 @@ class HeadCortexService:
         baseline_score = score(baseline["predictions"])
         candidate_score = score(candidate["predictions"])
         delta = round(candidate_score["utility"] - baseline_score["utility"], 6)
+        nonregression = candidate_score["balanced_accuracy"] >= baseline_score["balanced_accuracy"]
+        recommend = delta > 0 and nonregression
         return {
             "schema": "nanlm.head-candidate-evaluation-response/1",
             "mutation_id": mutation_id, "status": "evaluated_candidate",
@@ -280,7 +286,8 @@ class HeadCortexService:
             "candidate_digest": candidate["state_digest"],
             "baseline": baseline_score, "candidate": candidate_score,
             "utility_delta": delta,
-            "recommendation": "review_candidate" if delta > 0 else "retain_baseline",
+            "balanced_accuracy_nonregression": nonregression,
+            "recommendation": "review_candidate" if recommend else "retain_baseline",
             "promotion_allowed": False, "canonical_state_modified": False,
             "evaluation_policy": "heldout_only_no_automatic_promotion",
         }
