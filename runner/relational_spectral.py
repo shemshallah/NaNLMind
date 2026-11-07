@@ -12,6 +12,7 @@ import hashlib
 import json
 
 PROTOCOL = "NAN-RSS-1"
+SPARSE_GRAPH_LAPLACIAN_Q16_16_SHA256 = "013048435c1026643554fb20e3434934cf059dd47cf2857577cac13ed5be6b8f"
 CAPABILITIES = (
     "k256_laplacian_u16",
     "sparse_graph_apply",
@@ -141,6 +142,24 @@ def capability_manifest(runner_id: str, capabilities: list[Capability]) -> dict[
             for c in sorted(capabilities, key=lambda x: x.name)
         ],
     }
+
+
+
+def sparse_graph_laplacian_q16_16_capability() -> Capability:
+    """Evidence record for the canonical NaN16 sparse CSR kernel.
+
+    Callers should include this only for runners whose execution path is
+    backed by the canonical NaN16 runtime. The source digest is exact; this
+    is not a host-language implementation of the operator.
+    """
+    return Capability(
+        name="sparse_graph_laplacian_q16_16",
+        status="native_verified",
+        max_workspace_bytes=4096,
+        kernel_digest=SPARSE_GRAPH_LAPLACIAN_Q16_16_SHA256,
+        operator_version=1,
+        q_format="Q16.16/I32",
+    )
 
 
 def dispatchable(manifest: Mapping[str, Any], job: RSSJob) -> bool:
