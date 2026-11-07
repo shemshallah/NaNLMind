@@ -1,4 +1,4 @@
-"""Authenticated client for MC0:0 runner-ring registry reconciliation."""
+"""Authenticated client for HW0::BS0 runner-ring registry reconciliation."""
 from __future__ import annotations
 
 import json
@@ -60,7 +60,7 @@ def submit_heartbeat(base_url: str, token: str, slot: int,
         base + "/v1/riddle/ring/heartbeat", token, method="POST",
         payload={
             "slot": slot,
-            "runner_id": f"MC0:0/R{slot}",
+            "runner_id": f"HW0::BS0/R{slot}",
             "registry_generation": generation,
             "registry_digest": digest,
             "nanclock_tick": nanclock_tick,
