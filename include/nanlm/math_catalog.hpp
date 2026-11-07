@@ -190,6 +190,7 @@ public:
         std::lock_guard<std::mutex> guard(mutex_);
         if (!matches(ref) || !ref.writable || (!data && bytes) ||
             offset > ref.bytes || bytes > ref.bytes - offset) return false;
+        if (bytes == 0) return true;
         std::copy(data, data + bytes,
                   storage_.begin() + static_cast<std::ptrdiff_t>(ref.offset + offset));
         return true;
@@ -200,6 +201,7 @@ public:
         std::lock_guard<std::mutex> guard(mutex_);
         if (!matches(ref) || (!out && bytes) ||
             offset > ref.bytes || bytes > ref.bytes - offset) return false;
+        if (bytes == 0) return true;
         std::copy(storage_.begin() + static_cast<std::ptrdiff_t>(ref.offset + offset),
                   storage_.begin() + static_cast<std::ptrdiff_t>(ref.offset + offset + bytes),
                   out);
@@ -228,8 +230,9 @@ public:
 private:
     static bool same_lease(const ScratchDescriptor& a, const ScratchDescriptor& b) {
         return a.arena == b.arena && a.offset == b.offset && a.bytes == b.bytes &&
-               a.generation == b.generation && a.lease == b.lease &&
-               a.owner_runner == b.owner_runner;
+               a.alignment == b.alignment && a.generation == b.generation &&
+               a.lease == b.lease && a.owner_runner == b.owner_runner &&
+               a.writable == b.writable;
     }
     bool matches(const ScratchDescriptor& ref) const {
         if (ref.arena != arena_id_ || !ref.valid(storage_.size())) return false;
