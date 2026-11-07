@@ -141,8 +141,55 @@ class Handler(BaseHTTPRequestHandler):
   ident=self.auth(role)
   if ident is None: self.reply(401,{"error":"unauthorized"})
   return ident
+ def dispatch_clocked(self,p):
+  routes={
+   ("POST","/auth/demo-token"),("GET","/admin/instances"),
+   ("POST","/admin/instances/revoke"),("POST","/v1/experience"),
+   ("POST","/v1/tasks"),("POST","/clocked/admin/tokens"),
+   ("GET","/clocked/healthz")
+  }
+  if (self.command,p) not in routes:return False
+  try:
+   from clocked_gateway import application
+   length=self.headers.get("Content-Length","0")
+   if not length.isdigit() or int(length)>4*1024*1024:
+    return self.reply(413,{"error":"clocked_body_too_large"}) or True
+   raw=self.rfile.read(int(length)) if int(length) else b""
+   path="/healthz" if p=="/clocked/healthz" else ("/admin/tokens" if p=="/clocked/admin/tokens" else p)
+   from io import BytesIO
+   environ={
+    "REQUEST_METHOD":self.command,"SCRIPT_NAME":"","PATH_INFO":path,
+    "QUERY_STRING":urlparse(self.path).query,"CONTENT_TYPE":self.headers.get("Content-Type",""),
+    "CONTENT_LENGTH":str(len(raw)),"SERVER_NAME":self.server.server_address[0],
+    "SERVER_PORT":str(self.server.server_address[1]),"SERVER_PROTOCOL":self.protocol_version,
+    "REMOTE_ADDR":self.client_address[0],"wsgi.version":(1,0),
+    "wsgi.url_scheme":"https" if self.headers.get("X-Forwarded-Proto","").lower()=="https" else "http",
+    "wsgi.input":BytesIO(raw),"wsgi.errors":sys.stderr,"wsgi.multithread":True,
+    "wsgi.multiprocess":False,"wsgi.run_once":False,
+   }
+   for header,value in self.headers.items():
+    key="HTTP_"+header.upper().replace("-","_")
+    if key not in ("HTTP_CONTENT_TYPE","HTTP_CONTENT_LENGTH"):environ[key]=value
+   captured={}
+   def start_response(status,headers,exc_info=None):
+    captured["status"]=status;captured["headers"]=headers
+   body=b"".join(application(environ,start_response))
+   status=int(captured.get("status","500 Internal Server Error").split(" ",1)[0])
+   self.send_response(status)
+   for key,value in captured.get("headers",[]):
+    if key.lower() not in ("content-length","transfer-encoding","connection"):self.send_header(key,value)
+   self.send_header("Content-Length",str(len(body)))
+   self.send_header("Cache-Control","no-store")
+   self.end_headers()
+   if body:self.wfile.write(body)
+  except Exception as exc:
+   print("Clocked adapter error: "+type(exc).__name__,flush=True)
+   try:self.reply(503,{"error":"clocked_adapter_unavailable"})
+   except Exception:pass
+  return True
  def do_GET(self):
   p=urlparse(self.path).path
+  if self.dispatch_clocked(p):return
   if p in ("/","/portal"):
    try: raw=Path(__file__).with_name("portal.html").read_bytes()
    except OSError:return self.reply(503,{"error":"portal_unavailable"})
@@ -262,6 +309,7 @@ class Handler(BaseHTTPRequestHandler):
   return self.reply(404,{"error":"not_found"})
  def do_POST(self):
   p=urlparse(self.path).path
+  if self.dispatch_clocked(p):return
   if p=="/v1/devices/register":
    try:
     d=self.json_body()
