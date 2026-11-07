@@ -261,3 +261,14 @@ At creation:
 - no 256-node ring, 256 antinodes, quantum tunneling, creative-insight mechanism, or noospheric broadcast is established.
 
 The next proof is small and exact: construct K256, derive L, apply L to known vectors, verify its two eigenvalues/multiplicities analytically and by a native fixture, then proceed to a sparse nonuniform graph.
+
+
+## 17. Sparse Laplacian ABI v1 and dispatch gate
+
+The first sparse native operator is the exact unweighted symmetric simple-graph CSR Laplacian. Its frozen numeric contract is **Q16.16/I32 v1**: signed I32 input/output, input raw range [-2^22,+2^22] (real [-64,+64]), maximum degree 255, and exact integer accumulation without rounding or saturation. Since each edge difference is bounded by 2^23 raw units, the maximum row sum is 2,139,095,040, within signed I32.
+
+CSR has 257 U32 row offsets and up to 65,280 U32 neighbor indices. The graph page must be immutable and digest-bound; the caller/runner verifies sorted unique rows, no self-loops, and reciprocal symmetry. The NaN16 kernel preflights input range, offset monotonicity/final edge count/degree, and endpoint range before writing. Input and output spans must not overlap.
+
+NaNROUTER implementation branch: `mth-sparse-graph-laplacian`. Native source and path/disconnected/atomicity fixtures are written; canonical NaN16 execution is pending. Therefore NAN-RSS-1 adds the distinct `sparse_graph_laplacian_q16_16` capability but it remains `source_written`, has no kernel digest, and is **not dispatchable**. The runner also binds capability operator version and Q format to the job, and tests reject version, format, and workspace mismatches.
+
+Weighted CSR is a separately versioned next ABI. Do not label this unweighted kernel as a weighted operator or promote it before native execution and digest registration.
