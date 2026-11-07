@@ -60,7 +60,8 @@ class HeadCortexService:
                                    "protocol": "nanlm.head-cortex-response",
                                    "read_only": True})
         if method != "POST" or path not in (
-                "/v1/head-cortex/process", "/v1/head-cortex/candidate"):
+                "/v1/head-cortex/process", "/v1/head-cortex/candidate",
+                "/v1/head-cortex/candidate/evaluate"):
             return _json_response(start_response, "404 Not Found", {"error": "not_found"})
         auth = environ.get("HTTP_AUTHORIZATION", "")
         supplied = auth[7:] if auth.startswith("Bearer ") else ""
@@ -73,7 +74,9 @@ class HeadCortexService:
                 raise ValueError("body_size_out_of_range")
             raw = environ["wsgi.input"].read(length)
             package = json.loads(raw.decode("utf-8"))
-            if path.endswith("/candidate"):
+            if path.endswith("/candidate/evaluate"):
+                result = self._evaluate_candidate(package)
+            elif path.endswith("/candidate"):
                 result = self._create_candidate(package)
             else:
                 self._validate_package(package)
@@ -182,6 +185,127 @@ class HeadCortexService:
             "boolean_rule_after": receipt.get("boolean_rule_after"),
             "canonical_state_modified": False, "promotion_allowed": False,
         }
+
+    def _evaluate_candidate(self, request):
+        if not isinstance(request, dict) or request.get("schema") != "nanlm.head-candidate-evaluation-request/1":
+            raise ValueError("unsupported_candidate_evaluation_request")
+        mutation_id = request.get("mutation_id")
+        if not isinstance(mutation_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", mutation_id):
+            raise ValueError("invalid_mutation_id")
+        records = request.get("records")
+        if not isinstance(records, list) or not 1 <= len(records) <= 512:
+            raise ValueError("records_must_contain_1_to_512_rows")
+        candidate_dir = Path(os.environ.get("NANLM_HEAD_CANDIDATE_DIR", str(Path(self.state_path).parent / "candidates"))).expanduser()
+        candidate_state = candidate_dir / (mutation_id + ".nmg")
+        manifest_path = candidate_dir / (mutation_id + ".json")
+        if not candidate_state.is_file() or not manifest_path.is_file():
+            raise ValueError("candidate_not_found")
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise OSError("candidate_manifest_unreadable") from exc
+        if manifest.get("schema") != "nanlm.head-candidate-manifest/1" or manifest.get("mutation_id") != mutation_id or manifest.get("status") != "candidate_only":
+            raise ValueError("candidate_manifest_mismatch")
+        lines = ["N16REL/1"]
+        expected = []
+        for index, row in enumerate(records):
+            if not isinstance(row, dict):
+                raise ValueError("invalid_record_%d" % index)
+            resolution, polarity = row.get("resolution"), row.get("polarity")
+            subject, predicate, obj = row.get("subject"), row.get("predicate"), row.get("object")
+            source_digest = row.get("source_digest")
+            if isinstance(resolution, bool) or not isinstance(resolution, int) or not 0 <= resolution <= 9:
+                raise ValueError("invalid_resolution_%d" % index)
+            if polarity not in ("+", "-"):
+                raise ValueError("invalid_polarity_%d" % index)
+            if not all(isinstance(v, str) and v.strip() and len(v.encode("utf-8")) <= 2048 and chr(0) not in v for v in (subject, predicate, obj)):
+                raise ValueError("invalid_relation_text_%d" % index)
+            if not isinstance(source_digest, str) or not HEX64.fullmatch(source_digest):
+                raise ValueError("invalid_source_digest_%d" % index)
+            lines.append("\t".join(("test", str(resolution), polarity, "0", _hex_text(subject), _hex_text(predicate), _hex_text(obj), source_digest)))
+            expected.append({"resolution": resolution, "positive": polarity == "+"})
+        with tempfile.TemporaryDirectory(prefix="nanlm-candidate-eval-") as temp:
+            records_path = Path(temp) / "heldout.n16rel"
+            records_path.write_text("\n".join(lines) + "\n", encoding="ascii")
+            baseline = self._evaluate_state(records_path, self.state_path, len(records))
+            candidate = self._evaluate_state(records_path, str(candidate_state), len(records))
+
+        def score(predictions):
+            decisive = correct = tp = tn = fp = fn = 0
+            buckets = {}
+            for expected_row, prediction in zip(expected, predictions):
+                bucket = buckets.setdefault(str(expected_row["resolution"]), {"total": 0, "decisive": 0, "correct": 0})
+                bucket["total"] += 1
+                state = prediction["truth_state"]
+                if state == "UNKNOWN":
+                    continue
+                decisive += 1
+                bucket["decisive"] += 1
+                positive, wanted = state == "TRUE", expected_row["positive"]
+                if positive == wanted:
+                    correct += 1
+                    bucket["correct"] += 1
+                if wanted and positive: tp += 1
+                elif wanted: fn += 1
+                elif positive: fp += 1
+                else: tn += 1
+            total = len(expected)
+            accuracy = correct / decisive if decisive else 0.0
+            coverage = decisive / total if total else 0.0
+            sensitivity = tp / (tp + fn) if tp + fn else 0.0
+            specificity = tn / (tn + fp) if tn + fp else 0.0
+            by_resolution = {}
+            for key, value in sorted(buckets.items()):
+                by_resolution[key] = {
+                    "total": value["total"], "decisive": value["decisive"],
+                    "accuracy": round(value["correct"] / value["decisive"], 6) if value["decisive"] else 0.0,
+                    "coverage": round(value["decisive"] / value["total"], 6),
+                }
+            return {
+                "rows": total, "decisive": decisive,
+                "accuracy": round(accuracy, 6), "coverage": round(coverage, 6),
+                "balanced_accuracy": round((sensitivity + specificity) / 2.0, 6),
+                "utility": round(accuracy * coverage, 6),
+                "confusion": {"tp": tp, "tn": tn, "fp": fp, "fn": fn},
+                "by_resolution": by_resolution,
+            }
+
+        baseline_score = score(baseline["predictions"])
+        candidate_score = score(candidate["predictions"])
+        delta = round(candidate_score["utility"] - baseline_score["utility"], 6)
+        return {
+            "schema": "nanlm.head-candidate-evaluation-response/1",
+            "mutation_id": mutation_id, "status": "evaluated_candidate",
+            "base_state_digest": baseline["state_digest"],
+            "candidate_digest": candidate["state_digest"],
+            "baseline": baseline_score, "candidate": candidate_score,
+            "utility_delta": delta,
+            "recommendation": "review_candidate" if delta > 0 else "retain_baseline",
+            "promotion_allowed": False, "canonical_state_modified": False,
+            "evaluation_policy": "heldout_only_no_automatic_promotion",
+        }
+
+    def _evaluate_state(self, records_path, state_path, expected_rows):
+        proc = subprocess.run(
+            [self.native_binary, "relation-eval", str(records_path), state_path],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            encoding="utf-8", errors="replace", timeout=60, check=False)
+        if proc.returncode != 0:
+            raise OSError("native_candidate_evaluation_failed")
+        header = re.search(r"generation=(\d+) state_digest=([a-f0-9]{64}) rows=(\d+)", proc.stdout)
+        if not header or int(header.group(3)) != expected_rows:
+            raise OSError("native_candidate_evaluation_receipt_invalid")
+        predictions = []
+        for match in re.finditer(r"relation_eval_row index=(\d+) head=(\d+) votes=(\d+) truth_state=(TRUE|FALSE|UNKNOWN) rule=(\d+)", proc.stdout):
+            predictions.append({
+                "index": int(match.group(1)), "head": int(match.group(2)),
+                "votes": int(match.group(3)), "truth_state": match.group(4),
+                "rule": int(match.group(5)),
+            })
+        if len(predictions) != expected_rows or any(row["index"] != i for i, row in enumerate(predictions)):
+            raise OSError("native_candidate_evaluation_rows_incomplete")
+        return {"state_digest": header.group(2), "predictions": predictions}
+
 
     def _validate_package(self, package):
         if not isinstance(package, dict) or package.get("schema") != "nanlm.hermes-evidence-package":
