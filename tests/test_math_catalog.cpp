@@ -34,6 +34,8 @@ int main() {
     CHECK_EQ(boolean_function_count(6), 0ull); // 2^64 is not representable in uint64_t
     CHECK_EQ(boolean_table_bits(4), 16u);
     CHECK_EQ(boolean_table_bits(7), 0u);
+    CHECK_EQ(boolean_input_index(nullptr, 2), 0xffu);
+    CHECK(!eval_boolean_inputs(0xf, 2, nullptr));
 
     // Check every 4-input truth table can be addressed without undefined
     // shifts, including its final bit.
