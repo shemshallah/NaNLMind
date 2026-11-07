@@ -67,7 +67,7 @@ class NannetTests(unittest.TestCase):
   status,leased=self.req("POST","/v1/riddle/lease",{"owner":"MC0:0/R0","now_tick":server.now()},token="w"*48)
   self.assertEqual(status,200);self.assertEqual(leased["source_kind"],"clocked-evidence")
   self.assertEqual(leased["node_point"],device["node_point"])
-  router_trace={"schema":"nanrouter.trace.v1","source_ref":"clocked_demo","target_ref":"BS0:0/MC0:0/R0","source_hash":leased["source_hash"],"acl_digest":leased["acl_digest"],"universe_id":"BS0:0","correct":False,"nanclock_tick":leased["nanclock_tick"]}
+  router_trace={"schema":"nanrouter.trace.v1","source_ref":"clocked_demo","target_ref":"BS0:0/MC0:0/R0","source_hash":leased["source_hash"],"acl_digest":leased["acl_digest"],"universe_id":"BS0:0","correct":False,"outcome_verified":False,"evidence_only":True,"nanclock_tick":leased["nanclock_tick"]}
   status,acked=self.req("POST","/v1/riddle/ack",{"event_id":leased["event_id"],"owner":"MC0:0/R0","result_digest":"f"*64,"result_generation":0,"trace":router_trace},token="w"*48)
   self.assertEqual(status,200);self.assertTrue(acked["acknowledged"])
   db=server.connect()
