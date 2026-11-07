@@ -335,6 +335,18 @@ class HeadCortexService:
             raise OSError("candidate_manifest_unreadable") from exc
         if manifest.get("schema") != "nanlm.head-candidate-manifest/1" or manifest.get("mutation_id") != mutation_id or manifest.get("status") != "candidate_only":
             raise ValueError("candidate_manifest_mismatch")
+        training_fingerprints = set(manifest.get("training_record_fingerprints", []))
+        if training_fingerprints:
+            for row in records:
+                if not isinstance(row, dict):
+                    raise ValueError("invalid_record")
+                fingerprint = hashlib.sha256(canonical({
+                    "resolution": row.get("resolution"), "polarity": row.get("polarity"),
+                    "subject": row.get("subject"), "predicate": row.get("predicate"),
+                    "object": row.get("object"), "source_digest": row.get("source_digest"),
+                })).hexdigest()
+                if fingerprint in training_fingerprints:
+                    raise ValueError("training_test_record_overlap")
         lines = ["N16REL/1"]
         expected = []
         for index, row in enumerate(records):
