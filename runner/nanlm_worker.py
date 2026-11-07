@@ -726,13 +726,19 @@ def op_rss_status(args):
     manifest = capability_manifest(args.slot_name, declared)
     manifest["universe_id"] = os.environ.get("NANLM_UNIVERSE_ID", "local")
     manifest["native_math_dispatch_enabled"] = False
-    manifest["dispatchable_operators"] = [
+    manifest["native_verified_operators"] = [
         "k256_laplacian_u16", "sparse_graph_laplacian_q16_16",
         "sparse_weighted_graph_laplacian_q16_16_i64_v2"]
+    # Native verification is not authorization to execute a remote job.
+    # Every candidate must pass NaNROUTER's NaN16 mathematical preflight
+    # against its exact rule snapshot before a later dispatch implementation.
+    manifest["preflight_gate_required"] = True
+    manifest["preflight_gate_abi"] = "NAN16-MTH-PREFLIGHT/1"
+    manifest["dispatchable_operators"] = []
     manifest["reason"] = (
-        "K256, sparse Q16.16 CSR v1, and weighted CSR v2 are native_verified, "
-        "but worker-level RSS job dispatch is not wired yet; this operation "
-        "advertises evidence only."
+        "K256, sparse Q16.16 CSR v1, and weighted CSR v2 are native_verified. "
+        "RSS execution remains disabled until the NaN16 preflight gate is "
+        "bound to each candidate and worker-level dispatch is implemented."
     )
     print(json.dumps(manifest, sort_keys=True, indent=2))
     return 0

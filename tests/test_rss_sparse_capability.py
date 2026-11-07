@@ -45,7 +45,10 @@ class SparseCapabilityContractTests(unittest.TestCase):
         self.assertEqual(sparse["kernel_digest"],
                          "013048435c1026643554fb20e3434934cf059dd47cf2857577cac13ed5be6b8f")
         self.assertFalse(manifest["native_math_dispatch_enabled"])
-        self.assertIn("sparse_graph_laplacian_q16_16", manifest["dispatchable_operators"])
+        self.assertIn("sparse_graph_laplacian_q16_16", manifest["native_verified_operators"])
+        self.assertEqual(manifest["dispatchable_operators"], [])
+        self.assertTrue(manifest["preflight_gate_required"])
+        self.assertEqual(manifest["preflight_gate_abi"], "NAN16-MTH-PREFLIGHT/1")
 
 
     def test_weighted_v2_worker_status_reports_exact_native_evidence(self):
@@ -62,7 +65,9 @@ class SparseCapabilityContractTests(unittest.TestCase):
                          "8958bf432cd4052576d9b950d9e50c1853bc96d90bc3c50680bf9013ab36d613")
         self.assertFalse(manifest["native_math_dispatch_enabled"])
         self.assertIn("sparse_weighted_graph_laplacian_q16_16_i64_v2",
-                      manifest["dispatchable_operators"])
+                      manifest["native_verified_operators"])
+        self.assertEqual(manifest["dispatchable_operators"], [])
+        self.assertTrue(manifest["preflight_gate_required"])
 
     def test_weighted_v2_capability_matches_its_own_job_abi(self):
         job = RSSJob.from_mapping({
