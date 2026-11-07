@@ -664,7 +664,7 @@ class Gateway:
         finally:
             db.close()
 
-    def publish_to_nannet(self, identity, event_id: str, base_generation: int = 0):
+    def publish_to_nannet(self, identity, event_id: str, base_generation: int = 0, event_meta=None):
         """Write a minimized Clocked receipt into the existing NANNET evidence inbox."""
         instance_id = identity.get("instance_id")
         if not isinstance(instance_id, str) or not instance_id:
@@ -712,12 +712,42 @@ class Gateway:
             ndb.commit()
         finally:
             ndb.close()
+        # Hand the same minimized evidence receipt to the embedded NaNLMROUTER inbox.
+        # No raw prompt, raw response, or privileged API credential crosses this boundary.
+        import server as nannet_server
+        metadata = event_meta if isinstance(event_meta, dict) else {}
+        router_payload = {
+            "schema": "nanlm.clocked-router-source.v1",
+            "clocked_event_id": event_id,
+            "source_endpoint": "clocked_demo",
+            "nannet_address": instance["nannet_address"],
+            "node_point": int(instance["node_point"]),
+            "input_sha256": metadata.get("input_sha256"),
+            "response_sha256": metadata.get("response_sha256"),
+            "base_generation": max(0, int(base_generation)),
+            "outcome_verified": False,
+            "raw_text_persisted": False,
+        }
+        router_bytes = json.dumps(router_payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        acl_digest = hashlib.sha256(b"nanlm.clocked-evidence.acl.v1|digest-only|unverified").hexdigest()
+        router_event_id = nannet_server.get_riddle_service().inbox.enqueue(
+            universe_id="BS0:0",
+            node_point=int(instance["node_point"]),
+            head_index=int(event_id[:2], 16),
+            source_kind="clocked-evidence",
+            payload=router_bytes,
+            acl_digest=acl_digest,
+            nanclock_tick=nannet_server.now(),
+        )
         return {
             "state": "pending_unverified" if inserted else "duplicate_noop",
             "node_point": int(instance["node_point"]),
             "address": instance["nannet_address"],
             "event_id": event_id,
             "outcome_verified": False,
+            "router_state": "queued",
+            "router_event_id": router_event_id,
+            "router_head_index": int(event_id[:2], 16),
         }
 
     def run_experience(self, environ, start_response):
@@ -773,7 +803,7 @@ class Gateway:
             event["protocol_version"] = SCHEMA_VERSION
             event["nannet_ingest"] = self.publish_to_nannet(
                 identity, event["event_id"],
-                int(os.environ.get("NANLM_CLOCKED_BASE_GENERATION", "0")),
+                int(os.environ.get("NANLM_CLOCKED_BASE_GENERATION", "0")), event,
             )
             event["learning_state"] = "awaiting_runner_ring_ingest"
             payload = {
@@ -904,7 +934,7 @@ class Gateway:
                     }, response)
                     nannet_ingest = self.publish_to_nannet(
                         identity, event["event_id"],
-                        int(os.environ.get("NANLM_CLOCKED_BASE_GENERATION", "0")),
+                        int(os.environ.get("NANLM_CLOCKED_BASE_GENERATION", "0")), event,
                     )
                     item = {
                         "task_id": task["id"], "endpoint": endpoint,
