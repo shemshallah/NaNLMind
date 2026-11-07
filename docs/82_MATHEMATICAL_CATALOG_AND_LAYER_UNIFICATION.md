@@ -15,13 +15,14 @@ The earlier architecture records in `docs/49_BOOLEAN_SPECTRUM.md`, `docs/50_LIFT
 
 ## 2. Two coupled systems, not one collapsed stack
 
-The ten mathematical layers and the L0–L9 bit/byte/sentence layers are distinct systems.
+There are multiple existing layer namespaces. They must remain distinct:
 
-- The **mathematical system** evaluates typed mathematical objects, functions, transformations, proofs, invariants and composition graphs.
-- The **language system** processes bit, byte, token, word, relation and sentence material through its established L0–L9 progression.
-- They meet through typed, provenance-bearing abstract result packets. A math result may inform several language layers; a language observation may propose a mathematical problem. Neither system silently reinterprets the other's storage as its own state.
+- **Language/evidence resolution L0–L9** is defined in `runner/resolution_layers.py`: bit, nibble, byte, phonetic, morpheme, lexical, word completion, sentence, paragraph and narrative. These describe the granularity at which evidence is stored.
+- **NANNET processing M0–M9** is a separate transformation pipeline. Its stage names and contracts must be read from the NANNET implementation; they are not language-resolution levels.
+- **Router mapping layers** are the ten existing `MAPPING_LAYERS` in `runner/nannet_router/macro.py`: bit-to-head, address-to-head, head-to-bin, vector-to-bin, hyperedge, temporal-link, logic-rule, route, merge-provenance and meta-policy.
+- **Mathematical catalog families** are typed operation families (Boolean, arithmetic, linear algebra, geometry, relations, discrete transforms, symbolic reasoning, composition and meta-learning). They crosscut the other layer systems and must not be relabeled as L0–L9 or M0–M9.
 
-A layer number is local to its system. Do not assume mathematical layer 3 is language layer L3. Maintain an explicit crosswalk table with source layer, destination layer, packet type, permitted direction, and validation rule.
+The mathematical layer decomposition requested for the ten mathematical layers remains an explicit audit item until the existing NANNET M0–M9 stage contracts and all ten router mapping stages have been reconciled. Do not invent a third ten-stage numbering scheme. Exchange occurs through typed, provenance-bearing packets with explicit source namespace, destination namespace, packet schema, direction and validation rule. A result may be projected into several layers without merging their state or semantics.
 
 ## 3. Mathematical catalog: scope and families
 
@@ -180,22 +181,18 @@ Every mathematical packet must include schema/version, packet ID, source identit
 
 The same packet may be projected into multiple layers or databases by explicit adapters. Those are derived views linked by the same packet ID and digest, not independent copies with divergent semantics. MC0Link receives only the authorized downstream projection.
 
-## 8. Ten mathematical layers and L0–L9 cross-system bridge
+## 8. Mathematical catalog and the existing layer namespaces
 
-The ten mathematical layers are a logical progression, not ten separate universes or ten independent models. Their concrete names and existing implementation mapping must be reconciled against the live code before renaming or relocating anything. Until that audit is complete, use these functional bands:
+The mathematical catalog is not a competing set of ten numbered layers. It supplies typed operations and their contracts to the existing layer systems:
 
-1. representation, types, shapes and domain validation;
-2. primitive Boolean and finite logic;
-3. arithmetic and number systems;
-4. vectors, matrices and tensor algebra;
-5. geometry, metrics and coordinate transforms;
-6. relations, graphs, hypergraphs and semirings;
-7. discrete transforms, sequences and signal operations;
-8. symbolic logic, rewriting and proof operations;
-9. composition, optimization and verified transform plans;
-10. meta-catalog learning, discovery, evaluation and controlled self-modification.
+| Namespace | Canonical meaning | Existing implementation |
+|---|---|---|
+| Language L0–L9 | evidence resolution from bit to narrative | `runner/resolution_layers.py` |
+| NANNET M0–M9 | network transformation stages | NANNET processing pipeline; audit stage contracts before changing |
+| Router mapping 0–9 | bit/head/address/bin/hyperedge/temporal/rule/route/provenance/meta-policy | `runner/nannet_router/macro.py` |
+| Math catalog | operation families, signatures, laws and proofs | `include/nanlm/math_catalog.hpp` plus native mathematical modules |
 
-The L0–L9 language/bit/byte/sentence system remains its own progression. A crosswalk must identify exactly which packet types can be deposited into which language layers. No implicit one-to-one mapping is assumed.
+The catalog is usable from any stage only through a typed operation request and a packet adapter. The adapter must declare source namespace, source stage, destination namespace/stage, function ID/version, operand types/shapes, ACL, base generation and validation status. No numeric layer equality implies semantic equivalence. No stage may reinterpret another stage's scratch or persisted evidence directly.
 
 ## 9. Self-modification and learning policy
 
