@@ -39,6 +39,36 @@ class NannetTests(unittest.TestCase):
   status,second=self.register_device("B"*43)
   self.assertEqual(status,201);self.assertEqual(second["address"],"nan://GM0:SC0:MC0:BS0:HW9")
   self.assertNotEqual(first["device_id"],second["device_id"])
+ def test_expired_device_lease_cannot_use_routes_but_can_renew(self):
+  status,device=self.register_device("Q"*43);self.assertEqual(status,201)
+  db=server.connect()
+  try:db.execute("UPDATE device_leases SET expires_at=? WHERE lease_id=?",(server.now()-1,device["lease_id"]));db.commit()
+  finally:db.close()
+  self.assertEqual(self.req("GET","/v1/address",token=device["token"])[0],401)
+  status,renewed=self.req("POST","/v1/devices/heartbeat",{},device["token"])
+  self.assertEqual(status,200);self.assertEqual(renewed["state"],"active")
+  self.assertEqual(self.req("GET","/v1/address",token=device["token"])[0],200)
+
+ def test_expired_lease_with_pending_work_can_only_be_released_or_renewed(self):
+  status,device=self.register_device("R"*43);self.assertEqual(status,201)
+  db=server.connect()
+  try:
+   db.execute("UPDATE device_leases SET expires_at=? WHERE lease_id=?",(server.now()-1,device["lease_id"]))
+   db.execute("INSERT INTO observations(event_id,endpoint_id,received_at,payload_json) VALUES(?,?,?,?)",("e"*64,device["address"],server.now(),"{}"))
+   db.commit()
+  finally:db.close()
+  self.assertEqual(self.req("POST","/v1/observations",{
+   "protocol":"nanlm.endpoint-observation","version":1,"event_id":"f"*64,
+   "base_generation":0,"active_heads":[],"outcome_verified":False
+  },device["token"])[0],401)
+  status,blocked=self.req("POST","/v1/devices/release",{},device["token"])
+  self.assertEqual(status,409);self.assertIn("pending_work",blocked["error"])
+  db=server.connect()
+  try:db.execute("UPDATE observations SET status='folded' WHERE event_id=?",("e"*64,));db.commit()
+  finally:db.close()
+  status,released=self.req("POST","/v1/devices/release",{},device["token"])
+  self.assertEqual(status,200);self.assertTrue(released["token_revoked"])
+
  def test_device_release_waits_for_pending_work_then_revokes_and_frees_slot(self):
   status,device=self.register_device("C"*43);self.assertEqual(status,201)
   db=server.connect()
