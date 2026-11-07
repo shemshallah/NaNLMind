@@ -7,6 +7,8 @@
     "schema",
     "mutation_id",
     "status",
+    "split",
+    "dataset_sha256",
     "base_state_digest",
     "candidate_digest",
     "baseline",
@@ -57,7 +59,14 @@
       "const": false
     },
     "evaluation_policy": {
-      "const": "heldout_only_no_automatic_promotion"
+      "const": "caller_declared_test_split_no_automatic_promotion"
+    },
+    "split": {
+      "const": "test"
+    },
+    "dataset_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
     }
   }
 }
