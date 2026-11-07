@@ -84,6 +84,17 @@ class BoundedHTTPServer(ThreadingHTTPServer):
   try:super().process_request_thread(request,client_address)
   finally:self.slots.release()
 
+_RIDDLE_SERVICE=None
+def get_riddle_service():
+ global _RIDDLE_SERVICE
+ if _RIDDLE_SERVICE is None:
+  if len(os.environ.get("RIDDLE_INTAKE_TOKEN", ""))<32: os.environ["RIDDLE_INTAKE_TOKEN"]=os.environ.get("NANLM_ADMIN_TOKEN", "")
+  if len(os.environ.get("RIDDLE_WORKER_TOKEN", ""))<32: os.environ["RIDDLE_WORKER_TOKEN"]=os.environ.get("NANLM_RUNNER_TOKEN", "")
+  if len(os.environ.get("RIDDLE_FEEDBACK_HMAC_KEY", ""))<32: os.environ["RIDDLE_FEEDBACK_HMAC_KEY"]=os.environ.get("NANLM_TOKEN_PEPPER", "")
+  os.environ.setdefault("RIDDLE_DATA_DIR", str(ROOT/"router"))
+  from nannet_router.http_service import RiddleService
+  _RIDDLE_SERVICE=RiddleService()
+ return _RIDDLE_SERVICE
 class Handler(BaseHTTPRequestHandler):
  server_version="NANNET/1"
  def log_message(self,fmt,*args): print("nannet "+(fmt%args),flush=True)
@@ -141,6 +152,80 @@ class Handler(BaseHTTPRequestHandler):
   ident=self.auth(role)
   if ident is None: self.reply(401,{"error":"unauthorized"})
   return ident
+ def dispatch_router(self,p):
+  routes={
+   ("GET","/v1/riddle/healthz"),("GET","/v1/riddle/volumes"),
+   ("POST","/v1/riddle/intake"),("POST","/v1/riddle/lease"),
+   ("POST","/v1/riddle/ack"),("POST","/v1/riddle/retry"),
+   ("POST","/v1/riddle/ring/heartbeat"),("POST","/v1/riddle/feedback"),
+   ("POST","/v1/riddle/feedback/ack"),("POST","/v1/riddle/routes/resolve"),
+   ("POST","/v1/riddle/plan")
+  }
+  if (self.command,p) not in routes:return False
+  try:
+   service=get_riddle_service()
+   if self.command=="GET" and p=="/v1/riddle/healthz":
+    return self.reply(200,{"status":"ok","service":"nannet-router-embedded","same_process":True,"inbox":service.inbox.stats()}) or True
+   if self.command=="GET" and p=="/v1/riddle/volumes":
+    if self.need("runner") is None:return True
+    registry=service.volume_registry()
+    if registry is None:return self.reply(503,{"error":"signed_volume_registry_not_installed"}) or True
+    return self.reply(200,{"registry":{"generation":registry.document["generation"],"registry_digest":registry.document["registry_digest"]}}) or True
+   if self.command=="POST" and p=="/v1/riddle/intake":
+    if self.need("admin") is None:return True
+    data=self.json_body(2_097_152)
+    payload_hex=data.get("payload_hex","")
+    if not isinstance(payload_hex,str) or len(payload_hex)>2_097_152:raise ValueError("payload_hex_invalid_or_too_large")
+    try:payload=bytes.fromhex(payload_hex)
+    except ValueError as exc:raise ValueError("payload_hex_must_be_even_length_hex") from exc
+    event_id=service.inbox.enqueue(universe_id=str(data["universe_id"]),node_point=int(data["node_point"]),head_index=int(data["head_index"]),source_kind=str(data.get("source_kind","nan-source")),payload=payload,acl_digest=str(data["acl_digest"]),nanclock_tick=int(data["nanclock_tick"]))
+    return self.reply(202,{"event_id":event_id,"accepted":True}) or True
+   if self.need("runner") is None:return True
+   data=self.json_body(2_097_152)
+   if p=="/v1/riddle/lease":
+    event=service.inbox.lease_next(owner=str(data["owner"]),now_tick=int(data["now_tick"]),lease_ticks=int(data.get("lease_ticks",64)))
+    if event is None:return self.reply(200,{"event":None}) or True
+    return self.reply(200,{"event_id":event.event_id,"universe_id":event.universe_id,"node_point":event.node_point,"head_index":event.head_index,"source_kind":event.source_kind,"source_hash":event.source_hash,"payload_hex":event.payload.hex(),"acl_digest":event.acl_digest,"nanclock_tick":event.nanclock_tick,"lease_owner":event.lease_owner,"attempts":event.attempts}) or True
+   if p=="/v1/riddle/ack":
+    event=service.inbox.get_leased(str(data["event_id"]),str(data["owner"]))
+    ok=service.inbox.ack(event,result_digest=str(data["result_digest"]),result_generation=int(data["result_generation"]),trace=data["trace"])
+    return self.reply(200,{"acknowledged":ok,"event_id":event.event_id}) or True
+   if p=="/v1/riddle/retry":
+    event=service.inbox.get_leased(str(data["event_id"]),str(data["owner"]))
+    state=service.inbox.retry(event,max_attempts=int(data.get("max_attempts",8)))
+    return self.reply(200,{"event_id":event.event_id,"state":state}) or True
+   if p=="/v1/riddle/ring/heartbeat":
+    registry=service.volume_registry()
+    if registry is None:return self.reply(503,{"error":"signed_volume_registry_not_installed"}) or True
+    snapshot=service.runner_ring.heartbeat(slot=int(data["slot"]),runner_id=str(data["runner_id"]),registry_generation=int(data["registry_generation"]),registry_digest=str(data["registry_digest"]),nanclock_tick=int(data["nanclock_tick"]),expected_generation=int(registry.document["generation"]),expected_digest=str(registry.document["registry_digest"]))
+    return self.reply(200,{"accepted":True,"runner_ring":snapshot}) or True
+   if p=="/v1/riddle/feedback":
+    from nannet_router.macro import BootstrapMacroPlanner
+    feedback=BootstrapMacroPlanner.feedback_envelope(universe_id=str(data["universe_id"]),stage=str(data["stage"]),base_generation=int(data["base_generation"]),completed_steps=int(data["completed_steps"]),candidate_digest=str(data["candidate_digest"]),acl_digest=str(data["acl_digest"]),signing_key=service.feedback_key,nanclock_tick=int(data.get("nanclock_tick",0)))
+    feedback_id=service.inbox.record_feedback(feedback)
+    return self.reply(202,{"feedback_id":feedback_id,"accepted":True}) or True
+   if p=="/v1/riddle/feedback/ack":
+    ok=service.inbox.ack_feedback(str(data["feedback_id"]))
+    return self.reply(200,{"acknowledged":ok,"feedback_id":str(data["feedback_id"])}) or True
+   if p=="/v1/riddle/routes/resolve":
+    from nannet_router.cache import MasterRouteCache
+    if not service.route_cache_path.exists() or len(service.route_key)<32:return self.reply(503,{"error":"signed_master_route_cache_not_installed"}) or True
+    cache=MasterRouteCache.load(service.route_cache_path,service.route_key)
+    packet=cache.resolve(str(data["address"]),now_tick=int(data["nanclock_tick"]) if "nanclock_tick" in data else None)
+    return self.reply(200,{"packet":packet,"live_route_commit":False}) or True
+   if p=="/v1/riddle/plan":
+    from nannet_router.macro import BootstrapMacroPlanner,CurriculumState,SignedRangeManifest
+    if not service.range_manifest_path.exists() or len(service.range_key)<32:return self.reply(503,{"error":"verified_allocator_range_manifest_not_installed"}) or True
+    manifest=SignedRangeManifest(json.loads(service.range_manifest_path.read_text(encoding="utf-8")),service.range_key)
+    state_doc=data.get("state",{})
+    state=CurriculumState(boolean_gate_passed=bool(state_doc.get("boolean_gate_passed",False)),boolean_heads_verified=int(state_doc.get("boolean_heads_verified",0)),distinct_boolean_rules=int(state_doc.get("distinct_boolean_rules",0)),routing_gate_passed=bool(state_doc.get("routing_gate_passed",False)),permanent_heads_mapped=int(state_doc.get("permanent_heads_mapped",0)),mapped_layers=tuple(int(x) for x in state_doc.get("mapped_layers",[])),base_generation=int(state_doc.get("base_generation",0)))
+    from dataclasses import asdict
+    return self.reply(200,{"job":asdict(BootstrapMacroPlanner().next_job(state,manifest)),"live_map_commit":False}) or True
+  except Exception as exc:
+   print("nannet-router adapter error: "+type(exc).__name__,flush=True)
+   status=429 if type(exc).__name__=="InboxFull" else 400 if isinstance(exc,(KeyError,TypeError,ValueError)) else 503
+   return self.reply(status,{"error":"router_request_rejected" if status==400 else "router_unavailable" if status==503 else "router_inbox_full"}) or True
+  return True
  def dispatch_clocked(self,p):
   routes={
    ("POST","/auth/demo-token"),("GET","/admin/instances"),
@@ -189,6 +274,7 @@ class Handler(BaseHTTPRequestHandler):
   return True
  def do_GET(self):
   p=urlparse(self.path).path
+  if self.dispatch_router(p):return
   if self.dispatch_clocked(p):return
   if p in ("/","/portal"):
    try: raw=Path(__file__).with_name("portal.html").read_bytes()
