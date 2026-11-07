@@ -325,6 +325,14 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                 self._proxy_router(); return
             if path in ('/admin/tokens', '/v1/experience', '/v1/tasks', '/v1/observations', '/internal/observations', '/internal/observations/ack'):
                 self._proxy_clocked(); return
+            if path == '/v1/issuer':
+                if authority is None:
+                    self._json(HTTPStatus.SERVICE_UNAVAILABLE, {'error': 'nannet authority disabled'}); return
+                self._json(HTTPStatus.OK, {
+                    'protocol': 'nannet-pairing/1',
+                    'issuer_public_key': authority.issuer_public_key(),
+                    'role': 'guest',
+                }); return
             if path in ('/v1/rawroute/health', '/v1/rawroute/resolve', '/v1/rawroute/reverse'):
                 if not self._auth():
                     self._json(HTTPStatus.UNAUTHORIZED, {'error': 'unauthorized'}); return
@@ -646,6 +654,24 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                 try:
                     self._json(HTTPStatus.OK, devices.release_slot(payload.get('slot')))
                 except ValueError as exc:
+                    self._json(HTTPStatus.BAD_REQUEST, {'error': str(exc)[:160]})
+                return
+            if path == '/v1/admin/pairing-codes':
+                if not self._auth():
+                    self._json(HTTPStatus.UNAUTHORIZED, {'error': 'merge service token required'}); return
+                if authority is None:
+                    self._json(HTTPStatus.SERVICE_UNAVAILABLE, {'error': 'nannet authority disabled'}); return
+                try:
+                    payload = self._body(4096)
+                    scopes = payload.get('scopes') or ['universe:read', 'training:execute']
+                    ttl_seconds = payload.get('ttl_seconds', 600)
+                    role = payload.get('role', 'guest')
+                    if not isinstance(scopes, list) or not all(isinstance(x, str) for x in scopes):
+                        raise ValueError('scopes must be a string list')
+                    result = authority.create_pairing_code(scopes, ttl_seconds=ttl_seconds, role=role)
+                    result['issuer_public_key'] = authority.issuer_public_key()
+                    self._json(HTTPStatus.CREATED, result)
+                except (ValueError, TypeError, AuthError) as exc:
                     self._json(HTTPStatus.BAD_REQUEST, {'error': str(exc)[:160]})
                 return
             if authority is None or devices is None:
