@@ -119,8 +119,15 @@ class Handler(BaseHTTPRequestHandler):
     db.rollback();return None
    lease_id=None
    if owner_device_id:
-    lease=db.execute("SELECT lease_id FROM device_leases WHERE device_id=? AND address=? AND status='active'",(owner_device_id,address)).fetchone()
+    lease=db.execute("SELECT lease_id,expires_at FROM device_leases WHERE device_id=? AND address=? AND status='active'",(owner_device_id,address)).fetchone()
     if not lease:
+     db.rollback();return None
+    # An expired lease may only renew, inspect its own registration, or release.
+    # It cannot continue sending observations/data after its slot is eligible
+    # for reassignment.
+    if lease["expires_at"]<=now() and urlparse(self.path).path not in (
+     "/v1/devices/heartbeat","/v1/devices/release","/v1/devices/me"
+    ):
      db.rollback();return None
     lease_id=lease["lease_id"]
    claimed=self.headers.get("X-NaN-Address","")
