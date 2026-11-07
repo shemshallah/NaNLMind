@@ -84,3 +84,8 @@ record to `nanlm/logic/<epoch>/<slot>` when tiers are available.
 
 Without `deepcore`/tiers the worker falls back to `state/*.json`. The fallback is
 for development, not 24/7 operation.
+
+
+## Relational-spectral runner contract
+
+The shared RSS protocol is defined in `runner/relational_spectral.py`. It validates versioned job/result envelopes and capability manifests only; it contains no graph or spectral mathematics. Native NaN16 MTH kernels must be assembled and executed before a capability may be marked `native_verified`. Dispatch rejects `specified` and `source_written` capabilities and checks workspace budgets. Contract tests: `python3 -m unittest tests/test_relational_spectral_contract.py` (or run the test file directly).
