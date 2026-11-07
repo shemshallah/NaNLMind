@@ -190,7 +190,7 @@ class Handler(BaseHTTPRequestHandler):
    if not self.router_need(service,"worker"):return True
    data=self.json_body(2_097_152)
    if p=="/v1/riddle/lease":
-    event=service.inbox.lease_next(owner=str(data["owner"]),now_tick=int(data["now_tick"]),lease_ticks=int(data.get("lease_ticks",64)))
+    event=service.inbox.lease_next(owner=str(data["owner"]),now_tick=int(data["now_tick"]),lease_ticks=int(data.get("lease_ticks",64)),source_kind=data.get("source_kind"))
     if event is None:return self.reply(200,{"event":None}) or True
     return self.reply(200,{"event_id":event.event_id,"universe_id":event.universe_id,"node_point":event.node_point,"head_index":event.head_index,"source_kind":event.source_kind,"source_hash":event.source_hash,"payload_hex":event.payload.hex(),"acl_digest":event.acl_digest,"nanclock_tick":event.nanclock_tick,"lease_owner":event.lease_owner,"attempts":event.attempts}) or True
    if p=="/v1/riddle/ack":
