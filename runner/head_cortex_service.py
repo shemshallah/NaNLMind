@@ -366,6 +366,87 @@ class HeadCortexService:
                 atoms.append((entry.get("entry_id", ""), subject, predicate, obj,
                               source_digest, resolution, False))
                 evidence_texts.append((entry.get("entry_id", ""), obj))
+            elif entry.get("lane") == "clocked_result":
+                observation = entry.get("payload")
+                if not isinstance(observation, dict):
+                    continue
+                endpoint = observation.get("endpoint")
+                if not isinstance(endpoint, str) or not re.fullmatch(r"[a-z_]{2,24}", endpoint):
+                    endpoint = "unknown"
+                result_data = observation.get("result", {})
+                if not isinstance(result_data, dict):
+                    result_data = {}
+                nested = result_data.get("result")
+                if isinstance(nested, dict):
+                    result_data = nested
+                fields = result_data.get("fields", {})
+                if not isinstance(fields, dict):
+                    fields = {}
+                # Retain semantic signals, never raw PII or full prompt/script text.
+                safe_keys = {
+                    "decide": ("decision", "label", "confidence", "verdict"),
+                    "extract": ("claims", "dates", "quantities", "named_entities"),
+                    "fill": ("filled_fields", "missing_fields", "status"),
+                    "grounding": ("verdict", "grounded", "unsupported", "score", "claim_count"),
+                    "compare": ("verdict", "agreement", "conflicts", "similarity", "relations"),
+                    "rerank": ("ranking", "scores", "order"),
+                    "pii": ("detected", "count", "types", "categories", "redacted"),
+                    "injection": ("verdict", "risk", "categories", "detected", "count"),
+                    "script": ("verdict", "matched", "patterns", "count", "risk"),
+                    "pipeline": ("status", "steps", "verdict"),
+                }.get(endpoint, ())
+                summary = {}
+                for key in safe_keys:
+                    value = fields.get(key, result_data.get(key))
+                    if value is None:
+                        continue
+                    if endpoint == "pii":
+                        if isinstance(value, list):
+                            summary[key + "_count"] = len(value)
+                            if key in ("types", "categories"):
+                                summary[key] = sorted({
+                                    str(item.get("type") or item.get("category") or "unknown")
+                                    if isinstance(item, dict) else str(item)
+                                    for item in value[:32]
+                                })[:32]
+                        elif isinstance(value, (bool, int, float)):
+                            summary[key] = value
+                        elif isinstance(value, str) and key in ("detected", "redacted"):
+                            summary[key] = value[:64]
+                        continue
+                    if isinstance(value, str):
+                        summary[key] = value[:512]
+                    elif isinstance(value, (bool, int, float)):
+                        summary[key] = value
+                    elif isinstance(value, list):
+                        summary[key] = [
+                            (str(item)[:256] if not isinstance(item, dict)
+                             else {str(k): str(v)[:128] for k, v in list(item.items())[:8]
+                                   if isinstance(v, (str, int, float, bool))})
+                            for item in value[:32]
+                        ]
+                    elif isinstance(value, dict):
+                        summary[key] = {
+                            str(k): str(v)[:128] for k, v in list(value.items())[:16]
+                            if isinstance(v, (str, int, float, bool))
+                        }
+                status = observation.get("status", "unknown")
+                result_type = observation.get("result_type", endpoint)
+                summary_payload = {
+                    "endpoint": endpoint, "status": str(status)[:32],
+                    "result_type": str(result_type)[:32], "signals": summary,
+                }
+                source_digest = observation.get("provenance", {}).get("input_sha256")
+                if not isinstance(source_digest, str) or not HEX64.fullmatch(source_digest):
+                    source_digest = hashlib.sha256(canonical(observation)).hexdigest()
+                source_id = observation.get("source_id") or "cross_source"
+                atoms.append((
+                    entry.get("entry_id", ""), str(source_id)[:128],
+                    "clocked_" + endpoint + "_observation",
+                    canonical(summary_payload).decode("utf-8")[:2048],
+                    source_digest, 5, False,
+                ))
+                evidence_texts.append((entry.get("entry_id", ""), canonical(summary_payload).decode("utf-8")[:2048]))
             elif entry.get("lane") == "hermes_synthesis" and package.get("purpose") == "ANSWER_VALIDATION":
                 draft_payload = entry.get("payload")
                 draft = draft_payload.get("draft") if isinstance(draft_payload, dict) else None
