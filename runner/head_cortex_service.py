@@ -13,6 +13,7 @@ import os
 import re
 import subprocess
 import tempfile
+import urllib.request
 from pathlib import Path
 from typing import Any
 from wsgiref.simple_server import make_server
@@ -42,10 +43,12 @@ def _json_response(start_response, status: str, payload: dict):
 
 
 class HeadCortexService:
-    def __init__(self, native_binary: str, state_path: str, token: str):
+    def __init__(self, native_binary: str, state_path: str, token: str = "",
+                 auth_url: str = ""):
         self.native_binary = str(Path(native_binary).expanduser())
         self.state_path = str(Path(state_path).expanduser())
         self.token = token
+        self.auth_url = auth_url.rstrip("/")
 
     def __call__(self, environ, start_response):
         method = environ.get("REQUEST_METHOD", "GET").upper()
@@ -60,7 +63,7 @@ class HeadCortexService:
             return _json_response(start_response, "404 Not Found", {"error": "not_found"})
         auth = environ.get("HTTP_AUTHORIZATION", "")
         supplied = auth[7:] if auth.startswith("Bearer ") else ""
-        if not self.token or not hmac.compare_digest(supplied, self.token):
+        if not self._authorized(supplied):
             return _json_response(start_response, "401 Unauthorized", {"error": "unauthorized"})
         try:
             length = int(environ.get("CONTENT_LENGTH") or "0")
@@ -77,6 +80,24 @@ class HeadCortexService:
         except (OSError, subprocess.TimeoutExpired):
             return _json_response(start_response, "503 Service Unavailable",
                                   {"error": "native_inference_unavailable"})
+
+    def _authorized(self, supplied: str) -> bool:
+        if not supplied or len(supplied) > 512:
+            return False
+        if self.auth_url:
+            try:
+                body = canonical({"scope": "universe:read"})
+                request = urllib.request.Request(
+                    self.auth_url + "/v1/authorize", data=body,
+                    headers={"Authorization": "Bearer " + supplied,
+                             "Content-Type": "application/json",
+                             "Accept": "application/json"}, method="POST")
+                with urllib.request.urlopen(request, timeout=10) as response:
+                    result = json.loads(response.read(16384).decode("utf-8"))
+                return result.get("authorized") is True and result.get("scope") == "universe:read"
+            except Exception:
+                return False
+        return bool(self.token) and hmac.compare_digest(supplied, self.token)
 
     def _validate_package(self, package):
         if not isinstance(package, dict) or package.get("schema") != "nanlm.hermes-evidence-package":
@@ -199,11 +220,12 @@ def main():
     native = os.environ.get("NANLM_NATIVE_BINARY", "build/nanlm-universal")
     state = os.environ.get("NANLM_HEAD_STATE", "state/hermes-universe.nmg")
     token = os.environ.get("NANLM_HEAD_CORTEX_TOKEN", "")
+    auth_url = os.environ.get("NANNET_AUTH_URL", "").rstrip("/")
     host = os.environ.get("NANLM_HEAD_CORTEX_HOST", "127.0.0.1")
     port = int(os.environ.get("NANLM_HEAD_CORTEX_PORT", "8765"))
-    if not token or len(token) < 32:
-        raise SystemExit("NANLM_HEAD_CORTEX_TOKEN must be a scoped random secret of at least 32 characters")
-    app = HeadCortexService(native, state, token)
+    if not auth_url and len(token) < 32:
+        raise SystemExit("configure NANNET_AUTH_URL for scoped NANNET authorization, or a 32+ character NANLM_HEAD_CORTEX_TOKEN for isolated local use")
+    app = HeadCortexService(native, state, token, auth_url)
     with make_server(host, port, app) as server:
         server.serve_forever()
 
