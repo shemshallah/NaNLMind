@@ -395,6 +395,7 @@ class Handler(BaseHTTPRequestHandler):
   return self.reply(404,{"error":"not_found"})
  def do_POST(self):
   p=urlparse(self.path).path
+  if self.dispatch_router(p):return
   if self.dispatch_clocked(p):return
   if p=="/v1/devices/register":
    try:
