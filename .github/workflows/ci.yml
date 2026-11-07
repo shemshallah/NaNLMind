@@ -164,8 +164,13 @@ jobs:
           mkdir -p state/mth
           cd nanrouter
           awk -f nan0s/tools/nmk.awk -v CMD=emit mth/tests/mth_preflight_test.nas > ../state/mth/preflight.nan
+          awk -f nan0s/tools/nmk.awk -v CMD=emit mth/tests/mth_linker_preflight_test.nas > ../state/mth/linker-preflight.nan
           cd ..
           nanrouter/nan0s/aarch64/android/nan_cli --img state/mth/preflight.nan --steps 2000000 --serial > state/mth/preflight.out 2> state/mth/preflight.err
           cat state/mth/preflight.out
           cat state/mth/preflight.err
           grep -q '^MTH TYPED PREFLIGHT PASS' state/mth/preflight.out
+          nanrouter/nan0s/aarch64/android/nan_cli --img state/mth/linker-preflight.nan --steps 3000000 --serial > state/mth/linker-preflight.out 2> state/mth/linker-preflight.err
+          cat state/mth/linker-preflight.out
+          cat state/mth/linker-preflight.err
+          grep -q '^MTH LINKER PREFLIGHT PASS' state/mth/linker-preflight.out
