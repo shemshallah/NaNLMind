@@ -104,3 +104,22 @@ unchanged. Candidate evaluation is read-only; this command does not promote
 the mutation. Candidate promotion, full regression/control evaluation and
 six-runner generation-barrier integration remain required before any
 canonical head state changes.
+
+## Candidate endpoint
+
+The HTTP adapter exposes `POST /v1/head-cortex/candidate` for an explicitly
+approved, isolated Boolean-mask mutation. This route requires NANNET scope
+`training:execute` (the read-only inference route requires
+`universe:read`). The request binds a unique mutation ID, head index, XOR
+patch mask and the current native topology digest. A stale base digest is
+rejected.
+
+The endpoint invokes `head-candidate`, stores the candidate under the
+private candidate directory with mode 0700/0600 permissions, and returns a
+candidate receipt. It never updates the base state and always returns
+`promotion_allowed=false`. No candidate is canonical merely because it was
+created. Evaluation and six-runner generation promotion remain separate gates.
+
+The request/response schemas are
+`integrations/clocked/head-candidate-request.schema.json` and
+`integrations/clocked/head-candidate-response.schema.json`.
