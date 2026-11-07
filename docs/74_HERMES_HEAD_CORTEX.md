@@ -146,3 +146,26 @@ A positive utility delta and non-regressing balanced accuracy produce only
 The endpoint never modifies canonical topology and always returns
 `promotion_allowed=false`. Candidate request/response schemas are in
 `schemas/head-cortex/candidate-evaluation-*.schema.json`.
+
+## CLOCKED weak-supervision learning candidates
+
+The receiving service exposes
+`POST /v1/head-cortex/candidate/learn` under NANNET
+`training:execute`. It accepts a bounded, digest-bound N16REL training set
+explicitly marked as CLOCKED teacher observations, copies the requested
+canonical topology into an isolated candidate file, and runs the native
+`relation-train` command against that copy. The native learner updates
+Boolean-head scores, mirror-pair relations, temporal links and hyperedges.
+The canonical topology is never passed as the training output path.
+
+HERMES can derive weak labels from the typed CLOCKED results already in its
+scratch: extracted claims, grounding verdicts, cross-source conflict signals,
+privacy/injection/script detections and decision labels. Sensitive PII values
+are excluded; only detection state and bounded type/count metadata are used.
+CLOCKED labels are explicitly not ground truth. The candidate manifest records
+the training dataset digest and relation fingerprints. The evaluation route
+rejects any held-out row fingerprint that overlaps the training set.
+
+This produces a learned candidate, not a deployed head generation. It must
+still pass independent test evaluation, controls, human review and the
+six-runner generation barrier before any promotion.
