@@ -65,6 +65,12 @@ class NannetTests(unittest.TestCase):
   finally:db.close()
   duplicate=gateway.publish_to_nannet({"instance_id":instance_id},event_id,7)
   self.assertEqual(duplicate["state"],"duplicate_noop")
+  status,queue=self.req("GET","/internal/observations",token="r"*48)
+  self.assertEqual(status,200)
+  self.assertEqual(queue["events"][0]["event_id"],event_id)
+  self.assertEqual(queue["events"][0]["endpoint_id"],device["address"])
+  status,ack=self.req("POST","/internal/observations/ack",{"event_ids":[event_id]},token="r"*48)
+  self.assertEqual(status,200);self.assertEqual(ack["folded"],1)
 
  def test_device_registration_allocates_exclusive_first_available_slots_and_resumes(self):
   secret="A"*43
