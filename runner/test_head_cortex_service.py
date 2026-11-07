@@ -286,6 +286,13 @@ class HeadCortexServiceTests(unittest.TestCase):
             else:
                 os.environ["NANLM_HEAD_CANDIDATE_DIR"] = old
 
+    def test_health_reports_canonical_immutability_and_candidate_capability(self):
+        status, result = invoke(self.app, path="/healthz", method="GET")
+        self.assertEqual(status, "200 OK")
+        self.assertTrue(result["canonical_state_immutable"])
+        self.assertTrue(result["candidate_mutations"])
+        self.assertNotIn("read_only", result)
+
     def test_requires_scoped_bearer(self):
         status, result = invoke(self.app, payload=package(), token="wrong")
         self.assertEqual(status, "401 Unauthorized")
