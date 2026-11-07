@@ -16,7 +16,7 @@ class ClockedRouterConsumerTests(unittest.TestCase):
             "schema": "nanlm.clocked-router-source.v1",
             "clocked_event_id": "1" * 64,
             "source_endpoint": "clocked_demo",
-            "nannet_address": "nan://GM0:SC0:MC0:BS0:HW8",
+            "nannet_address": "nan://GM0:SC0:MC0:BS0:HW3",
             "node_point": 9,
             "input_sha256": "2" * 64,
             "response_sha256": "3" * 64,
@@ -78,7 +78,7 @@ class ClockedRouterConsumerTests(unittest.TestCase):
         self.assertFalse(result["model_update"])
         lease = next(item for item in self.requests if item[0] == "/v1/riddle/lease")
         self.assertEqual(lease[1], "Bearer " + TOKEN)
-        self.assertEqual(lease[2]["owner"], "MC0:0/R2")
+        self.assertEqual(lease[2]["owner"], "HW0::BS0/R2")
         self.assertEqual(lease[2]["source_kind"], "clocked-evidence")
         ack = next(item for item in self.requests if item[0] == "/v1/riddle/ack")
         self.assertEqual(ack[2]["result_generation"], 5)
