@@ -121,6 +121,7 @@ constexpr bool eval_boolean(std::uint64_t truth, std::uint8_t arity,
     return ((truth >> input_index) & 1u) != 0;
 }
 constexpr std::uint8_t boolean_input_index(const bool* inputs, std::uint8_t arity) {
+    if (!inputs || !valid_boolean_arity(arity)) return 0xff;
     std::uint8_t index = 0;
     for (std::uint8_t i = 0; i < arity; ++i)
         index = static_cast<std::uint8_t>((index << 1u) | (inputs[i] ? 1u : 0u));
