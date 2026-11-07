@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "HERMES revisioned scratch entry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "scratch_id",
+    "entry_id",
+    "sequence",
+    "lane",
+    "writer",
+    "created_at",
+    "parent_revision",
+    "payload",
+    "revision"
+  ],
+  "properties": {
+    "schema": {
+      "const": "nanlm.hermes-scratch-entry/1"
+    },
+    "scratch_id": {
+      "type": "string"
+    },
+    "entry_id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{32}$"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "lane": {
+      "enum": [
+        "user",
+        "hermes_plan",
+        "clocked_request",
+        "clocked_result",
+        "evidence_atoms",
+        "conflict_map",
+        "nan16_package",
+        "head_response",
+        "hermes_synthesis",
+        "head_validation",
+        "final",
+        "learning_proposal"
+      ]
+    },
+    "writer": {
+      "enum": [
+        "user",
+        "hermes",
+        "clocked",
+        "nanlmind",
+        "policy"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "parent_revision": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "payload": {},
+    "revision": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}
