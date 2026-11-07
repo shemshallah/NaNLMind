@@ -159,6 +159,7 @@ the Koyeb keeper.
 - NANLM_DATA_DIR=/data/nannet
 - NANLM_MERGE_ROOT=/data/nannet/merge (change to the old merge state directory
   during cutover if it contains the existing training_merge.json)
+- NANLM_DEVICE_LEASE_SECONDS=21600 (six-hour CLOCKED demo lease; adjust for the deployment's lease policy)
 - NANLM_DATASET_QUOTA_BYTES=6442450944
 - NANLM_CHUNK_BYTES=8388608
 - NANLM_HTTP_WORKERS=8 (bounded concurrent requests for Nano RAM)
@@ -215,7 +216,9 @@ Clocked.
 The installation secret is never stored in plaintext by NANNET; only a
 pepper-HMAC digest is retained. Re-registering with the same secret resumes
 the same active lease and rotates the endpoint bearer token. Heartbeats renew
-the lease. Explicit release revokes the endpoint token and returns the HW slot
+the lease. After expiry, the bearer cannot use ordinary endpoint routes; only
+heartbeat, release, and its own lease-status route remain available. Pending
+work prevents release and therefore prevents slot reassignment. Explicit release revokes the endpoint token and returns the HW slot
 to the pool only when no upload, quarantined/validated dataset, or unacknowledged
 observation remains. Expired leases with pending work are retained rather than
 reassigned. This is an installation identity, not a hardware identity: a
