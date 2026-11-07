@@ -125,23 +125,38 @@ class HeadCortexService:
 
     def _infer(self, package):
         atoms = []
+        evidence_texts = []
         for entry in package["evidence_entries"]:
-            if entry.get("lane") != "evidence_atoms":
-                continue
-            atom = entry.get("payload")
-            if not isinstance(atom, dict):
-                continue
-            subject, predicate, obj = atom.get("subject"), atom.get("predicate"), atom.get("object")
-            source_digest = atom.get("source_digest")
-            resolution = atom.get("resolution", 5)
-            if not all(isinstance(x, str) and x.strip() for x in (subject, predicate, obj)):
-                continue
-            if not isinstance(source_digest, str) or not HEX64.fullmatch(source_digest):
-                continue
-            if isinstance(resolution, bool) or not isinstance(resolution, int) or not 0 <= resolution <= 9:
-                continue
-            atoms.append((entry.get("entry_id", ""), subject, predicate, obj,
-                          source_digest, resolution))
+            if entry.get("lane") == "evidence_atoms":
+                atom = entry.get("payload")
+                if not isinstance(atom, dict):
+                    continue
+                subject, predicate, obj = atom.get("subject"), atom.get("predicate"), atom.get("object")
+                source_digest = atom.get("source_digest")
+                resolution = atom.get("resolution", 5)
+                if not all(isinstance(x, str) and x.strip() for x in (subject, predicate, obj)):
+                    continue
+                if not isinstance(source_digest, str) or not HEX64.fullmatch(source_digest):
+                    continue
+                if isinstance(resolution, bool) or not isinstance(resolution, int) or not 0 <= resolution <= 9:
+                    continue
+                atoms.append((entry.get("entry_id", ""), subject, predicate, obj,
+                              source_digest, resolution, False))
+                evidence_texts.append((entry.get("entry_id", ""), obj))
+            elif entry.get("lane") == "hermes_synthesis" and package.get("purpose") == "ANSWER_VALIDATION":
+                draft_payload = entry.get("payload")
+                draft = draft_payload.get("draft") if isinstance(draft_payload, dict) else None
+                if not isinstance(draft, str) or not draft.strip():
+                    continue
+                draft_digest = hashlib.sha256(draft.encode("utf-8")).hexdigest()
+                sentences = re.split(r"(?<=[.!?])\s+", draft)
+                for index, sentence in enumerate(sentences[:128]):
+                    sentence = sentence.strip()
+                    if not sentence:
+                        continue
+                    atoms.append((entry.get("entry_id", "") + "-claim-" + str(index),
+                                  "hermes_answer", "asserts_claim", sentence[:2048],
+                                  draft_digest, 7, True))
         if not atoms:
             return {
                 "schema": "nanlm.head-cortex-response", "version": 1,
@@ -154,7 +169,7 @@ class HeadCortexService:
         if not Path(self.native_binary).is_file() or not Path(self.state_path).is_file():
             raise OSError("native state or binary missing")
         lines = ["N16REL/1"]
-        for _, subject, predicate, obj, source_digest, resolution in atoms:
+        for _, subject, predicate, obj, source_digest, resolution, _ in atoms:
             lines.append("\t".join(("test", str(resolution), "+", "0",
                                      _hex_text(subject), _hex_text(predicate),
                                      _hex_text(obj), source_digest)))
@@ -187,13 +202,27 @@ class HeadCortexService:
                 continue
             active.add(prediction["head_id"])
             states.add(prediction["truth_state"])
-            relations.append({
+            relation = {
                 "subject": atom[1], "predicate": atom[2], "object": atom[3],
                 "truth_state": prediction["truth_state"],
                 "premises": [atom[0]], "rule_id": "boolean-head:%d:%d" % (
                     prediction["head_id"], prediction["rule_id"]),
                 "head_id": prediction["head_id"], "votes": prediction["votes"],
-            })
+            }
+            if atom[6]:
+                claim_tokens = set(re.findall(r"[a-z0-9]+", atom[3].casefold()))
+                matched = []
+                best = 0.0
+                for evidence_id, evidence_text in evidence_texts:
+                    evidence_tokens = set(re.findall(r"[a-z0-9]+", evidence_text.casefold()))
+                    ratio = len(claim_tokens & evidence_tokens) / max(1, len(claim_tokens))
+                    best = max(best, ratio)
+                    if ratio >= 0.5:
+                        matched.append(evidence_id)
+                relation["lexical_coverage"] = round(best, 4)
+                relation["matched_evidence_entry_ids"] = matched[:32]
+                relation["coverage_signal"] = "heuristic_only"
+            relations.append(relation)
         if "TRUE" in states and "FALSE" in states:
             aggregate = "CONFLICT"
         elif not states or "UNKNOWN" in states:
@@ -211,6 +240,7 @@ class HeadCortexService:
                 "state_digest": header.group(2),
                 "source_entry_ids": [atom[0] for atom in atoms],
                 "clocked_outputs_are_ground_truth": False,
+                "answer_draft_processed": package.get("purpose") == "ANSWER_VALIDATION",
             },
             "mutation_proposals": [],
         }
