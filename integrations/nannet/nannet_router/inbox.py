@@ -239,8 +239,8 @@ class SQLiteSourceInbox:
             raise InboxError("bootstrap feedback envelope is incomplete")
         if feedback.get("schema") != "nanrouter.bootstrap-feedback.v1":
             raise InboxError("unsupported bootstrap feedback schema")
-        if feedback.get("macrocluster") != "MC0:0" or feedback.get("live_map_commit") is not False:
-            raise InboxError("feedback must target MC0:0 and remain candidate-only")
+        if feedback.get("macrocluster") != "HW0::BS0" or feedback.get("live_map_commit") is not False:
+            raise InboxError("feedback must target HW0::BS0 and remain candidate-only")
         if feedback.get("stage") not in ("LEARN_BOOLEAN", "LEARN_ROUTING", "LANGUAGE_DEMO"):
             raise InboxError("unsupported feedback stage")
         if not feedback.get("universe_id") or int(feedback.get("nanclock_tick", 0)) < 0:
