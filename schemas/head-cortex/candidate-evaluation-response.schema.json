@@ -17,7 +17,8 @@
     "recommendation",
     "promotion_allowed",
     "canonical_state_modified",
-    "evaluation_policy"
+    "evaluation_policy",
+    "balanced_accuracy_nonregression"
   ],
   "properties": {
     "schema": {
@@ -67,6 +68,9 @@
     "dataset_sha256": {
       "type": "string",
       "pattern": "^[a-f0-9]{64}$"
+    },
+    "balanced_accuracy_nonregression": {
+      "type": "boolean"
     }
   }
 }
