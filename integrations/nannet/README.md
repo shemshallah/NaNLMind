@@ -10,7 +10,7 @@ and exposes the canonical runner merge boundary.
 - Canonical address form: `nan://GM0:SC0:MC0:BS0:HW0`.
 - Each GM, SC, MC, BS, and HW coordinate is an unsigned integer from 0 through 255.
 - Initial identities: HW0=NaNLMind runner ring; HW1=Android; HW2=Hermes; HW3=Clocked, all initially under GM0/SC0/MC0/BS0.
-- Fixed HW0–HW3 identities are reserved for the runner ring, Android, Hermes, and Clocked. Community and virtual demo installations receive the next free HW8–HW254 slot in BS0, mapping to node points 9–255.
+- HW0 is the sole instantiated runnerlink universe (`HW0::BS0`); HW1 is Android, HW2 is Hermes, and HW3 is Clocked. HW4–HW8 are not instantiated. External/community universes receive HW9–HW255 through NANNET, mapping to node points 10–256.
 - A device installation key is generated locally and stored only as a server-side keyed hash. One active lease is allowed per installation key and one installation per active HW slot. Re-registration resumes the same lease; explicit release revokes its tokens and frees the slot only after pending work is committed or rejected.
 - The issued bearer token binds the endpoint to its canonical NaN address; optional `X-NaN-Address` claims are checked against that binding.
 - MAC addresses, IMEI, serial numbers, Android IDs, phone numbers, and email addresses are not collected or used for device identity. Network MAC randomization therefore does not create a second device identity.
@@ -58,7 +58,7 @@ Corpus upload uses browser SHA-256, sends bounded chunks, and seals the manifest
 
 - GET /healthz (includes Clocked gateway and enrollment readiness)
 - POST /admin/tokens (NANLM_ADMIN_TOKEN; fixed HW0–HW3 only)
-- POST /v1/devices/register (public HTTPS registration; explicit consent + bounded system report + client-generated 256-bit installation secret; assigns HW8–HW254)
+- POST /v1/devices/register (public HTTPS registration; explicit consent + bounded system report + client-generated 256-bit installation secret; assigns HW9–HW255)
 - GET /v1/devices/me (device bearer; own registration and lease)
 - POST /v1/devices/heartbeat (device bearer; renews lease)
 - POST /v1/devices/release (device bearer; revokes tokens and frees slot only after no pending uploads/observations)
@@ -123,7 +123,7 @@ quarantined, not trained. A successful validation means training-eligible, not y
 
 The Clocked SDK gateway is mounted inside this NANNET HTTP process. It is not a second Koyeb service or deployment. The root Dockerfile installs `integrations/nannet/clocked-requirements.txt`; `server.py` dispatches `/auth/demo-token`, `/v1/experience`, `/v1/tasks`, and the Clocked instance administration routes to the embedded adapter. The Clocked database defaults to `/data/clocked_gateway.sqlite3`, on the same persistent Koyeb volume as NANNET state.
 
-Set `NANNET_URL` to this service's own public HTTPS origin. The embedded adapter uses that same-origin route to ask the existing allocator to register and release demo instances; it does not contact a separate NANNET deployment. Registration is explicit-consent-only and the allocator remains authoritative for lowest-free HW8–HW254 / node-point 9–255 leases.
+Set `NANNET_URL` to this service's own public HTTPS origin. The embedded adapter uses that same-origin route to ask the existing allocator to register and release demo instances; it does not contact a separate NANNET deployment. Registration is explicit-consent-only and the allocator remains authoritative for lowest-free HW9–HW255 / node-point 10–256 leases.
 
 Required Clocked Koyeb secrets: `CLOCKED_API_KEY` (upstream master credential, server-only), `CLOCKED_DEMO_ENROLLMENT_TOKEN` (demo enrollment gate), `CLOCKED_TOKEN_PEPPER` (participant-token hashing), `CLOCKED_RESULT_ENCRYPTION_KEY` (Fernet key for encrypted stored NANNET lease credentials), and `CLOCKED_GATEWAY_ADMIN_TOKEN` (instance administration). The returned `clu_` and `nnt_` credentials are scoped/expiring participant credentials; the upstream `CLOCKED_API_KEY` is never returned. Keep the Clocked database and encryption key stable across restarts.
 
@@ -138,7 +138,7 @@ The `CLOCKED_API_KEY` GitHub Actions secret remains for CI/live smoke tests. Git
 
 ## NaNLMROUTER in the same Koyeb process
 
-The BS0:0 / MC0:0 NaNLMROUTER control plane is embedded in `server.py`; it is not a second Koyeb service or listener. The `nannet_router/` package is included in the existing NANNET image and shares the same `/data` persistent volume. Its durable source inbox and six-slot MC0:0 runner-ring registry live under `RIDDLE_DATA_DIR` (default `/data/nannet/router`).
+The `HW0::BS0` NaNLMROUTER control plane is embedded in `server.py`; it is not a second Koyeb service or listener. The `nannet_router/` package is included in the existing NANNET image and shares the same `/data` persistent volume. Its durable source inbox and six-slot `HW0::BS0` runner-ring registry live under `RIDDLE_DATA_DIR` (default `/data/nannet/router`).
 
 Clocked processing writes a digest-only, explicitly unverified receipt to both the NANNET evidence queue and the NaNLMROUTER source inbox. The router payload contains input/response SHA-256 digests, source address, node point, and deterministic head shard; it never stores the original prompt or raw Clocked response. It is queued work, not an automatic model update. The supervised runner leases it, computes a provenance-bound trace, and ACKs only after its own work is durable.
 
@@ -146,7 +146,7 @@ Embedded router endpoints:
 - GET `/v1/riddle/healthz` and GET `/v1/riddle/volumes`
 - POST `/v1/riddle/intake` (admin-authenticated bounded source intake)
 - POST `/v1/riddle/lease`, `/v1/riddle/ack`, and `/v1/riddle/retry` (runner-authenticated durable worker protocol)
-- POST `/v1/riddle/ring/heartbeat` (six-slot MC0:0 ring reconciliation against the signed volume registry)
+- POST `/v1/riddle/ring/heartbeat` (six-slot `HW0::BS0` ring reconciliation against the signed volume registry)
 - POST `/v1/riddle/feedback` and `/v1/riddle/feedback/ack` (signed candidate-only feedback)
 - POST `/v1/riddle/routes/resolve` and `/v1/riddle/plan` (read-only signed route/range planning)
 
@@ -248,7 +248,7 @@ request bodies.
 A clone does not receive a hard-coded identity. On first run it creates a
 random 256-bit installation secret locally and registers over HTTPS with
 explicit consent and a small system-capability report. The server assigns the
-lowest free community slot, initially HW8, then HW9, through HW254 (node points 9–255). HW0–HW3
+lowest free external slot, initially HW9, then HW10, through HW255 (node points 10–256). HW0–HW3
 remain reserved for the runner ring, Android reference endpoint, Hermes, and
 Clocked.
 
