@@ -697,23 +697,31 @@ def portal_heartbeat():
 
 
 def op_rss_status(args):
-    """Report RSS protocol support without claiming unverified math kernels."""
-    from relational_spectral import CAPABILITIES, Capability, capability_manifest
-    manifest = capability_manifest(
-        args.slot_name,
-        [Capability(
-            name,
-            "native_verified" if name == "k256_laplacian_u16" else "specified",
-            4096 if name == "k256_laplacian_u16" else 0,
-            "7288547abb4ef7e7d9c259ce991d9dccbdd4a0575ce1233bab80968f1278291f" if name == "k256_laplacian_u16" else "",
-        ) for name in CAPABILITIES],
+    """Report only kernel capabilities backed by canonical NaN16 evidence."""
+    from relational_spectral import (
+        CAPABILITIES, Capability, capability_manifest,
+        sparse_graph_laplacian_q16_16_capability,
     )
+    declared = []
+    for name in CAPABILITIES:
+        if name == "k256_laplacian_u16":
+            declared.append(Capability(
+                name, "native_verified", 4096,
+                "7288547abb4ef7e7d9c259ce991d9dccbdd4a0575ce1233bab80968f1278291f",
+                operator_version=1, q_format="U16/I32"))
+        elif name == "sparse_graph_laplacian_q16_16":
+            declared.append(sparse_graph_laplacian_q16_16_capability())
+        else:
+            declared.append(Capability(name, "specified", 0))
+    manifest = capability_manifest(args.slot_name, declared)
     manifest["universe_id"] = os.environ.get("NANLM_UNIVERSE_ID", "local")
     manifest["native_math_dispatch_enabled"] = False
-    manifest["dispatchable_operators"] = ["k256_laplacian_u16"]
+    manifest["dispatchable_operators"] = [
+        "k256_laplacian_u16", "sparse_graph_laplacian_q16_16"]
     manifest["reason"] = (
-        "K256 is native_verified, but worker-level RSS job dispatch is not wired yet; "
-        "this status operation only advertises capability evidence."
+        "K256 and sparse Q16.16 CSR Laplacian are native_verified, but "
+        "worker-level RSS job dispatch is not wired yet; this operation "
+        "advertises evidence only."
     )
     print(json.dumps(manifest, sort_keys=True, indent=2))
     return 0
