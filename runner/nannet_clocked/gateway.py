@@ -15,9 +15,11 @@ import secrets
 import sqlite3
 import time
 from typing import Any, Dict
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 from wsgiref.simple_server import make_server
 
-from .clocked_experience import build_pipeline, make_event
+from clocked_experience import build_pipeline, make_event
 
 MAX_BODY = 64 * 1024
 MAX_TASK_RESULT_BYTES = 262_144
@@ -47,6 +49,20 @@ def _result_fernet():
         raise RuntimeError("CLOCKED_RESULT_ENCRYPTION_KEY must be a valid Fernet key") from exc
 
 
+def ensure_column(db: sqlite3.Connection, table: str, column: str, definition: str) -> None:
+    """Apply a SQLite column migration safely when requests initialize concurrently."""
+    columns = {row["name"] for row in db.execute("PRAGMA table_info(" + table + ")")}
+    if column in columns:
+        return
+    try:
+        db.execute("ALTER TABLE " + table + " ADD COLUMN " + column + " " + definition)
+    except sqlite3.OperationalError as exc:
+        # A second worker may have observed the old schema before the first
+        # worker committed the same ALTER TABLE.
+        if "duplicate column name" not in str(exc).lower():
+            raise
+
+
 def connect_db(path: str) -> sqlite3.Connection:
     parent = os.path.dirname(path)
     if parent:
@@ -74,9 +90,25 @@ def connect_db(path: str) -> sqlite3.Connection:
         )
     """)
     # Upgrade databases created by the first Clocked-only gateway.
-    columns = {row["name"] for row in db.execute("PRAGMA table_info(demo_tokens)")}
-    if "endpoint_id" not in columns:
-        db.execute("ALTER TABLE demo_tokens ADD COLUMN endpoint_id TEXT NOT NULL DEFAULT 'clocked_demo'")
+    ensure_column(db, "demo_tokens", "endpoint_id", "TEXT NOT NULL DEFAULT 'clocked_demo'")
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS demo_instances (
+            node_point INTEGER PRIMARY KEY CHECK(node_point BETWEEN 9 AND 255),
+            instance_id TEXT NOT NULL UNIQUE,
+            token_hash TEXT NOT NULL UNIQUE,
+            expires_at INTEGER NOT NULL,
+            revoked INTEGER NOT NULL DEFAULT 0,
+            created_at INTEGER NOT NULL,
+            nannet_address TEXT,
+            nannet_token_ciphertext TEXT,
+            nannet_lease_id TEXT
+        )
+    """)
+    ensure_column(db, "demo_instances", "nannet_address", "TEXT")
+    ensure_column(db, "demo_instances", "nannet_token_ciphertext", "TEXT")
+    ensure_column(db, "demo_instances", "nannet_lease_id", "TEXT")
+    ensure_column(db, "demo_tokens", "node_point", "INTEGER")
+    ensure_column(db, "demo_tokens", "instance_id", "TEXT")
     db.execute("""
         CREATE TABLE IF NOT EXISTS experience_requests (
             token_hash TEXT NOT NULL,
@@ -102,11 +134,9 @@ def connect_db(path: str) -> sqlite3.Connection:
             lease_until INTEGER
         )
     """)
-    inbox_columns = {row["name"] for row in db.execute("PRAGMA table_info(endpoint_inbox)")}
-    if "lease_id" not in inbox_columns:
-        db.execute("ALTER TABLE endpoint_inbox ADD COLUMN lease_id TEXT")
-    if "lease_until" not in inbox_columns:
-        db.execute("ALTER TABLE endpoint_inbox ADD COLUMN lease_until INTEGER")
+    ensure_column(db, "endpoint_inbox", "node_point", "INTEGER")
+    ensure_column(db, "endpoint_inbox", "lease_id", "TEXT")
+    ensure_column(db, "endpoint_inbox", "lease_until", "INTEGER")
     db.commit()
     return db
 
@@ -137,6 +167,12 @@ class Gateway:
             })
         if method == "POST" and path == "/admin/tokens":
             return self.issue_token(environ, start_response)
+        if method == "POST" and path == "/auth/demo-token":
+            return self.issue_demo_instance_token(environ, start_response)
+        if method == "POST" and path == "/admin/instances/revoke":
+            return self.revoke_demo_instance(environ, start_response)
+        if method == "GET" and path == "/admin/instances":
+            return self.list_demo_instances(environ, start_response)
         if method == "POST" and path == "/v1/experience":
             return self.run_experience(environ, start_response)
         if method == "POST" and path == "/v1/tasks":
@@ -174,6 +210,308 @@ class Gateway:
         runner = os.environ.get("NANLM_RUNNER_INGEST_TOKEN", "")
         supplied = environ.get("HTTP_AUTHORIZATION", "")
         return bool(runner) and secrets.compare_digest(supplied, "Bearer " + runner)
+
+    def nannet_post(self, path: str, payload: Dict[str, Any], bearer: str = ""):
+        """Call the existing NANNET Koyeb authority without exposing its token."""
+        base = os.environ.get("NANNET_URL", "").rstrip("/")
+        if not base.startswith("https://"):
+            raise RuntimeError("nannet_https_url_not_configured")
+        headers = {"Content-Type": "application/json", "Accept": "application/json"}
+        if bearer:
+            headers["Authorization"] = "Bearer " + bearer
+        request = Request(
+            base + path,
+            data=json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8"),
+            headers=headers,
+            method="POST",
+        )
+        try:
+            with urlopen(request, timeout=20) as response:
+                raw = response.read(65536)
+                status_value = getattr(response, "status", None)
+                status = int(status_value if status_value is not None else response.getcode())
+        except HTTPError as exc:
+            raw = exc.read(65536)
+            status = int(exc.code)
+        except (URLError, TimeoutError, OSError) as exc:
+            raise RuntimeError("nannet_service_unavailable") from exc
+        try:
+            result = json.loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            result = {"error": "invalid_nannet_response"}
+        if not isinstance(result, dict):
+            result = {"error": "invalid_nannet_response"}
+        return status, result
+
+    def enrollment_ok(self, environ):
+        enrollment = os.environ.get("CLOCKED_DEMO_ENROLLMENT_TOKEN", "")
+        supplied = environ.get("HTTP_AUTHORIZATION", "")
+        return bool(enrollment) and secrets.compare_digest(
+            supplied, "Bearer " + enrollment
+        )
+
+    def issue_demo_instance_token(self, environ, start_response):
+        """Issue a CLOCKED token bound to a point leased by the NANNET authority."""
+        if not self.enrollment_ok(environ):
+            return json_response(start_response, "401 Unauthorized", {"error": "unauthorized"})
+        if not os.environ.get("CLOCKED_API_KEY"):
+            return json_response(start_response, "503 Service Unavailable",
+                                 {"error": "clocked_upstream_not_configured"})
+        pepper = os.environ.get("CLOCKED_TOKEN_PEPPER", "")
+        if len(pepper) < 32:
+            return json_response(start_response, "503 Service Unavailable",
+                                 {"error": "token_service_misconfigured"})
+        try:
+            _result_fernet()
+            data = self.read_body(environ)
+            if set(data) - {"instance_label", "max_requests", "ttl_seconds", "consent"}:
+                raise ValueError("unknown_fields")
+            if data.get("consent") is not True:
+                raise ValueError("explicit_nannet_registration_consent_required")
+            label = data.get("instance_label", "demo-instance")
+            if not isinstance(label, str) or not label.strip() or len(label) > 64:
+                raise ValueError("invalid_instance_label")
+            max_requests = data.get("max_requests", 50)
+            ttl_seconds = data.get("ttl_seconds", 21600)
+            if (isinstance(max_requests, bool) or not isinstance(max_requests, int)
+                    or not 1 <= max_requests <= 500):
+                raise ValueError("max_requests_out_of_range")
+            if (isinstance(ttl_seconds, bool) or not isinstance(ttl_seconds, int)
+                    or not 60 <= ttl_seconds <= 21600):
+                raise ValueError("ttl_seconds_out_of_range")
+        except RuntimeError:
+            return json_response(start_response, "503 Service Unavailable",
+                                 {"error": "result_encryption_unavailable"})
+        except (ValueError, TypeError) as exc:
+            return json_response(start_response, "400 Bad Request", {"error": str(exc)[:64]})
+
+        try:
+            nannet_status, registration = self.nannet_post("/v1/devices/register", {
+                "device_secret": secrets.token_urlsafe(32),
+                "consent": True,
+                "terms_version": "nannet-device-registration-v1",
+                "system_report": {
+                    "platform": "CLOCKED demo instance",
+                    "os_version": "Koyeb",
+                    "app_version": "1",
+                    "abi": "server-managed",
+                    "device_model": label.strip(),
+                    "capabilities": ["clocked-demo", "nannet-observation"],
+                },
+            })
+        except RuntimeError:
+            return json_response(start_response, "503 Service Unavailable",
+                                 {"error": "nannet_service_unavailable"})
+        if nannet_status != 201:
+            return json_response(start_response, "503 Service Unavailable", {
+                "error": "nannet_registration_failed",
+                "nannet_status": nannet_status,
+                "nannet_error": str(registration.get("error", "unknown"))[:96],
+            })
+
+        nannet_token = registration.get("token")
+        address = registration.get("address")
+        node_point = registration.get("node_point")
+        lease_id = registration.get("lease_id")
+        lease_expires_at = registration.get("lease_expires_at")
+        address_match = re.fullmatch(
+            r"nan://GM0:SC0:MC0:BS0:HW([0-9]{1,3})", address
+        ) if isinstance(address, str) else None
+        valid_registration = (
+            isinstance(nannet_token, str) and nannet_token.startswith("nnt_")
+            and len(nannet_token) <= 512
+            and isinstance(lease_id, str) and bool(lease_id)
+            and isinstance(node_point, int) and not isinstance(node_point, bool)
+            and 9 <= node_point <= 255
+            and address_match is not None
+            and int(address_match.group(1)) + 1 == node_point
+            and isinstance(lease_expires_at, int) and not isinstance(lease_expires_at, bool)
+            and lease_expires_at > int(time.time())
+        )
+        if not valid_registration:
+            if isinstance(nannet_token, str) and nannet_token.startswith("nnt_"):
+                try:
+                    self.nannet_post("/v1/devices/release", {}, nannet_token)
+                except RuntimeError:
+                    pass
+            return json_response(start_response, "502 Bad Gateway",
+                                 {"error": "nannet_returned_invalid_node_lease"})
+
+        now = int(time.time())
+        token_expires_at = min(now + ttl_seconds, lease_expires_at)
+        token = "clu_" + secrets.token_urlsafe(32)
+        instance_id = "demo-" + secrets.token_urlsafe(12)
+        digest = token_hash(token, pepper)
+        encrypted_nannet_token = _result_fernet().encrypt(
+            nannet_token.encode("utf-8")
+        ).decode("ascii")
+        db = connect_db(self.db_path)
+        try:
+            db.execute("BEGIN IMMEDIATE")
+            # NANNET owns allocation. This local row is only a binding/audit mirror.
+            # If NANNET has reassigned a previously mirrored point, its old lease
+            # must have been released/expired by the authoritative allocator.
+            existing = db.execute(
+                "SELECT token_hash,expires_at,revoked FROM demo_instances WHERE node_point=?",
+                (node_point,),
+            ).fetchone()
+            if existing:
+                if not existing["revoked"] and existing["expires_at"] > now:
+                    db.rollback()
+                    try:
+                        self.nannet_post("/v1/devices/release", {}, nannet_token)
+                    except RuntimeError:
+                        pass
+                    return json_response(start_response, "409 Conflict",
+                                         {"error": "nannet_point_conflicts_with_active_local_lease"})
+                db.execute("UPDATE demo_tokens SET revoked=1 WHERE token_hash=?",
+                           (existing["token_hash"],))
+                db.execute("DELETE FROM demo_instances WHERE node_point=?", (node_point,))
+            db.execute(
+                "INSERT INTO demo_tokens(token_hash,tenant_id,endpoint_id,expires_at,max_requests,created_at,node_point,instance_id) "
+                "VALUES(?,?,?,?,?,?,?,?)",
+                (digest, "demo", "clocked_demo", token_expires_at, max_requests, now,
+                 node_point, instance_id),
+            )
+            db.execute(
+                "INSERT INTO demo_instances(node_point,instance_id,token_hash,expires_at,created_at,nannet_address,nannet_token_ciphertext,nannet_lease_id) "
+                "VALUES(?,?,?,?,?,?,?,?)",
+                (node_point, instance_id, digest, lease_expires_at, now, address,
+                 encrypted_nannet_token, lease_id),
+            )
+            db.commit()
+        except sqlite3.IntegrityError:
+            db.rollback()
+            try:
+                self.nannet_post("/v1/devices/release", {}, nannet_token)
+            except RuntimeError:
+                pass
+            return json_response(start_response, "409 Conflict",
+                                 {"error": "nannet_point_already_mirrored"})
+        except Exception:
+            db.rollback()
+            try:
+                self.nannet_post("/v1/devices/release", {}, nannet_token)
+            except RuntimeError:
+                pass
+            return json_response(start_response, "503 Service Unavailable",
+                                 {"error": "demo_instance_store_unavailable"})
+        finally:
+            db.close()
+        return json_response(start_response, "201 Created", {
+            "token_type": "CLOCKED_DEMO_INSTANCE",
+            "token": token,
+            "nannet_token": nannet_token,
+            "nannet_address": address,
+            "instance_id": instance_id,
+            "instance_label": label.strip(),
+            "node_point": node_point,
+            "registration_state": "nannet_lease_active",
+            "tenant_id": "demo",
+            "source_endpoint": "clocked_demo",
+            "expires_at": token_expires_at,
+            "lease_expires_at": lease_expires_at,
+            "max_requests": max_requests,
+            "nannet_scopes": registration.get("scopes", []),
+        })
+
+    def revoke_demo_instance(self, environ, start_response):
+        if not self.admin_ok(environ):
+            return json_response(start_response, "401 Unauthorized", {"error": "unauthorized"})
+        try:
+            data = self.read_body(environ)
+            if set(data) == {"instance_id"} and isinstance(data["instance_id"], str):
+                where, value = "instance_id=?", data["instance_id"]
+            elif set(data) == {"node_point"} and isinstance(data["node_point"], int) and not isinstance(data["node_point"], bool):
+                where, value = "node_point=?", data["node_point"]
+            else:
+                raise ValueError("provide exactly one instance_id or node_point")
+        except (ValueError, TypeError) as exc:
+            return json_response(start_response, "400 Bad Request", {"error": str(exc)[:64]})
+
+        db = connect_db(self.db_path)
+        try:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute(
+                "SELECT token_hash,node_point,nannet_token_ciphertext FROM demo_instances WHERE " + where,
+                (value,),
+            ).fetchone()
+            if row is None:
+                db.rollback()
+                return json_response(start_response, "404 Not Found", {"error": "instance_not_found"})
+            if not row["nannet_token_ciphertext"]:
+                db.rollback()
+                return json_response(start_response, "409 Conflict",
+                                     {"error": "nannet_registration_missing_manual_review_required"})
+            # Disable CLOCKED access before asking NANNET to release its lease.
+            db.execute("UPDATE demo_tokens SET revoked=1 WHERE token_hash=?", (row["token_hash"],))
+            db.commit()
+        finally:
+            db.close()
+
+        try:
+            nannet_token = _result_fernet().decrypt(
+                row["nannet_token_ciphertext"].encode("ascii")
+            ).decode("utf-8")
+            release_status, release_result = self.nannet_post(
+                "/v1/devices/release", {}, nannet_token
+            )
+        except (RuntimeError, ValueError):
+            return json_response(start_response, "502 Bad Gateway",
+                                 {"error": "nannet_release_unavailable",
+                                  "clocked_token_revoked": True})
+        if release_status == 409:
+            return json_response(start_response, "409 Conflict", {
+                "error": "nannet_instance_has_pending_work",
+                "node_point": int(row["node_point"]),
+                "clocked_token_revoked": True,
+            })
+        if release_status != 200:
+            return json_response(start_response, "502 Bad Gateway", {
+                "error": "nannet_release_failed",
+                "nannet_status": release_status,
+                "clocked_token_revoked": True,
+            })
+        db = connect_db(self.db_path)
+        try:
+            db.execute("UPDATE demo_instances SET revoked=1 WHERE " + where, (value,))
+            db.commit()
+        finally:
+            db.close()
+        return json_response(start_response, "200 OK", {
+            "revoked": True, "node_point": int(row["node_point"]),
+            "nannet_node_released": True,
+        })
+
+    def list_demo_instances(self, environ, start_response):
+        if not self.admin_ok(environ):
+            return json_response(start_response, "401 Unauthorized", {"error": "unauthorized"})
+        db = connect_db(self.db_path)
+        try:
+            now = int(time.time())
+            rows = db.execute(
+                "SELECT node_point,instance_id,expires_at,revoked,nannet_address,nannet_lease_id "
+                "FROM demo_instances WHERE revoked=0 ORDER BY node_point"
+            ).fetchall()
+            instances = [{
+                "node_point": int(row["node_point"]),
+                "instance_id": row["instance_id"],
+                "nannet_address": row["nannet_address"],
+                "nannet_lease_id": row["nannet_lease_id"],
+                "lease_expires_at": int(row["expires_at"]),
+                "registration_state": (
+                    "nannet_lease_active" if row["expires_at"] > now
+                    else "nannet_lease_expired_pending_reconcile"
+                ),
+            } for row in rows]
+        finally:
+            db.close()
+        return json_response(start_response, "200 OK", {
+            "instances": instances,
+            "active_count": len(instances),
+            "authoritative_allocator": "NANNET",
+            "available_range": "9..255",
+        })
 
     def issue_token(self, environ, start_response):
         pepper = os.environ.get("CLOCKED_TOKEN_PEPPER", "")
@@ -233,6 +571,7 @@ class Gateway:
                        (row["token_hash"],))
             db.commit()
             return {"tenant_id": row["tenant_id"], "endpoint_id": row["endpoint_id"],
+                    "node_point": row["node_point"], "instance_id": row["instance_id"],
                     "remaining": row["max_requests"] - row["used_requests"] - 1}, None
         finally:
             db.close()
@@ -301,6 +640,8 @@ class Gateway:
                 "endpoint_id": row["endpoint_id"],
                 "remaining": row["max_requests"] - row["used_requests"] - 1,
                 "token_hash": digest,
+                "node_point": row["node_point"],
+                "instance_id": row["instance_id"],
             }, None, None, None
         finally:
             db.close()
@@ -371,6 +712,9 @@ class Gateway:
                 event = make_event(source_text, dict(response), response)
             event["source_endpoint"] = "clocked_demo"
             event["tenant_id"] = identity["tenant_id"]
+            if identity.get("node_point") is not None:
+                event["node_point"] = identity["node_point"]
+                event["instance_id"] = identity["instance_id"]
             event["protocol_version"] = SCHEMA_VERSION
             event["learning_state"] = "awaiting_nanlmind_ingest"
             payload = {
@@ -493,8 +837,18 @@ class Gateway:
                         # endpoint instead of sending an invalid keyword.
                         if endpoint == "decide":
                             options.setdefault("state", source_text)
+                            options.setdefault("questions", {
+                                "answer": {
+                                    "type": "noul",
+                                    "instructions": "Does the source support a useful answer?",
+                                }
+                            })
                             options.pop("text", None)
-                        elif endpoint in ("grounding", "compare"):
+                        elif endpoint == "grounding":
+                            options.setdefault("documents", [source_text])
+                            options.setdefault("claims", [source_text])
+                            options.pop("text", None)
+                        elif endpoint == "compare":
                             options.setdefault("documents", [source_text])
                             options.pop("text", None)
                         elif endpoint == "rerank":
@@ -544,6 +898,8 @@ class Gateway:
             payload = {
                 "protocol": "nanlm.clocked-task-results", "version": 1,
                 "plan_id": plan.get("plan_id"), "results": results,
+                "instance_id": identity.get("instance_id"),
+                "node_point": identity.get("node_point"),
                 "learning_state": "awaiting_nanlmind_ingest",
                 "quota_remaining": identity["remaining"],
             }
@@ -551,7 +907,9 @@ class Gateway:
                 raise RuntimeError("clocked_task_response_exceeds_size_limit")
             self.complete_experience(identity["token_hash"], request_key, "200 OK", payload, encrypt=True)
             return json_response(start_response, "200 OK", payload)
-        except Exception:
+        except Exception as exc:
+            print("clocked task execution failed: " + type(exc).__name__ +
+                  " " + str(exc)[:240], flush=True)
             payload = {"error": "clocked_task_execution_failed"}
             self.complete_experience(identity["token_hash"], request_key,
                                       "502 Bad Gateway", payload, encrypt=True)
@@ -595,9 +953,10 @@ class Gateway:
         try:
             try:
                 db.execute(
-                    "INSERT INTO endpoint_inbox(event_id,tenant_id,source_endpoint,base_generation,payload_json,received_at) VALUES(?,?,?,?,?,?)",
+                    "INSERT INTO endpoint_inbox(event_id,tenant_id,source_endpoint,base_generation,payload_json,received_at,node_point) VALUES(?,?,?,?,?,?,?)",
                     (event_id, identity["tenant_id"], identity["endpoint_id"], generation,
-                     json.dumps(payload, sort_keys=True, separators=(",", ":")), int(time.time())),
+                     json.dumps(payload, sort_keys=True, separators=(",", ":")), int(time.time()),
+                     identity.get("node_point")),
                 )
                 db.commit()
                 accepted = True
@@ -607,6 +966,8 @@ class Gateway:
             db.close()
         return json_response(start_response, "202 Accepted" if accepted else "200 OK", {
             "event_id": event_id, "source_endpoint": identity["endpoint_id"],
+            "node_point": identity.get("node_point"),
+            "instance_id": identity.get("instance_id"),
             "learning_state": "awaiting_runner_ring_ingest" if accepted else "duplicate_noop",
             "outcome_verified": False, "quota_remaining": identity["remaining"],
         })
@@ -620,7 +981,7 @@ class Gateway:
         try:
             db.execute("BEGIN IMMEDIATE")
             rows = db.execute(
-                "SELECT event_id,tenant_id,source_endpoint,base_generation,payload_json,received_at "
+                "SELECT event_id,tenant_id,source_endpoint,base_generation,payload_json,received_at,node_point "
                 "FROM endpoint_inbox WHERE status='pending' OR "
                 "(status='leased' AND lease_until<=?) ORDER BY received_at,event_id LIMIT 100",
                 (now,),
@@ -634,6 +995,7 @@ class Gateway:
             db.commit()
             events = [{
                 "tenant_id": row["tenant_id"], "source_endpoint": row["source_endpoint"],
+                "node_point": row["node_point"],
                 "received_at": row["received_at"], **json.loads(row["payload_json"]),
             } for row in rows]
         finally:
@@ -679,8 +1041,8 @@ def main():
         if not os.environ.get(name):
             raise SystemExit(name + " must be configured in the server secret manager")
     host = os.environ.get("CLOCKED_GATEWAY_HOST", "127.0.0.1")
-    port = int(os.environ.get("CLOCKED_GATEWAY_PORT", "8787"))
-    db_path = os.environ.get("CLOCKED_GATEWAY_DB", "clocked_gateway.sqlite3")
+    port = int(os.environ.get("PORT", os.environ.get("CLOCKED_GATEWAY_PORT", "8787")))
+    db_path = os.environ.get("CLOCKED_GATEWAY_DB", "/data/clocked_gateway.sqlite3")
     app = Gateway(db_path)
     with make_server(host, port, app) as server:
         print("Clocked and endpoint intake gateway listening on %s:%d" % (host, port), flush=True)
@@ -689,3 +1051,8 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# Gunicorn/Koyeb application entry point. Keep a single worker with threaded
+# requests while the SQLite allocator owns the shared persistent /data volume.
+application = Gateway(os.environ.get("CLOCKED_GATEWAY_DB", "/data/clocked_gateway.sqlite3"))
