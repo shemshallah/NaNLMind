@@ -93,6 +93,36 @@ class HeadCortexServiceTests(unittest.TestCase):
         self.assertEqual(draft_rows[0]["subject"], "hermes_answer")
         self.assertEqual(draft_rows[0]["coverage_signal"], "heuristic_only")
 
+    def test_clocked_endpoint_outputs_become_boolean_relation_atoms(self):
+        value = package()
+        value["evidence_entries"] = [
+            {"entry_id": "grounding-1", "lane": "clocked_result", "writer": "clocked",
+             "revision": "1" * 64, "payload": {
+                 "endpoint": "grounding", "source_id": "source-a", "status": "ok",
+                 "result_type": "grounding", "result": {"verdict": "supported",
+                     "fields": {"verdict": "supported", "grounded": True, "score": 0.91}},
+                 "provenance": {"input_sha256": "a" * 64}}},
+            {"entry_id": "compare-1", "lane": "clocked_result", "writer": "clocked",
+             "revision": "2" * 64, "payload": {
+                 "endpoint": "compare", "source_id": "cross-source", "status": "ok",
+                 "result_type": "compare", "result": {"fields": {
+                     "verdict": "partial_conflict", "agreement": 0.6,
+                     "conflicts": ["claim-2"]}},
+                 "provenance": {"input_sha256": "b" * 64}}},
+        ]
+        unsigned = dict(value)
+        unsigned.pop("package_sha256")
+        value["package_sha256"] = hashlib.sha256(canonical(unsigned)).hexdigest()
+        status, result = invoke(self.app, payload=value)
+        self.assertEqual(status, "200 OK")
+        self.assertEqual(len(result["relations"]), 2)
+        self.assertEqual(result["relations"][0]["predicate"], "clocked_grounding_observation")
+        self.assertIn("grounded", result["relations"][0]["object"])
+        self.assertEqual(result["relations"][1]["predicate"], "clocked_compare_observation")
+        self.assertIn("partial_conflict", result["relations"][1]["object"])
+        self.assertEqual(result["provenance"]["source_entry_ids"],
+                         ["grounding-1", "compare-1"])
+
     def test_rejects_invalid_package_digest(self):
         value = package()
         value["question"] = "tampered"
