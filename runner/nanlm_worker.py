@@ -701,7 +701,8 @@ def op_rss_status(args):
     from relational_spectral import CAPABILITIES, Capability, capability_manifest
     manifest = capability_manifest(
         args.slot_name,
-        [Capability(name, "specified", 0, "") for name in CAPABILITIES],
+        [Capability(name, "source_written" if name == "k256_laplacian_u16" else "specified", 0, "")
+         for name in CAPABILITIES],
     )
     manifest["universe_id"] = os.environ.get("NANLM_UNIVERSE_ID", "local")
     manifest["native_math_dispatch_enabled"] = False
