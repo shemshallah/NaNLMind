@@ -268,7 +268,7 @@ Do not resolve these questions by inventing new names, tables, routes or semanti
 
 The mathematical catalog in this repository remains the semantic inventory and evidence index; it must not become a second numerical execution engine. Native MTH kernels and the typed-object applicability gate live in NaNROUTER under `mth/nan16/`. The canonical NaN16 assembler/runtime remains NaN0S. NaNLMind owns the mind-side selection, learning, and provenance policy.
 
-The first shared gate is `NaNROUTER/mth/nan16/mth_preflight.nas`. It accepts the already-resolved operator contract and two typed leaf descriptors, checks kinds, ranks, domains, shape rules, payload capacities, capability bits, and declared preconditions, and commits output metadata only after successful validation. It does not register functions or execute the selected kernel.
+The shared gate is `NaNROUTER/mth/nan16/mth_preflight.nas`. The existing NaN0S `math_registry.nas` now stores immutable 10-word typed applicability contracts alongside its existing operator records; `nmr_resolve` returns the registered contract pointer in r6. The preflight guest consumes that exact pointer plus two typed leaf descriptors, checks kinds, ranks, domains, shape rules, payload capacities, capability bits, and declared preconditions, and commits output metadata only after successful validation. It does not register functions or execute the selected kernel.
 
 The integration CI in `.github/workflows/ci.yml` checks out the shared NaNROUTER source and canonical NaN0S toolchain, assembles the actual `.nas` fixture, and executes it in the NaN16 guest. This is a cross-repository native execution gate, not a Python/C++ mathematical reimplementation.
 
