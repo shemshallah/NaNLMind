@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NaNLMind isolated head candidate request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "mutation_id",
+    "head_index",
+    "patch_mask",
+    "base_topology_digest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "nanlm.head-candidate-request/1"
+    },
+    "mutation_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,64}$"
+    },
+    "head_index": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 255
+    },
+    "patch_mask": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535
+    },
+    "base_topology_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}
