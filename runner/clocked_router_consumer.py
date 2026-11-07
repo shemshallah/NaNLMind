@@ -19,7 +19,7 @@ def consume_clocked_sources(base_url: str, token: str, slot: int, now_tick: int,
         raise ValueError("NaN clock tick must be nonnegative")
     if not 1 <= max_events <= 64:
         raise ValueError("max_events must be in 1..64")
-    owner = f"MC0:0/R{slot}"
+    owner = f"HW0::BS0/R{slot}"
     processed = 0
     failed = 0
     errors = []
@@ -49,7 +49,7 @@ def consume_clocked_sources(base_url: str, token: str, slot: int, now_tick: int,
             trace = {
                 "schema": "nanrouter.trace.v1",
                 "source_ref": "clocked:" + payload["clocked_event_id"],
-                "target_ref": f"BS0:0/MC0:0/R{slot}/HW{head_index}",
+                "target_ref": f"HW0::BS0/R{slot}/H{head_index}",
                 "source_hash": event["source_hash"],
                 "acl_digest": event["acl_digest"],
                 "universe_id": event["universe_id"],
