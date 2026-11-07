@@ -2,6 +2,7 @@ import hashlib
 import io
 import json
 import os
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -99,6 +100,44 @@ class HeadCortexServiceTests(unittest.TestCase):
         status, result = invoke(self.app, payload=value)
         self.assertEqual(status, "400 Bad Request")
         self.assertEqual(result["error"], "package_digest_mismatch")
+
+    def test_candidate_endpoint_creates_isolated_head_mutation(self):
+        candidate_binary = self.binary
+        candidate_binary.write_text(
+            "#!/usr/bin/env python3\n"
+            "import json, pathlib, sys\n"
+            "if sys.argv[1] == 'relation-eval':\n"
+            " print('relation_eval schema=N16REL-EVAL/1 generation=12 state_digest=' + 'd'*64 + ' rows=1')\n"
+            "elif sys.argv[1] == 'head-candidate':\n"
+            " pathlib.Path(sys.argv[5]).write_bytes(b'candidate-state')\n"
+            " print(json.dumps({'status':'candidate_only','canonical_state_modified':False,"
+            "'candidate_digest':'e'*64,'boolean_mask_before':65535,'boolean_mask_after':65534,"
+            "'boolean_rule_before':0,'boolean_rule_after':1}))\n",
+            encoding="utf-8")
+        candidate_binary.chmod(0o755)
+        candidate_dir = Path(self.tmp.name) / "candidates"
+        old = os.environ.get("NANLM_HEAD_CANDIDATE_DIR")
+        os.environ["NANLM_HEAD_CANDIDATE_DIR"] = str(candidate_dir)
+        try:
+            request = {
+                "schema": "nanlm.head-candidate-request/1",
+                "mutation_id": "head42-patch1", "head_index": 42,
+                "patch_mask": 1, "base_topology_digest": "d" * 64,
+            }
+            status, result = invoke(self.app, path="/v1/head-cortex/candidate",
+                                    payload=request)
+            self.assertEqual(status, "200 OK")
+            self.assertEqual(result["status"], "candidate_only")
+            self.assertEqual(result["candidate_digest"], "e" * 64)
+            self.assertFalse(result["canonical_state_modified"])
+            self.assertFalse(result["promotion_allowed"])
+            self.assertTrue((candidate_dir / "head42-patch1.nmg").is_file())
+            self.assertEqual(hashlib.sha256(self.state.read_bytes()).hexdigest(), self.before)
+        finally:
+            if old is None:
+                os.environ.pop("NANLM_HEAD_CANDIDATE_DIR", None)
+            else:
+                os.environ["NANLM_HEAD_CANDIDATE_DIR"] = old
 
     def test_requires_scoped_bearer(self):
         status, result = invoke(self.app, payload=package(), token="wrong")
