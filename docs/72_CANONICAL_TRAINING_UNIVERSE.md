@@ -1,76 +1,88 @@
-# Canonical training universe and endpoint evidence
+# BS0 / HW0 canonical training universe and endpoint evidence
 
-**Architecture correction:** NaNLMind's six-runner ring is the primary training universe. Clocked is one endpoint environment, not the training coordinator or owner of the model.
+**Architecture correction:** BS0 owns the six-runner ring. MC0 does not own the runners and is not the current logic trainer. The existing NaNLMind runner-training pipeline and HERMES pipeline remain the canonical implementations; integrations must extend their inputs and handoff contracts, not replace them.
 
-## 1. Canonical universe
+## 1. Hierarchy and ownership
 
-NaNLMind owns one global topology and one canonical generation. The six runner slots (0 through 5) divide the 256 heads using the existing deterministic owner(head) = head mod 6 map. The ring's prepare/barrier/commit cycle verifies all 256 head packets and publishes one ledger event and next manifest generation.
+- **BS0** is the runner-ring owner and primary logic-training system.
+- **HW0** is the instantiated universe/subunit inside BS0 and the runnerlink interface through which BS0 coordinates its work.
+- **HW1** is the phone endpoint.
+- **HW2** is the HERMES demo endpoint.
+- **HW3** is the Clocked demo endpoint.
+- **HW4–HW8** are the five runner HW addresses explicitly enumerated in the current topology description.
+- **HW9–HW255** are reserved for other universes joining through NANNET. They must not be consumed as an unannounced sixth runner address.
 
-This is the primary bootstrap and training loop. The ring trains the canonical 256-head state; it is not a fifth endpoint and is not replaced by an external service.
+There are six runner processes/repositories: `nanlm-cpu-1` through `nanlm-cpu-6`. Their existing internal ring slots remain 0–5 and continue to partition the 256 heads with the established `owner(head) = head mod 6` rule. Internal runner slot numbers are not automatically HW addresses. The stated HW4–HW8 range contains five addresses, so the sixth runner's HW address must be resolved explicitly before assigning or changing HW routing; no address is inferred here.
 
-## 2. Four endpoint environments
+## 2. Existing training pipeline is canonical
 
-| ID | Environment | Role | State ownership |
-|---|---|---|---|
-| bootstrap | NaNLMind six-runner ring | Primary training universe; canonical head updates and generation commits | Canonical global state |
-| my_android | MY Android / Termux edge | Local edge experience and scoped endpoint observations | Local 8 MiB edge universe |
-| hermes_demo | Hermes demo | Independent demo task/experience stream | Hermes demo endpoint |
-| clocked_demo | Clocked demo | External task evaluation, classification, extraction and safety observations | Clocked gateway only |
+The following existing paths are retained and must not be replaced by a parallel trainer:
 
-The machine-readable registry is integrations/clocked/training_endpoints.json. The Clocked gateway tags each observation with source_endpoint: clocked_demo. Other endpoint clients must use the same versioned logical event contract and their own endpoint identity. Endpoint identity is server- or runner-bound; a participant must not be allowed to claim another endpoint by editing JSON.
+- `runner/nanlm_worker.py`: runner entry point, ring lifecycle, head ownership, heartbeat and orchestration.
+- `runner/training_pipeline.py`: existing staged corpus/training pipeline and N16TXT corpus handling.
+- `runner/logic_curriculum.py`: existing graded logic curriculum and feedback loop.
+- `runner/hermes_pipeline.py`: existing HERMES adapter, discovery records, memory-ledger integration and prompt-to-plan interface.
+- Native HERMES head-cortex and relation train/evaluate commands: existing native 256-head learning and read-only inference contracts.
+- Existing generation barrier: the only path that may promote accepted candidate head state into a canonical generation.
 
-## 3. Overbootstrap: aggregation above the ring
+Router, Clocked, phone, HERMES and future NANNET sources are adapters/evidence inputs to this system. They must not create a second training pipeline, a competing 256-head model, or a separate canonical generation.
 
-Overbootstrap is the cross-endpoint meta-learning layer. It aggregates verified, mergeable summaries from the four endpoint environments. It learns evidence about head and route reliability across task families; confidence calibration and disagreement; endpoint quality, coverage and cost; and which policies/curricula should be sent back to the canonical ring.
-
-It does not become another 256-head universe, take ownership of endpoint-local state, or overwrite the canonical bootstrap's keys and slots. It sends bounded policy/evidence feedback to the runner ring. The canonical ring remains the place where accepted training updates are applied and committed.
-
-## 4. Evidence lifecycle
+## 3. BS0 logic-training flow
 
 ```text
-MY Android ───────┐
-Hermes demo ──────┼─> endpoint-authenticated, versioned observations
-Clocked demo ────┘                   │
-                                    ▼
-                        Overbootstrap evidence fold
-                        provenance / dedup / verify
-                                    │
-                                    ▼
-                         bounded policy + curriculum
-                                    │
-                                    ▼
-NaNLMind six-runner ring: 256 heads -> train -> evaluate -> commit
-                                    │
-                                    └── canonical generation / trace summaries
+BS0
+ └── HW0 instantiated universe / runnerlink
+      ├── HW1 phone observations
+      ├── HW2 HERMES demo observations
+      ├── HW3 Clocked demo observations
+      ├── six existing NaNLMind runner processes
+      │    └── shared 256-head topology / existing logic + corpus trainers
+      └── NANNET authenticated intake and universe routing
+           └── HW9–HW255: other universes, isolated by identity and ACL
+
+existing trainers -> candidate updates -> held-out evaluation
+                  -> six-runner generation barrier -> BS0 canonical state
 ```
 
-The bootstrap ring also contributes its own traces to Overbootstrap. It is the primary learner, not just an input adapter. External endpoint observations do not directly mutate head cells. They first pass endpoint authentication, provenance, duplicate detection, generation compatibility, and outcome verification. Only a native learner/merge operation can create canonical head deltas and commit them.
+The six runners train the shared heads as one BS0 ring. They do not each create an independent model. Runner shards, evidence receipts and candidate updates remain provenance-bound to their runner, source, epoch and base generation.
 
-A Clocked classification or extraction is an observation, not a correctness label. Until a target or independently verified outcome exists, the record is evidence-only and receives no correctness credit. The event's learning_state: awaiting_nanlmind_ingest is intentional.
+## 4. MC0 is a downstream training phase
 
-## 5. Shared hardware-neutral contract
+MC0 is deliberately downstream of BS0. It is not the six-runner owner and must not be substituted for BS0 in runner routing, heartbeat identity, head ownership or current logic training.
 
-The transport is HTTP/JSON today, with a versioned schema. Its logical meaning is independent of CPU, OS, memory tier, and accelerator. Each endpoint adapter maps local work into the same event envelope. A later NaN16-native or binary transport can encode the same fields without changing event semantics.
+The planned MC0 training inputs are:
 
-The Clocked gateway holds the upstream Clocked key. Android, Hermes, runner workers and participants receive only their own scoped endpoint credentials. No endpoint receives the runner ring's privileged GitHub secret or canonical state-write authority.
+1. The trained and versioned BS0 logic state/results.
+2. The ten mathematical layers.
+3. NANNET mathematical transformations.
+4. BS0DB.
+5. MC0DB.
 
-## 6. Non-goals and invariants
+MC0 training begins as a distinct downstream phase over those inputs. Until its own contracts, data lineage, evaluation and promotion gates are implemented, BS0 remains the active logic trainer and canonical runner ring. MC0 must not receive an automatic canonical update merely because BS0 or an endpoint emitted evidence.
 
-- No independent competing 256-head models for each endpoint.
-- No direct Clocked-to-head mutation.
-- No raw endpoint corpus copied into Overbootstrap by default.
-- No endpoint can overwrite another endpoint's local state.
-- No stale or duplicate training delta can advance a generation.
-- No correctness credit without an explicit target or verified outcome.
-- One canonical ledger and generation history for the NaNLMind training universe; endpoint provenance remains attached to every imported summary.
+## 5. Evidence and learning boundaries
 
-## 7. Implementation sequence
+Clocked classifications, HERMES observations, phone observations and external NANNET universe messages are evidence, not ground truth by default. A source receipt must preserve source identity, payload/source digest, ACL/provenance and clock/generation context.
 
-1. Keep the six-runner ring as the canonical bootstrap learner.
-2. Standardize endpoint identity and event envelopes for Android, Hermes and Clocked; preserve endpoint-specific authentication.
-3. Add an Overbootstrap intake fold for trace summaries, provenance, idempotency, stale-generation checks and evidence counters.
-4. Connect the fold to the existing bounded LayerPolicy / head reliability path.
-5. Let the canonical runner ring consume accepted curriculum/policy and perform real head updates.
-6. Evaluate ring-only vs ring + each endpoint vs all endpoints on held-out, endpoint-separated tasks.
+The Clocked router consumer is an evidence-ingestion adapter only. It does not train a head, mark an outcome correct, update a candidate, or advance a generation. Any later training use must pass through the existing corpus/logic/HERMES training interfaces and the established evaluation and generation barriers.
 
-The first milestone is the trace/merge boundary, not a claim of improved language performance. Every improvement must survive held-out evaluation and a replayable generation commit.
+The existing HERMES head-cortex read-only endpoint remains read-only. Native relation training remains a separate candidate-producing operation. Candidate evaluation is not promotion; only the existing six-runner generation barrier may publish an accepted BS0 head generation.
+
+## 6. NANNET universe boundary
+
+NANNET is the authenticated routing and mathematical-transformation boundary for external universes. HW9–HW255 are available to other universes joining through NANNET; those universes retain their own identity, ACL, source provenance and local state. Their evidence can be routed to BS0 under explicit policy, but they do not acquire BS0 runner ownership or canonical write authority.
+
+No external universe may claim a BS0 runner slot, overwrite BS0 state, or address MC0 as if it owned the runner ring.
+
+## 7. Invariants
+
+- BS0 owns exactly six runner processes; MC0 owns none of them.
+- HW0 is BS0's instantiated universe and runnerlink.
+- HW1, HW2 and HW3 retain phone, HERMES demo and Clocked demo roles.
+- HW9–HW255 remain available for external NANNET universes.
+- Existing runner, logic-curriculum, corpus and HERMES pipelines are extended in place, never replaced by a parallel trainer.
+- Six internal runner slots continue to partition the shared 256-head topology.
+- Evidence is not correctness; candidate creation is not promotion.
+- No endpoint or external universe directly mutates canonical BS0 head state.
+- Only the existing generation barrier may commit accepted canonical head updates.
+- MC0 remains a later downstream learner over BS0, ten mathematical layers, NANNET mathematical transformations, BS0DB and MC0DB.
