@@ -41,7 +41,7 @@ struct OperationDescriptor {
 
 // Family coverage is explicit. "Planned" is intentionally distinct from
 // implemented so the bootstrap learner cannot train against imaginary code.
-inline constexpr std::array<OperationDescriptor, 24> kCoreMathCatalog{{
+inline constexpr std::array<OperationDescriptor, 34> kCoreMathCatalog{{
     {"bool.truth2", "two-input Boolean truth-table function", MathFamily::Boolean, 2, ValueKind::Boolean, ValueKind::Boolean, Exactness::ExactFinite, CatalogStatus::Tested, true, true},
     {"bool.compose2", "Boolean function composition", MathFamily::Composition, 2, ValueKind::Boolean, ValueKind::Boolean, Exactness::ExactFinite, CatalogStatus::Planned, true, true},
     {"bool.anf2", "algebraic normal form", MathFamily::Boolean, 1, ValueKind::Boolean, ValueKind::BitVector, Exactness::ExactFinite, CatalogStatus::Tested, true, true},
@@ -65,7 +65,16 @@ inline constexpr std::array<OperationDescriptor, 24> kCoreMathCatalog{{
     {"symbolic.substitute", "symbolic substitution", MathFamily::Symbolic, 2, ValueKind::Symbolic, ValueKind::Symbolic, Exactness::ExactSymbolic, CatalogStatus::Planned, true, true},
     {"proof.check", "proof obligation checker", MathFamily::Symbolic, 1, ValueKind::Symbolic, ValueKind::Boolean, Exactness::ExactSymbolic, CatalogStatus::Planned, true, true},
     {"catalog.compose", "validated operation composition", MathFamily::Composition, 2, ValueKind::Packet, ValueKind::Packet, Exactness::ExactFinite, CatalogStatus::Planned, true, true},
-    {"catalog.propose", "head-proposed operation candidate", MathFamily::MetaLearning, 1, ValueKind::Packet, ValueKind::Packet, Exactness::LearnedUnverified, CatalogStatus::Planned, false, true}
+    {"catalog.propose", "head-proposed operation candidate", MathFamily::MetaLearning, 1, ValueKind::Packet, ValueKind::Packet, Exactness::LearnedUnverified, CatalogStatus::Planned, false, true},
+    {"matrix256.transpose", "256 by 256 signed matrix transpose", MathFamily::LinearAlgebra, 1, ValueKind::Matrix, ValueKind::Matrix, Exactness::ExactFinite, CatalogStatus::Tested, true, true},
+    {"matrix256.symmetric-part", "matrix plus transpose", MathFamily::LinearAlgebra, 1, ValueKind::Matrix, ValueKind::Matrix, Exactness::ExactInteger, CatalogStatus::Tested, true, true},
+    {"matrix256.antisymmetric-part", "matrix minus transpose", MathFamily::LinearAlgebra, 1, ValueKind::Matrix, ValueKind::Matrix, Exactness::ExactInteger, CatalogStatus::Tested, true, true},
+    {"nan16.transform.forward", "four-NaN Klein-four address transform", MathFamily::Geometry, 2, ValueKind::Integer, ValueKind::Integer, Exactness::ExactFinite, CatalogStatus::Tested, true, true},
+    {"nan16.transform.inverse", "inverse four-NaN address transform", MathFamily::Geometry, 2, ValueKind::Integer, ValueKind::Integer, Exactness::ExactFinite, CatalogStatus::Tested, true, true},
+    {"coupling16.forward", "reversible 16-bit XOR coupling", MathFamily::DiscreteTransforms, 2, ValueKind::Vector, ValueKind::Vector, Exactness::ExactFinite, CatalogStatus::Tested, true, true},
+    {"coupling16.inverse", "inverse reversible 16-bit XOR coupling", MathFamily::DiscreteTransforms, 2, ValueKind::Vector, ValueKind::Vector, Exactness::ExactFinite, CatalogStatus::Tested, true, true},
+    {"semiring.boolean.closure256", "256-node Boolean-semiring transitive closure", MathFamily::Relations, 1, ValueKind::Matrix, ValueKind::Matrix, Exactness::ExactFinite, CatalogStatus::Tested, true, true},
+    {"ntt257.forward-inverse", "exact 256-point transform over F257", MathFamily::DiscreteTransforms, 1, ValueKind::Vector, ValueKind::Vector, Exactness::ExactFinite, CatalogStatus::Tested, true, true}
 }};
 
 constexpr const OperationDescriptor* find_operation(std::string_view id) {
