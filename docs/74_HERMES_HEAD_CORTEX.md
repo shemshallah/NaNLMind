@@ -132,10 +132,13 @@ to `POST /v1/head-cortex/candidate/evaluate`. The route requires NANNET
 the service runs the same read-only native `relation-eval` command against
 both the canonical base and the candidate topology.
 
-The response reports decisive accuracy, coverage, balanced accuracy,
-confusion counts, and resolution-bucket metrics for both states. UNKNOWN
-predictions reduce coverage rather than being silently counted as FALSE.
-Evaluation is bound to the base and candidate digests recorded when the
+The request must explicitly declare the `test` split and include the SHA-256
+digest of its canonical record array; the service recomputes and verifies that
+digest. This is a caller-declared split, not independent proof of dataset
+provenance. The response reports decisive accuracy, coverage, balanced
+accuracy, confusion counts, and resolution-bucket metrics for both states.
+UNKNOWN predictions reduce coverage rather than being silently counted as
+FALSE. Evaluation is bound to the base and candidate digests recorded when the
 candidate was created; either digest changing rejects the comparison.
 
 A positive utility delta and non-regressing balanced accuracy produce only
