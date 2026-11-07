@@ -64,10 +64,10 @@ class NannetTests(unittest.TestCase):
   self.assertEqual(receipt["router_state"],"queued")
   router=server.get_riddle_service()
   self.assertEqual(router.inbox.stats()["queued"],1)
-  status,leased=self.req("POST","/v1/riddle/lease",{"owner":"MC0:0/R0","now_tick":server.now()},token="w"*48)
+  status,leased=self.req("POST","/v1/riddle/lease",{"owner":"HW0::BS0/R0","now_tick":server.now()},token="w"*48)
   self.assertEqual(status,200);self.assertEqual(leased["source_kind"],"clocked-evidence")
   self.assertEqual(leased["node_point"],device["node_point"])
-  router_trace={"schema":"nanrouter.trace.v1","source_ref":"clocked_demo","target_ref":"BS0:0/MC0:0/R0","source_hash":leased["source_hash"],"acl_digest":leased["acl_digest"],"universe_id":"BS0:0","correct":False,"outcome_verified":False,"evidence_only":True,"nanclock_tick":leased["nanclock_tick"]}
+  router_trace={"schema":"nanrouter.trace.v1","source_ref":"clocked_demo","target_ref":"HW0::BS0/R0","source_hash":leased["source_hash"],"acl_digest":leased["acl_digest"],"universe_id":"BS0:0","correct":False,"outcome_verified":False,"evidence_only":True,"nanclock_tick":leased["nanclock_tick"]}
   status,acked=self.req("POST","/v1/riddle/ack",{"event_id":leased["event_id"],"owner":"MC0:0/R0","result_digest":"f"*64,"result_generation":0,"trace":router_trace},token="w"*48)
   self.assertEqual(status,200);self.assertTrue(acked["acknowledged"])
   db=server.connect()
@@ -91,8 +91,8 @@ class NannetTests(unittest.TestCase):
  def test_device_registration_allocates_exclusive_first_available_slots_and_resumes(self):
   secret="A"*43
   status,first=self.register_device(secret)
-  self.assertEqual(status,201);self.assertEqual(first["address"],"nan://GM0:SC0:MC0:BS0:HW8")
-  self.assertEqual(first["node_point"],9);self.assertEqual(first["head_count"],256)
+  self.assertEqual(status,201);self.assertEqual(first["address"],"nan://GM0:SC0:MC0:BS0:HW10")
+  self.assertEqual(first["node_point"],10);self.assertEqual(first["head_count"],256)
   status,again=self.register_device(secret)
   self.assertEqual(status,201);self.assertEqual(again["device_id"],first["device_id"])
   self.assertEqual(again["address"],first["address"]);self.assertNotEqual(again["token"],first["token"])
