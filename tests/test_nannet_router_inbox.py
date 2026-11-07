@@ -18,7 +18,7 @@ class ClockedEvidenceAckPolicyTests(unittest.TestCase):
             acl_digest="a" * 64, nanclock_tick=1800000000,
         )
         self.event = self.inbox.lease_next(
-            owner="MC0:0/R2", now_tick=1800000001,
+            owner="HW0::BS0/R2", now_tick=1800000001,
             source_kind="clocked-evidence",
         )
         self.assertIsNotNone(self.event)
@@ -27,7 +27,7 @@ class ClockedEvidenceAckPolicyTests(unittest.TestCase):
         trace = {
             "schema": "nanrouter.trace.v1",
             "source_ref": "clocked:" + "1" * 64,
-            "target_ref": "BS0:0/MC0:0/R2/HW17",
+            "target_ref": "HW0::BS0/R2/H17",
             "source_hash": self.event.source_hash,
             "acl_digest": self.event.acl_digest,
             "universe_id": "BS0:0",
