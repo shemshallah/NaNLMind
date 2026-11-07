@@ -269,10 +269,14 @@ class HeadCortexService:
             records_path.write_text("\n".join(lines) + "\n", encoding="ascii")
             shutil.copyfile(self.state_path, candidate_state)
             os.chmod(candidate_state, 0o600)
-            trained = subprocess.run(
-                [self.native_binary, "relation-train", str(records_path), str(candidate_state), str(epochs)],
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-                encoding="utf-8", errors="replace", timeout=120, check=False)
+            try:
+                trained = subprocess.run(
+                    [self.native_binary, "relation-train", str(records_path), str(candidate_state), str(epochs)],
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                    encoding="utf-8", errors="replace", timeout=120, check=False)
+            except Exception:
+                candidate_state.unlink(missing_ok=True)
+                raise
         trained_match = re.search(
             r"relation_train status=updated .*?changed_heads=(\d+).*?state_digest_after=([a-f0-9]{64})",
             trained.stdout)
@@ -297,8 +301,13 @@ class HeadCortexService:
             "training_record_fingerprints": fingerprints,
             "training_summary": summary,
         }
-        manifest_path.write_bytes(canonical(manifest))
-        os.chmod(manifest_path, 0o600)
+        try:
+            manifest_path.write_bytes(canonical(manifest))
+            os.chmod(manifest_path, 0o600)
+        except OSError:
+            candidate_state.unlink(missing_ok=True)
+            manifest_path.unlink(missing_ok=True)
+            raise
         return {
             "schema": "nanlm.head-learning-candidate-response/1",
             "mutation_id": mutation_id, "status": "candidate_only",
