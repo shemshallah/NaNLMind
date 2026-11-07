@@ -97,7 +97,7 @@ class HeadCortexService:
                                   {"error": "native_inference_unavailable"})
 
     def _authorized(self, supplied: str, scope: str = "universe:read") -> bool:
-        if not supplied or len(supplied) > 512:
+        if not supplied or len(supplied) > 4096:
             return False
         if self.auth_url:
             try:

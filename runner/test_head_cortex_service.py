@@ -298,6 +298,13 @@ class HeadCortexServiceTests(unittest.TestCase):
         self.assertEqual(status, "401 Unauthorized")
         self.assertEqual(result["error"], "unauthorized")
 
+    def test_accepts_scoped_bearer_longer_than_legacy_limit(self):
+        token = "hwh_" + "x" * 510
+        app = HeadCortexService(str(self.binary), str(self.state), token)
+        status, result = invoke(app, payload=package(), token=token)
+        self.assertEqual(status, "200 OK")
+        self.assertEqual(result["schema"], "nanlm.head-cortex-response")
+
 
 if __name__ == "__main__":
     unittest.main()
