@@ -626,14 +626,20 @@ def portal_bridge_startup(slot, epoch):
             "announced_to_root": sent, "received": received}
 
 
-def router_ring_heartbeat():
-    """Acknowledge the current signed Koyeb registry from this runner slot.
-
-    The anchored wall-clock sample is cached once per worker process and
-    advanced with monotonic elapsed time, so repeated loop heartbeats remain
-    ordered without repeatedly contacting external time sources.
-    """
+def router_clock_tick():
+    """Return an atomic-clock-anchored tick advanced by monotonic elapsed time."""
     global _ROUTER_RING_ANCHOR, _ROUTER_RING_MONO
+    if _ROUTER_RING_ANCHOR is None:
+        from atomic_clock import collect
+        _ROUTER_RING_ANCHOR = collect(timeout=float(os.environ.get("NANLM_ROUTER_CLOCK_TIMEOUT", "5")))
+        if not _ROUTER_RING_ANCHOR.get("ok") or _ROUTER_RING_ANCHOR.get("uncertainty_s", 999) > 5:
+            raise RuntimeError("atomic wall-clock anchor is unavailable or too uncertain")
+        _ROUTER_RING_MONO = time.monotonic()
+    return int(_ROUTER_RING_ANCHOR["wall_unix"] + (time.monotonic() - _ROUTER_RING_MONO))
+
+
+def router_ring_heartbeat():
+    """Acknowledge the current signed Koyeb registry from this runner slot."""
     base = os.environ.get("NANLM_ROUTER_URL", "").rstrip("/")
     token = os.environ.get("NANLM_ROUTER_WORKER_TOKEN", "")
     if not base and not token:
@@ -642,16 +648,26 @@ def router_ring_heartbeat():
         raise RuntimeError("NANLM_ROUTER_URL and NANLM_ROUTER_WORKER_TOKEN must be configured together")
     if PORTAL_ROUTE is None:
         raise RuntimeError("runner route must be initialized before router-ring heartbeat")
-    if _ROUTER_RING_ANCHOR is None:
-        from atomic_clock import collect
-        _ROUTER_RING_ANCHOR = collect(timeout=float(os.environ.get("NANLM_ROUTER_CLOCK_TIMEOUT", "5")))
-        if not _ROUTER_RING_ANCHOR.get("ok") or _ROUTER_RING_ANCHOR.get("uncertainty_s", 999) > 5:
-            raise RuntimeError("atomic wall-clock anchor is unavailable or too uncertain")
-        _ROUTER_RING_MONO = time.monotonic()
-    tick = int(_ROUTER_RING_ANCHOR["wall_unix"] + (time.monotonic() - _ROUTER_RING_MONO))
     from router_ring_client import submit_heartbeat
-    return submit_heartbeat(base, token, PORTAL_ROUTE.bsr, tick)
+    return submit_heartbeat(base, token, PORTAL_ROUTE.bsr, router_clock_tick())
 
+
+def drain_clocked_router_sources(max_events=None):
+    """Fold digest-only Clocked receipts into durable runner traces; no head update."""
+    base = os.environ.get("NANLM_ROUTER_URL", "").rstrip("/")
+    token = os.environ.get("NANLM_ROUTER_WORKER_TOKEN", "")
+    if not base and not token:
+        return None
+    if not base or not token:
+        raise RuntimeError("NANLM_ROUTER_URL and NANLM_ROUTER_WORKER_TOKEN must be configured together")
+    if PORTAL_ROUTE is None:
+        raise RuntimeError("runner route must be initialized before draining router sources")
+    from clocked_router_consumer import consume_clocked_sources
+    limit = max_events if max_events is not None else int(os.environ.get("NANLM_ROUTER_MAX_CLOCKED_EVENTS", "8"))
+    result = consume_clocked_sources(base, token, PORTAL_ROUTE.bsr, router_clock_tick(), limit)
+    if result.get("processed") or result.get("failed"):
+        print("router-clocked-evidence: " + json.dumps(result, sort_keys=True), file=sys.stderr)
+    return result
 
 def portal_heartbeat():
     global PORTAL_TOKEN
@@ -677,6 +693,7 @@ def portal_heartbeat():
     ring = router_ring_heartbeat()
     if ring is not None:
         print("router-ring: " + json.dumps(ring, sort_keys=True), file=sys.stderr)
+    drain_clocked_router_sources()
 
 
 def main():
@@ -702,6 +719,7 @@ def main():
     ring_status = router_ring_heartbeat()
     if ring_status is not None:
         print("router-ring: " + json.dumps(ring_status, sort_keys=True), file=sys.stderr)
+    drain_clocked_router_sources()
     bridge_status = portal_bridge_startup(args.slot, args.epoch)
     if bridge_status.get("enabled"):
         print("nannet-bridge: " + json.dumps(bridge_status, sort_keys=True), file=sys.stderr)
