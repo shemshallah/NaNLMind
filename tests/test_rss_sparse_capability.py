@@ -1,7 +1,7 @@
 """RSS sparse capability contract tests; no host-side graph math."""
 import unittest
 
-from runner.relational_spectral import Capability, RSSJob, capability_manifest, dispatchable
+from runner.relational_spectral import (Capability, RSSJob, capability_manifest, dispatchable, sparse_graph_laplacian_q16_16_capability)
 
 
 class SparseCapabilityContractTests(unittest.TestCase):
@@ -29,6 +29,10 @@ class SparseCapabilityContractTests(unittest.TestCase):
             max_workspace_bytes=4096, operator_version=1,
             q_format="Q16.16/I32")])
         self.assertFalse(dispatchable(manifest, self.job))
+
+    def test_registered_native_verified_kernel_is_dispatchable(self):
+        manifest = capability_manifest("R0", [sparse_graph_laplacian_q16_16_capability()])
+        self.assertTrue(dispatchable(manifest, self.job))
 
     def test_native_verified_requires_digest_and_matching_abi(self):
         capability = Capability(
