@@ -174,3 +174,15 @@ jobs:
           cat state/mth/linker-preflight.out
           cat state/mth/linker-preflight.err
           grep -q '^MTH LINKER PREFLIGHT PASS' state/mth/linker-preflight.out
+      - name: Setup Python for worker-side preflight
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify NaNLMind worker-side native math preflight operation
+        env:
+          NANROUTER_ROOT: ${{ github.workspace }}/nanrouter
+          NAN0S_ROOT: ${{ github.workspace }}/nanrouter/nan0s
+          NANLM_LOCAL_STATE: ${{ github.workspace }}/state
+        run: |
+          python runner/nanlm_worker.py --op math-preflight --slot 1 --epoch 0
+          cat state/math-preflight.json
