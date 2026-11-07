@@ -91,9 +91,9 @@ for development, not 24/7 operation.
 The shared RSS protocol is defined in `runner/relational_spectral.py`. It validates versioned job/result envelopes and capability manifests only; it contains no graph or spectral mathematics. Native NaN16 MTH kernels must be assembled and executed before a capability may be marked `native_verified`. Dispatch rejects `specified` and `source_written` capabilities and checks workspace budgets. Contract tests: `python3 -m unittest tests/test_relational_spectral_contract.py` (or run the test file directly).
 
 
-The K256 exact baseline has now been added in the MTH branch as
-`k256_laplacian_u16`. The capability is advertised as
-`source_written` only; all general graph, pair-space, filter, Lanczos,
-wave and fold capabilities remain `specified`. The worker must not dispatch
-the K256 job until the canonical NaN16 assemble-and-execute gate succeeds and
-a kernel digest/workspace declaration is registered.
+The K256 exact baseline is implemented in MTH as `k256_laplacian_u16`
+and passed the canonical NaN16 assemble-and-execute workflow. The worker
+advertises this one capability as `native_verified`, with its SHA-256 kernel
+digest and a 4096-byte maximum input/output workspace. All general sparse
+graph, pair-space, filter, Lanczos, wave and fold capabilities remain
+`specified`; no broader RSS execution is implied.
