@@ -84,7 +84,7 @@ constexpr std::uint8_t boolean_table_bits(std::uint8_t arity) {
     return valid_boolean_arity(arity) ? static_cast<std::uint8_t>(1u << arity) : 0;
 }
 constexpr std::uint64_t boolean_function_count(std::uint8_t arity) {
-    return valid_boolean_arity(arity) ? (std::uint64_t{1} << boolean_table_bits(arity)) : 0;
+    return (arity >= 1 && arity <= 5) ? (std::uint64_t{1} << boolean_table_bits(arity)) : 0;
 }
 constexpr bool eval_boolean(std::uint64_t truth, std::uint8_t arity,
                             std::uint8_t input_index) {
