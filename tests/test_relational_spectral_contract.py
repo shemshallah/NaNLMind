@@ -53,6 +53,13 @@ class RelationalSpectralContractTests(unittest.TestCase):
         ])
         self.assertTrue(dispatchable(verified, job))
 
+    def test_k256_source_written_is_advertised_but_not_dispatchable(self):
+        job = RSSJob.from_mapping(job_payload(operator="k256_laplacian_u16"))
+        manifest = capability_manifest("cpu-1", [
+            Capability("k256_laplacian_u16", "source_written", 0, "")
+        ])
+        self.assertFalse(dispatchable(manifest, job))
+
     def test_workspace_and_digest_are_mandatory(self):
         job = RSSJob.from_mapping(job_payload(workspace_bytes=9000))
         small = capability_manifest("cpu-1", [
