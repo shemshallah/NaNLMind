@@ -17,7 +17,7 @@ jobs:
       - name: HERMES head-cortex service contract tests
         run: python3 -m unittest runner.test_head_cortex_service -v
       - name: RSS sparse capability contract tests
-        run: python3 -m unittest tests.test_rss_sparse_capability -v
+        run: python3 -m unittest discover -s tests -p 'test_rss_sparse_capability.py' -v
       - name: Hermes native 256-head train and resume smoke
         run: |
           mkdir -p state
