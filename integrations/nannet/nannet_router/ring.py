@@ -1,4 +1,4 @@
-"""Six-slot MC0:0 runner-ring registry reconciliation.
+"""Six-slot HW0::BS0 runner ring registry reconciliation.
 
 Runners acknowledge the exact signed volume-registry generation and digest.
 This is control-plane convergence, not a claim that remote runners can directly
@@ -11,7 +11,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
-RING_SLOTS = tuple(f"MC0:0/R{i}" for i in range(6))
+RING_SLOTS = tuple(f"HW0::BS0/R{i}" for i in range(6))
 
 
 class RunnerRingError(ValueError):
@@ -49,7 +49,7 @@ class RunnerRing:
         if not isinstance(slot, int) or not 0 <= slot < 6:
             raise RunnerRingError("runner slot must be in 0..5")
         if runner_id != RING_SLOTS[slot]:
-            raise RunnerRingError("runner identity does not match its reserved MC0:0 slot")
+            raise RunnerRingError("runner identity does not match its reserved HW0::BS0 runner slot")
         if registry_generation != expected_generation or registry_digest != expected_digest:
             raise RunnerRingError("runner is not acknowledging the current signed volume registry")
         if len(registry_digest) != 64 or any(c not in "0123456789abcdef" for c in registry_digest):
@@ -124,7 +124,7 @@ class RunnerRing:
             })
         green = all(item["state"] == "in_sync" for item in slots)
         return {
-            "macrocluster": "MC0:0",
+            "macrocluster": "HW0::BS0",
             "slot_count": 6,
             "registry_generation": expected_generation,
             "registry_digest": expected_digest,
