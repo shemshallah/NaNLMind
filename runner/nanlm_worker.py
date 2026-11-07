@@ -729,6 +729,8 @@ def main():
     args = ap.parse_args()
     args.slot = parse_slot(args.slot)
     args.slot_name = SLOT_NAMES[args.slot]
+    if args.op == "rss-status":
+        return op_rss_status(args)
     verify_portal_identity(args.slot)
     ring_status = router_ring_heartbeat()
     if ring_status is not None:
