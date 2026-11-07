@@ -500,6 +500,34 @@ class HeadCortexService:
                 atoms.append((entry.get("entry_id", ""), subject, predicate, obj,
                               source_digest, resolution, False))
                 evidence_texts.append((entry.get("entry_id", ""), obj))
+            elif entry.get("lane") == "conflict_map":
+                conflict = entry.get("payload")
+                if not isinstance(conflict, dict):
+                    continue
+                provenance = conflict.get("provenance", {})
+                if not isinstance(provenance, dict):
+                    provenance = {}
+                source_digest = provenance.get("input_sha256")
+                if not isinstance(source_digest, str) or not HEX64.fullmatch(source_digest):
+                    source_digest = hashlib.sha256(canonical(conflict)).hexdigest()
+                items = conflict.get("conflicts", [])
+                if isinstance(items, str):
+                    items = [items]
+                if not isinstance(items, list):
+                    items = []
+                if not items and isinstance(conflict.get("verdict"), str):
+                    items = [conflict["verdict"]]
+                for item_index, item in enumerate(items[:64]):
+                    if isinstance(item, dict):
+                        item = canonical(item).decode("utf-8")
+                    if not isinstance(item, str) or not item.strip():
+                        continue
+                    atoms.append((
+                        entry.get("entry_id", "") + "-conflict-" + str(item_index),
+                        "cross_source", "sources_conflict", item[:2048],
+                        source_digest, 7, False,
+                    ))
+                    evidence_texts.append((entry.get("entry_id", ""), item[:2048]))
             elif entry.get("lane") == "clocked_result":
                 observation = entry.get("payload")
                 if not isinstance(observation, dict):
