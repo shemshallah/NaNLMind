@@ -37,7 +37,7 @@ class RouterRingClientTests(unittest.TestCase):
                 body = json.loads(self.rfile.read(length))
                 owner.requests.append(("POST", self.path, self.headers.get("Authorization"), body))
                 self._json(200, {"accepted": True, "runner_ring": {
-                    "macrocluster": "MC0:0", "health": "degraded", "in_sync": 1,
+                    "macrocluster": "HW0::BS0", "health": "degraded", "in_sync": 1,
                 }})
 
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
@@ -50,12 +50,12 @@ class RouterRingClientTests(unittest.TestCase):
 
     def test_reads_registry_then_acknowledges_exact_generation_and_digest(self):
         result = submit_heartbeat(self.base, TOKEN, 4, 1_800_000_000)
-        self.assertEqual(result["macrocluster"], "MC0:0")
+        self.assertEqual(result["macrocluster"], "HW0::BS0")
         self.assertEqual([r[0] for r in self.requests], ["GET", "POST"])
         self.assertEqual(self.requests[0][2], "Bearer " + TOKEN)
         self.assertEqual(self.requests[1][2], "Bearer " + TOKEN)
         self.assertEqual(self.requests[1][3], {
-            "slot": 4, "runner_id": "MC0:0/R4",
+            "slot": 4, "runner_id": "HW0::BS0/R4",
             "registry_generation": 9, "registry_digest": "a" * 64,
             "nanclock_tick": 1_800_000_000,
         })
