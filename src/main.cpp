@@ -15,6 +15,7 @@
 #include "nanlm/schedule.hpp"
 #include "nanlm/logic_session.hpp"
 #include "nanlm/relation_train.hpp"
+#include "nanlm/head_candidate.hpp"
 #include "nanlm/universe.hpp"
 
 #include <cctype>
@@ -1266,6 +1267,7 @@ int main(int argc, char** argv) {
     if (cmd == "math-train") return cmd_math_train(argc, argv);
     if (cmd == "relation-train") return nanlm::relation_train_cli(argc, argv);
     if (cmd == "relation-eval") return nanlm::relation_eval_cli(argc, argv);
+    if (cmd == "head-candidate") return nanlm::head_candidate_cli(argc, argv);
     if (cmd == "logic-train") return cmd_logic_train(argc, argv);
     if (cmd == "snapshot") return cmd_snapshot(argc, argv);
     if (cmd == "headshift") return cmd_headshift(argc, argv);
