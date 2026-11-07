@@ -10,6 +10,8 @@ int main() {
     CHECK_EQ(kCoreMathCatalog.size(), 34u);
     CHECK(find_operation("bool.truth2") != nullptr);
     CHECK(find_operation("bool.truth2")->exactness == Exactness::ExactFinite);
+    CHECK(!catalog_entry_executable(*find_operation("bool.truth2")));
+    CHECK(find_operation("bool.truth2")->preconditions == "UNSPECIFIED: not executable");
     CHECK(find_operation("catalog.propose")->exactness == Exactness::LearnedUnverified);
     CHECK(find_operation("not.a.real.operation") == nullptr);
 
