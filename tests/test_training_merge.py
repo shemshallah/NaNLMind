@@ -155,12 +155,62 @@ class TrainingMergeTest(unittest.TestCase):
         admin = authority.pair(admin_code["pairing_code"], admin_id, b64(admin_public))
         self.assertEqual(guest["role"], "guest")
         self.assertEqual(admin["role"], "admin")
+        self.assertEqual(guest["issuer_public_key"], authority.issuer_public_key())
+        self.assertEqual(admin["issuer_public_key"], authority.issuer_public_key())
         self.assertEqual(authority.verify_access_token(guest["token"], "universe:read")["role"], "guest")
         self.assertEqual(authority.verify_access_token(admin["token"], "installation:admin")["role"], "admin")
         authority.revoke_identity("admin", admin_id)
         with self.assertRaises(AuthError):
             authority.verify_access_token(admin["token"], "installation:admin")
 
+    def test_pairing_admin_issuer_and_http_pair_flow(self):
+        db = Path(self.tmp.name) / "pairing.sqlite"
+        authority = PairingAuthority(db, _unb64(generate_master_key()))
+        server = training_merge.make_server("127.0.0.1", 0, Path(self.tmp.name), "test-token", authority)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        base = "http://127.0.0.1:" + str(server.server_address[1])
+
+        def request(path, payload=None, token=None, method="POST"):
+            headers = {"Content-Type": "application/json"}
+            if token:
+                headers["Authorization"] = "Bearer " + token
+            data = None if payload is None else json.dumps(payload).encode()
+            req = urllib.request.Request(base + path, data=data, method=method, headers=headers)
+            try:
+                with urllib.request.urlopen(req, timeout=5) as response:
+                    return response.status, json.loads(response.read())
+            except urllib.error.HTTPError as exc:
+                return exc.code, json.loads(exc.read())
+
+        try:
+            status, issuer = request("/v1/issuer", method="GET")
+            self.assertEqual(status, 200)
+            self.assertEqual(issuer["issuer_public_key"], authority.issuer_public_key())
+            self.assertEqual(request("/v1/admin/pairing-codes", {})[0], 401)
+            status, issued = request("/v1/admin/pairing-codes", {
+                "scopes": ["universe:read", "training:execute"],
+                "ttl_seconds": 300,
+            }, token="test-token")
+            self.assertEqual(status, 201)
+            self.assertTrue(issued["pairing_code"].startswith("nnh_"))
+            private = Ed25519PrivateKey.generate()
+            public = base64.urlsafe_b64encode(
+                private.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+            ).decode().rstrip("=")
+            status, paired = request("/v1/pair", {
+                "pairing_code": issued["pairing_code"],
+                "installation_id": "00000000-0000-4000-8000-000000000003",
+                "public_key": public,
+            })
+            self.assertEqual(status, 200)
+            self.assertEqual(paired["issuer_public_key"], issued["issuer_public_key"])
+            claims = authority.verify_access_token(paired["token"], "training:execute")
+            self.assertEqual(claims["sub"], "00000000-0000-4000-8000-000000000003")
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
 
     def test_bsr_oidc_bootstrap_rotation_and_admin_revocation(self):
         db = Path(self.tmp.name) / "bsr.sqlite"
