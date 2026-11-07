@@ -41,6 +41,8 @@ python -m nannet_router.volume_registry --write || test -f "${RIDDLE_VOLUME_REGI
 
 PORT=18081 python -m nannet_router.http_service &
 router_pid=$!
-trap 'kill "$router_pid" 2>/dev/null || true' EXIT INT TERM
+CLOCKED_GATEWAY_HOST=127.0.0.1 CLOCKED_GATEWAY_PORT=18082 python -m nannet_clocked.gateway &
+clocked_pid=$!
+trap 'kill "$router_pid" "$clocked_pid" 2>/dev/null || true' EXIT INT TERM
 
 exec python /app/training_merge.py --root /data --port 8080
