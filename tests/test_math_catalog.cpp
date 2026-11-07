@@ -42,11 +42,14 @@ int main() {
 
     ScratchDescriptor local{1, 64, 128, 64, 7, 99, 3, true};
     CHECK(local.valid(4096));
-    CHECK(!ScratchDescriptor{1, 65, 128, 64, 7, 99, 3, true}.valid(4096));
-    CHECK(!ScratchDescriptor{1, 64, 5000, 64, 7, 99, 3, true}.valid(4096));
-    CHECK(!ScratchDescriptor{1, 64, 128, 3, 7, 99, 3, true}.valid(4096));
-    CHECK(!ScratchDescriptor{1, 64, 128, 64, 7, 99, 6, true}.valid(4096));
-    CHECK(!ScratchDescriptor{1, 64, 128, 64, 7, 99, 3, true}.valid(4096) == false);
+    const ScratchDescriptor unaligned{1, 65, 128, 64, 7, 99, 3, true};
+    const ScratchDescriptor overflow{1, 64, 5000, 64, 7, 99, 3, true};
+    const ScratchDescriptor bad_alignment{1, 64, 128, 3, 7, 99, 3, true};
+    const ScratchDescriptor bad_owner{1, 64, 128, 64, 7, 99, 6, true};
+    CHECK(!unaligned.valid(4096));
+    CHECK(!overflow.valid(4096));
+    CHECK(!bad_alignment.valid(4096));
+    CHECK(!bad_owner.valid(4096));
 
     // Ten mathematical bands are stable identifiers, separate from L0-L9.
     std::array<std::uint8_t, 10> math_layers{};
