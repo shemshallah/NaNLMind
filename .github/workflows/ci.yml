@@ -16,6 +16,8 @@ jobs:
         run: make -j2
       - name: HERMES head-cortex service contract tests
         run: python3 -m unittest runner.test_head_cortex_service -v
+      - name: RSS sparse capability contract tests
+        run: python3 -m unittest tests.test_rss_sparse_capability -v
       - name: Hermes native 256-head train and resume smoke
         run: |
           mkdir -p state
