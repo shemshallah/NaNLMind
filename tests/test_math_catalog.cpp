@@ -7,7 +7,7 @@
 using namespace nanlm;
 
 int main() {
-    CHECK_EQ(kCoreMathCatalog.size(), 24u);
+    CHECK_EQ(kCoreMathCatalog.size(), 34u);
     CHECK(find_operation("bool.truth2") != nullptr);
     CHECK(find_operation("bool.truth2")->exactness == Exactness::ExactFinite);
     CHECK(find_operation("catalog.propose")->exactness == Exactness::LearnedUnverified);
