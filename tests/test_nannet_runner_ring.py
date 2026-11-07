@@ -5,6 +5,8 @@ from pathlib import Path
 
 sys.path.insert(0, "runner")
 from nannet_router.ring import RING_SLOTS, RunnerRing, RunnerRingError
+from nannet_router.macro import BootstrapMacroPlanner, MAPPING_LAYERS
+from resolution_layers import RESOLUTION_LAYERS
 
 
 class CanonicalRunnerRingTests(unittest.TestCase):
@@ -29,6 +31,15 @@ class CanonicalRunnerRingTests(unittest.TestCase):
             self.assertEqual(snapshot["health"], "green")
             self.assertEqual([item["runner_id"] for item in snapshot["slots"]],
                              list(RING_SLOTS))
+
+    def test_macro_mapping_and_language_resolution_namespaces_stay_distinct(self):
+        self.assertEqual(BootstrapMacroPlanner().universe_id, "HW0::BS0")
+        self.assertEqual(len(MAPPING_LAYERS), 10)
+        self.assertEqual(len(RESOLUTION_LAYERS), 10)
+        self.assertEqual(RESOLUTION_LAYERS[0], "bit")
+        self.assertEqual(RESOLUTION_LAYERS[9], "narrative")
+        self.assertEqual(MAPPING_LAYERS[0], "bit-to-head")
+        self.assertEqual(MAPPING_LAYERS[9], "meta-policy")
 
     def test_rejects_downstream_mc0_runner_identity(self):
         with tempfile.TemporaryDirectory() as tmp:
