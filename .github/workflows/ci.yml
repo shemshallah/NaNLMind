@@ -90,6 +90,8 @@ jobs:
           grep -q '"canonical_state_modified":false' state/head-candidate.log
           ./build/nanlm-universal relation-eval state/relation-query.n16rel state/relation-candidate.nmg > state/relation-candidate-eval.log
           grep -q 'relation_eval_row index=0' state/relation-candidate-eval.log
+      - name: Native HERMES head-learning candidate integration
+        run: python3 -m unittest runner.test_head_cortex_native_learning -v
       - name: Test suite
         run: make test
       - name: Install NANNET authority dependency
