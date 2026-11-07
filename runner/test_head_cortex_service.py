@@ -175,9 +175,13 @@ class HeadCortexServiceTests(unittest.TestCase):
             ]
             status, result = invoke(self.app, path="/v1/head-cortex/candidate/evaluate",
                 payload={"schema": "nanlm.head-candidate-evaluation-request/1",
-                         "mutation_id": "eval-candidate-1", "records": records})
+                         "mutation_id": "eval-candidate-1", "split": "test",
+                         "dataset_sha256": hashlib.sha256(canonical(records)).hexdigest(),
+                         "records": records})
             self.assertEqual(status, "200 OK")
             self.assertEqual(result["status"], "evaluated_candidate")
+            self.assertEqual(result["split"], "test")
+            self.assertEqual(result["dataset_sha256"], hashlib.sha256(canonical(records)).hexdigest())
             self.assertEqual(result["candidate"]["accuracy"], 1.0)
             self.assertEqual(result["baseline"]["accuracy"], 0.5)
             self.assertEqual(result["recommendation"], "review_candidate")
