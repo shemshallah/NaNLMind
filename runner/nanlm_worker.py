@@ -698,10 +698,17 @@ def portal_heartbeat():
 
 def op_rss_status(args):
     """Report only kernel capabilities backed by canonical NaN16 evidence."""
-    from relational_spectral import (
-        CAPABILITIES, Capability, capability_manifest,
-        sparse_graph_laplacian_q16_16_capability,
-    )
+    try:
+        from runner.relational_spectral import (
+            CAPABILITIES, Capability, capability_manifest,
+            sparse_graph_laplacian_q16_16_capability,
+        )
+    except ModuleNotFoundError:
+        # Support direct worker execution with PYTHONPATH=runner.
+        from relational_spectral import (
+            CAPABILITIES, Capability, capability_manifest,
+            sparse_graph_laplacian_q16_16_capability,
+        )
     declared = []
     for name in CAPABILITIES:
         if name == "k256_laplacian_u16":
