@@ -293,7 +293,7 @@ class Handler(BaseHTTPRequestHandler):
      address=lease["address"];lease_id=lease["lease_id"]
      db.execute("UPDATE device_leases SET expires_at=? WHERE lease_id=?",(timestamp+lease_seconds,lease_id))
     else:
-     for hw in range(4,256):
+     for hw in range(8,255):
       candidate=nan_address(0,0,0,0,hw)
       active=db.execute("SELECT lease_id,expires_at,device_id FROM device_leases WHERE address=? AND status='active'",(candidate,)).fetchone()
       if active and active["expires_at"]<=timestamp:
@@ -307,7 +307,7 @@ class Handler(BaseHTTPRequestHandler):
        address=candidate;lease_id=secrets.token_urlsafe(24)
        db.execute("INSERT INTO device_leases(lease_id,address,device_id,issued_at,expires_at,status) VALUES(?,?,?,?,?,'active')",(lease_id,address,device_id,timestamp,timestamp+lease_seconds))
        break
-     if address is None:db.rollback();return self.reply(503,{"error":"no_device_slots_available","reserved_hw_slots":[0,1,2,3],"dynamic_range":"HW4-HW255"})
+     if address is None:db.rollback();return self.reply(503,{"error":"no_device_slots_available","reserved_hw_slots":[0,1,2,3,4,5,6,7],"dynamic_range":"HW8-HW254"})
     db.execute("UPDATE tokens SET revoked=1 WHERE owner_device_id=?",(device_id,))
     scopes=["intake","dataset","observation","heartbeat","n16t","device.report"]
     db.execute("INSERT INTO tokens(token_hash,endpoint_id,scopes_json,expires_at,max_requests,created_at,owner_device_id) VALUES(?,?,?,?,?,?,?)",(token_hash(token),address,json.dumps(scopes),timestamp+min(max(lease_seconds*4,604800),2592000),1000000,timestamp,device_id))
