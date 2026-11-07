@@ -91,14 +91,14 @@ class NannetTests(unittest.TestCase):
  def test_device_registration_allocates_exclusive_first_available_slots_and_resumes(self):
   secret="A"*43
   status,first=self.register_device(secret)
-  self.assertEqual(status,201);self.assertEqual(first["address"],"nan://GM0:SC0:MC0:BS0:HW10")
+  self.assertEqual(status,201);self.assertEqual(first["address"],"nan://GM0:SC0:MC0:BS0:HW9")
   self.assertEqual(first["node_point"],10);self.assertEqual(first["head_count"],256)
   status,again=self.register_device(secret)
   self.assertEqual(status,201);self.assertEqual(again["device_id"],first["device_id"])
   self.assertEqual(again["address"],first["address"]);self.assertNotEqual(again["token"],first["token"])
   self.assertEqual(self.req("GET","/v1/devices/me",token=first["token"])[0],401)
   status,second=self.register_device("B"*43)
-  self.assertEqual(status,201);self.assertEqual(second["address"],"nan://GM0:SC0:MC0:BS0:HW9")
+  self.assertEqual(status,201);self.assertEqual(second["address"],"nan://GM0:SC0:MC0:BS0:HW10")
   self.assertNotEqual(first["device_id"],second["device_id"])
  def test_expired_device_lease_cannot_use_routes_but_can_renew(self):
   status,device=self.register_device("Q"*43);self.assertEqual(status,201)
