@@ -696,9 +696,23 @@ def portal_heartbeat():
     drain_clocked_router_sources()
 
 
+def op_rss_status(args):
+    """Report RSS protocol support without claiming unverified math kernels."""
+    from relational_spectral import CAPABILITIES, Capability, capability_manifest
+    manifest = capability_manifest(
+        args.slot_name,
+        [Capability(name, "specified", 0, "") for name in CAPABILITIES],
+    )
+    manifest["universe_id"] = os.environ.get("NANLM_UNIVERSE_ID", "local")
+    manifest["native_math_dispatch_enabled"] = False
+    manifest["reason"] = "No RSS kernel is native_verified by the canonical NaN16 toolchain yet."
+    print(json.dumps(manifest, sort_keys=True, indent=2))
+    return 0
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--op", choices=["selftest", "prewarm", "headshift", "handoff", "logic", "logic-core", "training", "loop", "finalize", "unlock", "status"],
+    ap.add_argument("--op", choices=["selftest", "prewarm", "headshift", "handoff", "logic", "logic-core", "training", "loop", "finalize", "unlock", "status", "rss-status"],
                     default="selftest")
     ap.add_argument("--slot", type=int, default=None)
     ap.add_argument("--epoch", type=int, default=0)
@@ -741,6 +755,8 @@ def main():
         return op_unlock(args)
     if args.op == "status":
         return op_status(args)
+    if args.op == "rss-status":
+        return op_rss_status(args)
     return op_headshift(args)
 
 
