@@ -136,6 +136,22 @@ Endpoints added to this service:
 
 The `CLOCKED_API_KEY` GitHub Actions secret remains for CI/live smoke tests. GitHub Actions secrets are not automatically injected into Koyeb: configure the same value as a Koyeb secret on this existing service. No client, runner, or Android app receives it.
 
+## NaNLMROUTER in the same Koyeb process
+
+The BS0:0 / MC0:0 NaNLMROUTER control plane is embedded in `server.py`; it is not a second Koyeb service or listener. The `nannet_router/` package is included in the existing NANNET image and shares the same `/data` persistent volume. Its durable source inbox and six-slot MC0:0 runner-ring registry live under `RIDDLE_DATA_DIR` (default `/data/nannet/router`).
+
+Clocked processing writes a digest-only, explicitly unverified receipt to both the NANNET evidence queue and the NaNLMROUTER source inbox. The router payload contains input/response SHA-256 digests, source address, node point, and deterministic head shard; it never stores the original prompt or raw Clocked response. It is queued work, not an automatic model update. The supervised runner leases it, computes a provenance-bound trace, and ACKs only after its own work is durable.
+
+Embedded router endpoints:
+- GET `/v1/riddle/healthz` and GET `/v1/riddle/volumes`
+- POST `/v1/riddle/intake` (admin-authenticated bounded source intake)
+- POST `/v1/riddle/lease`, `/v1/riddle/ack`, and `/v1/riddle/retry` (runner-authenticated durable worker protocol)
+- POST `/v1/riddle/ring/heartbeat` (six-slot MC0:0 ring reconciliation against the signed volume registry)
+- POST `/v1/riddle/feedback` and `/v1/riddle/feedback/ack` (signed candidate-only feedback)
+- POST `/v1/riddle/routes/resolve` and `/v1/riddle/plan` (read-only signed route/range planning)
+
+The embedded adapter reuses `NANLM_ADMIN_TOKEN`, `NANLM_RUNNER_TOKEN`, and `NANLM_TOKEN_PEPPER` for its internal intake, worker, and feedback boundaries unless explicit `RIDDLE_*` values are supplied. No extra deployment or new authentication service is introduced. Set `RIDDLE_DATA_DIR=/data/nannet/router` to pin the router's SQLite state on the same persistent volume.
+
 ## Required service secrets
 
 Never commit these values:
@@ -159,6 +175,7 @@ Optional secrets only when those integrations are active:
 - CLOCKED_API_KEY (embedded Clocked SDK; server-side only)
 - CLOCKED_DEMO_ENROLLMENT_TOKEN (explicit demo enrollment gate)
 - CLOCKED_RESULT_ENCRYPTION_KEY (Fernet key; preserve across restarts)
+- RIDDLE_INTAKE_TOKEN / RIDDLE_WORKER_TOKEN / RIDDLE_FEEDBACK_HMAC_KEY (optional; otherwise derived from existing NANNET admin/runner/pepper secrets)
 
 Keep DEEPREPO_PAT as a GitHub Actions secret on deeprepo and its five CPU
 repositories. It is not interchangeable with GH_TOKEN and is not required by
@@ -169,6 +186,7 @@ the Koyeb keeper.
 - NANNET_PUBLIC_URL (public HTTPS service origin, e.g. the Koyeb service URL)
 - NANNET_URL (same public HTTPS origin as this service; embedded Clocked adapter calls its own NANNET routes)
 - CLOCKED_GATEWAY_DB=/data/clocked_gateway.sqlite3
+- RIDDLE_DATA_DIR=/data/nannet/router
 - DEEPREPO_KEEPER_ENABLED=1
 - KEEPER_INTERVAL=600
 - KEEPER_DISPATCH=1
