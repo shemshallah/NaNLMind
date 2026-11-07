@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NaNLMind CLOCKED weak-supervision candidate request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "mutation_id",
+    "base_topology_digest",
+    "split",
+    "teacher",
+    "teacher_outputs_are_ground_truth",
+    "dataset_sha256",
+    "records"
+  ],
+  "properties": {
+    "schema": {
+      "const": "nanlm.head-learning-candidate-request/1"
+    },
+    "mutation_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,64}$"
+    },
+    "base_topology_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "split": {
+      "const": "train"
+    },
+    "teacher": {
+      "const": "CLOCKED"
+    },
+    "teacher_outputs_are_ground_truth": {
+      "const": false
+    },
+    "dataset_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "epochs": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 8,
+      "default": 1
+    },
+    "records": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 512,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "observation_id",
+          "resolution",
+          "polarity",
+          "confidence",
+          "subject",
+          "predicate",
+          "object",
+          "source_digest"
+        ],
+        "properties": {
+          "observation_id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.:-]{1,128}$"
+          },
+          "resolution": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9
+          },
+          "polarity": {
+            "enum": [
+              "+",
+              "-"
+            ]
+          },
+          "confidence": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 65535
+          },
+          "subject": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "predicate": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "object": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "source_digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    }
+  }
+}
