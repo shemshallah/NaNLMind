@@ -19,7 +19,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 from wsgiref.simple_server import make_server
 
-from clocked_experience import build_pipeline, make_event
+from .clocked_experience import build_pipeline, make_event
 
 MAX_BODY = 64 * 1024
 MAX_TASK_RESULT_BYTES = 262_144
