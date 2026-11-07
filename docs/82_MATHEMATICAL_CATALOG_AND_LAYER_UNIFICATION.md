@@ -18,11 +18,11 @@ The earlier architecture records in `docs/49_BOOLEAN_SPECTRUM.md`, `docs/50_LIFT
 There are multiple existing layer namespaces. They must remain distinct:
 
 - **Language/evidence resolution L0–L9** is defined in `runner/resolution_layers.py`: bit, nibble, byte, phonetic, morpheme, lexical, word completion, sentence, paragraph and narrative. These describe the granularity at which evidence is stored.
-- **NANNET processing M0–M9** is a separate transformation pipeline. Its stage names and contracts must be read from the NANNET implementation; they are not language-resolution levels.
+- **NANNET M0–M9** is the separate transformation namespace requested for the network/math path. The current repository audit did not locate a canonical M0–M9 registry or stage contract, so this remains an integration target, not a claim of implemented stages. The ten router mapping stages below are not silently renamed M0–M9.
 - **Router mapping layers** are the ten existing `MAPPING_LAYERS` in `runner/nannet_router/macro.py`: bit-to-head, address-to-head, head-to-bin, vector-to-bin, hyperedge, temporal-link, logic-rule, route, merge-provenance and meta-policy.
 - **Mathematical catalog families** are typed operation families (Boolean, arithmetic, linear algebra, geometry, relations, discrete transforms, symbolic reasoning, composition and meta-learning). They crosscut the other layer systems and must not be relabeled as L0–L9 or M0–M9.
 
-The mathematical layer decomposition requested for the ten mathematical layers remains an explicit audit item until the existing NANNET M0–M9 stage contracts and all ten router mapping stages have been reconciled. Do not invent a third ten-stage numbering scheme. Exchange occurs through typed, provenance-bearing packets with explicit source namespace, destination namespace, packet schema, direction and validation rule. A result may be projected into several layers without merging their state or semantics.
+The mathematical layer decomposition requested for the ten mathematical layers remains an explicit audit item until the NANNET M0–M9 contract is located/defined and the ten router mapping stages have been reconciled. Repository code search did not locate declarations for `vector13`, `vector42`, `matha`, `mathb`, or a `NaNLayer` type. Their bit layouts and semantics remain unknown; do not fabricate them. The existing `NaN16` word model, Boolean spectrum, transform chain, reversible operations, semiring and NTT modules are concrete math primitives to catalog and reuse. Do not invent a third ten-stage numbering scheme. Exchange occurs through typed, provenance-bearing packets with explicit source namespace, destination namespace, packet schema, direction and validation rule. A result may be projected into several layers without merging their state or semantics.
 
 ## 3. Mathematical catalog: scope and families
 
@@ -188,7 +188,7 @@ The mathematical catalog is not a competing set of ten numbered layers. It suppl
 | Namespace | Canonical meaning | Existing implementation |
 |---|---|---|
 | Language L0–L9 | evidence resolution from bit to narrative | `runner/resolution_layers.py` |
-| NANNET M0–M9 | network transformation stages | NANNET processing pipeline; audit stage contracts before changing |
+| NANNET M0–M9 | requested network/math transformation namespace | canonical registry not yet located in this repository audit |
 | Router mapping 0–9 | bit/head/address/bin/hyperedge/temporal/rule/route/provenance/meta-policy | `runner/nannet_router/macro.py` |
 | Math catalog | operation families, signatures, laws and proofs | `include/nanlm/math_catalog.hpp` plus native mathematical modules |
 
