@@ -1,0 +1,69 @@
+name: HERMES mandatory native logic and free chat
+
+on:
+  pull_request:
+    paths:
+      - "runner/hermes_free_chat.py"
+      - "tests/test_hermes_free_chat.py"
+      - "docs/83_HERMES_NATIVE_GATED_FREE_CHAT.md"
+      - ".github/workflows/hermes-free-chat-native.yml"
+  push:
+    branches: [main]
+    paths:
+      - "runner/hermes_free_chat.py"
+      - "tests/test_hermes_free_chat.py"
+      - ".github/workflows/hermes-free-chat-native.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  protocol-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify mandatory native gate and scratch-only N16REL control
+        run: python -m unittest discover -s tests -p 'test_hermes_free_chat.py' -v
+      - name: Syntax compile
+        run: python -m py_compile runner/hermes_free_chat.py
+
+  actual-native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build actual NaNLMind C++ core
+        run: make -j2 build/nanlm-universal
+      - name: Verify true native Boolean/deep-logic gate, free chat, relation teaching
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from tempfile import TemporaryDirectory
+          import sys
+          sys.path.insert(0, 'runner')
+          from hermes_free_chat import HermesFreeChat
+
+          class RecordedHermes:
+              def complete(self, messages, **kwargs):
+                  return "Hermes test response; native student results are separate."
+
+          with TemporaryDirectory() as temp:
+              session = HermesFreeChat(
+                  RecordedHermes(), core='build/nanlm-universal',
+                  state_dir=temp, slot=1, epoch=10,
+                  session_id='native-gate-smoke01')
+              gate = session.start()
+              assert gate['passed'], gate
+              reply = session.chat('What can you teach the native student?')
+              assert reply['reply'].startswith('Hermes test response')
+              result = session.teach('penguin', 'cannot', 'fly', '+', resolution=7)
+              assert result['native_training_status'] in ('updated', 'no_op'), result
+              assert not result['canonical_merge_committed'], result
+              assert session.scratch.is_file()
+              print('NATIVE HERMES FREE CHAT PASS', result['scratch_after_sha256'])
+          PY
