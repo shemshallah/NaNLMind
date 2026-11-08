@@ -41,12 +41,12 @@ def _canonical(value: Any) -> bytes:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
 
 
-def _text(value: str, label: str) -> bytes:
+def _text(value: str, label: str, maximum: int = 256) -> bytes:
     if not isinstance(value, str):
         raise NativeTrainingError(label + " must be UTF-8 text")
     raw = value.encode("utf-8")
-    if not 1 <= len(raw) <= 256 or b"\x00" in raw:
-        raise NativeTrainingError(label + " must be 1..256 UTF-8 bytes without NUL")
+    if not 1 <= len(raw) <= maximum or b"\x00" in raw:
+        raise NativeTrainingError(label + f" must be 1..{maximum} UTF-8 bytes without NUL")
     return raw
 
 
@@ -175,7 +175,7 @@ class HermesFreeChat:
     def chat(self, message: str) -> dict:
         with self._lock:
             self.start()
-            _text(message, "chat message")
+            _text(message, "chat message", maximum=8192)
             messages = [{
                 "role": "system",
                 "content": (
