@@ -10,7 +10,7 @@ and exposes the canonical runner merge boundary.
 - Canonical address form: `nan://GM0:SC0:MC0:BS0:HW0`.
 - Each GM, SC, MC, BS, and HW coordinate is an unsigned integer from 0 through 255.
 - Initial identities: HW0=NaNLMind runner ring; HW1=Android; HW2=Hermes; HW3=Clocked, all initially under GM0/SC0/MC0/BS0.
-- HW0 is the sole instantiated runnerlink universe (`HW0::BS0`); HW1 is Android, HW2 is Hermes, and HW3 is Clocked. HW4–HW8 are not instantiated. External/community universes receive HW9–HW255 through NANNET, mapping to node points 10–256.
+- **BS0:0 is the shared runner-ring NANNET port**, not a hardware node or a head. **HW0:0** is a separate hardware-node coordinate. HW0 is Bootstrap hardware, HW1 Android, HW2 HERMES, HW3 CLOCKED, **HW4 WordNet (reserved)**. HW5–HW255 are allocated by the portal (node points 6–256), until NaNROUTER takes over the authoritative allocator. BSR0–BSR5 are internal runner-ring identities under BS0:0, not reserved HW5–HW8 hardware nodes.
 - A device installation key is generated locally and stored only as a server-side keyed hash. One active lease is allowed per installation key and one installation per active HW slot. Re-registration resumes the same lease; explicit release revokes its tokens and frees the slot only after pending work is committed or rejected.
 - The issued bearer token binds the endpoint to its canonical NaN address; optional `X-NaN-Address` claims are checked against that binding.
 - MAC addresses, IMEI, serial numbers, Android IDs, phone numbers, and email addresses are not collected or used for device identity. Network MAC randomization therefore does not create a second device identity.
@@ -28,8 +28,7 @@ and exposes the canonical runner merge boundary.
 - N16T frames are relayed opaquely to one explicitly configured HTTPS peer.
 - No arbitrary URL proxy, model weights, Qwen inference, or weight-page proxy.
 
-The 256 bootstrap identities are endpoint/slot identities, not 256 separate
-models. NaNLMind's six-runner ring remains the sole canonical 256-head learner.
+The 256 HW coordinates per bootstrap are **hardware-node addresses**, not 256 local computational heads and not 256 separate learners. BS0:0 is one shared runner-ring NANNET ingress; its six workers are members, not extra HW nodes. Each hardware node can host its own isolated native universe under its own lease and does not mutate the BS0 canonical learner without explicit validation. Other bootstrap namespaces allocate HW addresses independently.
 
 Issue an endpoint token once, then deliver it to that endpoint's secret store:
 
@@ -58,7 +57,7 @@ Corpus upload uses browser SHA-256, sends bounded chunks, and seals the manifest
 
 - GET /healthz (includes Clocked gateway and enrollment readiness)
 - POST /admin/tokens (NANLM_ADMIN_TOKEN; fixed HW0–HW3 only)
-- POST /v1/devices/register (public HTTPS registration; explicit consent + bounded system report + client-generated 256-bit installation secret; assigns HW9–HW255)
+- POST /v1/devices/register (public HTTPS registration; explicit consent + bounded system report + client-generated 256-bit installation secret; assigns HW5–HW255)
 - GET /v1/devices/me (device bearer; own registration and lease)
 - POST /v1/devices/heartbeat (device bearer; renews lease)
 - POST /v1/devices/release (device bearer; revokes tokens and frees slot only after no pending uploads/observations)
@@ -248,9 +247,9 @@ request bodies.
 A clone does not receive a hard-coded identity. On first run it creates a
 random 256-bit installation secret locally and registers over HTTPS with
 explicit consent and a small system-capability report. The server assigns the
-lowest free external slot, initially HW9, then HW10, through HW255 (node points 10–256). HW0–HW3
-remain reserved for the runner ring, Android reference endpoint, Hermes, and
-Clocked.
+lowest free HW hardware-node slot, initially HW5, then HW6, through HW255 (node points 6–256). HW0–HW3
+remain reserved for Bootstrap, Android, HERMES, and CLOCKED; HW4 is reserved for WordNet.
+BS0:0 remains the shared NANNET runner-ring port. It is not HW0:0 and does not consume an HW address.
 
 The installation secret is never stored in plaintext by NANNET; only a
 pepper-HMAC digest is retained. Re-registering with the same secret resumes
