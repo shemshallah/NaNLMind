@@ -41,7 +41,7 @@ def _endpoint():
 
 
 def delegate_hermes_lease(action: str, payload: dict, installation_id: str) -> dict:
-    if action not in ("open", "resolve", "renew", "release"):
+    if action not in ("open", "resolve", "renew", "release", "dispatch", "ack"):
         raise HermesDelegationError("unsupported HERMES lease action")
     if not isinstance(payload, dict) or not isinstance(installation_id, str):
         raise HermesDelegationError("invalid delegated lease request")
@@ -59,11 +59,19 @@ def delegate_hermes_lease(action: str, payload: dict, installation_id: str) -> d
         })
     else:
         forwarded["receipt"] = payload["receipt"]
-        if action == "resolve":
+        if action in ("resolve", "dispatch", "ack"):
             forwarded["head_index"] = payload["head_index"]
+        if action in ("dispatch", "ack"):
+            forwarded["dispatch_id"] = payload["dispatch_id"]
+        if action == "dispatch":
+            forwarded["frame_hex"] = payload["frame_hex"]
+        if action == "ack":
+            forwarded["response_sha256"] = payload["response_sha256"]
         if action == "renew":
             forwarded["ttl_seconds"] = payload.get("ttl_seconds", 900)
     raw = json.dumps(forwarded, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    if len(raw) > (150000 if action == "dispatch" else 16384):
+        raise HermesDelegationError("delegated HERMES request exceeds configured bound")
     request = urllib.request.Request(
         origin + "/v1/hermes/leases/" + action, data=raw,
         headers={
@@ -75,8 +83,9 @@ def delegate_hermes_lease(action: str, payload: dict, installation_id: str) -> d
         with urllib.request.build_opener(_NoRedirect).open(request, timeout=8) as response:
             if response.status != 200 or response.headers.get_content_type() != "application/json":
                 raise HermesDelegationError("NaNROUTER returned an unsupported lease response")
-            response_raw = response.read(32769)
-            if len(response_raw) > 32768:
+            bound = 155000 if action == "dispatch" else 32768
+            response_raw = response.read(bound + 1)
+            if len(response_raw) > bound:
                 raise HermesDelegationError("NaNROUTER lease response is too large")
     except urllib.error.HTTPError as exc:
         raise HermesDelegationError("NaNROUTER rejected HERMES lease operation (HTTP " + str(exc.code) + ")") from None
