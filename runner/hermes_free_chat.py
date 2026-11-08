@@ -244,6 +244,35 @@ class HermesFreeChat:
                 "native_output_sha256": hashlib.sha256((proc.stdout or "").encode()).hexdigest(),
                 "canonical_merge_committed": False,
             }
+            # Return the native student's measured result to HERMES for
+            # reflection. The response is conversational evidence, not an
+            # authorized merge or an additional native training signal.
+            try:
+                feedback = self.model.complete([
+                    {"role": "system", "content": (
+                        "You are HERMES. Reflect on NaNLMind's actual native "
+                        "scratch training status. Never claim canonical merge, "
+                        "mathematical proof or conversational fluency from a hash."
+                    )},
+                    {"role": "user", "content": json.dumps({
+                        "subject": subject, "predicate": predicate,
+                        "object": obj, "polarity": polarity,
+                        "resolution": resolution, "native_evidence": evidence,
+                        "task": "Interpret the result and suggest a measurable next experiment."
+                    }, sort_keys=True)},
+                ], temperature=0.2, max_tokens=400)
+                if isinstance(feedback, str) and feedback.strip():
+                    evidence["hermes_reflection"] = feedback.strip()[:2000]
+                    self._history.extend([
+                        {"role": "user", "content": (
+                            f"Teach: {subject} {predicate} {obj} ({polarity})"
+                        )},
+                        {"role": "assistant", "content": evidence["hermes_reflection"]},
+                    ])
+            except Exception:
+                # A model outage cannot erase already committed native scratch
+                # state; return evidence, do not claim a reflection occurred.
+                evidence["hermes_reflection_unavailable"] = True
             entry = self._record("native_relation_teach", evidence)
             return {**evidence, "tick": entry["tick"],
                     "transcript_sha256": entry["sha256"],
