@@ -41,7 +41,7 @@ def _endpoint():
 
 
 def delegate_hermes_lease(action: str, payload: dict, installation_id: str, installation_public_key: str | None = None) -> dict:
-    if action not in ("open", "resolve", "renew", "release", "dispatch", "ack", "inspect"):
+    if action not in ("open", "resolve", "renew", "release", "dispatch", "ack", "inspect", "math"):
         raise HermesDelegationError("unsupported HERMES lease action")
     if not isinstance(payload, dict) or not isinstance(installation_id, str):
         raise HermesDelegationError("invalid delegated lease request")
@@ -59,12 +59,16 @@ def delegate_hermes_lease(action: str, payload: dict, installation_id: str, inst
         })
     else:
         forwarded["receipt"] = payload["receipt"]
-        if action in ("resolve", "dispatch", "ack", "inspect"):
+        if action in ("resolve", "dispatch", "ack", "inspect", "math"):
             forwarded["head_index"] = payload["head_index"]
         if action in ("dispatch", "ack", "inspect"):
             forwarded["dispatch_id"] = payload["dispatch_id"]
         if action == "dispatch":
             forwarded["frame_hex"] = payload["frame_hex"]
+        if action == "math":
+            forwarded["kernel_id"] = payload["kernel_id"]
+            forwarded["a"] = payload["a"]
+            forwarded["b"] = payload["b"]
         if action == "ack":
             forwarded["response_sha256"] = payload["response_sha256"]
         if action == "renew":
