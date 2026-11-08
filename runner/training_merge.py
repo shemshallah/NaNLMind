@@ -518,7 +518,9 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                         'signature': self.headers.get('X-NANNET-Signature', ''),
                     })
                     authority.consume_nan16de_nonce('hermes-lease:' + identity, nonce, int(time.time()))
-                    result = delegate_hermes_lease(action, payload, identity)
+                    result = delegate_hermes_lease(
+                        action, payload, identity,
+                        installation_public_key=authority.public_key_for(identity))
                     self._json(HTTPStatus.OK, result)
                 except HermesDelegationError as exc:
                     self._json(HTTPStatus.SERVICE_UNAVAILABLE, {'error': str(exc)[:160]})
