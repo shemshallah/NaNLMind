@@ -1,0 +1,49 @@
+name: Three-repo HERMES signed NANNET lease handshake
+
+on:
+  pull_request:
+    paths:
+      - "runner/training_merge.py"
+      - "runner/hermes_router_delegate.py"
+      - "nanlmind_nannet/auth.py"
+      - "integration/hermes_cross_repo_smoke.py"
+      - ".github/workflows/hermes-cross-repo-smoke.yml"
+  push:
+    paths:
+      - "runner/training_merge.py"
+      - "runner/hermes_router_delegate.py"
+      - "nanlmind_nannet/auth.py"
+      - "integration/hermes_cross_repo_smoke.py"
+      - ".github/workflows/hermes-cross-repo-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  signed-three-repo-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout NANNET portal
+        uses: actions/checkout@v4
+      - name: Checkout NaNROUTER integration branch
+        uses: actions/checkout@v4
+        with:
+          repository: shemshallah/NaNROUTER
+          ref: feat/hermes-per-lease-nannet-ingress
+          path: nanrouter
+      - name: Checkout NaNLMind HERMES integration branch
+        uses: actions/checkout@v4
+        with:
+          repository: shemshallah/NaNLMind_HERMES
+          ref: feat/hermes-per-lease-nan16de-universe
+          path: nanhermes
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install HERMES signature crypto
+        run: python -m pip install "cryptography>=42,<47"
+      - name: End-to-end signed HERMES lease handshake with disposable servers
+        env:
+          PYTHONPATH: ".:nanrouter:nanhermes"
+        run: python -m unittest discover -s integration -p "hermes_cross_repo_smoke.py" -v
