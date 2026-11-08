@@ -125,7 +125,7 @@ class EndToEndTests(unittest.TestCase):
         resolved = hermes.resolve(self.ctx, "alpha", 254)
         self.assertTrue(resolved["admitted"])
         self.assertEqual(resolved["universe_id"], first["universe_id"])
-        self.assertFalse(resolved["execution_committed"])
+        self.assertEqual(resolved["execution_committed"], bool(self.native_enabled))
         with self.assertRaises(hermes.UniverseLeaseError):
             hermes.resolve(self.ctx, "alpha", 255)
         renew = hermes.renew(self.ctx, "alpha")
