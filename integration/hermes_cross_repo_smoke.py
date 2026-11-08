@@ -104,6 +104,7 @@ class EndToEndTests(unittest.TestCase):
         auth_tools.auth_init(self.ctx)
         code = authority.create_pairing_code(
             ["universe:read", "hermes:lease"], role="guest")
+        self.authority = authority
         self.paired = auth_tools.auth_pair(self.ctx, code["pairing_code"])
         self.assertTrue(self.paired["paired"])
 
@@ -137,6 +138,29 @@ class EndToEndTests(unittest.TestCase):
         self.assertTrue(hermes.resolve(self.ctx, "beta", 0)["admitted"])
         self.assertTrue(hermes.release(self.ctx, "beta")["released"])
         self.assertFalse(hermes.status(self.ctx)["leases"])
+
+    def test_distinct_paired_public_keys_receive_hw2_then_hw5(self):
+        original = hermes.open_universe(self.ctx, "original")
+        self.assertEqual(original["node_point"], 3)  # HW2 -> NANNET point 3
+        second_ctx = Context({
+            "state_dir": str(Path(self.temp.name) / "second-hermes"),
+            "nannet_auth_url": self.ctx.config["nannet_auth_url"],
+            "nannet_issuer_public_key": self.ctx.config["nannet_issuer_public_key"],
+        })
+        auth_tools.auth_init(second_ctx)
+        code = self.authority.create_pairing_code(
+            ["universe:read", "hermes:lease"], role="guest")
+        new_pair = auth_tools.auth_pair(second_ctx, code["pairing_code"])
+        self.assertNotEqual(new_pair["installation_id"], self.paired["installation_id"])
+        second = hermes.open_universe(second_ctx, "second")
+        self.assertEqual(second["node_point"], 6)  # first on-demand HW5
+        self.assertNotEqual(second["universe_id"], original["universe_id"])
+        self.assertTrue(hermes.resolve(second_ctx, "second", 254)["admitted"])
+        self.assertTrue(hermes.resolve(self.ctx, "original", 0)["admitted"])
+        with self.assertRaises(hermes.UniverseLeaseError):
+            hermes.resolve(second_ctx, "second", 255)
+        self.assertTrue(hermes.release(second_ctx, "second")["released"])
+        self.assertTrue(hermes.release(self.ctx, "original")["released"])
 
     def test_real_signed_native_n16t_dispatch_and_ack(self):
         if not self.native_enabled:
