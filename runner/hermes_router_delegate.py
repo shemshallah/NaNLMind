@@ -40,7 +40,7 @@ def _endpoint():
     return raw, token
 
 
-def delegate_hermes_lease(action: str, payload: dict, installation_id: str) -> dict:
+def delegate_hermes_lease(action: str, payload: dict, installation_id: str, installation_public_key: str | None = None) -> dict:
     if action not in ("open", "resolve", "renew", "release", "dispatch", "ack", "inspect"):
         raise HermesDelegationError("unsupported HERMES lease action")
     if not isinstance(payload, dict) or not isinstance(installation_id, str):
@@ -53,9 +53,9 @@ def delegate_hermes_lease(action: str, payload: dict, installation_id: str) -> d
         forwarded.update({
             "request_id": payload["request_id"],
             "ttl_seconds": payload.get("ttl_seconds", 900),
-            # HERMES is the reserved HW2 endpoint, point 3. NEVER
-            # forward a client-provided node point or installation ID.
-            "node_point": 3,
+            # NaNROUTER (not the untrusted guest) assigns HW2 to the first
+            # paired HERMES keypair and HW5..255 to further installations.
+            "installation_public_key": installation_public_key,
         })
     else:
         forwarded["receipt"] = payload["receipt"]
