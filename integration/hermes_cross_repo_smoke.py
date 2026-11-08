@@ -162,6 +162,25 @@ class EndToEndTests(unittest.TestCase):
         self.assertTrue(hermes.release(second_ctx, "second")["released"])
         self.assertTrue(hermes.release(self.ctx, "original")["released"])
 
+    def test_signed_hardware_bound_native_mth_execution(self):
+        if not self.native_enabled:
+            self.skipTest("source-pinned NaN0S C VM is required")
+        first = hermes.open_universe(self.ctx, "math")
+        self.assertEqual(first["node_point"], 3)
+        added = hermes.math_u32(
+            self.ctx, "math", 0, "mth.u32.add_checked", 7, 9)
+        self.assertEqual(added["result_u32"], 16)
+        self.assertTrue(added["exact"])
+        self.assertTrue(added["native_nan16_execution"])
+        self.assertFalse(added["model_training_committed"])
+        underflow = hermes.math_u32(
+            self.ctx, "math", 254, "mth.u32.sub_checked", 9, 12)
+        self.assertFalse(underflow["exact"])
+        self.assertEqual(underflow["result_u32"], 0)
+        self.assertTrue(hermes.release(self.ctx, "math")["released"])
+        with self.assertRaises(hermes.UniverseLeaseError):
+            hermes.math_u32(self.ctx, "math", 0, "mth.u32.add_checked", 7, 9)
+
     def test_real_signed_native_n16t_dispatch_and_ack(self):
         if not self.native_enabled:
             self.skipTest("real pinned VM images not configured")
