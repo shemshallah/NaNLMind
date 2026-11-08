@@ -137,6 +137,11 @@ def verify_router_runner_family(root: Path, scan: dict) -> dict:
 def normalize_cpu_workflow(text: str, number: int) -> str:
     slot_value = f'        default: "{number}"'
     bootstrap_value = f'  NANNET_BOOTSTRAP_SLOT: "{number - 1}"'
+    endpoint_var = f"BSR{number - 1}_PORTAL_API"
+    endpoint_lines = (
+        f"  {endpoint_var}: ${{{{ vars.{endpoint_var} }}}}",
+        f"  NANNET_PORTAL_API: ${{{{ vars.{endpoint_var} }}}}",
+    )
     # Only the designated input slot and bootstrap slot may vary. Requiring
     # exact anchors avoids accidentally masking unrelated workflow changes.
     marker = "        description: runner slot 1..6\n        type: string\n"
@@ -144,8 +149,12 @@ def normalize_cpu_workflow(text: str, number: int) -> str:
         raise DriftError(f"CPU-{number} workflow slot input mismatch")
     if text.count(bootstrap_value) != 1:
         raise DriftError(f"CPU-{number} bootstrap slot mismatch")
+    if any(text.count(line) != 1 for line in endpoint_lines):
+        raise DriftError(f"CPU-{number} assigned portal endpoint mismatch")
     return (text.replace(marker + slot_value, marker + '        default: "<slot>"', 1)
-            .replace(bootstrap_value, '  NANNET_BOOTSTRAP_SLOT: "<bootstrap>"', 1))
+            .replace(bootstrap_value, '  NANNET_BOOTSTRAP_SLOT: "<bootstrap>"', 1)
+            .replace(endpoint_lines[0], '  <slot>_PORTAL_API: <portal>', 1)
+            .replace(endpoint_lines[1], '  NANNET_PORTAL_API: <portal>', 1))
 
 
 def verify_cpu_worker_family(root: Path, scan: dict) -> dict:
@@ -169,7 +178,9 @@ def verify_cpu_worker_family(root: Path, scan: dict) -> dict:
     return {"status": "PASS" if not errors else "FAIL", "workers": 6,
             "permitted_workflow_differences": (
                 "workflow_dispatch.inputs.slot.default",
-                "env.NANNET_BOOTSTRAP_SLOT"), "errors": sorted(errors)}
+                "env.NANNET_BOOTSTRAP_SLOT",
+                "env.BSRn_PORTAL_API",
+                "env.NANNET_PORTAL_API"), "errors": sorted(errors)}
 
 
 def verify_exact_contracts(scan: dict) -> dict:
