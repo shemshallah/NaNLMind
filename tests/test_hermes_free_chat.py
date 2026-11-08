@@ -87,13 +87,14 @@ class NativeGatedChatTests(unittest.TestCase):
         base.write_bytes(b"canonical-original")
         self.chat.base_state = base
         self.chat.start()
+        scratch_before = self.chat.scratch.read_bytes()
         result = self.chat.teach(
             "penguin", "cannot", "fly", "+", resolution=7)
         self.assertEqual(result["native_training_status"], "updated")
         self.assertFalse(result["canonical_merge_committed"])
         self.assertEqual(base.read_bytes(), b"canonical-original")
         self.assertEqual(self.chat.scratch.read_bytes(),
-                         b"canonical-originalnew-teaching")
+                         scratch_before + b"new-teaching")
         record = next(self.chat.directory.glob("teach_*.n16rel"))
         line = record.read_text().splitlines()[1]
         parts = line.split("\t")
