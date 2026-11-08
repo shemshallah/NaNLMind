@@ -241,7 +241,7 @@ def audit(root: Path, *, output: Path | None = None) -> dict:
     collisions = observed_source_collisions(scan)
     failures = runner["errors"] + cpu["errors"] + [
         v["left"] + " != " + v["right"]
-        for v in contracts["contracts"] if v["status"] != "PASS"]
+        for v in contracts["contracts"] if v["status"] != "PASS"
     ]
     report = {
         "schema": "nanlm.cross-repository-source-audit/1",
