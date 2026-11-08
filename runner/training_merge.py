@@ -26,7 +26,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
-from nanlmind_nannet.auth import AuthError, _unb64, issue_token
+from nanlmind_nannet.auth import AuthError, _unb64, issue_token, verify_request
+from runner.hermes_router_delegate import HermesDelegationError, delegate_hermes_lease
 from nanlmind_nannet.pairing import PairingAuthority
 from nanlmind_nannet.devices import DeviceRegistry
 from nanlmind_nannet.nan16de import decode_envelope
@@ -478,6 +479,54 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
             return header[7:] if header.startswith('Bearer ') else ''
         def do_POST(self) -> None:
             path = self.path.split('?', 1)[0].rstrip('/') or '/'
+            if path.startswith('/v1/hermes/leases/'):
+                # Only explicitly scoped, signed NANNET installations can ask
+                # this portal to delegate a lease to the separate BS0:0 router.
+                if authority is None:
+                    self._json(HTTPStatus.SERVICE_UNAVAILABLE, {'error': 'NANNET authority disabled'}); return
+                action = path.removeprefix('/v1/hermes/leases/')
+                if self.path != path or action not in ('open', 'renew', 'resolve', 'release'):
+                    self._json(HTTPStatus.NOT_FOUND, {'error': 'unknown HERMES lease action'}); return
+                try:
+                    claims = authority.verify_access_token(
+                        self._bearer(), required_scope='hermes:lease')
+                    content_type = self.headers.get('Content-Type', '').split(';', 1)[0].strip()
+                    if content_type != 'application/json' or self.headers.get('Transfer-Encoding'):
+                        raise ValueError('bounded application/json body required')
+                    lengths = self.headers.get_all('Content-Length', [])
+                    if len(lengths) != 1 or not lengths[0].isdigit():
+                        raise ValueError('exactly one numeric Content-Length is required')
+                    size = int(lengths[0])
+                    if not 1 <= size <= 16384:
+                        raise ValueError('HERMES lease body is too large or empty')
+                    raw = self.rfile.read(size)
+                    if len(raw) != size:
+                        raise ValueError('truncated HERMES lease request')
+                    payload = json.loads(raw.decode('utf-8'))
+                    if not isinstance(payload, dict):
+                        raise ValueError('HERMES lease request must be a JSON object')
+                    stamp = self.headers.get('X-NANNET-Timestamp', '')
+                    if not stamp.isascii() or not stamp.isdigit():
+                        raise AuthError('invalid NANNET request timestamp')
+                    identity = claims['sub']
+                    public = Ed25519PublicKey.from_public_bytes(
+                        _unb64(authority.public_key_for(identity)))
+                    nonce = verify_request(public, 'POST', path, raw, {
+                        'timestamp': int(stamp),
+                        'nonce': self.headers.get('X-NANNET-Nonce', ''),
+                        'body_sha256': self.headers.get('X-NANNET-Body-SHA256', ''),
+                        'signature': self.headers.get('X-NANNET-Signature', ''),
+                    })
+                    authority.consume_nan16de_nonce('hermes-lease:' + identity, nonce, int(time.time()))
+                    result = delegate_hermes_lease(action, payload, identity)
+                    self._json(HTTPStatus.OK, result)
+                except HermesDelegationError as exc:
+                    self._json(HTTPStatus.SERVICE_UNAVAILABLE, {'error': str(exc)[:160]})
+                except (AuthError, KeyError) as exc:
+                    self._json(HTTPStatus.UNAUTHORIZED, {'error': str(exc)[:160]})
+                except (ValueError, TypeError, UnicodeError) as exc:
+                    self._json(HTTPStatus.BAD_REQUEST, {'error': str(exc)[:160]})
+                return
             if path == '/v1/riddle' or path.startswith('/v1/riddle/'):
                 self._proxy_router(); return
             if path in ('/admin/tokens', '/v1/experience', '/v1/tasks', '/v1/observations', '/internal/observations', '/internal/observations/ack'):
