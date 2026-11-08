@@ -22,6 +22,7 @@ from nanlmind_nannet.pairing import PairingAuthority
 from runner_riddle.http_service import RiddleService, make_handler
 from nanlmind_hermes import auth_tools
 from nanlmind_hermes import router_universe_client as hermes
+from runner_riddle.n16t_guest import (_NaN16GuestVM, REQUEST_BASE, RESPONSE_PAYLOAD_BASE, SESSION_BASE)
 
 
 def encoded(raw: bytes) -> str:
@@ -63,6 +64,10 @@ class EndToEndTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         root = Path(self.temp.name)
         delegation = "delegate-" + secrets.token_urlsafe(32)
+        self.native_enabled = all(os.environ.get(k) for k in (
+            "NAN16_LIBRARY", "HERMES_GUEST_IMAGE", "HERMES_GUEST_LABELS",
+            "RIDDLE_HERMES_NATIVE_LIBRARY_SHA256", "RIDDLE_HERMES_NATIVE_IMAGE_SHA256",
+            "N16T_GUEST_IMAGE", "N16T_GUEST_LABELS"))
         env = patch.dict(os.environ, {
             "RIDDLE_DATA_DIR": str(root / "router"),
             "RIDDLE_INTAKE_TOKEN": secrets.token_urlsafe(32),
@@ -71,6 +76,8 @@ class EndToEndTests(unittest.TestCase):
             "RIDDLE_HERMES_DELEGATION_TOKEN": delegation,
             "RIDDLE_HERMES_RECEIPT_HMAC_KEY": secrets.token_urlsafe(48),
             "NANNET_HERMES_DELEGATION_TOKEN": delegation,
+            **({"RIDDLE_N16T_SUBMIT_TOKEN": secrets.token_urlsafe(32)}
+               if self.native_enabled else {}),
         })
         env.start()
         self.addCleanup(env.stop)
@@ -130,6 +137,47 @@ class EndToEndTests(unittest.TestCase):
         self.assertTrue(hermes.resolve(self.ctx, "beta", 0)["admitted"])
         self.assertTrue(hermes.release(self.ctx, "beta")["released"])
         self.assertFalse(hermes.status(self.ctx)["leases"])
+
+    def test_real_signed_native_n16t_dispatch_and_ack(self):
+        if not self.native_enabled:
+            self.skipTest("real pinned VM images not configured")
+        opened = hermes.open_universe(self.ctx, "native")
+        route = hermes.resolve(self.ctx, "native", 254)
+        self.assertTrue(route["native_guest_activated"])
+        self.assertTrue(route["execution_committed"])
+        client = _NaN16GuestVM(
+            os.environ["NAN16_LIBRARY"],
+            os.environ["N16T_GUEST_IMAGE"],
+            os.environ["N16T_GUEST_LABELS"])
+        try:
+            client.write_bytes(SESSION_BASE, bytes(range(1, 17)))
+            client.write_bytes(RESPONSE_PAYLOAD_BASE, b"\\x01\\x00")
+            client.call("n16_android_build", {
+                1: REQUEST_BASE, 2: 1, 4: RESPONSE_PAYLOAD_BASE,
+                5: 2, 6: SESSION_BASE})
+            self.assertEqual(client.reg(3), 0)
+            frame = client.read_bytes(REQUEST_BASE, client.reg(1))
+            client.call("n16_android_advance")
+            sent = hermes.dispatch(
+                self.ctx, "native", 254, "three-repo-dispatch-000001", frame.hex())
+            self.assertTrue(sent["native_guest_route_admitted"])
+            self.assertTrue(sent["n16t_native_guest_exchange"])
+            self.assertFalse(sent["model_training_committed"])
+            self.assertFalse(sent["acknowledged"])
+            repeated = hermes.dispatch(
+                self.ctx, "native", 254, "three-repo-dispatch-000001", frame.hex())
+            self.assertTrue(repeated["replayed_from_journal"])
+            self.assertEqual(sent["response_sha256"], repeated["response_sha256"])
+            acked = hermes.acknowledge(
+                self.ctx, "native", 254, "three-repo-dispatch-000001",
+                sent["response_sha256"])
+            self.assertTrue(acked["acknowledged"])
+            with self.assertRaises(hermes.UniverseLeaseError):
+                hermes.acknowledge(
+                    self.ctx, "native", 254, "three-repo-dispatch-000001", "0" * 64)
+        finally:
+            client.close()
+        self.assertTrue(hermes.release(self.ctx, "native")["released"])
 
     def test_authority_revocation_denies_new_router_operation(self):
         first = hermes.open_universe(self.ctx, "alpha")
