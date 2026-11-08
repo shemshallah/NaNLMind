@@ -1,0 +1,36 @@
+name: HERMES portal lease delegation checks
+
+on:
+  pull_request:
+    paths:
+      - "runner/hermes_router_delegate.py"
+      - "runner/training_merge.py"
+      - "nanlmind_nannet/auth.py"
+      - "tests/test_hermes_router_delegation.py"
+      - ".github/workflows/hermes-router-delegation.yml"
+  push:
+    paths:
+      - "runner/hermes_router_delegate.py"
+      - "runner/training_merge.py"
+      - "nanlmind_nannet/auth.py"
+      - "tests/test_hermes_router_delegation.py"
+      - ".github/workflows/hermes-router-delegation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  portal-delegation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile portal and delegation adapter
+        run: python -m py_compile runner/training_merge.py runner/hermes_router_delegate.py nanlmind_nannet/auth.py
+      - name: Signed HERMES portal request and delegation tests
+        run: python -m unittest discover -s tests -p "test_hermes_router_delegation.py" -v
+      - name: Existing NANNET portal regression
+        run: python -m unittest discover -s tests -p "test_training_merge.py" -v

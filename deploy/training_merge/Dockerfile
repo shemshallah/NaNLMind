@@ -16,6 +16,7 @@ FROM python:3.12-slim
 WORKDIR /app
 RUN pip install --no-cache-dir cryptography 'clocked-sdk==0.7.0'
 COPY runner/training_merge.py /app/training_merge.py
+COPY runner/hermes_router_delegate.py /app/runner/hermes_router_delegate.py
 COPY runner/head_cortex_service.py /app/head_cortex_service.py
 COPY runner/nannet_router /app/nannet_router
 COPY runner/nannet_clocked /app/nannet_clocked

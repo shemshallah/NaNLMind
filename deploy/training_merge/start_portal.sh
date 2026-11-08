@@ -34,6 +34,14 @@ PY
     fi
 done
 
+# Optional HERMES outbound delegation is a separate private router service.
+# Do not turn a missing upstream secret into a silent metadata-only fallback.
+# The existing NANNET pairing DB remains the *only* public issuer/writer.
+if [ -n "${NANNET_HERMES_ROUTER_URL:-}" ] || [ -n "${NANNET_HERMES_DELEGATION_TOKEN:-}" ]; then
+    : "${NANNET_HERMES_ROUTER_URL:?verified private NaNROUTER URL required}"
+    : "${NANNET_HERMES_DELEGATION_TOKEN:?private HERMES router bearer required}"
+fi
+
 # Write the signed registry even while tier volumes are being attached. The
 # registry reports degraded mounts honestly; heartbeats still acknowledge the
 # generation/digest and become green when the canonical mounts are present.
