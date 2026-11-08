@@ -30,13 +30,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: shemshallah/NaNROUTER
-          ref: feat/hermes-n16t-tenant-session-recovery
+          ref: main
           path: nanrouter
       - name: Checkout NaNLMind HERMES integration branch
         uses: actions/checkout@v4
         with:
           repository: shemshallah/NaNLMind_HERMES
-          ref: feat/hermes-n16t-dispatch-recovery-plugin
+          ref: main
           path: nanhermes
       - name: Checkout source-pinned NaN0S real guest core
         uses: actions/checkout@v4
