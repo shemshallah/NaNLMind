@@ -91,15 +91,33 @@ class NannetTests(unittest.TestCase):
  def test_device_registration_allocates_exclusive_first_available_slots_and_resumes(self):
   secret="A"*43
   status,first=self.register_device(secret)
-  self.assertEqual(status,201);self.assertEqual(first["address"],"nan://GM0:SC0:MC0:BS0:HW9")
-  self.assertEqual(first["node_point"],10);self.assertEqual(first["head_count"],256)
+  self.assertEqual(status,201);self.assertEqual(first["address"],"nan://GM0:SC0:MC0:BS0:HW5")
+  self.assertEqual(first["node_point"],6);self.assertEqual(first["head_count"],256)
   status,again=self.register_device(secret)
   self.assertEqual(status,201);self.assertEqual(again["device_id"],first["device_id"])
   self.assertEqual(again["address"],first["address"]);self.assertNotEqual(again["token"],first["token"])
   self.assertEqual(self.req("GET","/v1/devices/me",token=first["token"])[0],401)
   status,second=self.register_device("B"*43)
-  self.assertEqual(status,201);self.assertEqual(second["address"],"nan://GM0:SC0:MC0:BS0:HW10")
+  self.assertEqual(status,201);self.assertEqual(second["address"],"nan://GM0:SC0:MC0:BS0:HW6")
   self.assertNotEqual(first["device_id"],second["device_id"])
+ def test_bs0_hw4_wordnet_reservation_never_allocated(self):
+  status,first=self.register_device("V"*43)
+  self.assertEqual(status,201)
+  self.assertEqual(first["coordinates"]["hw"],5)
+  self.assertEqual(first["node_point"],6)
+  self.assertEqual(self.req("POST","/admin/tokens",{"address":"nan://GM0:SC0:MC0:BS0:HW4","scopes":["intake"]},token="a"*48)[0],400)
+  db=server.connect()
+  try:
+   # A pre-policy HW4 lease must be explicitly and safely migrated;
+   # it cannot silently resume or take WordNet's address.
+   db.execute("UPDATE device_leases SET address=? WHERE lease_id=?",("nan://GM0:SC0:MC0:BS0:HW4",first["lease_id"]))
+   db.execute("UPDATE tokens SET endpoint_id=? WHERE owner_device_id=?",("nan://GM0:SC0:MC0:BS0:HW4",first["device_id"]))
+   db.commit()
+  finally:db.close()
+  self.assertEqual(self.req("GET","/v1/address",token=first["token"])[0],401)
+  code,body=self.register_device("V"*43)
+  self.assertEqual(code,409)
+  self.assertEqual(body["error"],"reserved_hw_slot_requires_safe_migration")
  def test_expired_device_lease_cannot_use_routes_but_can_renew(self):
   status,device=self.register_device("Q"*43);self.assertEqual(status,201)
   db=server.connect()
@@ -159,7 +177,7 @@ class NannetTests(unittest.TestCase):
   payload["consent"]=True;payload["system_report"]["mac_address"]="aa:bb:cc:dd:ee:ff"
   self.assertEqual(self.req("POST","/v1/devices/register",payload)[0],400)
  def test_dynamic_node_slots_cannot_be_admin_token_bypassed(self):
-  self.assertEqual(self.req("POST","/admin/tokens",{"address":"nan://GM0:SC0:MC0:BS0:HW8","scopes":["intake"]},token="a"*48)[0],400)
+  self.assertEqual(self.req("POST","/admin/tokens",{"address":"nan://GM0:SC0:MC0:BS0:HW5","scopes":["intake"]},token="a"*48)[0],400)
   token=self.issue("nan://GM0:SC0:MC0:BS0:HW1",["intake"])
   self.assertEqual(self.req("GET","/v1/address",token=token)[0],200)
 
