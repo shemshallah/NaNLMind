@@ -11,7 +11,7 @@
 >
 > — Nanny, IEEE Keep It Real Committee
 
-NaNLMind is a research repository for a single, address-derived computational state space built from NaN16 words. The 16-bit address space is treated as a 256 x 256 matrix. Bit reversal is transposition. Every unordered pair of the 256 palindromic addresses is one canonical cell with two temporal rails. The 256 palindromic addresses themselves are the heads — all of them, none reserved.
+NaNLMind is a research repository for a single, address-derived computational state space built from NaN16 words. The 16-bit address space is treated as a 256 x 256 matrix. Bit reversal is transposition. Every unordered pair of the 256 palindromic addresses is one canonical cell with two temporal rails. All 256 palindromic fixed points are structural heads, and none is removed from the topology. A separate, versioned runtime role/authorization overlay determines which head indices may propose mirror bindings or join a training curriculum; physical existence does not grant write authority.
 
 This repository contains:
 
@@ -58,6 +58,12 @@ The 4 types in the two faces give a 4-bit class nibble, and that nibble is one o
 Do not confuse the four NaN head classes with the four **transform images** `I, B, BR, R`. The transform oscillator and its orbit counts are in [docs/15_PHASE_SCHEDULING.md](docs/15_PHASE_SCHEDULING.md).
 
 ---
+
+## Physical heads versus control and curriculum roles
+
+The 256 palindrome heads, 255 non-root MP-binding-eligible indices, and 250 Boolean-curriculum indices are **different views of the same topology**, not different minds, additional 8 MiB charts, or contradictory cell counts. In the current NaNROUTER control-plane role map, local head index `0` is the NANNET/root head; indices `0,4,5,6,7,8` serve six internal BSR control roles, so those six are excluded from the 250-head general curriculum. Head indices `1..255` remain eligible to propose MP microtable writes under the existing MathStore/NANNET authorization rules, including the five non-root BSR heads; that eligibility is **not** a permission grant.
+
+Local palindrome **head indices** are also distinct from global HW node points, e.g. `HW0:0` and `HW5:0`, and from the `BS0:0` ring port. No BSR slot acquires an extra global HW node or creates an independent model. See the [NaNROUTER head-role contract](https://github.com/shemshallah/NaNROUTER/blob/main/docs/HEAD_ROLE_NAMESPACE_CONTRACT.md) and [BS0 hardware namespace contract](https://github.com/shemshallah/NaNROUTER/blob/main/docs/BS0_HARDWARE_SLOT_CONTRACT.md). The role contract is read-only and does not modify native MTH or learning authority.
 
 ## One global topology
 
