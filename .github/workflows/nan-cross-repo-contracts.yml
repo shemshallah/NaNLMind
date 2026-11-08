@@ -1,0 +1,55 @@
+name: NaN cross-repository contract drift
+on:
+  pull_request:
+    paths:
+      - 'integration/cross_repo_drift.py'
+      - 'tests/test_cross_repo_drift.py'
+      - '.github/workflows/nan-cross-repo-contracts.yml'
+  push:
+    paths:
+      - 'integration/cross_repo_drift.py'
+      - 'tests/test_cross_repo_drift.py'
+      - '.github/workflows/nan-cross-repo-contracts.yml'
+  workflow_dispatch:
+  schedule:
+    - cron: '17 9 * * *'
+permissions:
+  contents: read
+jobs:
+  all-24-repos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify negative drift detectors
+        run: python -m unittest discover -s tests -p 'test_cross_repo_drift.py' -v
+      - name: Fetch all populated NaN repositories at their current main heads
+        env:
+          GIT_TERMINAL_PROMPT: '0'
+        run: |
+          python - <<'PY' > nan-repository-list.txt
+          from integration.cross_repo_drift import REPOSITORIES, EXPECTED_EMPTY
+          print('\n'.join(r for r in REPOSITORIES if r not in EXPECTED_EMPTY))
+          PY
+          mkdir -p _nan_audit_repos
+          while IFS= read -r repo; do
+            test -n "$repo" || continue
+            echo "Checking $repo at its current main commit"
+            git -c protocol.version=2 clone --quiet --depth=1 \
+              "https://github.com/shemshallah/$repo.git" "_nan_audit_repos/$repo"
+          done < nan-repository-list.txt
+      - name: Audit 24 repository identities and exact shared contracts
+        run: |
+          python integration/cross_repo_drift.py \
+            --root _nan_audit_repos --output nan-cross-repo-audit.json
+      - name: Upload source manifest and all shared-path collisions
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nan-cross-repo-audit
+          path: nan-cross-repo-audit.json
+          if-no-files-found: warn
+          retention-days: 30
