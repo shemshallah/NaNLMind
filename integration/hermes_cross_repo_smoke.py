@@ -151,7 +151,7 @@ class EndToEndTests(unittest.TestCase):
             os.environ["N16T_GUEST_LABELS"])
         try:
             client.write_bytes(SESSION_BASE, bytes(range(1, 17)))
-            client.write_bytes(RESPONSE_PAYLOAD_BASE, b"\\x01\\x00")
+            client.write_bytes(RESPONSE_PAYLOAD_BASE, b"\x01\x00")
             client.call("n16_android_build", {
                 1: REQUEST_BASE, 2: 1, 4: RESPONSE_PAYLOAD_BASE,
                 5: 2, 6: SESSION_BASE})
