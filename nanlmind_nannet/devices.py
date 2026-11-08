@@ -91,10 +91,9 @@ class DeviceRegistry:
                 db.execute("INSERT INTO devices VALUES (?,?,?,?,?)",
                            (device_id, secret_hash, now, now, hardware_kind))
             used = {r[0] for r in db.execute("SELECT hw_slot FROM device_leases WHERE hw_slot IS NOT NULL AND released_at IS NULL AND expires_at>?", (now,))}
-            # HW2 is the Hermes demo slot, HW3 is reserved for Clocked.
-            # Android/test devices never claim either reserved slot.
-            candidates = ([2] + list(range(4, 256))
-                          if hardware_kind == "hermes" else list(range(4, 256)))
+            # BS0 is shared; HW0-HW3 are fixed hardware endpoints and
+            # HW4 is reserved for WordNet. All new device leases use HW5+.
+            candidates = list(range(5, 256))
             slot = next((n for n in candidates if n not in used), None)
             if slot is None:
                 raise ValueError("no hardware slots currently available")
@@ -120,6 +119,8 @@ class DeviceRegistry:
             WHERE l.token_hash=? AND l.released_at IS NULL AND l.expires_at>?""", (_digest(token), now)).fetchone()
         if not row:
             raise ValueError("device token invalid, expired, or released")
+        if not isinstance(row["hw_slot"], int) or row["hw_slot"] < 5:
+            raise ValueError("reserved hardware slot requires safe migration")
         if self.authority is not None:
             try:
                 claims = self.authority.verify_access_token(token[4:], required_scope="training:execute", now=now)
