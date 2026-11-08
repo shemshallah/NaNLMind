@@ -50,3 +50,25 @@ See `integration/hermes_cross_repo_smoke.py` and
 Live deployment and public ingress cutover require the private Koyeb service
 account, matching secrets, persistent volume, DNS/TLS validation and existing
 issuer continuity; GitHub code changes and CI are not a live deployment.
+
+### Recovery-safe native HERMES N16T inspect
+
+The paired `hermes:lease` principal may now call signed
+`POST /v1/hermes/leases/inspect`, with no new authority or public token.
+The portal checks the same Ed25519 method/path/body signature, timestamp,
+nonce, installation ID and scoped bearer as the original dispatch. The
+private NaNROUTER confirms the receipt is live and the journal entry belongs
+to the requested lease, generation and head. Inspection does **not**
+invoke NaN16 or retry an ambiguous operation.
+
+The four possible router states are `not_recorded`,
+`pending_or_ambiguous`, `completed`, and `acknowledged`. For completed
+work, the response bytes and digest can be recovered under the same identity.
+The HERMES client checks the digest again. Retrying a pending/ambiguous
+operation is forbidden; these may already have been executed before a crash.
+The independent HERMES native N16T guest pool uses a durable replay cursor
+and a distinct store from the generic `/n16t` peer.
+
+Three-repo CI now verifies that a second universe on the same physical
+HW2 node cannot hijack the original guest's opaque session ID.
+No endpoint converts a native N16T ACK into a canonical learning commit.
