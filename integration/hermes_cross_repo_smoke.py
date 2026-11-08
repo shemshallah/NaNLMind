@@ -172,6 +172,23 @@ class EndToEndTests(unittest.TestCase):
                 self.ctx, "native", 254, "three-repo-dispatch-000001",
                 sent["response_sha256"])
             self.assertTrue(acked["acknowledged"])
+            inspected = hermes.inspect_dispatch(
+                self.ctx, "native", 254, "three-repo-dispatch-000001")
+            self.assertEqual(inspected["state"], "acknowledged")
+            self.assertEqual(inspected["response_sha256"], sent["response_sha256"])
+            self.assertFalse(inspected["model_training_committed"])
+            with self.assertRaises(hermes.UniverseLeaseError):
+                hermes.inspect_dispatch(
+                    self.ctx, "native", 0, "three-repo-dispatch-000001")
+            other = hermes.open_universe(self.ctx, "other")
+            self.assertNotEqual(opened["universe_id"], other["universe_id"])
+            # Host N16T guest is session-affine. A second leased universe
+            # cannot claim the first universe's opaque NaN16 session ID.
+            with self.assertRaises(hermes.UniverseLeaseError):
+                hermes.dispatch(
+                    self.ctx, "other", 254,
+                    "three-repo-other-000002", frame.hex())
+            self.assertTrue(hermes.release(self.ctx, "other")["released"])
             with self.assertRaises(hermes.UniverseLeaseError):
                 hermes.acknowledge(
                     self.ctx, "native", 254, "three-repo-dispatch-000001", "0" * 64)
