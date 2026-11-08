@@ -36,6 +36,27 @@ class Context:
         return self.config.get(name, default)
 
 
+class NativeSourceParityTests(unittest.TestCase):
+    def test_lease_and_route_guest_semantics_are_byte_identical(self):
+        root = Path(__file__).resolve().parents[1]
+        pairs = (
+            (root / "nanrouter/mth/nan16/hermes_lease.nas",
+             root / "nanhermes/nanlmind_hermes/nan/hermes_lease.nas"),
+            (root / "nanrouter/mth/nan16/hermes_nannet_route.nas",
+             root / "nanhermes/nanlmind_hermes/nan/hermes_nannet_route.nas"),
+        )
+        for router_path, hermes_path in pairs:
+            with self.subTest(guest=router_path.name):
+                router_source = router_path.read_text(encoding="utf-8")
+                hermes_source = hermes_path.read_text(encoding="utf-8")
+                # Each module documents its own repo-local import path.
+                normalized = router_source.replace(
+                    "mth/nan16/hermes_lease.nas",
+                    "nanlmind_hermes/nan/hermes_lease.nas")
+                self.assertEqual(normalized, hermes_source,
+                                 "native NaN16 lease authority diverged across repos")
+
+
 class EndToEndTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="nannet-hermes-e2e-")
