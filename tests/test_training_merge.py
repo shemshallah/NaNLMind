@@ -1,5 +1,6 @@
 import json
 import base64
+import os
 import struct
 import zlib
 import sys
@@ -10,6 +11,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "runner"))
 import training_merge  # noqa: E402
@@ -423,6 +425,75 @@ class TrainingMergeTest(unittest.TestCase):
         with self.assertRaises(urllib.error.HTTPError) as not_ready:
             urllib.request.urlopen(self.base + "/readyz", timeout=5)
         self.assertEqual(not_ready.exception.code, 503)
+
+
+    def test_runner_ring_atomic_lease_clock_and_checkpoint(self):
+        token = "r" * 40
+        with patch.dict(os.environ, {
+            "RUNNER_RING_TOKEN": token,
+            "RUNNER_RING_DB": str(Path(self.tmp.name) / "runner-ring.sqlite"),
+        }):
+            server = training_merge.make_server(
+                "127.0.0.1", 0, Path(self.tmp.name), "test-token"
+            )
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        base = "http://127.0.0.1:" + str(server.server_address[1])
+
+        def call(method, path, payload=None, bearer=token):
+            raw = None if payload is None else json.dumps(payload).encode()
+            headers = {"Content-Type": "application/json"}
+            if bearer:
+                headers["Authorization"] = "Bearer " + bearer
+            request = urllib.request.Request(
+                base + path, data=raw, method=method, headers=headers
+            )
+            try:
+                with urllib.request.urlopen(request, timeout=5) as response:
+                    return response.status, json.loads(response.read())
+            except urllib.error.HTTPError as error:
+                return error.code, json.loads(error.read())
+
+        try:
+            status, clock = call("GET", "/v1/runner-ring/clock")
+            self.assertEqual(status, 200)
+            self.assertGreater(clock["nanclock_tick"], 0)
+            status, denied = call("GET", "/v1/runner-ring/status", bearer="x" * 40)
+            self.assertEqual(status, 401)
+
+            status, lease = call("POST", "/v1/runner-ring/lease", {
+                "slot": 0, "base_epoch": 0,
+                "endpoint": "https://runner-0.example", "ttl_seconds": 30,
+            })
+            self.assertEqual(status, 200)
+            self.assertTrue(lease["acquired"])
+            self.assertEqual(lease["active_slot"], 0)
+            status, blocked = call("POST", "/v1/runner-ring/lease", {
+                "slot": 1, "base_epoch": lease["epoch"],
+                "endpoint": "https://runner-1.example", "ttl_seconds": 30,
+            })
+            self.assertEqual(status, 200)
+            self.assertFalse(blocked["acquired"])
+            self.assertEqual(blocked["active_slot"], 0)
+
+            status, checkpoint = call("POST", "/v1/runner-ring/checkpoint", {
+                "slot": 0, "lease_id": lease["lease_id"],
+                "state": {"frames": 4, "last_frame_id": "f" * 64},
+                "nanclock_tick": lease["nanclock_tick"],
+            })
+            self.assertEqual(status, 200)
+            self.assertTrue(checkpoint["checkpointed"])
+            status, loaded = call("GET", "/v1/runner-ring/checkpoint")
+            self.assertEqual(status, 200)
+            self.assertEqual(loaded["checkpoint"]["state"]["frames"], 4)
+            status, health = call("GET", "/healthz", bearer=None)
+            self.assertEqual(status, 200)
+            self.assertTrue(health["runner_ring"]["active"])
+            self.assertEqual(health["runner_ring"]["slots"], 6)
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
 
 
 if __name__ == "__main__":

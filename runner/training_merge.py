@@ -36,6 +36,11 @@ from nanlmind_nannet.bridge import (BridgeFrame, BridgeMailbox, PointZeroTransla
                                     MEDIA_TYPE as N16B_MEDIA_TYPE, route_for_identity)
 from nanlmind_nannet.rawroute import RawRoute
 from nanlmind_nannet.rawroute_store import RawRouteMesh, RouteConflict, RouteQuotaExceeded
+from runner.runner_ring_authority import (
+    RunnerRingAuthError,
+    RunnerRingAuthority,
+    RunnerRingError,
+)
 
 
 N16T_MEDIA_TYPE = "application/vnd.nan16.n16t"
@@ -234,6 +239,13 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
     store = MergeStore(root, token)
     devices = DeviceRegistry(authority.database, authority=authority) if authority else None
     bridge = BridgeMailbox(root / "nannet-bridge.sqlite")
+    ring_token = os.environ.get("RUNNER_RING_TOKEN", "")
+    ring_authority = None
+    if len(ring_token) >= 32:
+        ring_authority = RunnerRingAuthority(
+            os.environ.get("RUNNER_RING_DB", str(root / "runner-ring.sqlite")),
+            ttl_max=int(os.environ.get("RUNNER_RING_TTL_MAX", "300")),
+        )
     point_zero = PointZeroTranslator()
     rawroute_mesh = RawRouteMesh.from_environment(root / "rawroute")
 
@@ -350,8 +362,68 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                 return False
             return hmac.compare_digest(header[7:], store.token)
 
+        def _ring_auth(self) -> bool:
+            if ring_authority is None:
+                self._json(HTTPStatus.SERVICE_UNAVAILABLE,
+                           {"error": "runner ring authority disabled"})
+                return False
+            header = self.headers.get("Authorization", "")
+            if not header.startswith("Bearer ") or not hmac.compare_digest(
+                header[7:], ring_token
+            ):
+                self._json(HTTPStatus.UNAUTHORIZED,
+                           {"error": "runner ring authorization required"})
+                return False
+            return True
+
+        def _ring(self, action: str) -> None:
+            try:
+                if action == "status":
+                    self._json(HTTPStatus.OK, ring_authority.stats())
+                elif action == "clock":
+                    self._json(HTTPStatus.OK, ring_authority.clock())
+                elif action == "checkpoint-read":
+                    value = ring_authority.read_checkpoint()
+                    self._json(HTTPStatus.OK, {"checkpoint": value})
+                elif action == "lease":
+                    body = self._body(4096)
+                    self._json(HTTPStatus.OK, ring_authority.lease(
+                        slot=body["slot"], base_epoch=body.get("base_epoch", 0),
+                        endpoint=body["endpoint"],
+                        ttl_seconds=body.get("ttl_seconds", 30)))
+                elif action == "renew":
+                    body = self._body(4096)
+                    self._json(HTTPStatus.OK, ring_authority.renew(
+                        slot=body["slot"], lease_id=body["lease_id"],
+                        ttl_seconds=body.get("ttl_seconds", 30)))
+                elif action == "release":
+                    body = self._body(4096)
+                    self._json(HTTPStatus.OK, ring_authority.release(
+                        slot=body["slot"], lease_id=body["lease_id"]))
+                elif action == "checkpoint":
+                    body = self._body(2_097_152)
+                    self._json(HTTPStatus.OK, ring_authority.checkpoint(
+                        slot=body["slot"], lease_id=body["lease_id"],
+                        state=body["state"], nanclock_tick=body["nanclock_tick"]))
+                else:
+                    self._json(HTTPStatus.NOT_FOUND, {"error": "not found"})
+            except RunnerRingAuthError as exc:
+                self._json(HTTPStatus.CONFLICT, {"error": str(exc)[:200]})
+            except (RunnerRingError, KeyError, TypeError, ValueError) as exc:
+                self._json(HTTPStatus.BAD_REQUEST, {"error": str(exc)[:200]})
+
         def do_GET(self) -> None:
             path = self.path.split('?', 1)[0].rstrip('/') or '/'
+            if path in ('/v1/runner-ring/status', '/v1/runner-ring/clock',
+                        '/v1/runner-ring/checkpoint'):
+                if not self._ring_auth():
+                    return
+                self._ring({
+                    '/v1/runner-ring/status': 'status',
+                    '/v1/runner-ring/clock': 'clock',
+                    '/v1/runner-ring/checkpoint': 'checkpoint-read',
+                }[path])
+                return
             if path == '/v1/riddle' or path.startswith('/v1/riddle/'):
                 self._proxy_router(); return
             if path in ('/admin/tokens', '/v1/experience', '/v1/tasks', '/v1/observations', '/internal/observations', '/internal/observations/ack'):
@@ -446,6 +518,18 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                 health["nannet_bridge"] = bridge.stats()
                 health["nannet_point_zero"] = point_zero.descriptor()
                 health["rawroute_mesh"] = rawroute_mesh.health()
+                if ring_authority is not None:
+                    ring_status = ring_authority.status()
+                    health["runner_ring"] = {
+                        "schema": "nanrouter.runner-ring-authority.v1",
+                        "slots": 6,
+                        "active": ring_status["active"],
+                        "active_slot": ring_status["active_slot"],
+                        "epoch": ring_status["epoch"],
+                        "nanclock_tick": ring_status["nanclock_tick"],
+                    }
+                else:
+                    health["runner_ring"] = {"enabled": False}
                 ready = authority is not None
                 if authority:
                     try:
@@ -479,6 +563,17 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
             return header[7:] if header.startswith('Bearer ') else ''
         def do_POST(self) -> None:
             path = self.path.split('?', 1)[0].rstrip('/') or '/'
+            if path in ('/v1/runner-ring/lease', '/v1/runner-ring/renew',
+                        '/v1/runner-ring/release', '/v1/runner-ring/checkpoint'):
+                if not self._ring_auth():
+                    return
+                self._ring({
+                    '/v1/runner-ring/lease': 'lease',
+                    '/v1/runner-ring/renew': 'renew',
+                    '/v1/runner-ring/release': 'release',
+                    '/v1/runner-ring/checkpoint': 'checkpoint',
+                }[path])
+                return
             if path.startswith('/v1/hermes/leases/'):
                 # Only explicitly scoped, signed NANNET installations can ask
                 # this portal to delegate a lease to the separate BS0:0 router.
