@@ -1,0 +1,26 @@
+name: HERMES Koyeb portal image packaging
+on:
+  pull_request:
+    paths: ["deploy/training_merge/**", "runner/training_merge.py", "runner/hermes_router_delegate.py", ".github/workflows/hermes-portal-image.yml"]
+  push:
+    paths: ["deploy/training_merge/**", "runner/training_merge.py", "runner/hermes_router_delegate.py", ".github/workflows/hermes-portal-image.yml"]
+permissions:
+  contents: read
+jobs:
+  build-portal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Koyeb portal image without deployment credentials
+        run: docker build --pull -t nanlmind-portal-hermes:ci -f deploy/training_merge/Dockerfile .
+      - name: Verify portal can import actual NANNET router delegate in production layout
+        run: |
+          docker run --rm --entrypoint python nanlmind-portal-hermes:ci -c "
+          from runner.hermes_router_delegate import delegate_hermes_lease
+          from nanlmind_nannet.pairing import PairingAuthority
+          from pathlib import Path
+          assert Path('/app/training_merge.py').is_file()
+          assert callable(delegate_hermes_lease)
+          print('NANNET PORTAL HERMES PACKAGE PASS')
+          "
