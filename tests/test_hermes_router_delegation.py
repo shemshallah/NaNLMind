@@ -73,7 +73,8 @@ class HermesPortalDelegationTests(unittest.TestCase):
             adapter.assert_called_once_with(
                 "open", {"installation_id": "attacker", "node_point": 255,
                          "request_id": "hermes-request-00000000001",
-                         "ttl_seconds": 900}, self.identity)
+                         "ttl_seconds": 900}, self.identity,
+                installation_public_key=self.authority.public_key_for(self.identity))
 
     def test_unauthenticated_unsigned_tampered_or_revoked_requests_are_denied(self):
         with patch.object(training_merge, "delegate_hermes_lease") as adapter:
@@ -126,7 +127,9 @@ class HermesPortalDelegationTests(unittest.TestCase):
             code, result = self.post("inspect", request)
             self.assertEqual(code, 200)
             self.assertEqual(result["state"], "pending_or_ambiguous")
-            delegated.assert_called_once_with("inspect", request, self.identity)
+            delegated.assert_called_once_with(
+                "inspect", request, self.identity,
+                installation_public_key=self.authority.public_key_for(self.identity))
             code, _ = self.post("inspect", request, signed=False)
             self.assertEqual(code, 401)
             code, _ = self.post("inspect", request, tamper=True)
