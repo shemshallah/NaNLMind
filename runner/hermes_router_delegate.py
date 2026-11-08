@@ -41,7 +41,7 @@ def _endpoint():
 
 
 def delegate_hermes_lease(action: str, payload: dict, installation_id: str) -> dict:
-    if action not in ("open", "resolve", "renew", "release", "dispatch", "ack"):
+    if action not in ("open", "resolve", "renew", "release", "dispatch", "ack", "inspect"):
         raise HermesDelegationError("unsupported HERMES lease action")
     if not isinstance(payload, dict) or not isinstance(installation_id, str):
         raise HermesDelegationError("invalid delegated lease request")
@@ -59,9 +59,9 @@ def delegate_hermes_lease(action: str, payload: dict, installation_id: str) -> d
         })
     else:
         forwarded["receipt"] = payload["receipt"]
-        if action in ("resolve", "dispatch", "ack"):
+        if action in ("resolve", "dispatch", "ack", "inspect"):
             forwarded["head_index"] = payload["head_index"]
-        if action in ("dispatch", "ack"):
+        if action in ("dispatch", "ack", "inspect"):
             forwarded["dispatch_id"] = payload["dispatch_id"]
         if action == "dispatch":
             forwarded["frame_hex"] = payload["frame_hex"]
@@ -83,7 +83,7 @@ def delegate_hermes_lease(action: str, payload: dict, installation_id: str) -> d
         with urllib.request.build_opener(_NoRedirect).open(request, timeout=8) as response:
             if response.status != 200 or response.headers.get_content_type() != "application/json":
                 raise HermesDelegationError("NaNROUTER returned an unsupported lease response")
-            bound = 155000 if action == "dispatch" else 32768
+            bound = 155000 if action in ("dispatch", "inspect") else 32768
             response_raw = response.read(bound + 1)
             if len(response_raw) > bound:
                 raise HermesDelegationError("NaNROUTER lease response is too large")
