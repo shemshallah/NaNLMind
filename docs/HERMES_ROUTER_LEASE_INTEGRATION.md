@@ -13,7 +13,7 @@ The integration now spans three repositories without replacing the existing NANN
 - Existing HERMES paired tokens will not automatically gain the new `hermes:lease` scope; create explicitly scoped guest pairing codes and re-pair as needed.
 - Do not expose router lease endpoints publicly without private-network ingress / independent delegation bearer protection. For production require HTTPS and constrain outbound NANNET-to-router networking.
 - The router's HMAC lease receipt is verified **at router resolution**, not as a locally verifiable Ed25519 signature by HERMES. The HERMES client only checks its basic shape until authenticated router admission.
-- **Not yet native execution:** `resolve` means lease-admitted *route metadata*, not a loaded NaN16DE guest, N16T packet execution, or a canonical NaNLMind training merge. The native NaN16DE `nhl_open` / `nhl_nannet_route` functions remain execution-side gates awaiting a trusted loader/receipt-to-guest handoff. Fail closed rather than claim execution.
+- **Optional actual native execution:** When the pinned NaN0S runtime is enabled, `resolve` verifies the native guest route, and the new `dispatch` and `ack` endpoints execute the existing NaN16 N16T guest and persist an at-most-once result acknowledgement. Without the native runtime configured, `resolve` remains a metadata-only admission; `dispatch` and `ack` fail closed. The native NaN16DE `nhl_open` / `nhl_nannet_route` functions remain execution-side gates awaiting a trusted loader/receipt-to-guest handoff. Fail closed rather than claim execution.
 - The old Koyeb portal remains deployed from NaNLMind until staging, database/issuer continuity, DNS, and authentication/negative tests are verified. No live cutover is performed by these code changes.
 
 ### Namespaces
@@ -23,3 +23,30 @@ BS0:0 is the shared runner-ring network port, HW0:0 is a separate root hardware 
 ### Verification
 
 `python -m unittest discover -s tests -p test_hermes_router_delegation.py -v` alongside existing `test_training_merge.py`; new `.github/workflows/hermes-router-delegation.yml` runs both. Cross-repo checks in NaNROUTER PR #61 and HERMES PR #12 guard their own boundaries. This branch does not assert that the external Koyeb service has been updated.
+
+### Native transport and production package
+
+The NANNET portal forwards `dispatch` and `ack` under the exact same
+bearer, Ed25519 body signature, replay nonce and `hermes:lease` scope as
+`open`/`renew`/`resolve`/`release`. N16T request hex is bounded to
+65,572 bytes of opaque guest-owned framing. Router ACK requires a matching
+lease ID, universe ID, generation, head, dispatch ID, and response SHA-256.
+A crash after reservation makes that dispatch ambiguous and prevents
+non-idempotent replay. No response is treated as a canonical learning commit.
+
+`deploy/training_merge/Dockerfile` now packages the actual
+`runner.hermes_router_delegate` module for Koyeb; the existing issuer and
+NANNET pairing database stay in place. Portal runtime needs a verified
+`NANNET_HERMES_ROUTER_URL` (HTTPS or localhost development only) and
+`NANNET_HERMES_DELEGATION_TOKEN` (must match the router's delegated bearer).
+Do not include either bearer in source or documentation.
+
+The three-repository signed HTTP smoke now builds the real pinned NaN0S C core
+and tests signed pairing, independent leases, native head admission, actual
+N16T guest response, digest-bound ACK, retry semantics and revocation.
+See `integration/hermes_cross_repo_smoke.py` and
+`.github/workflows/hermes-cross-repo-smoke.yml`.
+
+Live deployment and public ingress cutover require the private Koyeb service
+account, matching secrets, persistent volume, DNS/TLS validation and existing
+issuer continuity; GitHub code changes and CI are not a live deployment.
