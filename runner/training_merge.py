@@ -41,6 +41,11 @@ from runner.runner_ring_authority import (
     RunnerRingAuthority,
     RunnerRingError,
 )
+try:
+    from runner.portal_ring import PortalRingError, PortalRingNode
+except Exception:
+    PortalRingError = RuntimeError
+    PortalRingNode = None
 
 
 N16T_MEDIA_TYPE = "application/vnd.nan16.n16t"
@@ -246,6 +251,20 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
             os.environ.get("RUNNER_RING_DB", str(root / "runner-ring.sqlite")),
             ttl_max=int(os.environ.get("RUNNER_RING_TTL_MAX", "300")),
         )
+    portal_ring = None
+    if (ring_authority is not None and PortalRingNode is not None
+            and os.environ.get("RUNNER_RING_EMBEDDED", "1").strip().lower()
+            not in ("0", "false", "no", "off")):
+        portal_ring = PortalRingNode(
+            ring_authority,
+            token=ring_token,
+            slot=int(os.environ.get("RUNNER_RING_EMBEDDED_SLOT", "0")),
+            endpoint=os.environ.get("NANROUTER_RUNNER_URL",
+                                    "https://nannet.apps.mistral.run"),
+            database=os.environ.get(
+                "RUNNER_RING_FABRIC_DB", str(root / "portal-ring-fabric.sqlite")),
+            ttl_seconds=int(os.environ.get("RUNNER_RING_TTL_SECONDS", "30")),
+        ).start()
     point_zero = PointZeroTranslator()
     rawroute_mesh = RawRouteMesh.from_environment(root / "rawroute")
 
@@ -424,6 +443,24 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                     '/v1/runner-ring/checkpoint': 'checkpoint-read',
                 }[path])
                 return
+            if path in ('/v1/ring/status', '/v1/ring/points', '/v1/ring/clock'):
+                if not self._ring_auth():
+                    return
+                if portal_ring is None:
+                    self._json(HTTPStatus.SERVICE_UNAVAILABLE,
+                               {"error": "embedded runner ring is disabled"})
+                    return
+                try:
+                    if path == '/v1/ring/status':
+                        self._json(HTTPStatus.OK, portal_ring.status())
+                    elif path == '/v1/ring/points':
+                        self._json(HTTPStatus.OK, portal_ring.points())
+                    else:
+                        self._json(HTTPStatus.OK, ring_authority.clock())
+                except Exception as exc:
+                    self._json(HTTPStatus.SERVICE_UNAVAILABLE,
+                               {"error": type(exc).__name__})
+                return
             if path == '/v1/riddle' or path.startswith('/v1/riddle/'):
                 self._proxy_router(); return
             if path in ('/admin/tokens', '/v1/experience', '/v1/tasks', '/v1/observations', '/internal/observations', '/internal/observations/ack'):
@@ -530,6 +567,19 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                     }
                 else:
                     health["runner_ring"] = {"enabled": False}
+                if portal_ring is not None:
+                    node = portal_ring.status()
+                    health["runner_ring_node"] = {
+                        "enabled": True,
+                        "schema": node["schema"],
+                        "slot": node["slot"],
+                        "active": node["active"],
+                        "phase": node["phase"],
+                        "epoch": node["epoch"],
+                        "ring_endpoint": node["ring_endpoint"],
+                    }
+                else:
+                    health["runner_ring_node"] = {"enabled": False}
                 ready = authority is not None
                 if authority:
                     try:
@@ -573,6 +623,32 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                     '/v1/runner-ring/release': 'release',
                     '/v1/runner-ring/checkpoint': 'checkpoint',
                 }[path])
+                return
+            if path in ('/v1/ring/submit', '/v1/ring/drain', '/v1/ring/register',
+                        '/v1/ring/checkpoint', '/v1/ring/handoff'):
+                if not self._ring_auth():
+                    return
+                if portal_ring is None:
+                    self._json(HTTPStatus.SERVICE_UNAVAILABLE,
+                               {"error": "embedded runner ring is disabled"})
+                    return
+                try:
+                    body = self._body(2_097_152) if path != '/v1/ring/checkpoint' else {}
+                    if path == '/v1/ring/submit':
+                        self._json(HTTPStatus.OK, portal_ring.submit(body))
+                    elif path == '/v1/ring/drain':
+                        self._json(HTTPStatus.OK, portal_ring.drain(body))
+                    elif path == '/v1/ring/register':
+                        self._json(HTTPStatus.OK, portal_ring.register(body))
+                    elif path == '/v1/ring/checkpoint':
+                        self._json(HTTPStatus.OK, portal_ring.checkpoint())
+                    else:
+                        self._json(HTTPStatus.OK, portal_ring.handoff())
+                except PortalRingError as exc:
+                    self._json(HTTPStatus.SERVICE_UNAVAILABLE,
+                               {"error": str(exc)[:200]})
+                except (ValueError, TypeError, KeyError) as exc:
+                    self._json(HTTPStatus.BAD_REQUEST, {"error": str(exc)[:200]})
                 return
             if path.startswith('/v1/hermes/leases/'):
                 # Only explicitly scoped, signed NANNET installations can ask
