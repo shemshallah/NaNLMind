@@ -115,6 +115,37 @@ class HermesPortalDelegationTests(unittest.TestCase):
             self.assertEqual(codes[1], 401)
             adapter.assert_called_once()
 
+    def test_dispatch_inspection_requires_signed_scoped_identity(self):
+        request = {
+            "receipt": {"placeholder": "opaque-signed-router-receipt"},
+            "head_index": 254, "dispatch_id": "inspect-native-00000001",
+            "installation_id": "untrusted-client-installation",
+        }
+        with patch.object(training_merge, "delegate_hermes_lease",
+                          return_value={"state": "pending_or_ambiguous"}) as delegated:
+            code, result = self.post("inspect", request)
+            self.assertEqual(code, 200)
+            self.assertEqual(result["state"], "pending_or_ambiguous")
+            delegated.assert_called_once_with("inspect", request, self.identity)
+            code, _ = self.post("inspect", request, signed=False)
+            self.assertEqual(code, 401)
+            code, _ = self.post("inspect", request, tamper=True)
+            self.assertEqual(code, 401)
+            self.assertEqual(delegated.call_count, 1)
+
+        # A separately paired installation with only universe:read may not
+        # inspect or recover another HERMES installation's N16T journal.
+        guest = self.authority.create_pairing_code(["universe:read"], role="guest")
+        public = self.private.public_key().public_bytes(
+            serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+        bare = self.authority.pair(
+            guest["pairing_code"], "12345678-2222-4222-8222-123456789abc",
+            base64.urlsafe_b64encode(public).decode().rstrip("="))["token"]
+        with patch.object(training_merge, "delegate_hermes_lease") as adapter:
+            code, _ = self.post("inspect", request, token=bare)
+            self.assertNotEqual(code, 200)
+            adapter.assert_not_called()
+
     def test_missing_router_secrets_fails_closed(self):
         with patch.dict("os.environ", {"NANNET_HERMES_ROUTER_URL": "",
                                       "NANNET_HERMES_DELEGATION_TOKEN": ""}):
