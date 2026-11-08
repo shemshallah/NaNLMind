@@ -485,7 +485,7 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                 if authority is None:
                     self._json(HTTPStatus.SERVICE_UNAVAILABLE, {'error': 'NANNET authority disabled'}); return
                 action = path.removeprefix('/v1/hermes/leases/')
-                if self.path != path or action not in ('open', 'renew', 'resolve', 'release', 'dispatch', 'ack', 'inspect'):
+                if self.path != path or action not in ('open', 'renew', 'resolve', 'release', 'dispatch', 'ack', 'inspect', 'math'):
                     self._json(HTTPStatus.NOT_FOUND, {'error': 'unknown HERMES lease action'}); return
                 try:
                     claims = authority.verify_access_token(
@@ -518,7 +518,9 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                         'signature': self.headers.get('X-NANNET-Signature', ''),
                     })
                     authority.consume_nan16de_nonce('hermes-lease:' + identity, nonce, int(time.time()))
-                    result = delegate_hermes_lease(action, payload, identity)
+                    result = delegate_hermes_lease(
+                        action, payload, identity,
+                        installation_public_key=authority.public_key_for(identity))
                     self._json(HTTPStatus.OK, result)
                 except HermesDelegationError as exc:
                     self._json(HTTPStatus.SERVICE_UNAVAILABLE, {'error': str(exc)[:160]})

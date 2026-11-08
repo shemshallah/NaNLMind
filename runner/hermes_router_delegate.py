@@ -40,8 +40,8 @@ def _endpoint():
     return raw, token
 
 
-def delegate_hermes_lease(action: str, payload: dict, installation_id: str) -> dict:
-    if action not in ("open", "resolve", "renew", "release", "dispatch", "ack", "inspect"):
+def delegate_hermes_lease(action: str, payload: dict, installation_id: str, installation_public_key: str | None = None) -> dict:
+    if action not in ("open", "resolve", "renew", "release", "dispatch", "ack", "inspect", "math"):
         raise HermesDelegationError("unsupported HERMES lease action")
     if not isinstance(payload, dict) or not isinstance(installation_id, str):
         raise HermesDelegationError("invalid delegated lease request")
@@ -53,18 +53,22 @@ def delegate_hermes_lease(action: str, payload: dict, installation_id: str) -> d
         forwarded.update({
             "request_id": payload["request_id"],
             "ttl_seconds": payload.get("ttl_seconds", 900),
-            # HERMES is the reserved HW2 endpoint, point 3. NEVER
-            # forward a client-provided node point or installation ID.
-            "node_point": 3,
+            # NaNROUTER (not the untrusted guest) assigns HW2 to the first
+            # paired HERMES keypair and HW5..255 to further installations.
+            "installation_public_key": installation_public_key,
         })
     else:
         forwarded["receipt"] = payload["receipt"]
-        if action in ("resolve", "dispatch", "ack", "inspect"):
+        if action in ("resolve", "dispatch", "ack", "inspect", "math"):
             forwarded["head_index"] = payload["head_index"]
         if action in ("dispatch", "ack", "inspect"):
             forwarded["dispatch_id"] = payload["dispatch_id"]
         if action == "dispatch":
             forwarded["frame_hex"] = payload["frame_hex"]
+        if action == "math":
+            forwarded["kernel_id"] = payload["kernel_id"]
+            forwarded["a"] = payload["a"]
+            forwarded["b"] = payload["b"]
         if action == "ack":
             forwarded["response_sha256"] = payload["response_sha256"]
         if action == "renew":
