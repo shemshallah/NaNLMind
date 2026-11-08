@@ -1,5 +1,12 @@
 # Koyeb NANNET portal + training merge
 
+> Deployment ownership has moved to NaNROUTER. The instructions below
+> describe the **legacy live service** for migration and rollback only, not
+> a new deployment from NaNLMind. Staging manifest and non-secret rawroute
+> mount examples now live at `shemshallah/NaNROUTER/deploy/portal/`.
+> Keep this source and its Dockerfile while the live issuer/volume may still
+> be served from the older image. Do not create a second production writer.
+
 This is the small training-delta merger. It is **not** the 2 GiB map and **not**
 a macrocluster.
 
