@@ -4,6 +4,20 @@ The six `nanrouter-runner-0..5` repositories are identical hot standbys. They
 are the internal BSR0..BSR5 members of `MC0:0`. They do **not** receive
 individual HW addresses. The ring as a whole is `HW5:0` for NaN routing.
 
+## Single Koyeb service
+
+The only Koyeb app is `nannet` and the only service is `nannet-portal`. The
+portal embeds one ring slot (`RUNNER_RING_EMBEDDED=1`, default slot 0) and
+serves the public `/v1/ring/*` ingress at:
+
+```text
+https://nannet.apps.mistral.run/v1/ring/{status,points,clock,submit,drain,register,checkpoint,handoff}
+```
+
+`NANROUTER_RUNNER_URL=https://nannet.apps.mistral.run`. The embedded node owns
+`HW5:0` while active and proxies to an external active runner otherwise. No
+second Koyeb service is required.
+
 ## Authority
 
 The Koyeb portal is the single atomic arbiter:
