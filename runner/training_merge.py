@@ -485,7 +485,7 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                 if authority is None:
                     self._json(HTTPStatus.SERVICE_UNAVAILABLE, {'error': 'NANNET authority disabled'}); return
                 action = path.removeprefix('/v1/hermes/leases/')
-                if self.path != path or action not in ('open', 'renew', 'resolve', 'release'):
+                if self.path != path or action not in ('open', 'renew', 'resolve', 'release', 'dispatch', 'ack'):
                     self._json(HTTPStatus.NOT_FOUND, {'error': 'unknown HERMES lease action'}); return
                 try:
                     claims = authority.verify_access_token(
@@ -497,7 +497,7 @@ def make_server(host: str, port: int, root: Path, token: str, authority: Pairing
                     if len(lengths) != 1 or not lengths[0].isdigit():
                         raise ValueError('exactly one numeric Content-Length is required')
                     size = int(lengths[0])
-                    if not 1 <= size <= 16384:
+                    if not 1 <= size <= (150000 if action == 'dispatch' else 16384):
                         raise ValueError('HERMES lease body is too large or empty')
                     raw = self.rfile.read(size)
                     if len(raw) != size:
