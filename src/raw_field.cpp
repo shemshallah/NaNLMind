@@ -222,28 +222,6 @@ bool RawFieldVM::trail(std::int32_t reward, std::int32_t v_minus_next,
     return true;
 }
 
-bool RawFieldVM::hopfield_top1(const std::array<std::int32_t, 8>& query,
-                               const std::array<std::int32_t, 32>& patterns,
-                               std::uint8_t& index, std::int32_t& score) {
-    for (std::size_t i = 0; i < query.size(); ++i) {
-        if (!write_word(0x7000 + static_cast<std::uint32_t>(i),
-                        static_cast<std::uint32_t>(query[i]))) {
-            return fail("cannot write Hopfield query");
-        }
-    }
-    for (std::size_t i = 0; i < patterns.size(); ++i) {
-        if (!write_word(0x7100 + static_cast<std::uint32_t>(i),
-                        static_cast<std::uint32_t>(patterns[i]))) {
-            return fail("cannot write Hopfield patterns");
-        }
-    }
-    if (!write_word(kCommandBase, 8)) return fail("cannot write Hopfield command");
-    if (!run_command()) return false;
-    index = static_cast<std::uint8_t>(read_word(kResultBase + 0) & 3u);
-    score = static_cast<std::int32_t>(read_word(kResultBase + 1));
-    return true;
-}
-
 bool RawFieldVM::remap(const std::array<std::uint16_t, 6>& masks,
                        std::uint32_t a, std::uint32_t b, bool target,
                        bool& improved, std::int32_t& before,

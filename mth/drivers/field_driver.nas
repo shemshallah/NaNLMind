@@ -26,7 +26,6 @@ JMP @field_driver_entry
 .include "../nan16/mth_q16_mul.nas"
 .include "../nan16/mth_cft_credit.nas"
 .include "../nan16/mth_trail_credit.nas"
-.include "../nan16/mth_hopfield_top1.nas"
 
 field_driver_entry:
   MOVI r13,1
@@ -59,9 +58,6 @@ field_driver_main:
   MOVI r3,7
   CMP r2,r3
   JMP[EQ] @field_driver_trail
-  MOVI r3,8
-  CMP r2,r3
-  JMP[EQ] @field_driver_hopfield
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -169,15 +165,6 @@ field_driver_trail:
   ST r1,r10,0
   ST r2,r10,1
   ST r3,r10,2
-  JMP @field_driver_return
-
-field_driver_hopfield:
-  MOVI r1,0x7000
-  MOVI r2,0x7100
-  CALL @mth_hopfield_top1
-  MOVI r10,0x4010
-  ST r1,r10,0
-  ST r2,r10,1
   JMP @field_driver_return
 
 field_driver_return:

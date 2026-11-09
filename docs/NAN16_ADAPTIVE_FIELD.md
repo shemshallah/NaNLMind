@@ -25,8 +25,8 @@ adaptive-field mathematics:
 | `mth_q16_mul.nas` | signed Q16.16 multiply via native MUL/MULH |
 | `mth_cft_credit.nas` | local cycle-flux triangle credit, signed Q16.16 |
 | `mth_trail_credit.nas` | two-rail TD eligibility and credit, Q16.16 |
-| `mth_hopfield_top1.nas` | fixed 4x8 Q16 Hopfield top-1 retrieval primitive |
-| `mth/drivers/field_driver.nas` | guest command dispatcher for proposal, field vote, coherence, remap, CFT, TRAIL and Hopfield |
+| `mth_micro_block.nas` | raw two-token QKV/softmax/tanh micro-transformer forward |
+| `mth/drivers/field_driver.nas` | guest command dispatcher for proposal, field vote, coherence, remap, CFT and TRAIL |
 | `include/nanlm/raw_field.hpp` | host orchestration: writes command words, runs the VM, reads results |
 
 ## Per-head proposal ABI
@@ -98,7 +98,7 @@ skip. The default fixtures cover:
   majority objective, with exact rollback and chart mapping commit;
 - local CFT triangle credit with signed Q16.16 error/rate;
 - TRAIL two-rail eligibility credit;
-- Hopfield top-1 retrieval over four 8-dimensional Q16 patterns;
+- a two-token QKV/softmax/tanh micro-block forward primitive;
 - the field-command driver and the `RawFieldVM` chart bridge;
 - `field-selftest` and `test_raw_field` on the vendored canonical VM.
 
@@ -122,7 +122,5 @@ is a bounded policy, not an optimal graph partition.
   claimed.
 - CFT/TRAIL are native primitives; they are not yet wired into a full training
   loop or a source-disjoint quality claim.
-- Hopfield is a top-1 retrieval primitive, not the full sparse shared-trunk or
-  adapter-bank port.
 - The fixtures are native execution evidence, not a claim that the full
   decoder or a source-disjoint benchmark is complete.

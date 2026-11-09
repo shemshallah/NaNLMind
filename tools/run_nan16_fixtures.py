@@ -54,8 +54,8 @@ FIXTURES = (
             "MTH Q16 MUL PASS"),
     Fixture("trail_credit", "mth/tests/mth_trail_credit_test.nas", 200_000,
             "MTH TRAIL CREDIT PASS"),
-    Fixture("hopfield_top1", "mth/tests/mth_hopfield_top1_test.nas", 500_000,
-            "MTH HOPFIELD TOP1 PASS"),
+    Fixture("micro_block", "mth/tests/mth_micro_block_test.nas", 200_000,
+            "MTH MICRO BLOCK PASS"),
 )
 
 

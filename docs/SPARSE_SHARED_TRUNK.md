@@ -164,37 +164,56 @@ the one canonical nan0s VM; the Python reference is a control, not the result.
 
 ## Native step 1: sparse head/field bank
 
-The first native piece is now in the chart, without Hopfield:
+The first native piece is now integrated, without Hopfield:
 
 - `include/nanlm/sparse_field.hpp` / `src/sparse_field.cpp`;
-- 255 low-rank adapters, d=8, rank=2, Q1.15 weights;
-- top-8 routing, integer normalised weights, 255-bit active mask;
+- 255 low-rank adapters, runtime-configurable up to **d=128, rank=4**,
+  Q1.15 weights (default d=32/rank=4);
+- top-8 routing, integer-normalised weights, 255-bit active mask;
 - per-head hotspot and usage state;
 - local non-BPTT credit update for a selected adapter;
-- state stored in `Universe::sparse_field()` and serialized/digested with the
-  chart (older snapshots restore with a zeroed bank);
+- state stored in a heap-backed `Universe::sparse_field()` sidecar and
+  serialized/digested with the chart; it is not counted against the fixed
+  8 MiB root budget, and older snapshots restore with a zeroed bank;
 - `tests/test_sparse_field.cpp` checks top-k uniqueness, inactive-adapter
-  isolation, triad hotspot promotion, persistence and old-snapshot restore.
+  isolation, d=128 operation, adaptive-triad hotspots, 43/85 field
+  identification, persistence and old-snapshot restore.
+
+### Hot heads and hot triangles
+
+`SparseField::update_hotspots` scans the whole field, not fixed head/3 groups:
+
+1. every one of the 255 heads with credit above the head threshold is a hot
+   head;
+2. every one of the 85 triads is scored from its **adaptive** members;
+3. a triad is hot when at least two members are hot, or its mean credit is
+   above the triad threshold;
+4. a hot triad promotes all three members;
+5. the field flag is set only at the 43/85 threshold.
+
+The result is available as `Hotspots.heads`, `Hotspots.triads`,
+`Hotspots.hot_heads`, `Hotspots.hot_triads` and `Hotspots.field_hot`.
 
 This is the native **head/field** half of the sparse trunk. The shared P1
 QKV/MLP trunk kernel and its feature feed are still the next native step; the
 current Python reference supplies that feature vector and is not counted as the
-native result.
+native result. A d=512 adapter bank is the next sidecar tier (about 2.35 MB);
+it is not allocated in the fixed root by default.
 
 ## Native status
 
-The sparse shared trunk and adapter bank remain Python/PyTorch reference code.
-A bounded native Hopfield top-1 retrieval primitive now exists in
-`mth/nan16/mth_hopfield_top1.nas`, but the full trunk, top-k router, adapters,
-and native AdamW/Gumbel training path are still open.
+The sparse shared trunk and adapter bank are native in the head/field half:
+d=128/rank=4 is exercised, and d=512 is the next sidecar tier. The shared
+QKV/MLP trunk kernel, native top-k feature feed, adapter training and
+AdamW/Gumbel path are still open. Hopfield is not on this path.
 
 ## Integration into NaNLMind
 
 1. Keep the 8 MiB root as canonical field.
 2. Put the shared trunk weights in the quantized sidecar (16-bit weights,
    8-bit moments), demand-paged.
-3. Store 255 adapters and router/hotspot state in the extension; hot triads
-   set the mapped hypermatrix rows.
+3. Store 255 adapters and router/hotspot state in the sidecar; hot triads set
+   the mapped hypermatrix rows.
 4. Port the local CFT/triad/field vote path: 2/3 triad, 43/85 field.
 5. Native NaN16 kernel for the trunk/adapters; host reference only as control.
 6. Measure throughput, RSS/cache/energy and held-out loss on source-disjoint

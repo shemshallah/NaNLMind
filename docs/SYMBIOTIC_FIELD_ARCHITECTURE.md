@@ -123,8 +123,9 @@ control, and the measured cost is not hidden.
 | rail frames | ~32,640 | T=8 × 85 × 48 B staged frames |
 | 85 triad banks | 217,600 | 2,560 B each, shared QKV/MLP/gains |
 | head adapters | 65,280 | 255 × 256 B low-rank head interface |
-| **subtotal in extension** | ~1.37 MB | fits the available chart extension |
-| optional sidecar | operator budget | inactive banks, long context, larger d_model |
+| **subtotal in extension** | ~1.37 MB | plan target; verify against the actual chart free space |
+| optional sidecar | operator budget | sparse d=512/rank-4 adapters, inactive banks, long context |
+| current native sparse sidecar | ~2.4 MB | heap-backed and serialized/digested with the chart; excluded from the fixed 8 MiB root |
 
 A 255-private-bank design is rejected: it leaves no room for leaves, frames,
 context or sidecar coordination, and it contradicts the single-field model.
@@ -258,7 +259,8 @@ circuits and the field state.
 ### S1 — memory layout
 
 - [ ] S1.1 Place 85 triad banks (2,560 B) and per-head adapters (256 B) in the
-  extension; keep the 8 MiB root identity intact.
+  extension; the native d=512/rank-4 sparse field is currently a heap-backed
+  sidecar and must not be reported as part of the fixed 8 MiB root.
 - [ ] S1.2 Add 64 KiB leaf counters, 32-byte head leaf masks and 48-byte rail
   frames with exact offsets.
 - [ ] S1.3 Add optional sidecar paging for inactive banks/long context; one

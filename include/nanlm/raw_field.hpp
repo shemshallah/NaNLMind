@@ -66,9 +66,6 @@ public:
                std::int32_t e_minus, std::int32_t grad_plus,
                std::int32_t grad_minus, std::int32_t gamma,
                std::int32_t lambda, std::array<std::int32_t, 3>& out);
-    bool hopfield_top1(const std::array<std::int32_t, 8>& query,
-                       const std::array<std::int32_t, 32>& patterns,
-                       std::uint8_t& index, std::int32_t& score);
     bool remap(const std::array<std::uint16_t, 6>& masks,
                std::uint32_t a, std::uint32_t b, bool target,
                bool& improved, std::int32_t& before, std::int32_t& after);
