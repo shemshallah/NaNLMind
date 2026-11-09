@@ -22,8 +22,11 @@ adaptive-field mathematics:
 | `mth_triad_score.nas` | correct-member + majority objective for one probe |
 | `mth_remap_decision.nas` | fixed A1/B0 trial swap with exact rollback |
 | `mth_remap_general.nas` | arbitrary triad-slot trial, exact table restore |
-| `mth_cft_credit.nas` | local cycle-flux triangle credit, Q16.16 |
-| `mth/drivers/field_driver.nas` | guest command dispatcher for proposal, field vote, coherence, remap and CFT |
+| `mth_q16_mul.nas` | signed Q16.16 multiply via native MUL/MULH |
+| `mth_cft_credit.nas` | local cycle-flux triangle credit, signed Q16.16 |
+| `mth_trail_credit.nas` | two-rail TD eligibility and credit, Q16.16 |
+| `mth_hopfield_top1.nas` | fixed 4x8 Q16 Hopfield top-1 retrieval primitive |
+| `mth/drivers/field_driver.nas` | guest command dispatcher for proposal, field vote, coherence, remap, CFT, TRAIL and Hopfield |
 | `include/nanlm/raw_field.hpp` | host orchestration: writes command words, runs the VM, reads results |
 
 ## Per-head proposal ABI
@@ -93,7 +96,9 @@ skip. The default fixtures cover:
 - field coherence with 85 coherent triads and one perturbed triad;
 - a fixed and a general triad remap accepted only when they improve the
   majority objective, with exact rollback and chart mapping commit;
-- local CFT triangle credit with non-negative Q16.16 error/rate;
+- local CFT triangle credit with signed Q16.16 error/rate;
+- TRAIL two-rail eligibility credit;
+- Hopfield top-1 retrieval over four 8-dimensional Q16 patterns;
 - the field-command driver and the `RawFieldVM` chart bridge;
 - `field-selftest` and `test_raw_field` on the vendored canonical VM.
 
@@ -105,8 +110,9 @@ objective improves, and restores the table exactly on rejection.
 `mth_remap_general.nas` generalizes this to any two triad slots.
 `RawFieldVM::remap_chart` commits the corresponding chart mapping swap only
 after the raw guest returns an improvement; the mapping is serialized with
-the Universe. What remains open is the autonomous scheduler that chooses
-which triads to trial and when.
+the Universe. `RawFieldVM::auto_remap` is a deterministic first scheduler: it
+tries the two lowest-credit triads with slots derived from a caller seed. It
+is a bounded policy, not an optimal graph partition.
 
 ## Non-claims
 
@@ -114,7 +120,9 @@ which triads to trial and when.
 - No BPTT, float tensor, PyTorch, or v1 overlay is imported.
 - No natural-language fluency, live Koyeb/NANNET, or geometric advantage is
   claimed.
-- The CFT first slice requires non-negative Q16.16 error/rate; signed
-  64-bit credit scaling is an explicit follow-on.
+- CFT/TRAIL are native primitives; they are not yet wired into a full training
+  loop or a source-disjoint quality claim.
+- Hopfield is a top-1 retrieval primitive, not the full sparse shared-trunk or
+  adapter-bank port.
 - The fixtures are native execution evidence, not a claim that the full
   decoder or a source-disjoint benchmark is complete.

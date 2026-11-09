@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <numeric>
 #include <fstream>
 #include <iterator>
 #include <vector>
@@ -130,6 +131,26 @@ bool RawFieldVM::propose(Universe& universe, HeadArray& heads,
     return true;
 }
 
+bool RawFieldVM::auto_remap(Universe& universe, HeadArray& heads,
+                             std::uint32_t seed, std::uint32_t a,
+                             std::uint32_t b, bool target,
+                             AutoRemapResult& out) {
+    std::array<std::uint8_t, kTriadCount> order{};
+    std::iota(order.begin(), order.end(), 0);
+    std::stable_sort(order.begin(), order.end(), [&](std::uint8_t x,
+                                                     std::uint8_t y) {
+        return universe.triad_credit()[x] < universe.triad_credit()[y];
+    });
+    out.triad_a = order[0];
+    out.triad_b = order[1];
+    out.slot_a = static_cast<std::uint8_t>((seed >> 8) % kTriadSize);
+    out.slot_b = static_cast<std::uint8_t>((seed >> 16) % kTriadSize);
+    out.attempted = true;
+    return remap_chart(universe, heads, out.triad_a, out.slot_a,
+                       out.triad_b, out.slot_b, a, b, target,
+                       out.improved, out.before, out.after);
+}
+
 bool RawFieldVM::field_vote(const std::array<std::uint8_t, kTriadCount>& masks,
                             std::uint16_t& accepted_count,
                             bool& field_accepted) {
@@ -175,6 +196,51 @@ bool RawFieldVM::cft(std::int32_t e_ab, std::int32_t e_bc,
     for (std::size_t i = 0; i < out.size(); ++i) {
         out[i] = static_cast<std::int32_t>(read_word(kResultBase + i));
     }
+    return true;
+}
+
+bool RawFieldVM::trail(std::int32_t reward, std::int32_t v_minus_next,
+                       std::int32_t v_plus, std::int32_t v_plus_prev,
+                       std::int32_t v_minus, std::int32_t e_plus,
+                       std::int32_t e_minus, std::int32_t grad_plus,
+                       std::int32_t grad_minus, std::int32_t gamma,
+                       std::int32_t lambda, std::array<std::int32_t, 3>& out) {
+    const std::array<std::int32_t, 11> args = {
+        reward, v_minus_next, v_plus, v_plus_prev, v_minus, e_plus,
+        e_minus, grad_plus, grad_minus, gamma, lambda};
+    for (std::size_t i = 0; i < args.size(); ++i) {
+        if (!write_word(kProposalBase + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(args[i]))) {
+            return fail("cannot write TRAIL command");
+        }
+    }
+    if (!write_word(kCommandBase, 7)) return fail("cannot write TRAIL command");
+    if (!run_command()) return false;
+    for (std::size_t i = 0; i < out.size(); ++i) {
+        out[i] = static_cast<std::int32_t>(read_word(kResultBase + i));
+    }
+    return true;
+}
+
+bool RawFieldVM::hopfield_top1(const std::array<std::int32_t, 8>& query,
+                               const std::array<std::int32_t, 32>& patterns,
+                               std::uint8_t& index, std::int32_t& score) {
+    for (std::size_t i = 0; i < query.size(); ++i) {
+        if (!write_word(0x7000 + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(query[i]))) {
+            return fail("cannot write Hopfield query");
+        }
+    }
+    for (std::size_t i = 0; i < patterns.size(); ++i) {
+        if (!write_word(0x7100 + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(patterns[i]))) {
+            return fail("cannot write Hopfield patterns");
+        }
+    }
+    if (!write_word(kCommandBase, 8)) return fail("cannot write Hopfield command");
+    if (!run_command()) return false;
+    index = static_cast<std::uint8_t>(read_word(kResultBase + 0) & 3u);
+    score = static_cast<std::int32_t>(read_word(kResultBase + 1));
     return true;
 }
 

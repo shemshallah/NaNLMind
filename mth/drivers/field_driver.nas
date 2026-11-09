@@ -23,7 +23,10 @@ JMP @field_driver_entry
 .include "../nan16/mth_triad_score.nas"
 .include "../nan16/mth_remap_decision.nas"
 .include "../nan16/mth_remap_general.nas"
+.include "../nan16/mth_q16_mul.nas"
 .include "../nan16/mth_cft_credit.nas"
+.include "../nan16/mth_trail_credit.nas"
+.include "../nan16/mth_hopfield_top1.nas"
 
 field_driver_entry:
   MOVI r13,1
@@ -53,6 +56,12 @@ field_driver_main:
   MOVI r3,6
   CMP r2,r3
   JMP[EQ] @field_driver_cft
+  MOVI r3,7
+  CMP r2,r3
+  JMP[EQ] @field_driver_trail
+  MOVI r3,8
+  CMP r2,r3
+  JMP[EQ] @field_driver_hopfield
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -136,6 +145,39 @@ field_driver_cft:
   ST r2,r10,1
   ST r3,r10,2
   ST r4,r10,3
+  JMP @field_driver_return
+
+field_driver_trail:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r4,r10,3
+  LD r5,r10,4
+  LD r6,r10,5
+  LD r7,r10,6
+  LD r8,r10,7
+  LD r9,r10,8
+  LD r10,r10,9
+  MOVI r11,0x4001
+  LD r11,r11,10
+  ; r10 already holds gamma; load lambda into r11 via the command word
+  MOVI r12,0x400B
+  LD r11,r12,0
+  CALL @mth_trail_credit
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  JMP @field_driver_return
+
+field_driver_hopfield:
+  MOVI r1,0x7000
+  MOVI r2,0x7100
+  CALL @mth_hopfield_top1
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
   JMP @field_driver_return
 
 field_driver_return:

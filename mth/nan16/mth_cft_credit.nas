@@ -11,15 +11,30 @@
 ; The three edge updates change the triangle circulation by the proposed
 ; delta: +delta, +delta, -delta. This is local credit, not a BPTT tape.
 mth_cft_credit:
-  MOVI r7,0
-  MOVHI r7,1              ; 65536 = Q16.16 one
-  MUL r6,r4,r5
-  DIVU r6,r6,r7           ; positive Q16 product; unsigned scale
+  MOVI r9,@mth_cft_link
+  ST r15,r9,0
+  ADD r10,r1,r0
+  ADD r11,r2,r0
+  ADD r12,r3,r0
+  ADD r13,r4,r0
+  ADD r14,r5,r0
+  ADD r1,r13,r0
+  ADD r2,r14,r0
+  CALL @mth_q16_mul
   MOVI r7,3
-  DIVU r6,r6,r7           ; delta /= 3
-  ADD r1,r1,r6
-  ADD r2,r2,r6
-  SUB r3,r3,r6
-  ADD r4,r1,r2
-  ADD r4,r4,r3
+  DIV r6,r1,r7
+  ADD r10,r10,r6
+  ADD r11,r11,r6
+  SUB r12,r12,r6
+  ADD r4,r10,r11
+  ADD r4,r4,r12
+  ADD r1,r10,r0
+  ADD r2,r11,r0
+  ADD r3,r12,r0
+  MOVI r13,1
+  MOVI r9,@mth_cft_link
+  LD r15,r9,0
   RET
+
+mth_cft_link:
+  .word 0

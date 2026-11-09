@@ -181,6 +181,13 @@ QKV/MLP trunk kernel and its feature feed are still the next native step; the
 current Python reference supplies that feature vector and is not counted as the
 native result.
 
+## Native status
+
+The sparse shared trunk and adapter bank remain Python/PyTorch reference code.
+A bounded native Hopfield top-1 retrieval primitive now exists in
+`mth/nan16/mth_hopfield_top1.nas`, but the full trunk, top-k router, adapters,
+and native AdamW/Gumbel training path are still open.
+
 ## Integration into NaNLMind
 
 1. Keep the 8 MiB root as canonical field.

@@ -78,5 +78,28 @@ int main() {
     CHECK_EQ(map_universe.triad_credit()[1], 1);
     CHECK_EQ(map_universe.triad_credit()[2], 1);
 
+    // Deterministic autonomous scheduler: lowest-credit triads are tried.
+    Universe auto_universe;
+    HeadArray auto_heads(auto_universe, PageId::root());
+    CHECK(auto_heads.at(3).set_boolean_mask(0x8000));
+    CHECK(auto_heads.at(4).set_boolean_mask(0x0000));
+    CHECK(auto_heads.at(5).set_boolean_mask(0x0000));
+    CHECK(auto_heads.at(6).set_boolean_mask(0x8000));
+    CHECK(auto_heads.at(7).set_boolean_mask(0x0000));
+    CHECK(auto_heads.at(8).set_boolean_mask(0x0000));
+    auto_universe.triad_credit()[1] = -5;
+    auto_universe.triad_credit()[2] = -4;
+    AutoRemapResult auto_result;
+    CHECK(vm.auto_remap(auto_universe, auto_heads, 256, 0, 0, true,
+                        auto_result));
+    CHECK(auto_result.attempted);
+    CHECK(auto_result.improved);
+    CHECK_EQ(auto_result.triad_a, 1);
+    CHECK_EQ(auto_result.triad_b, 2);
+    CHECK_EQ(auto_result.slot_a, 1);
+    CHECK_EQ(auto_result.slot_b, 0);
+    CHECK_EQ(auto_universe.triad_of()[6], 1);
+    CHECK_EQ(auto_universe.triad_of()[4], 2);
+
     return test_done("raw NaN16 field VM bridge");
 }

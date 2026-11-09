@@ -286,7 +286,7 @@ circuits and the field state.
 ### S3 — temporal substrate
 
 - [ ] S3.1 Keep the cheap 255-head forward/inverse wave update on every token.
-- [ ] S3.2 Add TRAIL eligibility in `s+`/`s-` without a full tape.
+- [ ] S3.2 Add TRAIL eligibility in `s+`/`s-` without a full tape (raw Q16 primitive exists; rail integration open).
 - [ ] S3.3 Add HOLO phase/holonomy credit using the existing CORDIC.
 - [ ] S3.4 Add RING angular correlation and triad/field rotation votes.
 - [ ] S3.5 Add FLUX temporal-link divergence and bounded relaxation.
@@ -302,7 +302,7 @@ circuits and the field state.
 - [ ] S4.5 Add `Descriptor.aux` support/credit/generation fields and a
   versioned checksum.
 - [ ] S4.6 Add `TCA` leave-one-out advantage and triad/field promotion.
-- [ ] S4.7 Add CFT cycle banks; use them as the base control.
+- [ ] S4.7 Add CFT cycle banks; use them as the base control (raw CFT credit primitive exists; chart bank open).
 
 ### S5 — joint training and commit
 
@@ -311,7 +311,7 @@ circuits and the field state.
 - [ ] S5.2 Gradient checks against finite differences on a reversible block.
 - [ ] S5.3 Straight-through routing and field gate; no fabricated exact
   gradient for discrete votes.
-- [ ] S5.4 Native CFT/TRAIL/HOLO/RING/LEAF/TCA/FLUX credit updates (reference CFT/vote path exists).
+- [ ] S5.4 Native CFT/TRAIL/HOLO/RING/LEAF/TCA/FLUX credit updates (raw CFT/TRAIL/TCA-adjacent votes exist; full hybrid integration open).
 - [ ] S5.5 Triad 2/3 and field 43/85 commit with rollback and ledger.
 - [ ] S5.6 Reject updates that only improve training loss.
 - [ ] S5.7 Independent local training vs joint field backprop; measure gradient coupling.

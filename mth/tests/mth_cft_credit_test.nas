@@ -1,5 +1,6 @@
 .org 0
 JMP @mth_cft_main
+.include "../nan16/mth_q16_mul.nas"
 .include "../nan16/mth_cft_credit.nas"
 mth_cft_main:
   MOVI r13,1
@@ -26,6 +27,29 @@ mth_cft_main:
   MOVI r10,0x3333
   CMP r4,r10
   JMP[NE] @mth_cft_fail
+  ; negative error reverses the circulation.
+  MOVI r1,0
+  MOVI r2,0
+  MOVI r3,0
+  MOVI r4,0
+  MOVHI r4,1
+  SUB r4,r0,r4
+  MOVI r5,0x9999
+  CALL @mth_cft_credit
+  MOVI r10,0xCCCD
+  MOVHI r10,0xFFFF
+  CMP r1,r10
+  JMP[NE] @mth_cft_fail
+  CMP r2,r10
+  JMP[NE] @mth_cft_fail
+  MOVI r10,0x3333
+  CMP r3,r10
+  JMP[NE] @mth_cft_fail
+  MOVI r10,0xCCCD
+  MOVHI r10,0xFFFF
+  CMP r4,r10
+  JMP[NE] @mth_cft_fail
+
   MOVI r1,@mth_cft_pass
   CALL @mth_puts
   HALT

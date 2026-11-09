@@ -16,6 +16,17 @@
 
 namespace nanlm {
 
+struct AutoRemapResult {
+    bool attempted = false;
+    bool improved = false;
+    std::uint8_t triad_a = 0;
+    std::uint8_t slot_a = 0;
+    std::uint8_t triad_b = 0;
+    std::uint8_t slot_b = 0;
+    std::int32_t before = 0;
+    std::int32_t after = 0;
+};
+
 struct RawProposalResult {
     std::uint8_t votes = 0;
     bool accepted = false;
@@ -49,6 +60,15 @@ public:
     bool cft(std::int32_t e_ab, std::int32_t e_bc, std::int32_t e_ca,
              std::int32_t error, std::int32_t rate,
              std::array<std::int32_t, 4>& out);
+    bool trail(std::int32_t reward, std::int32_t v_minus_next,
+               std::int32_t v_plus, std::int32_t v_plus_prev,
+               std::int32_t v_minus, std::int32_t e_plus,
+               std::int32_t e_minus, std::int32_t grad_plus,
+               std::int32_t grad_minus, std::int32_t gamma,
+               std::int32_t lambda, std::array<std::int32_t, 3>& out);
+    bool hopfield_top1(const std::array<std::int32_t, 8>& query,
+                       const std::array<std::int32_t, 32>& patterns,
+                       std::uint8_t& index, std::int32_t& score);
     bool remap(const std::array<std::uint16_t, 6>& masks,
                std::uint32_t a, std::uint32_t b, bool target,
                bool& improved, std::int32_t& before, std::int32_t& after);
@@ -65,6 +85,11 @@ public:
                      std::uint32_t a, std::uint32_t b, bool target,
                      bool& improved, std::int32_t& before,
                      std::int32_t& after);
+    // Deterministic local scheduler: try the two lowest-credit triads, with
+    // slots derived from the caller's seed. The raw guest still decides.
+    bool auto_remap(Universe& universe, HeadArray& heads, std::uint32_t seed,
+                    std::uint32_t a, std::uint32_t b, bool target,
+                    AutoRemapResult& out);
 
     // Convenience bridge: run the guest and update the chart's triad voter.
     bool field_vote(Universe& universe);

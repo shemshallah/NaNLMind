@@ -50,6 +50,12 @@ FIXTURES = (
             "MTH FIELD DRIVER PASS"),
     Fixture("cft_credit", "mth/tests/mth_cft_credit_test.nas", 200_000,
             "MTH CFT CREDIT PASS"),
+    Fixture("q16_mul", "mth/tests/mth_q16_mul_test.nas", 200_000,
+            "MTH Q16 MUL PASS"),
+    Fixture("trail_credit", "mth/tests/mth_trail_credit_test.nas", 200_000,
+            "MTH TRAIL CREDIT PASS"),
+    Fixture("hopfield_top1", "mth/tests/mth_hopfield_top1_test.nas", 500_000,
+            "MTH HOPFIELD TOP1 PASS"),
 )
 
 

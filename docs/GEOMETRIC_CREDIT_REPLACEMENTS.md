@@ -80,6 +80,13 @@ Treat temporal links as a flow network. `J = w(φ_v-φ_u)`, `D = div J - I`,
 circulation are retained rather than forced to close. A 24-byte link record
 fits the free extension (32,640 links).
 
+## Implementation status
+
+Raw NaN16 CFT and TRAIL credit primitives, a signed Q16 multiply, a field
+command driver, and a deterministic auto-remap scheduler now exist in
+`mth/nan16/` and `include/nanlm/raw_field.hpp`. They are not yet integrated
+into a joint training loop, and no quality claim follows from the primitives.
+
 ## Recommendation
 
 Implement **TRAIL** first, restricted to one 8-token block and an 8×8 bank per
