@@ -160,6 +160,69 @@ int main() {
     CHECK(std::isfinite(feature[0]));
     CHECK(std::fabs(feature[0]) <= 1.0f);
 
+    // Learned QKV/MLP causal trunk: identity matrices first, then arbitrary
+    // weights.  Context lengths 1, 8 and 48 exercise the causal loop.
+    TrunkWeights weights;
+    for (std::size_t i = 0; i < 64; ++i) {
+        weights.wq[i] = (i / 8 == i % 8) ? 1.0f : 0.0f;
+        weights.wk[i] = weights.wq[i];
+        weights.wv[i] = weights.wq[i];
+        weights.wout[i] = weights.wq[i];
+    }
+    for (std::size_t i = 0; i < 128; ++i) {
+        weights.w1[i] = 0.0f;
+        weights.w2[i] = 0.0f;
+    }
+    for (std::size_t i = 0; i < 8; ++i) {
+        weights.w1[i * 8 + i] = 1.0f;   // 16x8: first 8 rows identity
+        weights.w2[i * 16 + i] = 1.0f;  // 8x16: first 8 cols identity
+    }
+    std::vector<std::array<float, kRawFeatureDim>> causal_tokens;
+    for (std::size_t tkn = 0; tkn < 8; ++tkn) {
+        std::array<float, kRawFeatureDim> v{};
+        for (std::size_t d = 0; d < kRawFeatureDim; ++d) {
+            v[d] = 0.25f + 0.03125f * static_cast<float>(tkn + d);
+        }
+        causal_tokens.push_back(v);
+    }
+    std::vector<std::array<float, kRawFeatureDim>> one_token = {causal_tokens[0]};
+    std::array<float, kRawFeatureDim> one_feature{};
+    CHECK(vm.causal_trunk(one_token, weights, one_feature));
+    const float expected_one = 2.0f * causal_tokens[0][0] +
+                               std::tanh(2.0f * causal_tokens[0][0]);
+    CHECK(std::fabs(one_feature[0] - expected_one) < 1e-3f);
+
+    std::array<float, kRawFeatureDim> causal_feature{};
+    CHECK(vm.causal_trunk(causal_tokens, weights, causal_feature));
+    const float identity_first = causal_feature[0];
+    // Non-identity learned matrices must change the feature; this is not an
+    // identity-only code path.
+    for (std::size_t i = 0; i < weights.wq.size(); ++i) {
+        weights.wq[i] = 0.01f * static_cast<float>((i % 7) + 1);
+        weights.wk[i] = 0.02f * static_cast<float>((i % 5) + 1);
+        weights.wv[i] = 0.03f * static_cast<float>((i % 3) + 1);
+        weights.wout[i] = 0.04f * static_cast<float>((i % 4) + 1);
+    }
+    for (std::size_t i = 0; i < weights.w1.size(); ++i) {
+        weights.w1[i] = 0.05f * static_cast<float>((i % 6) + 1);
+        weights.w2[i] = 0.06f * static_cast<float>((i % 9) + 1);
+    }
+    CHECK(vm.causal_trunk(causal_tokens, weights, causal_feature));
+    CHECK(std::isfinite(causal_feature[0]));
+    CHECK(std::fabs(causal_feature[0] - identity_first) > 1e-5f);
+
+    CHECK(std::isfinite(causal_feature[0]));
+    causal_tokens.resize(48);
+    for (std::size_t tkn = 8; tkn < 48; ++tkn) {
+        std::array<float, kRawFeatureDim> v{};
+        for (std::size_t d = 0; d < kRawFeatureDim; ++d) {
+            v[d] = 0.1f + 0.01f * static_cast<float>(tkn + d);
+        }
+        causal_tokens[tkn] = v;
+    }
+    CHECK(vm.causal_trunk(causal_tokens, weights, causal_feature));
+    CHECK(std::isfinite(causal_feature[0]));
+
     Universe feature_universe;
     SparseField feature_field(feature_universe);
     CHECK(feature_field.configure(8, 2, 8));
@@ -169,6 +232,11 @@ int main() {
         q16[i] = static_cast<std::int32_t>(std::lrintf(feature[i] * 65536.0f));
     }
     SparseField::Result feature_result;
+    CHECK(feature_field.forward(q16, feature_result));
+    CHECK_EQ(feature_result.count, SparseField::kActive);
+    for (std::size_t i = 0; i < kRawFeatureDim; ++i) {
+        q16[i] = static_cast<std::int32_t>(std::lrintf(causal_feature[i] * 65536.0f));
+    }
     CHECK(feature_field.forward(q16, feature_result));
     CHECK_EQ(feature_result.count, SparseField::kActive);
 

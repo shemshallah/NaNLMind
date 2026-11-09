@@ -26,6 +26,7 @@ adaptive-field mathematics:
 | `mth_cft_credit.nas` | local cycle-flux triangle credit, signed Q16.16 |
 | `mth_trail_credit.nas` | two-rail TD eligibility and credit, Q16.16 |
 | `mth_micro_block.nas` | raw two-token QKV/softmax/tanh micro-transformer forward |
+| `mth_field_commit.nas` | CFT credits -> 85 triad votes -> 43/85 field commit |
 | `mth_hot_trihead.nas` | raw 255-head hot scan, 3-hot-head triad grouping and 85x3 auto-mapping |
 | `mth_micro_feature.nas` | raw two-token QKV/softmax/tanh feature feed for the sparse field |
 | `mth/drivers/field_driver.nas` | guest command dispatcher for proposal, field vote, coherence, remap, CFT, TRAIL and hot triheads |
@@ -138,6 +139,7 @@ skip. The default fixtures cover:
 - local CFT triangle credit with signed Q16.16 error/rate;
 - TRAIL two-rail eligibility credit;
 - a two-token QKV/softmax/tanh micro-block forward primitive;
+- CFT-credit -> triad -> 43/85 field commit;
 - the field-command driver and the `RawFieldVM` chart bridge;
 - `field-selftest` and `test_raw_field` on the vendored canonical VM.
 

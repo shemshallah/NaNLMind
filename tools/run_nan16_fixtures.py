@@ -56,6 +56,8 @@ FIXTURES = (
             "MTH TRAIL CREDIT PASS"),
     Fixture("micro_block", "mth/tests/mth_micro_block_test.nas", 200_000,
             "MTH MICRO BLOCK PASS"),
+    Fixture("field_commit", "mth/tests/mth_field_commit_test.nas", 200_000,
+            "MTH FIELD COMMIT PASS"),
     Fixture("hot_trihead", "mth/tests/mth_hot_trihead_test.nas", 5_000_000,
             "MTH HOT TRIHEAD PASS"),
     Fixture("micro_feature", "mth/tests/mth_micro_feature_test.nas", 200_000,

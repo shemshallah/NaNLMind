@@ -13,6 +13,7 @@
 #include <array>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace nanlm {
 
@@ -35,6 +36,16 @@ struct RawProposalResult {
 };
 
 constexpr std::size_t kRawFeatureDim = 8;
+constexpr std::size_t kRawTrunkContext = 256;
+
+struct TrunkWeights {
+    std::array<float, 64> wq{};
+    std::array<float, 64> wk{};
+    std::array<float, 64> wv{};
+    std::array<float, 64> wout{};
+    std::array<float, 128> w1{};
+    std::array<float, 128> w2{};
+};
 
 struct HotTriheadResult {
     std::uint16_t hot_heads = 0;
@@ -76,6 +87,10 @@ public:
                std::int32_t e_minus, std::int32_t grad_plus,
                std::int32_t grad_minus, std::int32_t gamma,
                std::int32_t lambda, std::array<std::int32_t, 3>& out);
+    bool field_commit(const std::array<std::int32_t, kTriadCount>& credits,
+                      std::int32_t threshold,
+                      std::array<std::uint8_t, kTriadCount>& votes,
+                      std::uint16_t& accepted_count, bool& committed);
     bool hot_triheads(const std::array<std::int32_t, kTriadMemberCount>& credits,
                       std::int32_t threshold, HotTriheadResult& out);
     // Raw scan/grouping, then commit the unique 85x3 mapping to the chart.
@@ -86,6 +101,11 @@ public:
     bool micro_feature(const std::array<float, kRawFeatureDim>& x0,
                        const std::array<float, kRawFeatureDim>& x1,
                        std::array<float, kRawFeatureDim>& out);
+    // Learned QKV/MLP causal feature block.  Tokens are 8-lane float32
+    // vectors; the guest attends causally to the last token.
+    bool causal_trunk(const std::vector<std::array<float, kRawFeatureDim>>& tokens,
+                      const TrunkWeights& weights,
+                      std::array<float, kRawFeatureDim>& out);
     bool remap(const std::array<std::uint16_t, 6>& masks,
                std::uint32_t a, std::uint32_t b, bool target,
                bool& improved, std::int32_t& before, std::int32_t& after);

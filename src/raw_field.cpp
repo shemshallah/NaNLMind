@@ -314,6 +314,88 @@ bool RawFieldVM::micro_feature(
     return true;
 }
 
+
+bool RawFieldVM::causal_trunk(
+    const std::vector<std::array<float, kRawFeatureDim>>& tokens,
+    const TrunkWeights& weights,
+    std::array<float, kRawFeatureDim>& out) {
+    if (tokens.empty() || tokens.size() > kRawTrunkContext) {
+        return fail("causal trunk token count outside 1..256");
+    }
+    auto write_float = [&](std::uint32_t index, float value) {
+        std::uint32_t bits = 0;
+        std::memcpy(&bits, &value, sizeof(bits));
+        return write_word(index, bits);
+    };
+    for (std::size_t tkn = 0; tkn < tokens.size(); ++tkn) {
+        for (std::size_t d = 0; d < kRawFeatureDim; ++d) {
+            if (!write_float(kMicroX0 + static_cast<std::uint32_t>(tkn * 8 + d),
+                             tokens[tkn][d])) {
+                return fail("cannot write causal-trunk token");
+            }
+        }
+    }
+    const struct {
+        const float* data;
+        std::uint32_t base;
+        std::size_t size;
+    } blocks[] = {
+        {weights.wq.data(), 0x9000, weights.wq.size()},
+        {weights.wk.data(), 0x9040, weights.wk.size()},
+        {weights.wv.data(), 0x9080, weights.wv.size()},
+        {weights.wout.data(), 0x90C0, weights.wout.size()},
+        {weights.w1.data(), 0x9100, weights.w1.size()},
+        {weights.w2.data(), 0x9180, weights.w2.size()},
+    };
+    for (const auto& block : blocks) {
+        for (std::size_t i = 0; i < block.size; ++i) {
+            if (!write_float(block.base + static_cast<std::uint32_t>(i),
+                             block.data[i])) {
+                return fail("cannot write causal-trunk weights");
+            }
+        }
+    }
+    if (!write_word(kProposalBase, static_cast<std::uint32_t>(tokens.size())) ||
+        !write_word(kCommandBase, 10)) {
+        return fail("cannot write causal-trunk command");
+    }
+    if (!run_command()) return false;
+    if (read_word(kResultBase) != kRawFeatureDim) {
+        return fail("raw causal trunk returned the wrong feature count");
+    }
+    for (std::size_t d = 0; d < kRawFeatureDim; ++d) {
+        const std::uint32_t bits = read_word(0xA000u + static_cast<std::uint32_t>(d));
+        std::memcpy(&out[d], &bits, sizeof(bits));
+    }
+    return true;
+}
+
+bool RawFieldVM::field_commit(
+    const std::array<std::int32_t, kTriadCount>& credits,
+    std::int32_t threshold,
+    std::array<std::uint8_t, kTriadCount>& votes,
+    std::uint16_t& accepted_count, bool& committed) {
+    for (std::size_t i = 0; i < credits.size(); ++i) {
+        if (!write_word(0x7000 + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(credits[i])) ||
+            !write_word(0x7100 + static_cast<std::uint32_t>(i), 0)) {
+            return fail("cannot write field commit credits");
+        }
+    }
+    if (!write_word(kProposalBase, static_cast<std::uint32_t>(threshold)) ||
+        !write_word(kCommandBase, 11)) {
+        return fail("cannot write field commit command");
+    }
+    if (!run_command()) return false;
+    accepted_count = static_cast<std::uint16_t>(read_word(kResultBase + 0));
+    committed = (read_word(kResultBase + 1) & 1u) != 0;
+    for (std::size_t i = 0; i < votes.size(); ++i) {
+        votes[i] = static_cast<std::uint8_t>(read_word(0x7100 +
+                                                      static_cast<std::uint32_t>(i)) & 1u);
+    }
+    return true;
+}
+
 bool RawFieldVM::remap(const std::array<std::uint16_t, 6>& masks,
                        std::uint32_t a, std::uint32_t b, bool target,
                        bool& improved, std::int32_t& before,

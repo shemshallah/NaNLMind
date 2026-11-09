@@ -1,0 +1,248 @@
+.org 0
+JMP @mth_fc_test_main
+.include "../nan16/mth_field_commit.nas"
+mth_fc_test_main:
+  MOVI r13,1
+  MOVI r10,@mth_fcommit_credits
+  MOVI r11,0
+  MOVI r12,0x1000
+mth_fc_fill:
+  ST r12,r10,0
+  ADDI r10,r10,1
+  ADDI r11,r11,1
+  MOVI r14,85
+  CMP r11,r14
+  JMP[LT] @mth_fc_fill
+  ; 43 credits above threshold, 42 at threshold.
+  MOVI r10,@mth_fcommit_credits
+  MOVI r11,0
+  MOVI r12,43
+mth_fc_seed:
+  MOVI r14,0x2000
+  ST r14,r10,0
+  ADDI r10,r10,1
+  SUB r12,r12,r13
+  CMP r12,r0
+  JMP[NE] @mth_fc_seed
+  MOVI r1,@mth_fcommit_credits
+  MOVI r2,0x1800
+  MOVI r3,@mth_fcommit_votes
+  CALL @mth_field_commit
+  MOVI r14,43
+  CMP r1,r14
+  JMP[NE] @mth_fc_fail
+  MOVI r14,1
+  CMP r2,r14
+  JMP[NE] @mth_fc_fail
+  ; 42 must not commit.
+  MOVI r10,@mth_fcommit_credits
+  MOVI r14,0x1000
+  ST r14,r10,42
+  MOVI r1,@mth_fcommit_credits
+  MOVI r2,0x1800
+  MOVI r3,@mth_fcommit_votes
+  CALL @mth_field_commit
+  MOVI r14,42
+  CMP r1,r14
+  JMP[NE] @mth_fc_fail
+  CMP r2,r0
+  JMP[NE] @mth_fc_fail
+  MOVI r1,@mth_fc_pass
+  CALL @mth_puts
+  HALT
+mth_fc_fail:
+  MOVI r1,@mth_fc_bad
+  CALL @mth_puts
+  HALT
+mth_puts:
+  MOVI r4,255
+mth_puts_word:
+  LD r2,r1,0
+  MOVI r3,4
+mth_puts_byte:
+  BOOL.8 r5,r2,r4
+  CMP r5,r0
+  RET[EQ]
+  PUTC r5
+  SHR r2,r2,8
+  SUB r3,r3,r13
+  JMP[NE] @mth_puts_byte
+  ADD r1,r1,r13
+  JMP @mth_puts_word
+mth_fc_pass:
+.str "MTH FIELD COMMIT PASS\n"
+mth_fc_bad:
+.str "MTH FIELD COMMIT FAIL\n"
+mth_fcommit_credits:
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+
+mth_fcommit_votes:
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0

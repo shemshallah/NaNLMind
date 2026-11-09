@@ -15,6 +15,8 @@
 ;   mapping at 0x8000: 85 triads x 3 heads
 ; Micro feature: x0 at 0x7000, x1 at 0x7100, output at 0x7200
 ;   result at 0x4010: feature count (8)
+; Causal trunk: T at 0x4001, tokens at 0x7000, weights at 0x9000,
+;   output feature at 0xA000, result count at 0x4010
 ;
 ; The driver contains no host math. It is assembled by nmk.awk and executed
 ; by the canonical NaN0S VM. The guest starts at word 0.
@@ -31,8 +33,10 @@ JMP @field_driver_entry
 .include "../nan16/mth_q16_mul.nas"
 .include "../nan16/mth_cft_credit.nas"
 .include "../nan16/mth_trail_credit.nas"
+.include "../nan16/mth_field_commit.nas"
 .include "../nan16/mth_hot_trihead.nas"
 .include "../nan16/mth_micro_feature.nas"
+.include "../nan16/mth_trunk_causal.nas"
 
 field_driver_entry:
   MOVI r13,1
@@ -71,6 +75,12 @@ field_driver_main:
   MOVI r3,9
   CMP r2,r3
   JMP[EQ] @field_driver_micro_feature
+  MOVI r3,10
+  CMP r2,r3
+  JMP[EQ] @field_driver_trunk
+  MOVI r3,11
+  CMP r2,r3
+  JMP[EQ] @field_driver_field_commit
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -199,6 +209,25 @@ field_driver_micro_feature:
   CALL @mth_micro_feature
   MOVI r10,0x4010
   ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_trunk:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  CALL @mth_trunk_causal
+  MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_field_commit:
+  MOVI r10,0x4001
+  LD r2,r10,0
+  MOVI r1,0x7000
+  MOVI r3,0x7100
+  CALL @mth_field_commit
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
   JMP @field_driver_return
 
 field_driver_return:
