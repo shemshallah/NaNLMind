@@ -31,6 +31,51 @@ free extension. The design below uses:
 
 The system is one topology and one ledger even when weights are paged.
 
+### 1.1 The 1 MiB-per-head independence option
+
+Yes: **256 independent 1 MiB parameter banks are possible** if the weights live
+in a mapped sidecar, not in the 8 MiB root. That is 256 MiB of weights, plus the
+8 MiB root and a few MiB of activations/scratch. It is a deliberate memory tier,
+not a claim that the root contains them.
+
+A one-layer, per-head bank that fits 1 MiB at 4 bytes per parameter:
+
+| component | parameters |
+|---|---:|
+| QKV projections, d=128 | 49,152 |
+| output projection, d=128 | 16,384 |
+| MLP 128 -> 480 -> 128 | 122,880 |
+| token embedding, vocab=256 | 32,768 |
+| output head, vocab=256 | 32,768 |
+| biases + two layer norms | ~1,600 |
+| **total** | **~255,552 parameters = 1,022,208 bytes** |
+
+That leaves about 26 KiB for per-head metadata. At 16-bit weights the same
+1 MiB holds twice the parameter budget; at 8-bit, four times.
+
+This makes each head **parameter-independent**: separate QKV, MLP, embedding,
+readout, optimizer/credit and persistence. It does not make it independent of
+the shared vocabulary/context protocol or of the field vote. If those are also
+private, the heads become independent modules inside one topology; if the field
+backpropagates through all heads, they are coupled again.
+
+Memory cost and training mode:
+
+| mode | weights | optimizer | practical note |
+|---|---:|---:|---|
+| 256 x 1 MiB, SGD/local credit | 256 MiB | ~0 | fits with root and activations under 1 GiB |
+| 256 x 1 MiB, Adam | 256 MiB | ~512 MiB | near the 1 GiB ceiling; train per-head or use 8-bit/offload |
+| 85 x 1 MiB triad banks | 85 MiB | ~0-170 MiB | not fully independent; 3 heads share a bank |
+| sparse top-k active set | paged | paged | only active banks resident; throughput/memory measured |
+
+The independent mode does **not** require 256 full models to be resident at
+once. The sidecar is demand-paged; routing activates a top-k set. The 8 MiB
+root remains the canonical identity, heads and hypermatrix.
+
+Recommendation: support both budgets explicitly. Use 85 triad banks for the
+cheap symbiotic mode; use 256 independent 1 MiB per-head banks for the
+independent-head research mode. Never blur which one produced a result.
+
 ## 2. Four mechanisms, four jobs
 
 | mechanism | job |
@@ -196,6 +241,9 @@ circuits and the field state.
   digest for the active set and a manifest for paged pages.
 - [ ] S1.4 Add a budget auditor that fails before overwriting a child page or
   extension boundary.
+- [ ] S1.5 Add the independent mode: 256 x 1 MiB per-head sidecar banks, demand-paged.
+- [ ] S1.6 Add per-head optimizer/credit state and a digest/manifest for paged banks.
+- [ ] S1.7 Keep 85 x 1 MiB triad mode as the cheap symbiotic control; label results by mode.
 
 ### S2 — micro-transformer P1
 
@@ -207,6 +255,9 @@ circuits and the field state.
 - [ ] S2.6 Context scales 48/256/4KiB/64KiB and 65,536-address postings;
   measure throughput, resident memory and held-out loss for each.
 - [ ] S2.7 Native/N16I parity on fixed vectors and generated tokens.
+- [ ] S2.8 Fit and test the d=128, MLP=480, vocab=256 one-layer 1 MiB per-head bank.
+- [ ] S2.9 Per-head embeddings/readout in independent mode; shared vocab only by explicit contract.
+- [ ] S2.10 Compare 85 triad banks vs 256 independent banks at equal active compute.
 
 ### S3 — temporal substrate
 
@@ -239,6 +290,7 @@ circuits and the field state.
 - [ ] S5.4 Native CFT/TRAIL/HOLO/RING/LEAF/TCA/FLUX credit updates.
 - [ ] S5.5 Triad 2/3 and field 43/85 commit with rollback and ledger.
 - [ ] S5.6 Reject updates that only improve training loss.
+- [ ] S5.7 Independent local training vs joint field backprop; measure gradient coupling.
 
 ### S6 — evaluation
 
@@ -251,6 +303,7 @@ circuits and the field state.
 - [ ] S6.4 Throughput, RSS/cache/energy and context scaling on Android ARM.
 - [ ] S6.5 Persistence, crash/replay and generation-CAS tests.
 - [ ] S6.6 Report ties/failures prominently; no open-domain fluency claim.
+- [ ] S6.7 Measure 256 MiB paged resident set, cache pressure and active-bank throughput.
 
 ## 8. Acceptance gates
 
