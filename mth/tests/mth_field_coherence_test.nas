@@ -1,0 +1,323 @@
+.org 0
+JMP @mth_fc_test_main
+.include "../nan16/mth_field_coherence.nas"
+
+mth_fc_test_main:
+  MOVI r13,1
+  ; Fill 255 phase words with zero.
+  MOVI r1,@mth_fc_phases
+  MOVI r2,0
+mth_fc_clear:
+  ST r0,r1,0
+  ADDI r1,r1,4
+  ADDI r2,r2,1
+  MOVI r3,255
+  CMP r2,r3
+  JMP[LT] @mth_fc_clear
+
+  MOVI r1,@mth_fc_phases
+  CALL @mth_field_coherence
+  MOVI r10,65500
+  CMP r1,r10
+  JMP[LT] @mth_fc_fail
+
+  ; Make one triad orthogonal/opposed; the field average must fall but stay
+  ; positive because 84 triads remain coherent.
+  MOVI r1,@mth_fc_phases
+  MOVI r2,0x4000
+  ST r2,r1,4
+  MOVI r2,0x8000
+  ST r2,r1,8
+  MOVI r1,@mth_fc_phases
+  CALL @mth_field_coherence
+  MOVI r10,60000
+  CMP r1,r10
+  JMP[LT] @mth_fc_fail
+  MOVI r10,65000
+  CMP r1,r10
+  JMP[GT] @mth_fc_fail
+
+  MOVI r1,@mth_fc_pass
+  CALL @mth_puts
+  HALT
+mth_fc_fail:
+  MOVI r1,@mth_fc_bad
+  CALL @mth_puts
+  HALT
+
+mth_puts:
+  MOVI r4,255
+mth_puts_word:
+  LD r2,r1,0
+  MOVI r3,4
+mth_puts_byte:
+  BOOL.8 r5,r2,r4
+  CMP r5,r0
+  RET[EQ]
+  PUTC r5
+  SHR r2,r2,8
+  SUB r3,r3,r13
+  JMP[NE] @mth_puts_byte
+  ADD r1,r1,r13
+  JMP @mth_puts_word
+
+mth_fc_pass:
+.str "MTH FIELD COHERENCE PASS\n"
+mth_fc_bad:
+.str "MTH FIELD COHERENCE FAIL\n"
+mth_fc_phases:
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0

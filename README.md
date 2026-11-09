@@ -17,6 +17,7 @@ This repository contains:
 
 - the extracted provenance of 28 archives (Rounds 2–23, merged R15–R17/R18/R23clock, `distributedmind`, and `nanclock`);
 - a clean C++20 core for the address algebra, NaN16 Boolean functions, the 8 MiB full-address register-file chart, bit/byte/KB paging, hyperedges, bidirectional temporal memory, resonance, and one global ledger;
+- raw NaN16 adaptive-field kernels (`mth/nan16/`) for per-head Boolean self-modification, triad votes, field votes, Q16.16 trig, and phase coherence, with native `nan_cli` fixtures;
 - a mapped 32,640-row hypermatrix extension inside the same 8 MiB chart, with 85 three-head voting triads, a single field consensus, and Q16.16 local/group/field readout gains;
 - the canonical native build contract (`spec/unified-build.v1.json`): NaNLMind owns the topology and native binary, NaNROUTER is the transport/control plane, and HERMES is a read-only adapter;
 - the six-runner NaNLMind ring and its `nanlm-ram` / `nanlm-vram` tiers;
@@ -194,6 +195,7 @@ make
 ./build/nanlm-universal words
 ./build/nanlm-universal unification
 make unified-check
+make nan16-test
 ./build/nanlm-universal warmup 10
 make byte-router
 make byte-router-repeats
@@ -242,6 +244,7 @@ baseline — a plain RNN matching the 256-head topology — is in
 | `docs/04_REGISTER_FILE.md` | exact 8 MiB full-address chart layout and linked register file |
 | `docs/HYPERMATRIX_V1_V2_RECONCILIATION.md` | v1 NaNLM comparison, mapped hypermatrix, triad/field consensus and integration plan |
 | `docs/UNIFIED_BUILD_CONTRACT.md` | canonical build/authority boundary for NaNLMind, NaNROUTER and HERMES |
+| `docs/NAN16_ADAPTIVE_FIELD.md` | raw NaN16 per-head self-modification, triad/field votes, Q16 trig and coherence ABI |
 | `docs/06_HEADS_RESONANCE.md` | 256 heads, resonance, self-modification, bidirectional memory |
 | `docs/07_DISTRIBUTED.md` | one object on a replica ring; leases, replay, failure modes |
 | `docs/08_TRAINING.md` | integer/CRDT training, teacher distillation, GPU plan |

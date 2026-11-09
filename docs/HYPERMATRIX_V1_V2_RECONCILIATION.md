@@ -159,6 +159,9 @@ Adapt for v2:
 | persistence and digest | done | hypermatrix is serialized/digested; reload tests pass |
 | no v1 dependency | done | no NaNLM v1 code, PyTorch, overlay or float model imported |
 | cross-repo build contract | done | `spec/unified-build.v1.json`, native `unification`, `make unified-check`, HERMES adapter |
+| raw NaN16 per-head proposal + triad vote | done | `mth/nan16/mth_triad_vote.nas`, `mth/tests/mth_triad_vote_test.nas` |
+| raw NaN16 field vote + Q16 trig/coherence | done | `mth_field_vote.nas`, `mth_q16_sin_cos.nas`, `mth_field_coherence.nas`; 5/5 fixtures |
+| general adaptive remap | partial | fixed A1/B0 raw trial + rollback; general slot/head mapping persistence remains open |
 
 Measured on the small native fixture in `tests/test_relation_train.cpp`:
 
@@ -194,6 +197,10 @@ combined v2 result.
 2. **P1 — calibrated hierarchical gains**: use a development split to fit local,
    triad and field gains; commit only if the held-out score improves and the
    no-hyper ablation remains worse.
+2. **P1.5 — raw adaptive field**: keep the new per-head, triad, field and trig
+   mathematics in `mth/nan16/` and expose only orchestration/storage in the
+   host. The fixed-slot remap fixture is done; general remap membership and
+   calibrated gains remain open.
 3. **P2 — signed residual index**: add a constant-time `hyper_query` to the v2
    Hypergraph and make refutation/support explicit in the hypermatrix score.
 4. **P3 — layer integration**: keep v2's L0 reflex, L1 resonance and later
