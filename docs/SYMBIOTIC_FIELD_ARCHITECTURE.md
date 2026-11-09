@@ -249,8 +249,8 @@ circuits and the field state.
 
 - [ ] S2.1 d=8 block: QKV, 2 heads of d=4, residual, layer norm.
 - [ ] S2.2 MLP 8→16→8 with `FTANH`; raw NaN16 kernel plus C++ state adapter.
-- [ ] S2.3 Shared projections for 85 triad banks; 255 low-rank head adapters.
-- [ ] S2.4 Sparse top-k head→triad→field routing with margins and budgets.
+- [x] S2.3 Shared projections for 85 triad banks; 255 low-rank head adapters in the NaNLMind reference.
+- [x] S2.4 Sparse top-k head→triad→field routing with margins and budgets in the reference; native port open.
 - [ ] S2.5 Selective full triad attention only above routing/coherence gates.
 - [ ] S2.6 Context scales 48/256/4KiB/64KiB and 65,536-address postings;
   measure throughput, resident memory and held-out loss for each.
@@ -287,7 +287,7 @@ circuits and the field state.
 - [ ] S5.2 Gradient checks against finite differences on a reversible block.
 - [ ] S5.3 Straight-through routing and field gate; no fabricated exact
   gradient for discrete votes.
-- [ ] S5.4 Native CFT/TRAIL/HOLO/RING/LEAF/TCA/FLUX credit updates.
+- [ ] S5.4 Native CFT/TRAIL/HOLO/RING/LEAF/TCA/FLUX credit updates (reference CFT/vote path exists).
 - [ ] S5.5 Triad 2/3 and field 43/85 commit with rollback and ledger.
 - [ ] S5.6 Reject updates that only improve training loss.
 - [ ] S5.7 Independent local training vs joint field backprop; measure gradient coupling.

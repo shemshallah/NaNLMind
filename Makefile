@@ -1,15 +1,23 @@
 CXX ?= c++
-CXXFLAGS ?= -std=c++20 -O2 -Wall -Wextra -Wpedantic -Iinclude
+CC ?= cc
+CXXFLAGS ?= -std=c++20 -O2 -Wall -Wextra -Wpedantic -Iinclude -Ithird_party/nan0s/core
+NAN0S_CFLAGS ?= -std=gnu99 -O2 -ffp-contract=off -fno-fast-math -Ithird_party/nan0s/core
 DEPFLAGS := -MMD -MP
 LDFLAGS ?=
+LDLIBS ?= -lm
 BUILD := build
+NAN0S_NMK := third_party/nan0s/tools/nmk.awk
+FIELD_DRIVER := $(BUILD)/field_driver.nan
 
-LIB_SRC := src/sha256.cpp src/journal_forest.cpp src/universe.cpp src/pager.cpp src/resonance.cpp src/ledger.cpp src/ring.cpp src/hypergraph.cpp src/hypermatrix.cpp src/temporal.cpp src/global.cpp src/head.cpp src/clock.cpp src/consolidation.cpp src/schedule.cpp src/handoff.cpp src/router.cpp src/frame_sync.cpp src/meta_index.cpp src/atomic.cpp src/ntf.cpp src/ncr.cpp src/training.cpp src/supercluster.cpp src/byte_model.cpp src/slot_memory.cpp src/context2.cpp src/context2_topology.cpp src/vector_store.cpp src/word_memory.cpp src/bootstrap_router.cpp src/bootstrap_layers.cpp src/overbootstrap.cpp src/learning_mesh.cpp src/word_vector.cpp src/head_gate.cpp src/boolean_spectrum.cpp src/hypervector.cpp src/reversible.cpp src/semiring.cpp src/sparse_exception.cpp src/two_counter.cpp src/limb_counter.cpp src/two_counter_limb.cpp src/turing_machine.cpp src/universal_tm.cpp src/tm_description.cpp src/tape_checkpoint.cpp src/binary_tm_compiler.cpp src/binary_utm.cpp src/logic_session.cpp src/relation_train.cpp src/head_candidate.cpp src/endpoint_evidence.cpp src/ntt257.cpp
+LIB_SRC := src/sha256.cpp src/journal_forest.cpp src/universe.cpp src/pager.cpp src/resonance.cpp src/ledger.cpp src/ring.cpp src/hypergraph.cpp src/hypermatrix.cpp src/temporal.cpp src/global.cpp src/head.cpp src/clock.cpp src/consolidation.cpp src/schedule.cpp src/handoff.cpp src/router.cpp src/frame_sync.cpp src/meta_index.cpp src/atomic.cpp src/ntf.cpp src/ncr.cpp src/training.cpp src/supercluster.cpp src/byte_model.cpp src/slot_memory.cpp src/context2.cpp src/context2_topology.cpp src/vector_store.cpp src/word_memory.cpp src/bootstrap_router.cpp src/bootstrap_layers.cpp src/overbootstrap.cpp src/learning_mesh.cpp src/word_vector.cpp src/head_gate.cpp src/boolean_spectrum.cpp src/hypervector.cpp src/reversible.cpp src/semiring.cpp src/sparse_exception.cpp src/two_counter.cpp src/limb_counter.cpp src/two_counter_limb.cpp src/turing_machine.cpp src/universal_tm.cpp src/tm_description.cpp src/tape_checkpoint.cpp src/binary_tm_compiler.cpp src/binary_utm.cpp src/logic_session.cpp src/relation_train.cpp src/head_candidate.cpp src/endpoint_evidence.cpp src/ntt257.cpp src/raw_field.cpp
 LIB_OBJ := $(patsubst src/%.cpp,$(BUILD)/%.o,$(LIB_SRC))
 LIB := $(BUILD)/libnanlm.a
+NAN0S_SRC := third_party/nan0s/core/nan16.c third_party/nan0s/core/nan_dev.c third_party/nan0s/core/nan_load.c third_party/nan0s/core/nan_net_driver.c third_party/nan0s/core/nan_render.c third_party/nan0s/core/nan_state.c
+NAN0S_OBJ := $(patsubst third_party/nan0s/core/%.c,$(BUILD)/nan0s_%.o,$(NAN0S_SRC))
+NAN0S_LIB := $(BUILD)/libnan0s.a
 CLI := $(BUILD)/nanlm-universal
 
-TEST_SRC := tests/test_journal_forest.cpp tests/test_address.cpp tests/test_nan16.cpp tests/test_volume_address.cpp tests/test_universe.cpp tests/test_pager.cpp tests/test_resonance.cpp tests/test_ledger.cpp tests/test_scale.cpp tests/test_hypergraph.cpp tests/test_hypermatrix.cpp tests/test_temporal.cpp tests/test_global.cpp tests/test_heads.cpp tests/test_clock.cpp tests/test_phase.cpp tests/test_growth.cpp tests/test_consolidation.cpp tests/test_handoff.cpp tests/test_training.cpp tests/test_r18t_sequence.cpp tests/test_router.cpp tests/test_inverse.cpp tests/test_frame_sync.cpp tests/test_meta_index.cpp tests/test_contemplation.cpp tests/test_atomic.cpp tests/test_ntf.cpp tests/test_ncr.cpp tests/test_universe_task.cpp tests/test_supercluster.cpp tests/test_byte_model.cpp tests/test_recovery.cpp tests/test_slot_model.cpp tests/test_kneser_ney.cpp tests/test_context2.cpp tests/test_context2_topology.cpp tests/test_vector_store.cpp tests/test_word_memory.cpp tests/test_bootstrap_router.cpp tests/test_bootstrap_layers.cpp tests/test_hopfield_learning.cpp tests/test_overbootstrap_map.cpp tests/test_learning_mesh.cpp tests/test_hyperparameter.cpp tests/test_bit_byte_learning.cpp tests/test_relation_curriculum.cpp tests/test_byte_expert_router.cpp tests/test_word_stream_learning.cpp tests/test_word_vector_learning.cpp tests/test_logic_scale.cpp tests/test_boolean_curriculum.cpp tests/test_relation_boolean_gate.cpp tests/test_transform_chain.cpp tests/test_boolean_spectrum.cpp tests/test_hypervector.cpp tests/test_hypervector_scale.cpp tests/test_degree_exceptions.cpp tests/test_sparse_degree_20k.cpp tests/test_two_counter.cpp tests/test_limb_atlas.cpp tests/test_two_counter_limb.cpp tests/test_turing_machine.cpp tests/test_universal_tm.cpp tests/test_utm_proof.cpp tests/test_tape_checkpoint.cpp tests/test_small_utm.cpp tests/test_minsky_utm.cpp tests/test_minsky_encoded.cpp tests/test_utm_universal_desc.cpp tests/test_binary_tm_compiler.cpp tests/test_binary_utm.cpp tests/test_binary_utm_self.cpp tests/test_logic_session.cpp tests/test_relation_train.cpp tests/test_endpoint_evidence.cpp tests/test_two_counter_orbit.cpp tests/test_reversible.cpp tests/test_semiring_inheritance.cpp tests/test_sparse_exceptions.cpp tests/test_semiring.cpp tests/test_ntt257.cpp tests/test_ntt_sequence.cpp tests/test_reversible_vs_stored.cpp tests/test_slot_recovery.cpp tests/test_teacher_gate.cpp tests/test_math_catalog.cpp
+TEST_SRC := tests/test_journal_forest.cpp tests/test_address.cpp tests/test_nan16.cpp tests/test_volume_address.cpp tests/test_universe.cpp tests/test_pager.cpp tests/test_resonance.cpp tests/test_ledger.cpp tests/test_scale.cpp tests/test_hypergraph.cpp tests/test_hypermatrix.cpp tests/test_temporal.cpp tests/test_global.cpp tests/test_heads.cpp tests/test_clock.cpp tests/test_phase.cpp tests/test_growth.cpp tests/test_consolidation.cpp tests/test_handoff.cpp tests/test_training.cpp tests/test_r18t_sequence.cpp tests/test_router.cpp tests/test_inverse.cpp tests/test_frame_sync.cpp tests/test_meta_index.cpp tests/test_contemplation.cpp tests/test_atomic.cpp tests/test_ntf.cpp tests/test_ncr.cpp tests/test_universe_task.cpp tests/test_supercluster.cpp tests/test_byte_model.cpp tests/test_recovery.cpp tests/test_slot_model.cpp tests/test_kneser_ney.cpp tests/test_context2.cpp tests/test_context2_topology.cpp tests/test_vector_store.cpp tests/test_word_memory.cpp tests/test_bootstrap_router.cpp tests/test_bootstrap_layers.cpp tests/test_hopfield_learning.cpp tests/test_overbootstrap_map.cpp tests/test_learning_mesh.cpp tests/test_hyperparameter.cpp tests/test_bit_byte_learning.cpp tests/test_relation_curriculum.cpp tests/test_byte_expert_router.cpp tests/test_word_stream_learning.cpp tests/test_word_vector_learning.cpp tests/test_logic_scale.cpp tests/test_boolean_curriculum.cpp tests/test_relation_boolean_gate.cpp tests/test_transform_chain.cpp tests/test_boolean_spectrum.cpp tests/test_hypervector.cpp tests/test_hypervector_scale.cpp tests/test_degree_exceptions.cpp tests/test_sparse_degree_20k.cpp tests/test_two_counter.cpp tests/test_limb_atlas.cpp tests/test_two_counter_limb.cpp tests/test_turing_machine.cpp tests/test_universal_tm.cpp tests/test_utm_proof.cpp tests/test_tape_checkpoint.cpp tests/test_small_utm.cpp tests/test_minsky_utm.cpp tests/test_minsky_encoded.cpp tests/test_utm_universal_desc.cpp tests/test_binary_tm_compiler.cpp tests/test_binary_utm.cpp tests/test_binary_utm_self.cpp tests/test_logic_session.cpp tests/test_relation_train.cpp tests/test_endpoint_evidence.cpp tests/test_two_counter_orbit.cpp tests/test_reversible.cpp tests/test_semiring_inheritance.cpp tests/test_sparse_exceptions.cpp tests/test_semiring.cpp tests/test_ntt257.cpp tests/test_ntt_sequence.cpp tests/test_reversible_vs_stored.cpp tests/test_slot_recovery.cpp tests/test_teacher_gate.cpp tests/test_math_catalog.cpp tests/test_raw_field.cpp
 TEST_BIN := $(patsubst tests/%.cpp,$(BUILD)/%,$(TEST_SRC))
 
 .PHONY: all test clean verify unified-check nan16-test legacy self-sim-probe universe-check bootstrap penguin logic behavior challenge warmup merge-test clocked-head-demo byte-mesh curriculum byte-router byte-router-repeats hyper-scale rawroute-test rss-contract-test
@@ -34,25 +42,39 @@ $(BUILD)/%.o: src/%.cpp | $(BUILD)
 $(LIB): $(LIB_OBJ)
 	$(AR) rcs $@ $^
 
-$(CLI): $(BUILD)/main.o $(LIB)
-	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
+$(BUILD)/nan0s_%.o: third_party/nan0s/core/%.c | $(BUILD)
+	$(CC) $(NAN0S_CFLAGS) -c $< -o $@
 
-$(BUILD)/test_%: tests/test_%.cpp $(LIB) | $(BUILD)
-	$(CXX) $(CXXFLAGS) $< $(LIB) -o $@ $(LDFLAGS)
+$(NAN0S_LIB): $(NAN0S_OBJ)
+	$(AR) rcs $@ $^
 
-test: $(CLI) $(TEST_BIN)
+$(FIELD_DRIVER): mth/drivers/field_driver.nas $(wildcard mth/nan16/*.nas) $(NAN0S_NMK) | $(BUILD)
+	awk -f $(NAN0S_NMK) -v CMD=emit $< > $@.tmp
+	mv $@.tmp $@
+
+$(CLI): $(BUILD)/main.o $(LIB) $(NAN0S_LIB) | $(FIELD_DRIVER)
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS) $(LDLIBS)
+
+$(BUILD)/test_%: tests/test_%.cpp $(LIB) $(NAN0S_LIB) | $(BUILD)
+	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
+
+$(BUILD)/test_raw_field: tests/test_raw_field.cpp $(LIB) $(NAN0S_LIB) $(FIELD_DRIVER) | $(BUILD)
+	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
+
+test: $(CLI) $(TEST_BIN) $(FIELD_DRIVER)
 	@set -e; for t in $(TEST_BIN); do echo "== $$t"; ./$$t; done
 	@echo "== CLI verify"; ./$(CLI) verify
 	@echo "== CLI genesis"; ./$(CLI) genesis
 	@echo "== CLI scale"; ./$(CLI) scale
 	@echo "== unified build contract"; python3 tools/unified_build_audit.py
+	@echo "== CLI raw field selftest"; ./$(CLI) field-selftest
 	@echo "== raw NaN16 adaptive-field fixtures"; python3 tools/run_nan16_fixtures.py
 
 self-sim-probe: $(BUILD)/self_sim_probe
 	./$(BUILD)/self_sim_probe 100000000
 
-$(BUILD)/self_sim_probe: experiments/self_sim_probe.cpp $(LIB) | $(BUILD)
-	$(CXX) $(CXXFLAGS) -Itests $< $(LIB) -o $@ $(LDFLAGS)
+$(BUILD)/self_sim_probe: experiments/self_sim_probe.cpp $(LIB) $(NAN0S_LIB) | $(BUILD)
+	$(CXX) $(CXXFLAGS) -Itests $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
 $(LEGACY_BIN): tests/test_legacy_logic.cpp $(LEGACY_R23)/src/topology.cpp | $(BUILD)
 	$(CXX) $(CXXFLAGS) -I$(LEGACY_R23)/include tests/test_legacy_logic.cpp $(LEGACY_R23)/src/topology.cpp -o $@
@@ -90,8 +112,8 @@ bootstrap: $(CLI)
 warmup: $(CLI)
 	./$(CLI) warmup 10
 
-$(BUILD)/clocked-demo: integrations/clocked/native_demo.cpp $(LIB) | $(BUILD)
-	$(CXX) $(CXXFLAGS) $< $(LIB) -o $@ $(LDFLAGS)
+$(BUILD)/clocked-demo: integrations/clocked/native_demo.cpp $(LIB) $(NAN0S_LIB) | $(BUILD)
+	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
 clocked-head-demo: $(BUILD)/clocked-demo
 	@echo "Native NaNLMind head demo compiled. Run the CLOCKED service harness from NaNLMind_CLOCKED with --native-binary $(BUILD)/clocked-demo."
@@ -153,6 +175,9 @@ nan16-test:
 
 clean:
 	rm -rf $(BUILD)
+
+sparse-shared-test:
+	python3 -m unittest tests.test_sparse_shared
 
 
 # RSS protocol-envelope tests only; graph/spectral mathematics remains native NaN16 MTH.
