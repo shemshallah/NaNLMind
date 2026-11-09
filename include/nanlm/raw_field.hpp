@@ -64,8 +64,6 @@ public:
 
     bool ready() const { return vm_ != nullptr; }
     const std::string& error() const { return error_; }
-    // Debug-only guest-word peek; does not run the guest.
-    std::uint32_t peek_word_debug(std::uint32_t index) const { return read_word(index); }
 
     bool proposal(std::uint16_t current_mask, std::uint16_t patch,
                   const std::array<std::uint16_t, 3>& members,

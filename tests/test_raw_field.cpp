@@ -223,7 +223,8 @@ int main() {
             y[r] = sum;
         }
     };
-    std::array<float, 8> q{}, k{}, v{}, projected{}, h{}, hidden{}, mlp{};
+    std::array<float, 8> q{}, k{}, v{}, projected{}, h{}, mlp{};
+    std::array<float, 16> hidden{};
     linear(weights.wq.data(), one_token[0].data(), q.data(), 8, 8);
     linear(weights.wk.data(), one_token[0].data(), k.data(), 8, 8);
     linear(weights.wv.data(), one_token[0].data(), v.data(), 8, 8);
@@ -235,21 +236,6 @@ int main() {
     for (float& value : hidden) value = std::tanh(value);
     linear(weights.w2.data(), hidden.data(), mlp.data(), 8, 16);
     CHECK(vm.causal_trunk(one_token, weights, one_feature));
-    auto fpeek = [&](std::uint32_t index) {
-        const std::uint32_t bits = vm.peek_word_debug(index);
-        float value = 0.0f;
-        std::memcpy(&value, &bits, sizeof(bits));
-        return value;
-    };
-    for (std::size_t i = 8; i < 16; ++i) {
-        std::fprintf(stderr, "hid[%zu] exp=%.6f guest=%.6f pre=%.6f\n", i, hidden[i], fpeek(0x8700 + static_cast<std::uint32_t>(i)), fpeek(0x8A10 + static_cast<std::uint32_t>(i)));
-    }
-    for (std::size_t i = 56; i < 72; ++i) {
-        std::fprintf(stderr, "w1[%zu] exp=%.6f guest=%.6f\n", i, weights.w1[i], fpeek(0x9100 + static_cast<std::uint32_t>(i)));
-    }
-    std::fprintf(stderr, "raw=%.9f expected=%.9f h=%.9f mlp=%.9f guesth=%.9f guestmlp=%.9f rows=%u cols=%u\n",
-                 one_feature[0], h[0] + mlp[0], h[0], mlp[0],
-                 fpeek(0x8600), fpeek(0x8800), vm.peek_word_debug(0x8A00), vm.peek_word_debug(0x8A01));
     CHECK(std::fabs(one_feature[0] - (h[0] + mlp[0])) < 2e-3f);
 
     // The supported 256-token context scale.  The input, scores, values and
