@@ -40,6 +40,15 @@ inline constexpr std::size_t kChartScratchBytes = 65536;    // shared chart scra
 inline constexpr std::size_t kHypermatrixRowBytes = 32;
 inline constexpr std::size_t kHypermatrixRows = kMirrorPairCount;
 inline constexpr std::size_t kHypermatrixBytes = kHypermatrixRows * kHypermatrixRowBytes;
+// Adaptive triad/field state. It is a compact native overlay on the same 256
+// physical heads, serialized and digested with the chart.
+inline constexpr std::size_t kTriadCount = 85;
+inline constexpr std::size_t kTriadSize = 3;
+inline constexpr std::size_t kTriadMemberCount = kTriadCount * kTriadSize; // 255
+inline constexpr std::size_t kFieldHead = 255;
+inline constexpr std::size_t kTriadStateBytes =
+    kTriadMemberCount + kHeadCount + kHeadCount + kTriadCount +
+    kTriadCount * 2 + kTriadCount * 4 + 4 + 2 + kHeadCount * 2 + 4;
 inline constexpr std::size_t kIndexBytes = kAddressCount * 2;
 inline constexpr std::size_t kCanonicalIndexBytes = kCanonicalCount * 2;
 inline constexpr std::size_t kPairIndexBytes = kMirrorPairCount * 2;
@@ -55,7 +64,7 @@ static_assert(kRegisterBytes + kDescriptorTableBytes + kAddressTableBytes + kInd
                   kCanonicalIndexBytes + kPairIndexBytes + kHeadBytes * kHeadCount +
                   kAdjacencyBytes + kDirtyBytes + kAddressDirtyBytes +
                   kHeadScratchBytes * kHeadCount + kChartScratchBytes +
-                  kHypermatrixBytes < kPageBytes);
+                  kHypermatrixBytes + kTriadStateBytes < kPageBytes);
 
 inline constexpr std::uint32_t kNoIndex = 0xFFFFFFFFu;
 
@@ -328,6 +337,34 @@ public:
     }
     std::size_t hypermatrix_nonzero() const;
 
+    // Adaptive triad map and integer credit fields. Heads 0..254 are a
+    // permutation of the 255 triad members; head 255 is the field head.
+    // The mapping is temporary and may be remapped by a triad/field vote.
+    std::array<std::uint8_t, kTriadMemberCount>& triad_members() { return triad_members_; }
+    const std::array<std::uint8_t, kTriadMemberCount>& triad_members() const { return triad_members_; }
+    std::array<std::uint8_t, kHeadCount>& triad_of() { return triad_of_; }
+    const std::array<std::uint8_t, kHeadCount>& triad_of() const { return triad_of_; }
+    std::array<std::uint8_t, kHeadCount>& triad_slot() { return triad_slot_; }
+    const std::array<std::uint8_t, kHeadCount>& triad_slot() const { return triad_slot_; }
+    std::array<std::uint8_t, kTriadCount>& triad_votes() { return triad_votes_; }
+    const std::array<std::uint8_t, kTriadCount>& triad_votes() const { return triad_votes_; }
+    std::array<std::int16_t, kTriadCount>& triad_credit() { return triad_credit_; }
+    const std::array<std::int16_t, kTriadCount>& triad_credit() const { return triad_credit_; }
+    std::array<std::int32_t, kTriadCount>& triad_group_gain() { return triad_group_gain_; }
+    const std::array<std::int32_t, kTriadCount>& triad_group_gain() const { return triad_group_gain_; }
+    std::array<std::int16_t, kHeadCount>& head_credit() { return head_credit_; }
+    const std::array<std::int16_t, kHeadCount>& head_credit() const { return head_credit_; }
+    std::int32_t& triad_field_gain() { return triad_field_gain_; }
+    std::int32_t triad_field_gain() const { return triad_field_gain_; }
+    std::uint16_t& triad_field_count() { return triad_field_count_; }
+    std::uint16_t triad_field_count() const { return triad_field_count_; }
+    std::int32_t& field_coherence() { return field_coherence_; }
+    std::int32_t field_coherence() const { return field_coherence_; }
+    std::uint8_t triad_index(std::uint8_t head) const {
+        return head < kFieldHead ? triad_of_[head] : 0xFFu;
+    }
+    void reset_triad_map();
+
     bool adjacent(std::uint8_t a, std::uint8_t b) const;
     void set_adjacent(std::uint8_t a, std::uint8_t b, bool value);
 
@@ -377,6 +414,16 @@ private:
     std::array<HeadScratch, kHeadCount> head_scratch_{};
     std::array<std::uint8_t, kChartScratchBytes> chart_scratch_{};
     std::vector<std::array<std::uint8_t, kHypermatrixRowBytes>> hypermatrix_;
+    std::array<std::uint8_t, kTriadMemberCount> triad_members_{};
+    std::array<std::uint8_t, kHeadCount> triad_of_{};
+    std::array<std::uint8_t, kHeadCount> triad_slot_{};
+    std::array<std::uint8_t, kTriadCount> triad_votes_{};
+    std::array<std::int16_t, kTriadCount> triad_credit_{};
+    std::array<std::int32_t, kTriadCount> triad_group_gain_{};
+    std::array<std::int16_t, kHeadCount> head_credit_{};
+    std::int32_t triad_field_gain_ = 65536;
+    std::uint16_t triad_field_count_ = 0;
+    std::int32_t field_coherence_ = 0;
 };
 
 } // namespace nanlm

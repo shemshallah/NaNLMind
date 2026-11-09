@@ -9,7 +9,7 @@
 namespace nanlm {
 namespace {
 
-constexpr char kMagic[8] = {'N', 'L', 'M', 'U', '0', '0', '0', '1'};
+constexpr char kMagic[8] = {'N', 'L', 'M', 'U', '0', '0', '0', '2'};
 
 std::uint32_t fnv1a(const void* data, std::size_t len) {
     const auto* p = static_cast<const std::uint8_t*>(data);
@@ -31,6 +31,7 @@ Universe::Universe(std::uint64_t genome) : genome_(genome) {
     for (auto& sc : head_scratch_) sc.clear();
     chart_scratch_.fill(0);
     hypermatrix_.assign(kHypermatrixRows, {});
+    reset_triad_map();
     build_index();
     build_genesis(genome);
 }
@@ -365,6 +366,28 @@ void Universe::refresh_checksums() {
     }
 }
 
+void Universe::reset_triad_map() {
+    for (std::uint8_t h = 0; h < kTriadMemberCount; ++h) {
+        triad_members_[h] = h;
+    }
+    for (std::uint16_t h = 0; h < kHeadCount; ++h) {
+        if (h < kTriadMemberCount) {
+            triad_of_[h] = static_cast<std::uint8_t>(h / kTriadSize);
+            triad_slot_[h] = static_cast<std::uint8_t>(h % kTriadSize);
+        } else {
+            triad_of_[h] = 0xFFu;
+            triad_slot_[h] = 0xFFu;
+        }
+    }
+    triad_votes_.fill(0);
+    triad_credit_.fill(0);
+    triad_group_gain_.fill(65536);
+    head_credit_.fill(0);
+    triad_field_gain_ = 65536;
+    triad_field_count_ = 0;
+    field_coherence_ = 0;
+}
+
 Hash256 Universe::digest() const {
     Sha256 h;
     const std::uint64_t g = genome_;
@@ -375,6 +398,16 @@ Hash256 Universe::digest() const {
     h.update(head_scratch_.data(), head_scratch_.size() * sizeof(HeadScratch));
     h.update(chart_scratch_.data(), chart_scratch_.size());
     h.update(hypermatrix_.data(), hypermatrix_.size() * kHypermatrixRowBytes);
+    h.update(triad_members_.data(), triad_members_.size());
+    h.update(triad_of_.data(), triad_of_.size());
+    h.update(triad_slot_.data(), triad_slot_.size());
+    h.update(triad_votes_.data(), triad_votes_.size());
+    h.update(triad_credit_.data(), triad_credit_.size() * sizeof(triad_credit_[0]));
+    h.update(triad_group_gain_.data(), triad_group_gain_.size() * sizeof(triad_group_gain_[0]));
+    h.update(head_credit_.data(), head_credit_.size() * sizeof(head_credit_[0]));
+    h.update(&triad_field_gain_, sizeof(triad_field_gain_));
+    h.update(&triad_field_count_, sizeof(triad_field_count_));
+    h.update(&field_coherence_, sizeof(field_coherence_));
     h.update(desc_.data(), desc_.size() * sizeof(Descriptor));
     h.update(heads_.data(), heads_.size() * sizeof(Head));
     h.update(adjacency_.data(), adjacency_.size() * sizeof(adjacency_[0]));
@@ -401,6 +434,7 @@ std::vector<std::uint8_t> Universe::serialize() const {
                               head_scratch_.size() * sizeof(HeadScratch) +
                               chart_scratch_.size() +
                               hypermatrix_.size() * kHypermatrixRowBytes +
+                              kTriadStateBytes +
                               desc_.size() * sizeof(Descriptor) +
                               heads_.size() * sizeof(Head) +
                               adjacency_.size() * sizeof(adjacency_[0]) +
@@ -429,6 +463,16 @@ std::vector<std::uint8_t> Universe::serialize() const {
     put(head_scratch_.data(), head_scratch_.size() * sizeof(HeadScratch));
     put(chart_scratch_.data(), chart_scratch_.size());
     put(hypermatrix_.data(), hypermatrix_.size() * kHypermatrixRowBytes);
+    put(triad_members_.data(), triad_members_.size());
+    put(triad_of_.data(), triad_of_.size());
+    put(triad_slot_.data(), triad_slot_.size());
+    put(triad_votes_.data(), triad_votes_.size());
+    put(triad_credit_.data(), triad_credit_.size() * sizeof(triad_credit_[0]));
+    put(triad_group_gain_.data(), triad_group_gain_.size() * sizeof(triad_group_gain_[0]));
+    put(head_credit_.data(), head_credit_.size() * sizeof(head_credit_[0]));
+    put(&triad_field_gain_, sizeof(triad_field_gain_));
+    put(&triad_field_count_, sizeof(triad_field_count_));
+    put(&field_coherence_, sizeof(field_coherence_));
     put(desc_.data(), desc_.size() * sizeof(Descriptor));
     put(heads_.data(), heads_.size() * sizeof(Head));
     put(adjacency_.data(), adjacency_.size() * sizeof(adjacency_[0]));
@@ -466,6 +510,16 @@ std::unique_ptr<Universe> Universe::from_bytes(const std::uint8_t* data, std::si
     if (!take(u->head_scratch_.data(), u->head_scratch_.size() * sizeof(HeadScratch))) return nullptr;
     if (!take(u->chart_scratch_.data(), u->chart_scratch_.size())) return nullptr;
     if (!take(u->hypermatrix_.data(), u->hypermatrix_.size() * kHypermatrixRowBytes)) return nullptr;
+    if (!take(u->triad_members_.data(), u->triad_members_.size())) return nullptr;
+    if (!take(u->triad_of_.data(), u->triad_of_.size())) return nullptr;
+    if (!take(u->triad_slot_.data(), u->triad_slot_.size())) return nullptr;
+    if (!take(u->triad_votes_.data(), u->triad_votes_.size())) return nullptr;
+    if (!take(u->triad_credit_.data(), u->triad_credit_.size() * sizeof(u->triad_credit_[0]))) return nullptr;
+    if (!take(u->triad_group_gain_.data(), u->triad_group_gain_.size() * sizeof(u->triad_group_gain_[0]))) return nullptr;
+    if (!take(u->head_credit_.data(), u->head_credit_.size() * sizeof(u->head_credit_[0]))) return nullptr;
+    if (!take(&u->triad_field_gain_, sizeof(u->triad_field_gain_))) return nullptr;
+    if (!take(&u->triad_field_count_, sizeof(u->triad_field_count_))) return nullptr;
+    if (!take(&u->field_coherence_, sizeof(u->field_coherence_))) return nullptr;
     if (!take(u->desc_.data(), u->desc_.size() * sizeof(Descriptor))) return nullptr;
     if (!take(u->heads_.data(), u->heads_.size() * sizeof(Head))) return nullptr;
     if (!take(u->adjacency_.data(), u->adjacency_.size() * sizeof(u->adjacency_[0]))) return nullptr;
@@ -511,6 +565,23 @@ bool Universe::verify(std::string* error) const {
     if (cells_.size() != kCanonicalCount) return fail("cell count");
     if (desc_.size() != kCanonicalCount) return fail("descriptor count");
     if (hypermatrix_.size() != kHypermatrixRows) return fail("hypermatrix count");
+    if (triad_members_.size() != kTriadMemberCount) return fail("triad member count");
+    if (triad_of_.size() != kHeadCount) return fail("triad reverse count");
+    std::array<bool, kTriadMemberCount> seen{};
+    for (std::size_t t = 0; t < kTriadCount; ++t) {
+        for (std::size_t s = 0; s < kTriadSize; ++s) {
+            const std::uint8_t h = triad_members_[t * kTriadSize + s];
+            if (h >= kTriadMemberCount || seen[h]) return fail("triad membership");
+            seen[h] = true;
+            if (triad_of_[h] != t || triad_slot_[h] != s) return fail("triad reverse map");
+        }
+    }
+    for (std::size_t h = 0; h < kTriadMemberCount; ++h) {
+        if (!seen[h]) return fail("triad member missing");
+    }
+    if (triad_of_[kFieldHead] != 0xFFu || triad_slot_[kFieldHead] != 0xFFu)
+        return fail("field head in triad map");
+    if (triad_field_count_ > kTriadCount) return fail("field count");
     const NanCell& point_zero_cell = head_cell(PointZeroTranslator::kPointIndex);
     if (!point_zero_cell.is_portal()) return fail("point-zero portal cell");
     if (point_zero_cell.meta[2] != PointZeroTranslator::kPointIndex ||
