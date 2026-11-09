@@ -45,6 +45,7 @@ test: $(CLI) $(TEST_BIN)
 	@echo "== CLI verify"; ./$(CLI) verify
 	@echo "== CLI genesis"; ./$(CLI) genesis
 	@echo "== CLI scale"; ./$(CLI) scale
+	@echo "== unified build contract"; python3 tools/unified_build_audit.py
 
 self-sim-probe: $(BUILD)/self_sim_probe
 	./$(BUILD)/self_sim_probe 100000000
