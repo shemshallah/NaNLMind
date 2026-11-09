@@ -37,6 +37,7 @@ JMP @field_driver_entry
 .include "../nan16/mth_hot_trihead.nas"
 .include "../nan16/mth_micro_feature.nas"
 .include "../nan16/mth_trunk_causal.nas"
+.include "../nan16/mth_readout_train.nas"
 
 field_driver_entry:
   MOVI r13,1
@@ -81,6 +82,9 @@ field_driver_main:
   MOVI r3,11
   CMP r2,r3
   JMP[EQ] @field_driver_field_commit
+  MOVI r3,12
+  CMP r2,r3
+  JMP[EQ] @field_driver_readout_train
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -217,6 +221,18 @@ field_driver_trunk:
   CALL @mth_trunk_causal
   MOVI r10,0x4010
   ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_readout_train:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  CALL @mth_readout_train
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
   JMP @field_driver_return
 
 field_driver_field_commit:

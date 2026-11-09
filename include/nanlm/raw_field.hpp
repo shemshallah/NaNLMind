@@ -64,6 +64,8 @@ public:
 
     bool ready() const { return vm_ != nullptr; }
     const std::string& error() const { return error_; }
+    // Debug-only guest-word peek; does not run the guest.
+    std::uint32_t peek_word_debug(std::uint32_t index) const { return read_word(index); }
 
     bool proposal(std::uint16_t current_mask, std::uint16_t patch,
                   const std::array<std::uint16_t, 3>& members,
@@ -106,6 +108,11 @@ public:
     bool causal_trunk(const std::vector<std::array<float, kRawFeatureDim>>& tokens,
                       const TrunkWeights& weights,
                       std::array<float, kRawFeatureDim>& out);
+    bool readout_train(
+        const std::vector<std::array<float, kRawFeatureDim>>& tokens,
+        const TrunkWeights& weights, std::uint8_t target, float learning_rate,
+        bool& correct, float& target_score, float& best_wrong_score);
+    void reset_readout();
     bool remap(const std::array<std::uint16_t, 6>& masks,
                std::uint32_t a, std::uint32_t b, bool target,
                bool& improved, std::int32_t& before, std::int32_t& after);

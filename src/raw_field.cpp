@@ -370,6 +370,37 @@ bool RawFieldVM::causal_trunk(
     return true;
 }
 
+bool RawFieldVM::readout_train(
+    const std::vector<std::array<float, kRawFeatureDim>>& tokens,
+    const TrunkWeights& weights, std::uint8_t target, float learning_rate,
+    bool& correct, float& target_score, float& best_wrong_score) {
+    // Load tokens/weights by running the trunk forward once; the readout
+    // weights at 0xB000 persist across calls.
+    std::array<float, kRawFeatureDim> feature{};
+    if (!causal_trunk(tokens, weights, feature)) return false;
+    std::uint32_t lr_bits = 0;
+    std::memcpy(&lr_bits, &learning_rate, sizeof(lr_bits));
+    if (!write_word(kProposalBase + 0, static_cast<std::uint32_t>(tokens.size())) ||
+        !write_word(kProposalBase + 1, target) ||
+        !write_word(kProposalBase + 2, lr_bits) ||
+        !write_word(kCommandBase, 12)) {
+        return fail("cannot write readout-train command");
+    }
+    if (!run_command()) return false;
+    correct = (read_word(kResultBase + 0) & 1u) != 0;
+    const std::uint32_t ts = read_word(kResultBase + 1);
+    const std::uint32_t bs = read_word(kResultBase + 2);
+    std::memcpy(&target_score, &ts, sizeof(ts));
+    std::memcpy(&best_wrong_score, &bs, sizeof(bs));
+    return true;
+}
+
+void RawFieldVM::reset_readout() {
+    for (std::uint32_t i = 0; i < 255u * 8u; ++i) {
+        (void)write_word(0xB000u + i, 0);
+    }
+}
+
 bool RawFieldVM::field_commit(
     const std::array<std::int32_t, kTriadCount>& credits,
     std::int32_t threshold,

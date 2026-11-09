@@ -211,6 +211,57 @@ int main() {
     CHECK(std::isfinite(causal_feature[0]));
     CHECK(std::fabs(causal_feature[0] - identity_first) > 1e-5f);
 
+    // Exact T=1 expectation under the non-identity matrices: context = v,
+    // h = x + Wout v, output = h + W2 tanh(W1 h).
+    auto linear = [](const float* w, const float* x, float* y,
+                     std::size_t rows, std::size_t cols) {
+        for (std::size_t r = 0; r < rows; ++r) {
+            float sum = 0.0f;
+            for (std::size_t c = 0; c < cols; ++c) {
+                sum += w[r * cols + c] * x[c];
+            }
+            y[r] = sum;
+        }
+    };
+    std::array<float, 8> q{}, k{}, v{}, projected{}, h{}, hidden{}, mlp{};
+    linear(weights.wq.data(), one_token[0].data(), q.data(), 8, 8);
+    linear(weights.wk.data(), one_token[0].data(), k.data(), 8, 8);
+    linear(weights.wv.data(), one_token[0].data(), v.data(), 8, 8);
+    linear(weights.wout.data(), v.data(), projected.data(), 8, 8);
+    for (std::size_t d = 0; d < 8; ++d) {
+        h[d] = one_token[0][d] + projected[d];
+    }
+    linear(weights.w1.data(), h.data(), hidden.data(), 16, 8);
+    for (float& value : hidden) value = std::tanh(value);
+    linear(weights.w2.data(), hidden.data(), mlp.data(), 8, 16);
+    CHECK(vm.causal_trunk(one_token, weights, one_feature));
+    auto fpeek = [&](std::uint32_t index) {
+        const std::uint32_t bits = vm.peek_word_debug(index);
+        float value = 0.0f;
+        std::memcpy(&value, &bits, sizeof(bits));
+        return value;
+    };
+    for (std::size_t i = 0; i < 16; ++i) {
+        std::fprintf(stderr, "hid[%zu] exp=%.6f guest=%.6f\n", i, hidden[i], fpeek(0x8700 + static_cast<std::uint32_t>(i)));
+    }
+    std::fprintf(stderr, "raw=%.9f expected=%.9f h=%.9f mlp=%.9f guesth=%.9f guestmlp=%.9f\n",
+                 one_feature[0], h[0] + mlp[0], h[0], mlp[0],
+                 fpeek(0x8600), fpeek(0x8800));
+    CHECK(std::fabs(one_feature[0] - (h[0] + mlp[0])) < 2e-3f);
+
+    // The supported 256-token context scale.  The input, scores, values and
+    // weights must remain within their fixed guest regions.
+    causal_tokens.resize(256);
+    for (std::size_t tkn = 48; tkn < 256; ++tkn) {
+        std::array<float, kRawFeatureDim> v{};
+        for (std::size_t d = 0; d < kRawFeatureDim; ++d) {
+            v[d] = 0.05f + 0.001f * static_cast<float>((tkn + d) % 17);
+        }
+        causal_tokens[tkn] = v;
+    }
+    CHECK(vm.causal_trunk(causal_tokens, weights, causal_feature));
+    CHECK(std::isfinite(causal_feature[0]));
+
     CHECK(std::isfinite(causal_feature[0]));
     causal_tokens.resize(48);
     for (std::size_t tkn = 8; tkn < 48; ++tkn) {
@@ -222,6 +273,18 @@ int main() {
     }
     CHECK(vm.causal_trunk(causal_tokens, weights, causal_feature));
     CHECK(std::isfinite(causal_feature[0]));
+
+    // Native readout training over the raw trunk feature.
+    vm.reset_readout();
+    bool correct = true;
+    float target_score = 0.0f, best_wrong = 0.0f;
+    CHECK(vm.readout_train(one_token, weights, 1, 0.5f,
+                           correct, target_score, best_wrong));
+    CHECK(!correct);
+    CHECK(vm.readout_train(one_token, weights, 1, 0.0f,
+                           correct, target_score, best_wrong));
+    CHECK(correct);
+    CHECK(target_score > best_wrong);
 
     Universe feature_universe;
     SparseField feature_field(feature_universe);

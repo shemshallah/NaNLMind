@@ -159,9 +159,14 @@ The raw fixture covers three non-contiguous hot heads and 129 hot heads
 A raw two-token QKV/softmax/tanh feature feed, `mth_micro_feature.nas`, now
 crosses the native boundary into `SparseField`: `RawFieldVM::micro_feature`
 writes two 8-lane vectors, runs the guest, and converts the eight output lanes
-to Q16.16 for the native sparse head/field bank. This is the P1 feature-feed
-bridge; learned QKV/MLP matrices and the full context kernel are the next
-step.
+to Q16.16 for the native sparse head/field bank.
+
+The learned QKV/MLP causal block is now in `mth_trunk_causal.nas` and
+`RawFieldVM::causal_trunk`. It accepts host-loaded Wq/Wk/Wv/Wout/W1/W2
+matrices, supports 1..256-token causal context, and produces the eight-lane
+feature that feeds `SparseField`. Tests cover T=1 exact learned-matrix math,
+non-identity weights, T=8, T=48 and T=256. It is still a forward block; weight
+training and credit updates are the next gate.
 
 This is the native **head/field** half of the sparse trunk. The shared P1
 QKV/MLP trunk kernel and its feature feed are still the next native step; the

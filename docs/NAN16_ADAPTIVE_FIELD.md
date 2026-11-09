@@ -27,8 +27,10 @@ adaptive-field mathematics:
 | `mth_trail_credit.nas` | two-rail TD eligibility and credit, Q16.16 |
 | `mth_micro_block.nas` | raw two-token QKV/softmax/tanh micro-transformer forward |
 | `mth_field_commit.nas` | CFT credits -> 85 triad votes -> 43/85 field commit |
+| `mth_readout_train.nas` | raw trunk feature -> local readout error update |
 | `mth_hot_trihead.nas` | raw 255-head hot scan, 3-hot-head triad grouping and 85x3 auto-mapping |
 | `mth_micro_feature.nas` | raw two-token QKV/softmax/tanh feature feed for the sparse field |
+| `mth_trunk_causal.nas` | raw learned QKV/MLP causal feature block, 1..256 tokens |
 | `mth/drivers/field_driver.nas` | guest command dispatcher for proposal, field vote, coherence, remap, CFT, TRAIL and hot triheads |
 | `include/nanlm/raw_field.hpp` | host orchestration: writes command words, runs the VM, reads results |
 
@@ -96,6 +98,33 @@ the result into the native `SparseField` Q16.16 feature vector. The learned
 QKV/MLP matrices replace the identity path without changing this contract.
 The raw fixture is `mth/tests/mth_micro_feature_test.nas`.
 
+## Learned causal trunk ABI
+
+`mth_trunk_causal.nas` replaces the identity path with host-loaded matrices:
+
+```text
+r1 = token count T (1..256)
+0x7000: T x 8 float32 tokens
+0x9000: Wq 8x8, 0x9040 Wk 8x8, 0x9080 Wv 8x8
+0x90C0: Wout 8x8, 0x9100 W1 16x8, 0x9180 W2 8x16
+0xA000: output feature[8]
+```
+
+The last token attends causally to all tokens `s <= last`:
+
+```text
+q = Wq x_last
+k_s = Wk x_s, v_s = Wv x_s
+context = sum_s softmax(q . k_s) v_s
+h = x_last + Wout context
+output = h + W2 tanh(W1 h)
+```
+
+`RawFieldVM::causal_trunk` loads arbitrary float32 matrices and tokens, runs
+command 10, and verifies the eight-lane output. The test covers T=1 with an
+exact learned-matrix expectation, non-identity matrices, T=8, T=48 and
+T=256. It does not train the matrices; training/credit is the next gate.
+
 ## Learnable credit, not host gradients
 
 A production caller stores accepted/rejected proposal counts and bounded
@@ -140,6 +169,7 @@ skip. The default fixtures cover:
 - TRAIL two-rail eligibility credit;
 - a two-token QKV/softmax/tanh micro-block forward primitive;
 - CFT-credit -> triad -> 43/85 field commit;
+- native readout training on the raw causal-trunk feature;
 - the field-command driver and the `RawFieldVM` chart bridge;
 - `field-selftest` and `test_raw_field` on the vendored canonical VM.
 

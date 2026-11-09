@@ -58,6 +58,8 @@ FIXTURES = (
             "MTH MICRO BLOCK PASS"),
     Fixture("field_commit", "mth/tests/mth_field_commit_test.nas", 200_000,
             "MTH FIELD COMMIT PASS"),
+    Fixture("readout_train", "mth/tests/mth_readout_train_test.nas", 1_000_000,
+            "MTH READOUT TRAIN PASS"),
     Fixture("hot_trihead", "mth/tests/mth_hot_trihead_test.nas", 5_000_000,
             "MTH HOT TRIHEAD PASS"),
     Fixture("micro_feature", "mth/tests/mth_micro_feature_test.nas", 200_000,
