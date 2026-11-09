@@ -31,7 +31,8 @@ Universe::Universe(std::uint64_t genome) : genome_(genome) {
     for (auto& sc : head_scratch_) sc.clear();
     chart_scratch_.fill(0);
     hypermatrix_.assign(kHypermatrixRows, {});
-    sparse_field_ = {};
+    sparse_field_.resize(1);
+    sparse_field_[0] = {};
     reset_triad_map();
     build_index();
     build_genesis(genome);
@@ -414,7 +415,7 @@ Hash256 Universe::digest() const {
     h.update(adjacency_.data(), adjacency_.size() * sizeof(adjacency_[0]));
     h.update(canon_.data(), canon_.size() * sizeof(canon_[0]));
     h.update(pair_to_index_.data(), pair_to_index_.size() * sizeof(pair_to_index_[0]));
-    h.update(&sparse_field_, sizeof(sparse_field_));
+    h.update(sparse_field_.data(), sizeof(SparseFieldState));
     return h.final();
 }
 
@@ -442,7 +443,7 @@ std::vector<std::uint8_t> Universe::serialize() const {
                               adjacency_.size() * sizeof(adjacency_[0]) +
                               canon_.size() * sizeof(canon_[0]) +
                               pair_to_index_.size() * sizeof(pair_to_index_[0]) +
-                              sizeof(sparse_field_);
+                              sizeof(SparseFieldState);
     std::vector<std::uint8_t> out(total);
     std::size_t off = 0;
     auto put = [&](const void* p, std::size_t n) {
@@ -481,7 +482,7 @@ std::vector<std::uint8_t> Universe::serialize() const {
     put(adjacency_.data(), adjacency_.size() * sizeof(adjacency_[0]));
     put(canon_.data(), canon_.size() * sizeof(canon_[0]));
     put(pair_to_index_.data(), pair_to_index_.size() * sizeof(pair_to_index_[0]));
-    put(&sparse_field_, sizeof(sparse_field_));
+    put(sparse_field_.data(), sizeof(SparseFieldState));
     return out;
 }
 
@@ -532,8 +533,8 @@ std::unique_ptr<Universe> Universe::from_bytes(const std::uint8_t* data, std::si
               u->pair_to_index_.size() * sizeof(u->pair_to_index_[0]))) return nullptr;
     // Optional trailing sparse-field state: older snapshots have no bytes here
     // and restore with a zeroed bank.
-    if (off + sizeof(u->sparse_field_) <= len) {
-        if (!take(&u->sparse_field_, sizeof(u->sparse_field_))) return nullptr;
+    if (off + sizeof(SparseFieldState) <= len) {
+        if (!take(u->sparse_field_.data(), sizeof(SparseFieldState))) return nullptr;
     }
 
     const NanCell& point_zero_cell = u->head_cell(PointZeroTranslator::kPointIndex);
@@ -574,6 +575,7 @@ bool Universe::verify(std::string* error) const {
     if (cells_.size() != kCanonicalCount) return fail("cell count");
     if (desc_.size() != kCanonicalCount) return fail("descriptor count");
     if (hypermatrix_.size() != kHypermatrixRows) return fail("hypermatrix count");
+    if (sparse_field_.size() != 1) return fail("sparse field sidecar count");
     if (triad_members_.size() != kTriadMemberCount) return fail("triad member count");
     if (triad_of_.size() != kHeadCount) return fail("triad reverse count");
     std::array<bool, kTriadMemberCount> seen{};
