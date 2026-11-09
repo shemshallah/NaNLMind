@@ -1,0 +1,67 @@
+{
+  "schema": "nanlm.unified-build/1",
+  "canonical_repository": "NaNLMind",
+  "canonical_binary": "build/nanlm-universal",
+  "canonical_state_owner": "NaNLMind",
+  "transport_plane": "NaNROUTER",
+  "adapter_plane": "NaNLMind_HERMES",
+  "topology": {
+    "addresses": 65536,
+    "heads": 256,
+    "triad_member_heads": 255,
+    "field_head": 255,
+    "triads": 85,
+    "triad_size": 3,
+    "mirror_pairs": 32640,
+    "canonical_cells": 32896,
+    "chart_bytes": 8388608,
+    "hypermatrix_rows": 32640,
+    "hypermatrix_row_bits": 256,
+    "resolution_layers": 10,
+    "transform_passes": 10,
+    "runner_slots": 6,
+    "active_runner_slots": 1
+  },
+  "authority": {
+    "topology": "NaNLMind",
+    "native_build": "NaNLMind",
+    "canonical_state": "NaNLMind",
+    "transport_and_control_plane": "NaNROUTER",
+    "hermes_role": "read-only adapter and candidate producer",
+    "hermes_may_commit_canonical_state": false,
+    "nanrouter_may_copy_or_fork_native_universe": false
+  },
+  "required_commands": [
+    "verify",
+    "relation-train",
+    "relation-eval",
+    "relation-audit",
+    "unification"
+  ],
+  "native_abi": "NaN16",
+  "non_claims": [
+    "The transport plane is not a second universe.",
+    "The Hermes resident store is not a canonical topology.",
+    "A candidate or cache is not canonical state.",
+    "No live deployment is implied by this contract."
+  ],
+  "role_views": {
+    "note": "Role views share the one physical topology. They are not additional charts or heads.",
+    "physical_heads": 256,
+    "mp_writer_eligible_heads": 255,
+    "boolean_curriculum_heads": 250,
+    "nannet_root_control_head": 0,
+    "bsr_control_head_indices": [
+      0,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "triad_member_heads": 255,
+    "triad_field_head": 255,
+    "nannet_port_is_native_head": false,
+    "role_overlay_may_reassign_native_heads": false
+  }
+}

@@ -1,4 +1,5 @@
 #include "nanlm/global.hpp"
+#include "nanlm/hypermatrix.hpp"
 #include "nanlm/relation_train.hpp"
 #include "test_util.hpp"
 
@@ -42,7 +43,30 @@ int main() {
         CHECK_EQ(restored->hypergraph().size(), 5u);
         CHECK(restored->temporal().size() >= 15u);
         CHECK(restored->ledger().verify());
+        CHECK(restored->hypermatrix_nonzero() > 0u);
+        auto root_page = restored->pages().resolve(PageId::root());
+        CHECK(root_page != nullptr);
+        if (root_page) {
+            CHECK(TriadField::field_count(*root_page) > 0u);
+        }
     }
+    // Read-only audit proves the mapped hypermatrix contributes a non-zero
+    // score on held-out rows and reports the ablated score separately.
+    {
+        const auto test_only = root / "test.n16rel";
+        std::ofstream tout(test_only);
+        tout << "N16REL/1\n";
+        tout << "test\t5\t-\t60000\t6f737472696368\t63616e\t666c79\t" << std::string(64, '5') << "\n";
+        tout << "test\t5\t+\t60000\t6f737472696368\t63616e\t72756e\t" << std::string(64, '6') << "\n";
+        tout << "test\t7\t+\t50000\t73747265616d\t636f6e7461696e73\t7761746572\t" << std::string(64, '8') << "\n";
+        tout.close();
+        std::string test_arg = test_only.string();
+        char arg0[] = "nanlm-universal";
+        char arg1[] = "relation-audit";
+        char* audit_argv[] = {arg0, arg1, test_arg.data(), state_arg.data()};
+        CHECK_EQ(relation_audit_cli(4, audit_argv), 0);
+    }
+
     // Exact replay is idempotent and returns a machine-readable no-op receipt.
     const Hash256 learned_digest = restored ? restored->global_digest() : Hash256{};
     CHECK_EQ(relation_train_cli(4, argv), 0);

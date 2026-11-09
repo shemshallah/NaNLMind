@@ -17,6 +17,7 @@
 #include "nanlm/relation_train.hpp"
 #include "nanlm/head_candidate.hpp"
 #include "nanlm/universe.hpp"
+#include "nanlm/hypermatrix.hpp"
 
 #include <cctype>
 #include <cstdio>
@@ -643,7 +644,7 @@ int cmd_math_train(int argc, char** argv) {
         for (unsigned byte = 0; byte < 8; ++byte)
             learned_edge.label = (learned_edge.label << 8) | edge_hash[byte];
         learned_edge.members = {Ref::from_bit(head_bit), Ref::from_bit(pair_bit)};
-        const std::uint32_t hyperedge_id = topology->hypergraph().add(learned_edge);
+        const std::uint32_t hyperedge_id = topology->add_hyperedge(learned_edge);
         if (hyperedge_id == 0) {
             std::cerr << "failed to add learned hyperedge for head " << index << "\\n";
             return 7;
@@ -1213,8 +1214,35 @@ int cmd_heads() {
     return 0;
 }
 
+int cmd_unification() {
+    std::cout << "unified_build schema=nanlm.unified-build/1"
+              << " canonical_repository=NaNLMind"
+              << " canonical_binary=build/nanlm-universal"
+              << " heads=" << kHeadCount
+              << " triad_member_heads=" << static_cast<unsigned>(TriadField::kCognitiveHeads)
+              << " field_head=" << static_cast<unsigned>(TriadField::kFieldHead)
+              << " triads=" << static_cast<unsigned>(TriadField::kTriadCount)
+              << " triad_size=" << static_cast<unsigned>(TriadField::kTriadSize)
+              << " mp_writer_eligible_heads=255"
+              << " boolean_curriculum_heads=250"
+              << " nannet_root_control_head=0"
+              << " bsr_control_heads=6"
+              << " mirror_pairs=" << kMirrorPairCount
+              << " canonical_cells=" << kCanonicalCount
+              << " chart_bytes=" << kPageBytes
+              << " hypermatrix_rows=" << kHypermatrixRows
+              << " hypermatrix_row_bits=256"
+              << " resolution_layers=10"
+              << " transform_passes=10"
+              << " runner_slots=6"
+              << " active_runner_slots=1"
+              << "\n";
+    return 0;
+}
+
 void usage() {
     std::cout << "nanlm-universal <command>\n\n"
+              << "  unification canonical build/topology contract for NaNROUTER and HERMES\n"
               << "  verify      exhaustive invariants and self-tests\n"
               << "  genesis     materialize and describe the genesis register file\n"
               << "  global      one global topology with cross-space relations\n"
@@ -1233,6 +1261,8 @@ void usage() {
               << "  math-train CORPUS [epochs] [max_samples] [state] [trace] train all 256 heads and export discoveries\n"
               << "  logic-train [boolean_reps] [circuit_reps] [state] staged full Boolean -> deep logic -> words\n"
               << "  relation-train RECORDS STATE typed L0-L9 relation learning; persists heads, mirror pairs and hyperedges\n"
+              << "  relation-eval RECORDS STATE read-only relation inference with mapped hypermatrix score\n"
+              << "  relation-audit RECORDS STATE full-vs-ablated hypermatrix score audit\n"
               << "  snapshot    write state/chart.nmc\n"
               << "  headshift   real HeadView packets for one slot\n"
               << "  growth      child-chart growth and scratch consolidation\n"
@@ -1249,6 +1279,7 @@ int main(int argc, char** argv) {
         return 0;
     }
     const std::string cmd = argv[1];
+    if (cmd == "unification") return cmd_unification();
     if (cmd == "verify") return cmd_verify();
     if (cmd == "genesis") return cmd_genesis();
     if (cmd == "global") return cmd_global();
@@ -1267,6 +1298,7 @@ int main(int argc, char** argv) {
     if (cmd == "math-train") return cmd_math_train(argc, argv);
     if (cmd == "relation-train") return nanlm::relation_train_cli(argc, argv);
     if (cmd == "relation-eval") return nanlm::relation_eval_cli(argc, argv);
+    if (cmd == "relation-audit") return nanlm::relation_audit_cli(argc, argv);
     if (cmd == "head-candidate") return nanlm::head_candidate_cli(argc, argv);
     if (cmd == "logic-train") return cmd_logic_train(argc, argv);
     if (cmd == "snapshot") return cmd_snapshot(argc, argv);

@@ -34,6 +34,12 @@ inline constexpr std::size_t kAddressDirtyBytes = (kAddressCount + 7) / 8;
 inline constexpr std::size_t kHeadScratchBytes = 1024;      // 256 B local + 768 B work
 inline constexpr std::size_t kHeadLocalBytes = 256;
 inline constexpr std::size_t kChartScratchBytes = 65536;    // shared chart scratch
+// Mapped hypermatrix extension: one 256-bit candidate row per unordered
+// mirror pair (32,640 rows). It is part of the same 8 MiB chart, not a
+// host-side side table.
+inline constexpr std::size_t kHypermatrixRowBytes = 32;
+inline constexpr std::size_t kHypermatrixRows = kMirrorPairCount;
+inline constexpr std::size_t kHypermatrixBytes = kHypermatrixRows * kHypermatrixRowBytes;
 inline constexpr std::size_t kIndexBytes = kAddressCount * 2;
 inline constexpr std::size_t kCanonicalIndexBytes = kCanonicalCount * 2;
 inline constexpr std::size_t kPairIndexBytes = kMirrorPairCount * 2;
@@ -48,8 +54,8 @@ static_assert(kAddressTableBytes == 2'097'152);
 static_assert(kRegisterBytes + kDescriptorTableBytes + kAddressTableBytes + kIndexBytes +
                   kCanonicalIndexBytes + kPairIndexBytes + kHeadBytes * kHeadCount +
                   kAdjacencyBytes + kDirtyBytes + kAddressDirtyBytes +
-                  kHeadScratchBytes * kHeadCount + kChartScratchBytes <
-              kPageBytes);
+                  kHeadScratchBytes * kHeadCount + kChartScratchBytes +
+                  kHypermatrixBytes < kPageBytes);
 
 inline constexpr std::uint32_t kNoIndex = 0xFFFFFFFFu;
 
@@ -303,6 +309,25 @@ public:
         return chart_scratch_;
     }
 
+    // The mapped hypermatrix: 32,640 unordered-pair rows x 256 candidate bits.
+    // A triad (a,b,c) uses three pair rows: p(a,b) bit c, p(b,c) bit a, and
+    // p(c,a) bit b. Rows are part of the chart digest and serialize with it.
+    std::array<std::uint8_t, kHypermatrixRowBytes>& hypermatrix_row(std::uint32_t pair) {
+        return hypermatrix_[pair];
+    }
+    const std::array<std::uint8_t, kHypermatrixRowBytes>&
+    hypermatrix_row(std::uint32_t pair) const {
+        return hypermatrix_[pair];
+    }
+    std::vector<std::array<std::uint8_t, kHypermatrixRowBytes>>& hypermatrix() {
+        return hypermatrix_;
+    }
+    const std::vector<std::array<std::uint8_t, kHypermatrixRowBytes>>&
+    hypermatrix() const {
+        return hypermatrix_;
+    }
+    std::size_t hypermatrix_nonzero() const;
+
     bool adjacent(std::uint8_t a, std::uint8_t b) const;
     void set_adjacent(std::uint8_t a, std::uint8_t b, bool value);
 
@@ -351,6 +376,7 @@ private:
     std::array<std::uint64_t, (kAddressCount + 63) / 64> addr_dirty_{};
     std::array<HeadScratch, kHeadCount> head_scratch_{};
     std::array<std::uint8_t, kChartScratchBytes> chart_scratch_{};
+    std::vector<std::array<std::uint8_t, kHypermatrixRowBytes>> hypermatrix_;
 };
 
 } // namespace nanlm

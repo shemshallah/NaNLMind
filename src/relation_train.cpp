@@ -1,6 +1,7 @@
 #include "nanlm/relation_train.hpp"
 
 #include "nanlm/global.hpp"
+#include "nanlm/hypermatrix.hpp"
 #include "nanlm/sha256.hpp"
 
 #include <algorithm>
@@ -269,6 +270,17 @@ std::uint8_t distinct_head(std::uint8_t base, std::uint8_t span,
     return candidate;
 }
 
+void example_heads(const Example& e, std::uint8_t& sh, std::uint8_t& ph,
+                   std::uint8_t& oh) {
+    const std::uint8_t base = resolution_base(e.resolution);
+    const std::uint8_t span = resolution_span(e.resolution);
+    ph = predicate_head(e.resolution, e.ph);
+    sh = distinct_head(base, span, static_cast<std::uint8_t>(base + e.sh[1] % span),
+                       ph, 256u);
+    oh = distinct_head(base, span, static_cast<std::uint8_t>(base + e.oh[2] % span),
+                       ph, sh);
+}
+
 bool update_pair(GlobalTopology& topology, std::uint8_t a, std::uint8_t b,
                  const Example& e, std::uint64_t epoch, Ref& ref) {
     if (a == b) return false;
@@ -422,7 +434,27 @@ int relation_train_cli(int argc, char** argv) {
         edge.weight=std::max<std::uint32_t>(1u,e.confidence);
         edge.epoch=epoch; edge.label=e.label;
         edge.members={Ref::from_bit(sb),Ref::from_bit(pb),Ref::from_bit(ob),sp,po,so};
-        if (!topology->hypergraph().add(edge)) { std::cerr << "hyperedge append failed\n"; return 7; }
+        bool triad_ok = false;
+        auto root_page = topology->pages().resolve(PageId::root());
+        if (root_page) {
+            TriadField::clear(*root_page, ph);
+            for (std::uint8_t member : TriadField::members(ph)) {
+                HeadView view = heads.at(member);
+                const bool vote = ((NanWord::eval_bool(view.boolean_rule(),
+                                                       e.sf[0], e.of[0]) & 1u) != 0)
+                                  == e.positive;
+                TriadField::vote(*root_page, member, vote);
+            }
+            TriadField::update_field(*root_page);
+            triad_ok = TriadField::accepted(*root_page, ph);
+        }
+        if (triad_ok) {
+            if (!topology->add_hyperedge(edge)) {
+                std::cerr << "hyperedge append failed\n"; return 7;
+            }
+        } else if (!topology->hypergraph().add(edge)) {
+            std::cerr << "hyperedge append failed\n"; return 7;
+        }
         topology->temporal().link(Ref::from_bit(sb),sp,epoch);
         topology->temporal().link(Ref::from_bit(pb),po,epoch);
         topology->temporal().link(Ref::from_bit(ob),so,epoch);
@@ -491,9 +523,17 @@ int relation_train_cli(int argc, char** argv) {
         HeadView h=heads.at(static_cast<std::uint8_t>(i));
         if (!(head_state_before[i] == head_state_hash(h))) ++changed;
     }
+    auto root_universe = topology->pages().resolve(PageId::root());
+    const std::uint16_t field_count =
+        root_universe ? TriadField::field_count(*root_universe) : 0;
+    const bool field_accepted =
+        root_universe ? TriadField::field_accepted(*root_universe) : false;
     std::cout << "relation_train status=updated epochs=" << epochs << " train_events=" << accepted
               << " duplicate_events=" << duplicates << " changed_heads=" << changed
               << " mirror_pair_updates=" << pair_updates << " hyperedges_added=" << edges_added
+              << " hypermatrix_bits=" << topology->hypermatrix_nonzero()
+              << " triad_field_votes=" << field_count
+              << " triad_field_accepted=" << (field_accepted ? "yes" : "no")
               << " state_bytes=" << bytes.size() << " state_digest_before=" << hex(before)
               << " state_digest_after=" << hex(topology->global_digest()) << "\n";
     emit_resolution_metrics();
@@ -533,17 +573,82 @@ int relation_eval_cli(int argc, char** argv) {
               << hex(topology->global_digest()) << " rows=" << examples.size() << "\\n";
     for (std::size_t index = 0; index < examples.size(); ++index) {
         const auto& e = examples[index];
-        const std::uint8_t head_id = predicate_head(e.resolution, e.ph);
+        std::uint8_t sh = 0, ph = 0, oh = 0;
+        example_heads(e, sh, ph, oh);
+        const std::uint8_t head_id = ph;
         HeadView head = heads.at(head_id);
         unsigned votes = 0;
         for (unsigned lane = 0; lane < 8; ++lane)
             votes += (NanWord::eval_bool(head.boolean_rule(), e.sf[lane], e.of[lane]) & 1u) ? 1u : 0u;
         const char* state = votes > 4u ? "TRUE" : (votes < 4u ? "FALSE" : "UNKNOWN");
+        const std::uint32_t hypermatrix = topology->hypermatrix_score(sh, ph, oh);
         std::cout << "relation_eval_row index=" << index
                   << " head=" << static_cast<unsigned>(head_id)
                   << " votes=" << votes << " truth_state=" << state
-                  << " rule=" << static_cast<unsigned>(head.boolean_rule()) << "\\n";
+                  << " hypermatrix_score=" << hypermatrix
+                  << " rule=" << static_cast<unsigned>(head.boolean_rule()) << "\n";
     }
+    return 0;
+}
+
+int relation_audit_cli(int argc, char** argv) {
+    if (argc < 4) {
+        std::cerr << "usage: nanlm-universal relation-audit RECORDS STATE\\n"
+                  << "Rows must use the test split; state is read-only.\\n";
+        return 2;
+    }
+    std::vector<Example> examples;
+    if (!parse_examples(argv[2], examples)) return 2;
+    if (std::any_of(examples.begin(), examples.end(),
+                    [](const Example& e) { return e.train; })) {
+        std::cerr << "relation-audit refuses training rows\\n";
+        return 2;
+    }
+    const std::string state_path = argv[3];
+    if (!std::filesystem::exists(state_path)) {
+        std::cerr << "relation-audit requires an existing serialized topology\\n";
+        return 4;
+    }
+    std::ifstream prior(state_path, std::ios::binary);
+    std::vector<std::uint8_t> bytes((std::istreambuf_iterator<char>(prior)),
+                                    std::istreambuf_iterator<char>());
+    auto topology = GlobalTopology::from_bytes(bytes.data(), bytes.size());
+    if (!topology) {
+        std::cerr << "invalid relation state\\n";
+        return 6;
+    }
+    HeadArray heads = topology->root_heads();
+    std::uint64_t total = 0, votes_correct = 0, full_correct = 0;
+    std::uint64_t hyper_nonzero = 0, vote_sum = 0, hyper_sum = 0;
+    for (const auto& e : examples) {
+        std::uint8_t sh = 0, ph = 0, oh = 0;
+        example_heads(e, sh, ph, oh);
+        HeadView head = heads.at(ph);
+        unsigned votes = 0;
+        for (unsigned lane = 0; lane < 8; ++lane)
+            votes += (NanWord::eval_bool(head.boolean_rule(), e.sf[lane], e.of[lane]) & 1u) ? 1u : 0u;
+        const std::uint32_t hyper = topology->hypermatrix_score(sh, ph, oh);
+        const bool vote_pred = votes >= 4u;
+        const bool full_pred = (votes + (hyper > 0u ? 1u : 0u)) >= 4u;
+        ++total;
+        vote_sum += votes;
+        hyper_sum += hyper;
+        hyper_nonzero += hyper > 0u ? 1u : 0u;
+        votes_correct += (vote_pred == e.positive) ? 1u : 0u;
+        full_correct += (full_pred == e.positive) ? 1u : 0u;
+    }
+    const double denom = total ? static_cast<double>(total) : 1.0;
+    std::cout << "relation_audit schema=N16REL-AUDIT/1 rows=" << total
+              << " mean_votes=" << (vote_sum / denom)
+              << " mean_hypermatrix=" << (hyper_sum / denom)
+              << " mean_full_score=" << ((vote_sum + hyper_sum) / denom)
+              << " mean_ablated_score=" << (vote_sum / denom)
+              << " hyperedge_ablation_delta=" << (hyper_sum / denom)
+              << " hypermatrix_nonzero=" << hyper_nonzero
+              << " votes_accuracy=" << (votes_correct / denom)
+              << " full_accuracy=" << (full_correct / denom)
+              << " hypermatrix_bits=" << topology->hypermatrix_nonzero()
+              << " state_digest=" << hex(topology->global_digest()) << "\n";
     return 0;
 }
 

@@ -1,4 +1,5 @@
 #include "nanlm/global.hpp"
+#include "nanlm/hypermatrix.hpp"
 
 #include <stdexcept>
 #include <cstring>
@@ -63,6 +64,31 @@ BitAddress GlobalTopology::mirror(const BitAddress& address) {
     BitAddress out = address;
     out.cell = reverse16(address.cell);
     return out;
+}
+
+std::uint32_t GlobalTopology::add_hyperedge(Hyperedge edge) {
+    const std::uint32_t id = hypergraph_.add(std::move(edge));
+    if (id != 0) project_hyperedge(*hypergraph_.get(id));
+    return id;
+}
+
+bool GlobalTopology::project_hyperedge(const Hyperedge& edge) {
+    auto page = pages_.resolve(PageId::root());
+    if (!page) return false;
+    return Hypermatrix::project(*page, edge);
+}
+
+std::uint32_t GlobalTopology::hypermatrix_score(std::uint8_t a, std::uint8_t b,
+                                                std::uint8_t c) {
+    auto page = pages_.resolve(PageId::root());
+    if (!page) return 0;
+    Hypermatrix matrix(*page);
+    return matrix.score(a, b, c);
+}
+
+std::size_t GlobalTopology::hypermatrix_nonzero() const {
+    const auto* entry = pages_.entry(PageId::root());
+    return entry && entry->page ? entry->page->hypermatrix_nonzero() : 0;
 }
 
 void GlobalTopology::publish_manifest(const PageId& changed) {

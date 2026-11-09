@@ -41,6 +41,8 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 36 | [36_TRAINING_MERGE.md](36_TRAINING_MERGE.md) | How does Koyeb merge training deltas without holding the 2 GiB map? |
 | 37 | [37_TWO_RATE_MESH.md](37_TWO_RATE_MESH.md) | How do bootstrap and overbootstrap learn together with different math? |
 | 38 | [38_LAYERED_LEARNING.md](38_LAYERED_LEARNING.md) | How does every layer learn from the layer below, up to the global mesh? |
+| — | [HYPERMATRIX_V1_V2_RECONCILIATION.md](HYPERMATRIX_V1_V2_RECONCILIATION.md) | How do the v1 NaNLM and v2 NaNLMind architectures compare, and how does the mapped hypermatrix/triad field integrate? |
+| — | [UNIFIED_BUILD_CONTRACT.md](UNIFIED_BUILD_CONTRACT.md) | Which repository owns the native build/topology, and what may NaNROUTER and HERMES do? |
 | 39 | [39_BIT_BYTE_GATE.md](39_BIT_BYTE_GATE.md) | What happens when the mesh learns bit and byte transitions? |
 | 40 | [40_BYTE_STREAM_GATE.md](40_BYTE_STREAM_GATE.md) | Does the mesh beat order-0 on real Alice byte transitions? |
 | 41 | [41_RELATION_FIRST_CURRICULUM.md](41_RELATION_FIRST_CURRICULUM.md) | Why relations and penguin logic come before scaled bytes/words |

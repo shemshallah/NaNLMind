@@ -54,6 +54,14 @@ public:
     // All relations are fields of the one object.
     Hypergraph& hypergraph() { return hypergraph_; }
     const Hypergraph& hypergraph() const { return hypergraph_; }
+    // Add a hyperedge and project its root-head members into the mapped
+    // hypermatrix extension of the root chart. The Hypergraph remains the
+    // authoritative incidence store.
+    std::uint32_t add_hyperedge(Hyperedge edge);
+    bool project_hyperedge(const Hyperedge& edge);
+    std::uint32_t hypermatrix_score(std::uint8_t a, std::uint8_t b,
+                                    std::uint8_t c);
+    std::size_t hypermatrix_nonzero() const;
     BidirectionalMemory& temporal() { return temporal_; }
     const BidirectionalMemory& temporal() const { return temporal_; }
     JournalForest& journals() { return journals_; }

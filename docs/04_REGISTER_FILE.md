@@ -47,13 +47,16 @@ All values little-endian. The exact layout is:
 | `0x5CB810` | 131,584 | checksums | 32,896 × u32 |
 | `0x5EBA10` | 262,144 | head scratch | 256 × 1 KiB |
 | `0x62BA10` | 65,536 | chart scratch | shared working memory |
-| `0x63BA10` | 1,852,912 | free | extension space |
+| `0x63BA10` | 1,044,480 | hypermatrix | 32,640 pair rows × 256 candidate bits |
+| `0x73B010` | 808,432 | free | extension space |
 | `0x800000` | | end | 8 MiB |
 
 The extension is intentional. It holds the 256 per-head scratchpads, the
-64 KiB shared chart scratch, and room for hyperedge descriptors, temporal
-blocks, head mailboxes, and per-address capability tables without changing the
-page size again.
+64 KiB shared chart scratch, the mapped 32,640-row hypermatrix, and room for
+hyperedge descriptors, temporal blocks, head mailboxes, and per-address
+capability tables without changing the page size again. The hypermatrix rows
+are 32 bytes each: a 256-bit candidate set for the unordered pair row. A
+triple (a,b,c) projects into rows pair(a,b), pair(b,c), and pair(c,a).
 
 ---
 

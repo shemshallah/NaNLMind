@@ -7,5 +7,7 @@ namespace nanlm {
 int relation_train_cli(int argc, char** argv);
 // Read-only relation inference over an existing serialized topology.
 int relation_eval_cli(int argc, char** argv);
+// Read-only hypermatrix ablation audit over an existing serialized topology.
+int relation_audit_cli(int argc, char** argv);
 
 } // namespace nanlm

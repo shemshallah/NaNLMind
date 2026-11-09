@@ -1,6 +1,7 @@
 #include "nanlm/universe.hpp"
 
 #include <algorithm>
+#include <bit>
 #include <cstring>
 #include <sstream>
 #include <stdexcept>
@@ -29,6 +30,7 @@ Universe::Universe(std::uint64_t genome) : genome_(genome) {
     addr_dirty_.fill(0);
     for (auto& sc : head_scratch_) sc.clear();
     chart_scratch_.fill(0);
+    hypermatrix_.assign(kHypermatrixRows, {});
     build_index();
     build_genesis(genome);
 }
@@ -372,12 +374,23 @@ Hash256 Universe::digest() const {
     h.update(addr_dirty_.data(), addr_dirty_.size() * sizeof(addr_dirty_[0]));
     h.update(head_scratch_.data(), head_scratch_.size() * sizeof(HeadScratch));
     h.update(chart_scratch_.data(), chart_scratch_.size());
+    h.update(hypermatrix_.data(), hypermatrix_.size() * kHypermatrixRowBytes);
     h.update(desc_.data(), desc_.size() * sizeof(Descriptor));
     h.update(heads_.data(), heads_.size() * sizeof(Head));
     h.update(adjacency_.data(), adjacency_.size() * sizeof(adjacency_[0]));
     h.update(canon_.data(), canon_.size() * sizeof(canon_[0]));
     h.update(pair_to_index_.data(), pair_to_index_.size() * sizeof(pair_to_index_[0]));
     return h.final();
+}
+
+std::size_t Universe::hypermatrix_nonzero() const {
+    std::size_t count = 0;
+    for (const auto& row : hypermatrix_) {
+        for (std::uint8_t b : row) {
+            count += static_cast<std::size_t>(std::popcount(static_cast<unsigned>(b)));
+        }
+    }
+    return count;
 }
 
 std::vector<std::uint8_t> Universe::serialize() const {
@@ -387,6 +400,7 @@ std::vector<std::uint8_t> Universe::serialize() const {
                               addr_dirty_.size() * sizeof(addr_dirty_[0]) +
                               head_scratch_.size() * sizeof(HeadScratch) +
                               chart_scratch_.size() +
+                              hypermatrix_.size() * kHypermatrixRowBytes +
                               desc_.size() * sizeof(Descriptor) +
                               heads_.size() * sizeof(Head) +
                               adjacency_.size() * sizeof(adjacency_[0]) +
@@ -414,6 +428,7 @@ std::vector<std::uint8_t> Universe::serialize() const {
     put(addr_dirty_.data(), addr_dirty_.size() * sizeof(addr_dirty_[0]));
     put(head_scratch_.data(), head_scratch_.size() * sizeof(HeadScratch));
     put(chart_scratch_.data(), chart_scratch_.size());
+    put(hypermatrix_.data(), hypermatrix_.size() * kHypermatrixRowBytes);
     put(desc_.data(), desc_.size() * sizeof(Descriptor));
     put(heads_.data(), heads_.size() * sizeof(Head));
     put(adjacency_.data(), adjacency_.size() * sizeof(adjacency_[0]));
@@ -450,6 +465,7 @@ std::unique_ptr<Universe> Universe::from_bytes(const std::uint8_t* data, std::si
     if (!take(u->addr_dirty_.data(), u->addr_dirty_.size() * sizeof(u->addr_dirty_[0]))) return nullptr;
     if (!take(u->head_scratch_.data(), u->head_scratch_.size() * sizeof(HeadScratch))) return nullptr;
     if (!take(u->chart_scratch_.data(), u->chart_scratch_.size())) return nullptr;
+    if (!take(u->hypermatrix_.data(), u->hypermatrix_.size() * kHypermatrixRowBytes)) return nullptr;
     if (!take(u->desc_.data(), u->desc_.size() * sizeof(Descriptor))) return nullptr;
     if (!take(u->heads_.data(), u->heads_.size() * sizeof(Head))) return nullptr;
     if (!take(u->adjacency_.data(), u->adjacency_.size() * sizeof(u->adjacency_[0]))) return nullptr;
@@ -494,6 +510,7 @@ bool Universe::verify(std::string* error) const {
 
     if (cells_.size() != kCanonicalCount) return fail("cell count");
     if (desc_.size() != kCanonicalCount) return fail("descriptor count");
+    if (hypermatrix_.size() != kHypermatrixRows) return fail("hypermatrix count");
     const NanCell& point_zero_cell = head_cell(PointZeroTranslator::kPointIndex);
     if (!point_zero_cell.is_portal()) return fail("point-zero portal cell");
     if (point_zero_cell.meta[2] != PointZeroTranslator::kPointIndex ||
