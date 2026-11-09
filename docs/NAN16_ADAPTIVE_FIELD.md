@@ -56,6 +56,11 @@ integer credit fields in chart state. Those are **integer credit fields**, not
 floating-point gradients and not BPTT. The raw kernels decide proposals and
 votes; the chart/ledger remains the persistence boundary.
 
+The current C++ chart fields (`triad_members`, `triad_votes`, credit counters)
+are storage and serialization only. They are not yet wired to call these guest
+kernels in-process. Do not describe the host storage as the completed adaptive
+loop; the bridge from chart state to native guest dispatch is a separate gate.
+
 ## Run the fixtures
 
 ```sh
