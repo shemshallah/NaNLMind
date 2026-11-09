@@ -84,7 +84,7 @@ def main(argv=None) -> int:
     parser.add_argument("--layers", type=int, default=4)
     parser.add_argument("--mlp", type=int, default=256)
     parser.add_argument("--context", type=int, default=64)
-    parser.add_argument("--memory-slots", type=int, default=256)
+    parser.add_argument("--memory-slots", type=int, default=0)
     parser.add_argument("--memory-active", type=int, default=8)
     parser.add_argument("--memory-steps", type=int, default=1)
     parser.add_argument("--seed", type=int, default=17)

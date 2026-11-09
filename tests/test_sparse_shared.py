@@ -12,8 +12,7 @@ from experiments.sparse_shared.train import run
 
 class SparseSharedTests(unittest.TestCase):
     def setUp(self):
-        self.cfg = SparseConfig(d_model=32, layers=2, mlp=64, context=8,
-                                memory_slots=32, memory_active=4)
+        self.cfg = SparseConfig(d_model=32, layers=2, mlp=64, context=8)
         torch.manual_seed(7)
         self.model = SparseSharedModel(self.cfg)
 
@@ -61,13 +60,16 @@ class SparseSharedTests(unittest.TestCase):
         self.assertEqual(int(aux["indices"][0, 0, 0]), 2)
 
     def test_memory_topk_only_selected_patterns_get_grad(self):
+        cfg = SparseConfig(d_model=32, layers=2, mlp=64, context=8,
+                           memory_slots=32, memory_active=4)
+        model = SparseSharedModel(cfg)
         ids = torch.randint(0, 256, (1, 8))
-        loss, aux = self.model.loss(ids, active=4, memory_active=4)
-        self.model.zero_grad(set_to_none=True)
+        loss, aux = model.loss(ids, active=4, memory_active=4)
+        model.zero_grad(set_to_none=True)
         loss.backward()
         selected = set(aux["memory"]["indices"].reshape(-1).tolist())
-        grad = self.model.memory.patterns.grad
-        for slot in range(self.cfg.memory_slots):
+        grad = model.memory.patterns.grad
+        for slot in range(cfg.memory_slots):
             if slot not in selected:
                 self.assertEqual(float(grad[slot].abs().sum()), 0.0)
 
@@ -87,7 +89,8 @@ class SparseSharedTests(unittest.TestCase):
         self.assertEqual(tuple(aux["indices"].shape), (1, 2, 2))
 
     def test_memory_budget_is_reported(self):
-        budget = parameter_budget(self.cfg)
+        cfg = SparseConfig(memory_slots=32, memory_active=4)
+        budget = parameter_budget(cfg)
         self.assertGreater(budget["memory"], 0)
         self.assertLess(budget["active_memory_fraction"], 0.2)
 

@@ -273,8 +273,8 @@ circuits and the field state.
 
 - [ ] S2.1 d=8 block: QKV, 2 heads of d=4, residual, layer norm.
 - [ ] S2.2 MLP 8→16→8 with `FTANH`; raw NaN16 kernel plus C++ state adapter.
-- [x] S2.3 Shared projections for 85 triad banks; 255 low-rank head adapters in the NaNLMind reference.
-- [x] S2.4 Sparse top-k head→triad→field routing with margins and budgets in the reference; native port open.
+- [x] S2.3 Shared projections for 85 triad banks; 255 low-rank head adapters in the NaNLMind reference and a native Q1.15 sparse head/field bank.
+- [x] S2.4 Sparse top-k head→triad→field routing with margins and budgets in the reference; native head/field bank present; shared trunk feed open.
 - [ ] S2.5 Selective full triad attention only above routing/coherence gates.
 - [ ] S2.6 Context scales 48/256/4KiB/64KiB and 65,536-address postings;
   measure throughput, resident memory and held-out loss for each.

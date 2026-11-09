@@ -25,7 +25,7 @@ class SparseConfig:
     heads: int = 255
     active: int = 8
     rank: int = 4
-    memory_slots: int = 256
+    memory_slots: int = 0
     memory_active: int = 8
     memory_beta: float = 8.0
     memory_steps: int = 1

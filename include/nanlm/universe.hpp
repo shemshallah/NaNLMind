@@ -49,6 +49,28 @@ inline constexpr std::size_t kFieldHead = 255;
 inline constexpr std::size_t kTriadStateBytes =
     kTriadMemberCount + kHeadCount + kHeadCount + kTriadCount +
     kTriadCount * 2 + kTriadCount * 4 + 4 + 2 + kHeadCount * 2 + 4;
+
+// Native sparse head/field state.  The shared trunk supplies an 8-dimensional
+// Q16.16 feature vector; this bank owns the 255 independent low-rank adapters,
+// router scores, hotspots and usage counters.  It is serialized and digested
+// with the chart so a paged/resident sparse field has one identity.
+inline constexpr std::size_t kSparseDim = 8;
+inline constexpr std::size_t kSparseHeads = 255;
+inline constexpr std::size_t kSparseActive = 8;
+inline constexpr std::size_t kSparseRank = 2;
+
+struct SparseFieldState {
+    std::int16_t down[kSparseHeads][kSparseDim][kSparseRank]{};
+    std::int16_t up[kSparseHeads][kSparseRank][kSparseDim]{};
+    std::int16_t router[kSparseHeads][kSparseDim]{};
+    std::int16_t hotspot[kSparseHeads]{};
+    std::uint32_t usage[kSparseHeads]{};
+    std::uint32_t generation = 0;
+    std::uint32_t flags = 0;
+};
+inline constexpr std::size_t kSparseFieldBytes = sizeof(SparseFieldState);
+static_assert(sizeof(SparseFieldState) <= 32768);
+
 inline constexpr std::size_t kIndexBytes = kAddressCount * 2;
 inline constexpr std::size_t kCanonicalIndexBytes = kCanonicalCount * 2;
 inline constexpr std::size_t kPairIndexBytes = kMirrorPairCount * 2;
@@ -64,7 +86,7 @@ static_assert(kRegisterBytes + kDescriptorTableBytes + kAddressTableBytes + kInd
                   kCanonicalIndexBytes + kPairIndexBytes + kHeadBytes * kHeadCount +
                   kAdjacencyBytes + kDirtyBytes + kAddressDirtyBytes +
                   kHeadScratchBytes * kHeadCount + kChartScratchBytes +
-                  kHypermatrixBytes + kTriadStateBytes < kPageBytes);
+                  kHypermatrixBytes + kTriadStateBytes + kSparseFieldBytes < kPageBytes);
 
 inline constexpr std::uint32_t kNoIndex = 0xFFFFFFFFu;
 
@@ -354,6 +376,8 @@ public:
     const std::array<std::int32_t, kTriadCount>& triad_group_gain() const { return triad_group_gain_; }
     std::array<std::int16_t, kHeadCount>& head_credit() { return head_credit_; }
     const std::array<std::int16_t, kHeadCount>& head_credit() const { return head_credit_; }
+    SparseFieldState& sparse_field() { return sparse_field_; }
+    const SparseFieldState& sparse_field() const { return sparse_field_; }
     std::int32_t& triad_field_gain() { return triad_field_gain_; }
     std::int32_t triad_field_gain() const { return triad_field_gain_; }
     std::uint16_t& triad_field_count() { return triad_field_count_; }
@@ -421,6 +445,7 @@ private:
     std::array<std::int16_t, kTriadCount> triad_credit_{};
     std::array<std::int32_t, kTriadCount> triad_group_gain_{};
     std::array<std::int16_t, kHeadCount> head_credit_{};
+    SparseFieldState sparse_field_{};
     std::int32_t triad_field_gain_ = 65536;
     std::uint16_t triad_field_count_ = 0;
     std::int32_t field_coherence_ = 0;

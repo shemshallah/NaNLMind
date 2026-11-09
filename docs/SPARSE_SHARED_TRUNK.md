@@ -38,12 +38,16 @@ gradient norm. It decays each step, so hot triads stay active briefly without
 permanent hard routing. Inactive adapters are not evaluated and receive no
 gradient.
 
-## Hopfield memory inside the trunk
+## Hopfield memory inside the trunk (optional, default off)
 
 The old `HopfieldRouter` is still used as a sparse associative **expert and
 router** in v2. It is not the deep sequence model. The mapped hypermatrix is
 the larger compositional associative store. Both can coexist with the shared
 transformer trunk.
+
+The default sparse-trunk path is **without Hopfield**. The probes below did not
+show a reliable enough gain to justify the cost, so `memory_slots=0` is the
+default; the memory layer remains an explicit optional experiment only.
 
 Modern Hopfield retrieval is one step of softmax attention over stored
 patterns:
@@ -64,17 +68,21 @@ it is a memory sublayer:
 - the native path should write patterns with local CFT/LEAF credit, not a
   global BPTT tape.
 
-`HopfieldMemory` in `experiments/sparse_shared/model.py` implements this with
-256 patterns, top-k=8 and one retrieval step. It is deliberately **not** a
-replacement for attention: attention handles ordered local syntax, the
-Hopfield bank handles sparse associative recall and long-range stored
-associations, the hypermatrix holds compositional triples and leaves, and the
-wave/field keep temporal state and consensus.
+`HopfieldMemory` is retained in `experiments/sparse_shared/model.py` for
+ablation only. It is deliberately **not** a replacement for attention:
+attention handles ordered local syntax, the Hopfield bank handles sparse
+associative recall and long-range stored associations, the hypermatrix holds
+compositional triples and leaves, and the wave/field keep temporal state and
+consensus.
 
 On the reference CPU harness, adding the 256-pattern Hopfield bank changed
 d=64/4-layer throughput from 8.79 to 7.79 tokens/s (about 11% overhead) at
-top-k=8. That is a real cost and the quality benefit must be shown on
-held-out associative recall, not assumed.
+top-k=8. Quick probes were mixed: on a 256-key fixed association table a tiny
+d=8 model improved from 74.2% to 82.8% (31% slower), but at d=16/128 keys both
+models reached 100% and the memory was 47% slower. On the Alice excerpt probe
+the memory gave a small held-out loss improvement, but it was not reliable
+enough to make it a default. It is therefore excluded from the production
+sparse-trunk path until a larger, source-disjoint ablation shows a clear win.
 
 ## Measured reference
 
@@ -127,8 +135,9 @@ Run:
 ```sh
 python3 -m unittest tests.test_sparse_shared -v
 python3 -m experiments.sparse_shared.train --mode sparse --active 8 --steps 2
-python3 -m experiments.sparse_shared.train --mode sparse --active 8 --memory-slots 0 --steps 2
 python3 -m experiments.sparse_shared.train --mode dense --steps 1
+python3 -m experiments.sparse_shared.assoc_probe --memory-slots 64
+python3 -m experiments.sparse_shared.lm_probe --memory-slots 128 --steps 80
 ```
 
 ## V2 state mapping
@@ -152,6 +161,25 @@ The reference is deliberately shaped to map onto the existing v2 fields:
 A rejected sparse proposal must restore the adapter/trunk scratch and leave
 `s+`/`s-`, digest and generation unchanged. The native port must run through
 the one canonical nan0s VM; the Python reference is a control, not the result.
+
+## Native step 1: sparse head/field bank
+
+The first native piece is now in the chart, without Hopfield:
+
+- `include/nanlm/sparse_field.hpp` / `src/sparse_field.cpp`;
+- 255 low-rank adapters, d=8, rank=2, Q1.15 weights;
+- top-8 routing, integer normalised weights, 255-bit active mask;
+- per-head hotspot and usage state;
+- local non-BPTT credit update for a selected adapter;
+- state stored in `Universe::sparse_field()` and serialized/digested with the
+  chart (older snapshots restore with a zeroed bank);
+- `tests/test_sparse_field.cpp` checks top-k uniqueness, inactive-adapter
+  isolation, triad hotspot promotion, persistence and old-snapshot restore.
+
+This is the native **head/field** half of the sparse trunk. The shared P1
+QKV/MLP trunk kernel and its feature feed are still the next native step; the
+current Python reference supplies that feature vector and is not counted as the
+native result.
 
 ## Integration into NaNLMind
 
