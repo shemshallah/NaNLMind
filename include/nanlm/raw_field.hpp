@@ -46,6 +46,9 @@ public:
                     std::uint16_t& accepted_count, bool& field_accepted);
     bool coherence(const std::array<std::uint16_t, kTriadMemberCount>& phases,
                    std::int32_t& q16);
+    bool cft(std::int32_t e_ab, std::int32_t e_bc, std::int32_t e_ca,
+             std::int32_t error, std::int32_t rate,
+             std::array<std::int32_t, 4>& out);
     bool remap(const std::array<std::uint16_t, 6>& masks,
                std::uint32_t a, std::uint32_t b, bool target,
                bool& improved, std::int32_t& before, std::int32_t& after);

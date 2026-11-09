@@ -48,6 +48,8 @@ FIXTURES = (
             "MTH FIELD COHERENCE PASS"),
     Fixture("field_driver", "mth/tests/mth_field_driver_test.nas", 5_000_000,
             "MTH FIELD DRIVER PASS"),
+    Fixture("cft_credit", "mth/tests/mth_cft_credit_test.nas", 200_000,
+            "MTH CFT CREDIT PASS"),
 )
 
 

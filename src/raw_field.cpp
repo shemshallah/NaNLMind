@@ -160,6 +160,24 @@ bool RawFieldVM::coherence(
     return true;
 }
 
+bool RawFieldVM::cft(std::int32_t e_ab, std::int32_t e_bc,
+                     std::int32_t e_ca, std::int32_t error,
+                     std::int32_t rate, std::array<std::int32_t, 4>& out) {
+    if (!write_word(kProposalBase + 0, static_cast<std::uint32_t>(e_ab)) ||
+        !write_word(kProposalBase + 1, static_cast<std::uint32_t>(e_bc)) ||
+        !write_word(kProposalBase + 2, static_cast<std::uint32_t>(e_ca)) ||
+        !write_word(kProposalBase + 3, static_cast<std::uint32_t>(error)) ||
+        !write_word(kProposalBase + 4, static_cast<std::uint32_t>(rate)) ||
+        !write_word(kCommandBase, 6)) {
+        return fail("cannot write CFT command");
+    }
+    if (!run_command()) return false;
+    for (std::size_t i = 0; i < out.size(); ++i) {
+        out[i] = static_cast<std::int32_t>(read_word(kResultBase + i));
+    }
+    return true;
+}
+
 bool RawFieldVM::remap(const std::array<std::uint16_t, 6>& masks,
                        std::uint32_t a, std::uint32_t b, bool target,
                        bool& improved, std::int32_t& before,

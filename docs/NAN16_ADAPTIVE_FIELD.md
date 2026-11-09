@@ -22,7 +22,8 @@ adaptive-field mathematics:
 | `mth_triad_score.nas` | correct-member + majority objective for one probe |
 | `mth_remap_decision.nas` | fixed A1/B0 trial swap with exact rollback |
 | `mth_remap_general.nas` | arbitrary triad-slot trial, exact table restore |
-| `mth/drivers/field_driver.nas` | guest command dispatcher for proposal, field vote, coherence and remap |
+| `mth_cft_credit.nas` | local cycle-flux triangle credit, Q16.16 |
+| `mth/drivers/field_driver.nas` | guest command dispatcher for proposal, field vote, coherence, remap and CFT |
 | `include/nanlm/raw_field.hpp` | host orchestration: writes command words, runs the VM, reads results |
 
 ## Per-head proposal ABI
