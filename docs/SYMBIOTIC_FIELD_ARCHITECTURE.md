@@ -361,6 +361,78 @@ A native Adam kernel is therefore feasible. The decision is a memory tier:
 moments) for 256 independent heads, with sparse paging. Full 16-bit moments
 for all 256 heads is 1.25 GiB and is rejected for the 1 GiB resident target.
 
+## 8.6 Depth and context expense
+
+Parameters per transformer layer at width d and MLP m:
+
+```text
+P_layer ≈ 4d² + 2dm + 4d
+```
+
+Persistent costs per head with 16-bit weights and 8-bit m/v are `4 P_layer`
+bytes (2 B weights + 2 B moments). 256 heads multiply that by 256.
+
+### 256 independent heads, d=128, MLP=512
+
+| depth | params/head | weights | + 8-bit moments | 256 heads | KV @256 | KV @512 | KV @1024 |
+|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 0.20M | 385 KiB | 770 KiB | 192.5 MiB | 32 MiB | 64 MiB | 128 MiB |
+| 2 | 0.39M | 770 KiB | 1.50 MiB | 385 MiB | 64 MiB | 128 MiB | 256 MiB |
+| 4 | 0.79M | 1.50 MiB | 3.01 MiB | 770 MiB | 128 MiB | 256 MiB | 512 MiB |
+| 8 | 1.58M | 3.01 MiB | 6.02 MiB | 1.50 GiB | 256 MiB | 512 MiB | 1.00 GiB |
+| 12 | 2.37M | 4.51 MiB | 9.02 MiB | 2.26 GiB | 384 MiB | 768 MiB | 1.50 GiB |
+
+**Consequence:** the 512 MiB persistent budget only supports roughly
+**one layer at 256/512/1024 context**, or two layers with a short/partial
+context and active top-k. Four independent layers at 1024 context are about
+770 MiB weights/moments + 512 MiB KV = **1.28 GiB**, even before activations.
+
+### 256 independent heads, d=256, MLP=1024
+
+| depth | 256-head weights+moments | KV @1024 |
+|---:|---:|---:|
+| 1 | 769 MiB | 256 MiB |
+| 2 | 1.50 GiB | 512 MiB |
+| 4 | 3.00 GiB | 1.00 GiB |
+| 8 | 6.01 GiB | 2.00 GiB |
+| 12 | 9.01 GiB | 3.00 GiB |
+
+This is outside the 512 MiB and 1 GiB resident targets.
+
+### Shared deep trunk plus 255 adapters
+
+One shared d=512, 12-layer, MLP=2048 trunk:
+
+- 37.77M parameters;
+- 16-bit weights 72 MiB;
+- 8-bit moments 72 MiB;
+- total 144 MiB;
+- KV @1024 = 24 MiB;
+- 255 rank-4 head adapters add only a few MiB.
+
+This is the practical way to get deep thinking circuits without 256 deep
+models. The heads remain persistent interfaces; the trunk is shared fast
+thinking; the wave/hypermatrix/field keep their roles.
+
+### Context and compute scaling
+
+- KV cache is linear in context: `2 * T * d * bytes * layers * active_heads`.
+- Causal attention compute is quadratic in context: about `4 T d` FLOPs per
+  token per layer per head; MLP is about `4 d m`.
+- Flash/streaming attention avoids materializing `T²` scores, but the
+  `T²` arithmetic remains unless routing sparsifies it.
+- With 256 heads all active, depth 4 at d=128 is about 0.8 GFLOP/token; depth
+  12 is about 2.4 GFLOP/token. Sparse top-k active heads reduce that
+  proportionally.
+
+Recommended ladder:
+
+1. **Independent mode**: 256 x depth-1, d=128, context 256/512/1024; fits 512
+   MiB persistent plus KV with top-k.
+2. **Hybrid mode**: shared deep d=512 trunk + 255 shallow head adapters.
+3. **Deep independent mode**: only if the operator accepts multi-GiB weights,
+   KV and optimizer state; not a 512 MiB claim.
+
 ## 9. Non-claims
 
 - This is not a claim that 255 full transformers fit in 8 MiB.
