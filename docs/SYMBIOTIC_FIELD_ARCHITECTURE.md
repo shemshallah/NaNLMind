@@ -88,29 +88,14 @@ independent-head research mode. Never blur which one produced a result.
 The 255 heads are **persistent specialized interfaces** between these
 mechanisms, not 255 minds and not 255 output neurons.
 
-### 2.1 Hopfield is a memory sublayer, not the trunk
+### 2.1 Hopfield decision
 
-The existing `HopfieldRouter` remains the sparse associative expert/router in
-v2, and the mapped hypermatrix remains the compositional triple/leaf store.
-Neither replaces the shared transformer trunk. Modern Hopfield retrieval is
-
-```text
-xi' = X^T softmax(beta X xi)
-```
-
-which is mathematically cross-attention to a persistent pattern bank. It can be
-wrapped as a gated residual memory layer inside the trunk:
-
-1. token state queries the top-k patterns;
-2. retrieved state is gated into the residual stream;
-3. patterns are written by local CFT/LEAF credit, not a global BPTT tape;
-4. attention still handles ordered local syntax; Hopfield/hypermatrix handle
-   sparse associative recall and long-range stored associations.
-
-The reference `experiments/sparse_shared/model.py::HopfieldMemory` implements
-this and is covered by retrieval, gradient-isolation and residual-gating tests.
-It is an optional layer: the quality benefit must beat a matched no-memory
-control, and the measured cost is not hidden.
+Hopfield is not on the production sparse-trunk path. It was tested as an
+optional memory sublayer and removed after mixed probes: small gains only on a
+tiny low-capacity association table, with 30-50% extra cost, and no reliable
+held-out advantage at normal width. The mapped hypermatrix remains the
+associative triple/leaf store; the shared transformer trunk handles the deep
+sequence computation.
 
 ## 3. Memory and layout targets
 
@@ -275,8 +260,8 @@ circuits and the field state.
 
 - [ ] S2.1 d=8 block: QKV, 2 heads of d=4, residual, layer norm.
 - [ ] S2.2 MLP 8→16→8 with `FTANH`; raw NaN16 kernel plus C++ state adapter.
-- [x] S2.3 Shared projections for 85 triad banks; 255 low-rank head adapters in the NaNLMind reference and a native Q1.15 sparse head/field bank.
-- [x] S2.4 Sparse top-k head→triad→field routing with margins and budgets in the reference; native head/field bank present; shared trunk feed open.
+- [x] S2.3 Shared projections for 85 triad banks; 255 low-rank head adapters in the reference and a native Q1.15 sparse head/field bank, configurable to d=512/rank=4 in a 2.35 MB sidecar.
+- [x] S2.4 Sparse top-k head→triad→field routing in the reference; native head/field bank scans all 255 heads and adaptive 85 triads for hot heads/hot triangles (2/3 and 43/85); shared trunk feed open.
 - [ ] S2.5 Selective full triad attention only above routing/coherence gates.
 - [ ] S2.6 Context scales 48/256/4KiB/64KiB and 65,536-address postings;
   measure throughput, resident memory and held-out loss for each.

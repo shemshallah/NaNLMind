@@ -38,56 +38,17 @@ gradient norm. It decays each step, so hot triads stay active briefly without
 permanent hard routing. Inactive adapters are not evaluated and receive no
 gradient.
 
-## Hopfield memory inside the trunk (optional, default off)
+## Hopfield decision
 
-The old `HopfieldRouter` is still used as a sparse associative **expert and
-router** in v2. It is not the deep sequence model. The mapped hypermatrix is
-the larger compositional associative store. Both can coexist with the shared
-transformer trunk.
-
-The default sparse-trunk path is **without Hopfield**. The probes below did not
-show a reliable enough gain to justify the cost, so `memory_slots=0` is the
-default; the memory layer remains an explicit optional experiment only.
-
-Modern Hopfield retrieval is one step of softmax attention over stored
-patterns:
-
-```text
-p       = softmax(beta * X q)
-xi'     = X^T p
-```
-
-With `X` as both keys and values, this is exactly cross-attention to a
-persistent pattern bank. It therefore does not conflict with the transformer;
-it is a memory sublayer:
-
-- tokens query the pattern bank and retrieve an associative state;
-- a learned gate mixes that state into the residual stream;
-- only the top-k patterns are read, so cost is `O(k*d)`, not `O(N*N)`;
-- inactive patterns receive no gradient in the reference;
-- the native path should write patterns with local CFT/LEAF credit, not a
-  global BPTT tape.
-
-`HopfieldMemory` is retained in `experiments/sparse_shared/model.py` for
-ablation only. It is deliberately **not** a replacement for attention:
-attention handles ordered local syntax, the Hopfield bank handles sparse
-associative recall and long-range stored associations, the hypermatrix holds
-compositional triples and leaves, and the wave/field keep temporal state and
-consensus.
-
-On the reference CPU harness, adding the 256-pattern Hopfield bank changed
-d=64/4-layer throughput from 8.79 to 7.79 tokens/s (about 11% overhead) at
-top-k=8. Quick probes were mixed: on a 256-key fixed association table a tiny
-d=8 model improved from 74.2% to 82.8% (31% slower), but at d=16/128 keys both
-models reached 100% and the memory was 47% slower. On the Alice excerpt probe
-the memory gave a small held-out loss improvement, but it was not reliable
-enough to make it a default. It is therefore excluded from the production
-sparse-trunk path until a larger, source-disjoint ablation shows a clear win.
+Hopfield was tested as an optional memory sublayer and then removed from the
+production path. The quick probes were mixed: small gains only on a tiny
+low-capacity association table, with 30-50% extra cost, and no reliable
+held-out advantage at normal width. `experiments/sparse_shared` is now the
+Hopfield-free shared-trunk reference. The v2 path does not use Hopfield.
 
 ## Measured reference
 
-PyTorch CPU, batch 1, sequence 8. The first table is without the optional
-Hopfield memory bank:
+PyTorch CPU, batch 1, sequence 8:
 
 | configuration | active heads | tokens/s | note |
 |---|---:|---:|---|
@@ -96,8 +57,6 @@ Hopfield memory bank:
 | d=32, 2 layers, dense | 255/255 | 7.36 | 5.2x slower than sparse |
 | d=64, 4 layers, sparse | 8/255 | 12.9 | reference default |
 | d=64, 4 layers, dense | 255/255 | 1.93 | 6.7x slower than sparse |
-| d=64, 4 layers, sparse + Hopfield 256/top-8 | 8/255 | 7.79 | about 11% overhead |
-| d=64, 4 layers, sparse without Hopfield | 8/255 | 8.79 | matched control |
 
 Sparse is not a free 32x: the shared trunk, attention, router and Python/PyTorch
 overhead are fixed costs. Measured speedup is 5–7x on this CPU harness.
@@ -124,11 +83,10 @@ accelerator.
 
 ## Files
 
-- `experiments/sparse_shared/model.py` — trunk, Hopfield memory, 255 adapters,
-  router, hotspot.
+- `experiments/sparse_shared/model.py` — trunk, 255 adapters, router, hotspot.
 - `experiments/sparse_shared/train.py` — dense/sparse/random benchmarks.
 - `tests/test_sparse_shared.py` — budget, top-k, inactive-gradient isolation,
-  hotspot promotion, Hopfield retrieval and fixed-batch loss decrease.
+  hotspot promotion and fixed-batch loss decrease.
 
 Run:
 
@@ -136,8 +94,6 @@ Run:
 python3 -m unittest tests.test_sparse_shared -v
 python3 -m experiments.sparse_shared.train --mode sparse --active 8 --steps 2
 python3 -m experiments.sparse_shared.train --mode dense --steps 1
-python3 -m experiments.sparse_shared.assoc_probe --memory-slots 64
-python3 -m experiments.sparse_shared.lm_probe --memory-slots 128 --steps 80
 ```
 
 ## V2 state mapping
@@ -150,8 +106,6 @@ The reference is deliberately shaped to map onto the existing v2 fields:
 | 255 adapters | extension records: 2·d·rank Q16.16 values + router score + credit |
 | router logits | per-head routing scores in scratch; top-k in the field |
 | hotspot | per-head/triad credit derived from adapter gradient norms |
-| Hopfield pattern bank | sparse persistent memory rows; top-k retrieval; local CFT/LEAF writes |
-| Hopfield gate | per-token residual gate in chart scratch, voted before commit |
 | triad gate | existing 85 triads, 2/3 vote |
 | field gate | existing 43/85 field vote |
 | hypermatrix | 32,640 pair rows × 256 candidate bits |
@@ -167,8 +121,8 @@ the one canonical nan0s VM; the Python reference is a control, not the result.
 The first native piece is now integrated, without Hopfield:
 
 - `include/nanlm/sparse_field.hpp` / `src/sparse_field.cpp`;
-- 255 low-rank adapters, runtime-configurable up to **d=128, rank=4**,
-  Q1.15 weights (default d=32/rank=4);
+- 255 low-rank adapters, runtime-configurable up to **d=512, rank=4**,
+  Q1.15 weights (default d=32/rank=4; d=512 is a 2.35 MB sidecar allocation);
 - top-8 routing, integer-normalised weights, 255-bit active mask;
 - per-head hotspot and usage state;
 - local non-BPTT credit update for a selected adapter;
@@ -176,7 +130,7 @@ The first native piece is now integrated, without Hopfield:
   serialized/digested with the chart; it is not counted against the fixed
   8 MiB root budget, and older snapshots restore with a zeroed bank;
 - `tests/test_sparse_field.cpp` checks top-k uniqueness, inactive-adapter
-  isolation, d=128 operation, adaptive-triad hotspots, 43/85 field
+  isolation, d=512 operation, adaptive-triad hotspots, 43/85 field
   identification, persistence and old-snapshot restore.
 
 ### Hot heads and hot triangles
@@ -197,13 +151,13 @@ The result is available as `Hotspots.heads`, `Hotspots.triads`,
 This is the native **head/field** half of the sparse trunk. The shared P1
 QKV/MLP trunk kernel and its feature feed are still the next native step; the
 current Python reference supplies that feature vector and is not counted as the
-native result. A d=512 adapter bank is the next sidecar tier (about 2.35 MB);
-it is not allocated in the fixed root by default.
+native result. The d=512 adapter bank is a 2.35 MB heap-backed sidecar, not
+part of the fixed root.
 
 ## Native status
 
 The sparse shared trunk and adapter bank are native in the head/field half:
-d=128/rank=4 is exercised, and d=512 is the next sidecar tier. The shared
+d=512/rank=4 is exercised in the sidecar. The shared
 QKV/MLP trunk kernel, native top-k feature feed, adapter training and
 AdamW/Gumbel path are still open. Hopfield is not on this path.
 
