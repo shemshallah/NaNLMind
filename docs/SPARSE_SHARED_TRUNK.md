@@ -148,6 +148,14 @@ The first native piece is now integrated, without Hopfield:
 The result is available as `Hotspots.heads`, `Hotspots.triads`,
 `Hotspots.hot_heads`, `Hotspots.hot_triads` and `Hotspots.field_hot`.
 
+The raw NaN16 path is authoritative for auto-mapping: `mth_hot_trihead.nas`
+scans the 255 head credits, groups hot individuals in threes, writes a unique
+85x3 mapping at `0x8000`, and reports the 43/85 field flag. A group of three hot
+heads becomes a hot triad; cold heads fill the remaining slots. The C++ bridge
+`RawFieldVM::hot_triheads` validates the mapping and commits it to the chart.
+The raw fixture covers three non-contiguous hot heads and 129 hot heads
+(43 hot triads).
+
 This is the native **head/field** half of the sparse trunk. The shared P1
 QKV/MLP trunk kernel and its feature feed are still the next native step; the
 current Python reference supplies that feature vector and is not counted as the

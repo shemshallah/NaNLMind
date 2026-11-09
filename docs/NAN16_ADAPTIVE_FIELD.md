@@ -26,7 +26,8 @@ adaptive-field mathematics:
 | `mth_cft_credit.nas` | local cycle-flux triangle credit, signed Q16.16 |
 | `mth_trail_credit.nas` | two-rail TD eligibility and credit, Q16.16 |
 | `mth_micro_block.nas` | raw two-token QKV/softmax/tanh micro-transformer forward |
-| `mth/drivers/field_driver.nas` | guest command dispatcher for proposal, field vote, coherence, remap, CFT and TRAIL |
+| `mth_hot_trihead.nas` | raw 255-head hot scan, 3-hot-head triad grouping and 85x3 auto-mapping |
+| `mth/drivers/field_driver.nas` | guest command dispatcher for proposal, field vote, coherence, remap, CFT, TRAIL and hot triheads |
 | `include/nanlm/raw_field.hpp` | host orchestration: writes command words, runs the VM, reads results |
 
 ## Per-head proposal ABI
@@ -55,6 +56,28 @@ bits of each entry are the triad vote mask. It returns the accepted count and
 whether at least 43 triads accept. The trig kernel and field-coherence kernel
 are separate native primitives; a caller can combine the field count with the
 Q16.16 coherence value.
+
+## Hot trihead auto-mapping ABI
+
+`mth_hot_trihead.nas` scans the 255 individual head credits and groups hot
+heads in threes. A complete group of three hot heads is a hot triad; the raw
+routine writes the full unique 85x3 mapping at `0x8000` and returns:
+
+```text
+r1 hot head count
+r2 complete hot triads (hot_count / 3)
+r3 field flag (hot_triads >= 43/85)
+r4 mapped heads (255)
+```
+
+Hot heads are placed first in scan order, then cold heads fill the remaining
+slots. The first `floor(hot_count/3)` triads therefore consist of three hot
+individual heads. `RawFieldVM::hot_triheads` writes the credits, runs the guest,
+validates that all 255 mapped heads are unique, and commits the mapping to the
+chart only after the raw result passes.
+
+Raw fixture: `mth/tests/mth_hot_trihead_test.nas` (three non-contiguous hot
+heads -> one hot triad; 129 hot heads -> 43 hot triads and field gate).
 
 ## Learnable credit, not host gradients
 

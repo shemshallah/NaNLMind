@@ -34,6 +34,14 @@ struct RawProposalResult {
     std::uint8_t candidate_rule = 0;
 };
 
+struct HotTriheadResult {
+    std::uint16_t hot_heads = 0;
+    std::uint16_t hot_triads = 0;
+    bool field_hot = false;
+    bool mapped = false;
+    std::array<std::uint8_t, kTriadMemberCount> members{};
+};
+
 class RawFieldVM {
 public:
     explicit RawFieldVM(const std::string& driver_image);
@@ -66,6 +74,12 @@ public:
                std::int32_t e_minus, std::int32_t grad_plus,
                std::int32_t grad_minus, std::int32_t gamma,
                std::int32_t lambda, std::array<std::int32_t, 3>& out);
+    bool hot_triheads(const std::array<std::int32_t, kTriadMemberCount>& credits,
+                      std::int32_t threshold, HotTriheadResult& out);
+    // Raw scan/grouping, then commit the unique 85x3 mapping to the chart.
+    bool hot_triheads(Universe& universe,
+                      const std::array<std::int32_t, kTriadMemberCount>& credits,
+                      std::int32_t threshold, HotTriheadResult& out);
     bool remap(const std::array<std::uint16_t, 6>& masks,
                std::uint32_t a, std::uint32_t b, bool target,
                bool& improved, std::int32_t& before, std::int32_t& after);

@@ -10,6 +10,9 @@
 ;   result at 0x4010: average Q16.16 coherence
 ; Remap: six masks at 0x4001..0x4006, a/b/target at 0x4007..0x4009
 ;   results at 0x4010: decision, before, after
+; Hot triheads: 255 credits at 0x7000, threshold at 0x4001
+;   results at 0x4010: hot heads, hot triads, field flag, mapped
+;   mapping at 0x8000: 85 triads x 3 heads
 ;
 ; The driver contains no host math. It is assembled by nmk.awk and executed
 ; by the canonical NaN0S VM. The guest starts at word 0.
@@ -26,6 +29,7 @@ JMP @field_driver_entry
 .include "../nan16/mth_q16_mul.nas"
 .include "../nan16/mth_cft_credit.nas"
 .include "../nan16/mth_trail_credit.nas"
+.include "../nan16/mth_hot_trihead.nas"
 
 field_driver_entry:
   MOVI r13,1
@@ -58,6 +62,9 @@ field_driver_main:
   MOVI r3,7
   CMP r2,r3
   JMP[EQ] @field_driver_trail
+  MOVI r3,8
+  CMP r2,r3
+  JMP[EQ] @field_driver_hot_trihead
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -165,6 +172,18 @@ field_driver_trail:
   ST r1,r10,0
   ST r2,r10,1
   ST r3,r10,2
+  JMP @field_driver_return
+
+field_driver_hot_trihead:
+  MOVI r1,0x7000
+  MOVI r10,0x4001
+  LD r2,r10,0
+  CALL @mth_hot_trihead
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  ST r4,r10,3
   JMP @field_driver_return
 
 field_driver_return:

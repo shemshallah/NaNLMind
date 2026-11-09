@@ -101,5 +101,47 @@ int main() {
     CHECK_EQ(auto_universe.triad_of()[6], 1);
     CHECK_EQ(auto_universe.triad_of()[4], 2);
 
+    // Raw hot-head scan: three hot individuals become one hot triad, and the
+    // guest writes a unique 85x3 auto-mapping.
+    std::array<std::int32_t, kTriadMemberCount> credits{};
+    credits[3] = 100;
+    credits[17] = 90;
+    credits[99] = 80;
+    HotTriheadResult hot;
+    CHECK(vm.hot_triheads(credits, 10, hot));
+    CHECK_EQ(hot.hot_heads, 3u);
+    CHECK_EQ(hot.hot_triads, 1u);
+    CHECK(!hot.field_hot);
+    CHECK_EQ(hot.members[0], 3u);
+    CHECK_EQ(hot.members[1], 17u);
+    CHECK_EQ(hot.members[2], 99u);
+    std::array<bool, kTriadMemberCount> seen{};
+    for (std::uint8_t h : hot.members) {
+        CHECK(h < kTriadMemberCount);
+        CHECK(!seen[h]);
+        seen[h] = true;
+    }
+
+    // 129 hot heads -> 43 complete hot triads -> global field flag.
+    std::array<std::int32_t, kTriadMemberCount> many{};
+    for (std::size_t i = 0; i < 129; ++i) many[i] = 50;
+    CHECK(vm.hot_triheads(many, 10, hot));
+    CHECK_EQ(hot.hot_heads, 129u);
+    CHECK_EQ(hot.hot_triads, 43u);
+    CHECK(hot.field_hot);
+
+    // Chart bridge commits the raw mapping and reverses it for all heads.
+    Universe hot_universe;
+    HotTriheadResult mapped;
+    CHECK(vm.hot_triheads(hot_universe, credits, 10, mapped));
+    CHECK(mapped.mapped);
+    CHECK_EQ(hot_universe.triad_members()[0], 3u);
+    CHECK_EQ(hot_universe.triad_members()[1], 17u);
+    CHECK_EQ(hot_universe.triad_members()[2], 99u);
+    CHECK_EQ(hot_universe.triad_of()[3], 0u);
+    CHECK_EQ(hot_universe.triad_of()[17], 0u);
+    CHECK_EQ(hot_universe.triad_of()[99], 0u);
+    CHECK_EQ(hot_universe.triad_slot()[99], 2u);
+
     return test_done("raw NaN16 field VM bridge");
 }

@@ -14,6 +14,8 @@ constexpr std::uint32_t kProposalBase = 0x4001;
 constexpr std::uint32_t kResultBase = 0x4010;
 constexpr std::uint32_t kFieldMasks = 0x5000;
 constexpr std::uint32_t kCoherencePhases = 0x6000;
+constexpr std::uint32_t kHotCredits = 0x7000;
+constexpr std::uint32_t kHotMapping = 0x8000;
 constexpr std::uint32_t kMaxSteps = 5'000'000;
 
 void bump_triad_credit(std::int16_t& value, int delta) {
@@ -219,6 +221,67 @@ bool RawFieldVM::trail(std::int32_t reward, std::int32_t v_minus_next,
     for (std::size_t i = 0; i < out.size(); ++i) {
         out[i] = static_cast<std::int32_t>(read_word(kResultBase + i));
     }
+    return true;
+}
+
+
+bool RawFieldVM::hot_triheads(
+    const std::array<std::int32_t, kTriadMemberCount>& credits,
+    std::int32_t threshold, HotTriheadResult& out) {
+    for (std::size_t i = 0; i < credits.size(); ++i) {
+        if (!write_word(kHotCredits + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(credits[i]))) {
+            return fail("cannot write hot-head credits");
+        }
+    }
+    if (!write_word(kProposalBase, static_cast<std::uint32_t>(threshold)) ||
+        !write_word(kCommandBase, 8)) {
+        return fail("cannot write hot-trihead command");
+    }
+    if (!run_command()) return false;
+
+    out.hot_heads = static_cast<std::uint16_t>(read_word(kResultBase + 0));
+    out.hot_triads = static_cast<std::uint16_t>(read_word(kResultBase + 1));
+    out.field_hot = (read_word(kResultBase + 2) & 1u) != 0;
+    const std::uint32_t mapped = read_word(kResultBase + 3);
+    if (out.hot_heads > kTriadMemberCount || mapped != kTriadMemberCount) {
+        return fail("raw hot-trihead result has an invalid count");
+    }
+
+    std::array<bool, kTriadMemberCount> seen{};
+    for (std::size_t i = 0; i < out.members.size(); ++i) {
+        const std::uint32_t value = read_word(
+            kHotMapping + static_cast<std::uint32_t>(i));
+        if (value >= kTriadMemberCount) {
+            return fail("raw hot-trihead mapping contains an invalid head");
+        }
+        if (seen[value]) return fail("raw hot-trihead mapping repeats a head");
+        seen[value] = true;
+        out.members[i] = static_cast<std::uint8_t>(value);
+    }
+    out.mapped = false;
+    return true;
+}
+
+bool RawFieldVM::hot_triheads(
+    Universe& universe,
+    const std::array<std::int32_t, kTriadMemberCount>& credits,
+    std::int32_t threshold, HotTriheadResult& out) {
+    if (!hot_triheads(credits, threshold, out)) return false;
+
+    for (std::size_t i = 0; i < out.members.size(); ++i) {
+        universe.triad_members()[i] = out.members[i];
+        const std::size_t t = i / kTriadSize;
+        const std::size_t slot = i % kTriadSize;
+        universe.triad_of()[out.members[i]] = static_cast<std::uint8_t>(t);
+        universe.triad_slot()[out.members[i]] = static_cast<std::uint8_t>(slot);
+    }
+    universe.triad_votes().fill(0);
+    for (std::size_t t = 0; t < kTriadCount; ++t) {
+        bump_triad_credit(universe.triad_credit()[t],
+                          t < out.hot_triads ? 1 : -1);
+    }
+    out.mapped = true;
     return true;
 }
 
