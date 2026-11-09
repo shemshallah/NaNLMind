@@ -69,10 +69,10 @@ The canonical NaN0S C core and assembler are vendored under
 `third_party/nan0s/` with `SOURCE.json`; `third_party` is host/VM transport,
 not a second math implementation.
 
-This is still a bounded bridge: the full training loop, general remap
-persistence and the host-side scheduler are separate gates. The C++ training
-path does not silently invoke the guest yet; `field-selftest` and
-`test_raw_field` exercise the bridge explicitly.
+This is still a bounded bridge: the full training loop and the autonomous
+remap scheduler are separate gates. The C++ training path does not silently
+invoke the guest yet; `field-selftest` and `test_raw_field` exercise the bridge
+explicitly. The general remap mapping itself is now persisted in the Universe.
 
 ## Run the fixtures
 
@@ -93,6 +93,7 @@ skip. The default fixtures cover:
 - field coherence with 85 coherent triads and one perturbed triad;
 - a fixed and a general triad remap accepted only when they improve the
   majority objective, with exact rollback and chart mapping commit;
+- local CFT triangle credit with non-negative Q16.16 error/rate;
 - the field-command driver and the `RawFieldVM` chart bridge;
 - `field-selftest` and `test_raw_field` on the vendored canonical VM.
 
@@ -113,5 +114,7 @@ which triads to trial and when.
 - No BPTT, float tensor, PyTorch, or v1 overlay is imported.
 - No natural-language fluency, live Koyeb/NANNET, or geometric advantage is
   claimed.
+- The CFT first slice requires non-negative Q16.16 error/rate; signed
+  64-bit credit scaling is an explicit follow-on.
 - The fixtures are native execution evidence, not a claim that the full
   decoder or a source-disjoint benchmark is complete.
