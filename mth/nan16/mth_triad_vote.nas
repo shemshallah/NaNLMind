@@ -14,7 +14,6 @@
 ; Each member votes from its own Boolean prediction on the same operands. The
 ; proposer's candidate must itself predict the target. Only the proposer's
 ; mask is changed by the caller; the triad is a gate, not a copy step.
-.include "mth_bool_dynamic.nas"
 
 mth_triad_vote:
   MOVI r10,@mth_triad_vote_link

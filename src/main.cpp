@@ -18,6 +18,7 @@
 #include "nanlm/head_candidate.hpp"
 #include "nanlm/universe.hpp"
 #include "nanlm/hypermatrix.hpp"
+#include "nanlm/raw_field.hpp"
 
 #include <cctype>
 #include <cstdio>
@@ -1214,6 +1215,28 @@ int cmd_heads() {
     return 0;
 }
 
+int cmd_field_selftest() {
+    RawFieldVM vm("build/field_driver.nan");
+    if (!vm.ready()) {
+        std::cerr << "raw field VM unavailable: " << vm.error() << "\n";
+        return 7;
+    }
+    RawProposalResult result;
+    if (!vm.proposal(0x0001, 0x0003, {0x0001, 0x0002, 0x0002},
+                     0, 0, true, result)) {
+        std::cerr << "raw field proposal failed: " << vm.error() << "\n";
+        return 7;
+    }
+    std::cout << "field_selftest raw_vm=nan0s votes="
+              << static_cast<unsigned>(result.votes)
+              << " accepted=" << (result.accepted ? 1 : 0)
+              << " candidate_mask=" << result.candidate_mask
+              << " candidate_rule=" << static_cast<unsigned>(result.candidate_rule)
+              << "\n";
+    return result.accepted && result.votes == 6 && result.candidate_mask == 2
+               ? 0 : 8;
+}
+
 int cmd_unification() {
     std::cout << "unified_build schema=nanlm.unified-build/1"
               << " canonical_repository=NaNLMind"
@@ -1242,6 +1265,7 @@ int cmd_unification() {
 
 void usage() {
     std::cout << "nanlm-universal <command>\n\n"
+              << "  field-selftest run the raw NaN16 field command driver\n"
               << "  unification canonical build/topology contract for NaNROUTER and HERMES\n"
               << "  verify      exhaustive invariants and self-tests\n"
               << "  genesis     materialize and describe the genesis register file\n"
@@ -1279,6 +1303,7 @@ int main(int argc, char** argv) {
         return 0;
     }
     const std::string cmd = argv[1];
+    if (cmd == "field-selftest") return cmd_field_selftest();
     if (cmd == "unification") return cmd_unification();
     if (cmd == "verify") return cmd_verify();
     if (cmd == "genesis") return cmd_genesis();

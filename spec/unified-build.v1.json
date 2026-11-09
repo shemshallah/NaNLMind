@@ -36,7 +36,8 @@
     "relation-train",
     "relation-eval",
     "relation-audit",
-    "unification"
+    "unification",
+    "field-selftest"
   ],
   "native_abi": "NaN16",
   "non_claims": [

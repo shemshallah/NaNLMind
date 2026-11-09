@@ -1,5 +1,6 @@
 .org 0
 JMP @mth_triad_test_main
+.include "../nan16/mth_bool_dynamic.nas"
 .include "../nan16/mth_triad_vote.nas"
 
 mth_triad_test_main:

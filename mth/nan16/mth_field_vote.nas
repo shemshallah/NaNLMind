@@ -6,7 +6,6 @@
 ; Returns:
 ;   r1 = number of triads with at least two approving members
 ;   r2 = 1 when count >= 43 (the one-field majority), else 0
-.include "mth_bool_dynamic.nas"
 
 mth_field_vote:
   MOVI r9,@mth_field_vote_link
@@ -29,7 +28,7 @@ mth_field_loop:
   JMP[LT] @mth_field_next
   ADDI r12,r12,1
 mth_field_next:
-  ADDI r11,r11,4
+  ADDI r11,r11,1
   SUB r10,r10,r13
   JMP @mth_field_loop
 

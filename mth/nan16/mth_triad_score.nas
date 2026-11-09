@@ -8,7 +8,6 @@
 ;
 ; The majority bonus is what makes remapping non-invariant: moving a correct
 ; head next to another correct head can improve the cluster objective.
-.include "mth_bool_dynamic.nas"
 
 mth_triad_score:
   MOVI r9,@mth_triad_score_link

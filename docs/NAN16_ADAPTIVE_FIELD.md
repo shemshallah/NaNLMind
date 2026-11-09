@@ -21,6 +21,8 @@ adaptive-field mathematics:
 | `mth_field_coherence.nas` | 255 pairwise phase terms averaged to Q16.16 |
 | `mth_triad_score.nas` | correct-member + majority objective for one probe |
 | `mth_remap_decision.nas` | fixed A1/B0 trial swap with exact rollback |
+| `mth/drivers/field_driver.nas` | guest command dispatcher for proposal, field vote, coherence and remap |
+| `include/nanlm/raw_field.hpp` | host orchestration: writes command words, runs the VM, reads results |
 
 ## Per-head proposal ABI
 
@@ -56,15 +58,25 @@ integer credit fields in chart state. Those are **integer credit fields**, not
 floating-point gradients and not BPTT. The raw kernels decide proposals and
 votes; the chart/ledger remains the persistence boundary.
 
-The current C++ chart fields (`triad_members`, `triad_votes`, credit counters)
-are storage and serialization only. They are not yet wired to call these guest
-kernels in-process. Do not describe the host storage as the completed adaptive
-loop; the bridge from chart state to native guest dispatch is a separate gate.
+The C++ chart fields (`triad_members`, `triad_votes`, head/triad credit) are
+storage and serialization. `RawFieldVM` now bridges a proposal to the guest:
+it marshals masks and operands, runs `field_driver.nas` on the pinned NaN0S C
+core, and applies only the proposer's accepted mask. `RawFieldVM::field_vote`
+and `coherence` also write the chart's field count and stored Q16.16 value.
+The canonical NaN0S C core and assembler are vendored under
+`third_party/nan0s/` with `SOURCE.json`; `third_party` is host/VM transport,
+not a second math implementation.
+
+This is still a bounded bridge: the full training loop, general remap
+persistence and the host-side scheduler are separate gates. The C++ training
+path does not silently invoke the guest yet; `field-selftest` and
+`test_raw_field` exercise the bridge explicitly.
 
 ## Run the fixtures
 
 ```sh
 make nan16-test
+./build/nanlm-universal field-selftest
 # or:
 python3 tools/run_nan16_fixtures.py --nan0s-root ~/nan0s
 ```
@@ -78,7 +90,9 @@ skip. The default fixtures cover:
 - Q16.16 sin/cos at 0, 90, 180, and 270 degrees;
 - field coherence with 85 coherent triads and one perturbed triad;
 - a temporary triad remap accepted when it improves the majority objective,
-  and a destructive swap rejected with exact rollback.
+  and a destructive swap rejected with exact rollback;
+- the field-command driver and the `RawFieldVM` chart bridge;
+- `field-selftest` and `test_raw_field` on the vendored canonical VM.
 
 ## Remap decision
 

@@ -1,5 +1,6 @@
 .org 0
 JMP @mth_fc_test_main
+.include "../nan16/mth_q16_sin_cos.nas"
 .include "../nan16/mth_field_coherence.nas"
 
 mth_fc_test_main:
@@ -9,7 +10,7 @@ mth_fc_test_main:
   MOVI r2,0
 mth_fc_clear:
   ST r0,r1,0
-  ADDI r1,r1,4
+  ADDI r1,r1,1
   ADDI r2,r2,1
   MOVI r3,255
   CMP r2,r3

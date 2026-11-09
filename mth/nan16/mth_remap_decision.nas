@@ -8,7 +8,6 @@
 ;   r2 = before score, r3 = after score
 ;
 ; The mask table is restored exactly when the trial is rejected.
-.include "mth_triad_score.nas"
 
 mth_remap_decision:
   MOVI r12,@mth_remap_link
@@ -26,8 +25,8 @@ mth_remap_decision:
   MOVI r12,@mth_remap_ptr
   LD r10,r12,0
   LD r1,r10,0
-  LD r2,r10,4
-  LD r3,r10,8
+  LD r2,r10,1
+  LD r3,r10,2
   MOVI r12,@mth_remap_a
   LD r6,r12,0
   MOVI r12,@mth_remap_b
@@ -41,10 +40,10 @@ mth_remap_decision:
   ; before B
   MOVI r12,@mth_remap_ptr
   LD r10,r12,0
-  ADDI r10,r10,12
+  ADDI r10,r10,3
   LD r1,r10,0
-  LD r2,r10,4
-  LD r3,r10,8
+  LD r2,r10,1
+  LD r3,r10,2
   MOVI r12,@mth_remap_a
   LD r6,r12,0
   MOVI r12,@mth_remap_b
@@ -58,17 +57,17 @@ mth_remap_decision:
   ; swap A1 and B0
   MOVI r12,@mth_remap_ptr
   LD r10,r12,0
-  LD r5,r10,4
-  LD r6,r10,12
-  ST r6,r10,4
-  ST r5,r10,12
+  LD r5,r10,1
+  LD r6,r10,3
+  ST r6,r10,1
+  ST r5,r10,3
 
   ; after A
   MOVI r12,@mth_remap_ptr
   LD r10,r12,0
   LD r1,r10,0
-  LD r2,r10,4
-  LD r3,r10,8
+  LD r2,r10,1
+  LD r3,r10,2
   MOVI r12,@mth_remap_a
   LD r6,r12,0
   MOVI r12,@mth_remap_b
@@ -82,10 +81,10 @@ mth_remap_decision:
   ; after B
   MOVI r12,@mth_remap_ptr
   LD r10,r12,0
-  ADDI r10,r10,12
+  ADDI r10,r10,3
   LD r1,r10,0
-  LD r2,r10,4
-  LD r3,r10,8
+  LD r2,r10,1
+  LD r3,r10,2
   MOVI r12,@mth_remap_a
   LD r6,r12,0
   MOVI r12,@mth_remap_b
@@ -113,10 +112,10 @@ mth_remap_decision:
   ; restore A1/B0
   MOVI r12,@mth_remap_ptr
   LD r10,r12,0
-  LD r5,r10,4
-  LD r6,r10,12
-  ST r6,r10,4
-  ST r5,r10,12
+  LD r5,r10,1
+  LD r6,r10,3
+  ST r6,r10,1
+  ST r5,r10,3
   MOVI r1,0
   JMP @mth_remap_out
 

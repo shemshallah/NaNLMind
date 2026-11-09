@@ -1,5 +1,6 @@
 .org 0
 JMP @mth_field_test_main
+.include "../nan16/mth_bool_dynamic.nas"
 .include "../nan16/mth_field_vote.nas"
 
 mth_field_test_main:
@@ -19,7 +20,7 @@ mth_field_clear:
   MOVI r3,6
 mth_field_seed:
   ST r3,r1,0
-  ADDI r1,r1,4
+  ADDI r1,r1,1
   SUB r2,r2,r13
   CMP r2,r0
   JMP[NE] @mth_field_seed

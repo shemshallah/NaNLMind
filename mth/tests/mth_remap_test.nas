@@ -1,5 +1,7 @@
 .org 0
 JMP @mth_remap_test_main
+.include "../nan16/mth_bool_dynamic.nas"
+.include "../nan16/mth_triad_score.nas"
 .include "../nan16/mth_remap_decision.nas"
 
 mth_remap_test_main:
@@ -10,11 +12,11 @@ mth_remap_test_main:
   MOVI r10,@mth_remap_masks
   MOVI r5,0x8000
   ST r5,r10,0
+  ST r0,r10,1
+  ST r0,r10,2
+  ST r5,r10,3
   ST r0,r10,4
-  ST r0,r10,8
-  ST r5,r10,12
-  ST r0,r10,16
-  ST r0,r10,20
+  ST r0,r10,5
   MOVI r1,@mth_remap_masks
   MOVI r2,0
   MOVI r3,0
@@ -24,11 +26,11 @@ mth_remap_test_main:
   CMP r1,r10
   JMP[NE] @mth_remap_fail
   MOVI r10,@mth_remap_masks
-  LD r11,r10,4
+  LD r11,r10,1
   MOVI r12,0x8000
   CMP r11,r12
   JMP[NE] @mth_remap_fail
-  LD r11,r10,12
+  LD r11,r10,3
   CMP r11,r0
   JMP[NE] @mth_remap_fail
 
@@ -37,11 +39,11 @@ mth_remap_test_main:
   MOVI r10,@mth_remap_masks
   MOVI r5,0x8000
   ST r5,r10,0
-  ST r5,r10,4
-  ST r0,r10,8
-  ST r0,r10,12
-  ST r0,r10,16
-  ST r0,r10,20
+  ST r5,r10,1
+  ST r0,r10,2
+  ST r0,r10,3
+  ST r0,r10,4
+  ST r0,r10,5
   MOVI r1,@mth_remap_masks
   MOVI r2,0
   MOVI r3,0
@@ -50,11 +52,11 @@ mth_remap_test_main:
   CMP r1,r0
   JMP[NE] @mth_remap_fail
   MOVI r10,@mth_remap_masks
-  LD r11,r10,4
+  LD r11,r10,1
   MOVI r12,0x8000
   CMP r11,r12
   JMP[NE] @mth_remap_fail
-  LD r11,r10,12
+  LD r11,r10,3
   CMP r11,r0
   JMP[NE] @mth_remap_fail
 

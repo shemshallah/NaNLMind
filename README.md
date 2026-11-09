@@ -17,7 +17,7 @@ This repository contains:
 
 - the extracted provenance of 28 archives (Rounds 2–23, merged R15–R17/R18/R23clock, `distributedmind`, and `nanclock`);
 - a clean C++20 core for the address algebra, NaN16 Boolean functions, the 8 MiB full-address register-file chart, bit/byte/KB paging, hyperedges, bidirectional temporal memory, resonance, and one global ledger;
-- raw NaN16 adaptive-field kernels (`mth/nan16/`) for per-head Boolean self-modification, triad votes, field votes, Q16.16 trig, and phase coherence, with native `nan_cli` fixtures;
+- raw NaN16 adaptive-field kernels (`mth/nan16/`) for per-head Boolean self-modification, triad votes, field votes, Q16.16 trig, and phase coherence, with a guest command driver, a pinned canonical NaN0S C core under `third_party/nan0s/`, and native fixtures;
 - a mapped 32,640-row hypermatrix extension inside the same 8 MiB chart, with 85 three-head voting triads, a single field consensus, and Q16.16 local/group/field readout gains;
 - the canonical native build contract (`spec/unified-build.v1.json`): NaNLMind owns the topology and native binary, NaNROUTER is the transport/control plane, and HERMES is a read-only adapter;
 - the six-runner NaNLMind ring and its `nanlm-ram` / `nanlm-vram` tiers;
@@ -194,6 +194,7 @@ make
 ./build/nanlm-universal vectors
 ./build/nanlm-universal words
 ./build/nanlm-universal unification
+./build/nanlm-universal field-selftest
 make unified-check
 make nan16-test
 ./build/nanlm-universal warmup 10
