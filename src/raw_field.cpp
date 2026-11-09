@@ -14,6 +14,11 @@ constexpr std::uint32_t kResultBase = 0x4010;
 constexpr std::uint32_t kFieldMasks = 0x5000;
 constexpr std::uint32_t kCoherencePhases = 0x6000;
 constexpr std::uint32_t kMaxSteps = 5'000'000;
+
+void bump_triad_credit(std::int16_t& value, int delta) {
+    const int next = static_cast<int>(value) + delta;
+    value = static_cast<std::int16_t>(std::max(-32768, std::min(32767, next)));
+}
 } // namespace
 
 RawFieldVM::RawFieldVM(const std::string& driver_image) {
@@ -118,12 +123,8 @@ bool RawFieldVM::propose(Universe& universe, HeadArray& heads,
         if (!view.self_modify_boolean(patch))
             return fail("raw proposal accepted but head is not writable");
     }
-    auto bump = [](std::int16_t& value, int delta) {
-        const int next = static_cast<int>(value) + delta;
-        value = static_cast<std::int16_t>(std::max(-32768, std::min(32767, next)));
-    };
-    bump(universe.head_credit()[proposer], out.accepted ? 1 : -1);
-    bump(universe.triad_credit()[triad], out.accepted ? 1 : -1);
+    bump_triad_credit(universe.head_credit()[proposer], out.accepted ? 1 : -1);
+    bump_triad_credit(universe.triad_credit()[triad], out.accepted ? 1 : -1);
     if (!field_vote(universe)) return false;
     if (!coherence(universe)) return false;
     return true;
@@ -178,6 +179,77 @@ bool RawFieldVM::remap(const std::array<std::uint16_t, 6>& masks,
     improved = (read_word(kResultBase + 0) & 1u) != 0;
     before = static_cast<std::int32_t>(read_word(kResultBase + 1));
     after = static_cast<std::int32_t>(read_word(kResultBase + 2));
+    return true;
+}
+
+bool RawFieldVM::remap_general(const std::array<std::uint16_t, 6>& masks,
+                                std::uint8_t slot_a, std::uint8_t slot_b,
+                                std::uint32_t a, std::uint32_t b, bool target,
+                                bool& improved, std::int32_t& before,
+                                std::int32_t& after) {
+    if (slot_a >= kTriadSize || slot_b >= kTriadSize)
+        return fail("remap slot outside 0..2");
+    for (std::size_t i = 0; i < masks.size(); ++i) {
+        if (!write_word(kProposalBase + static_cast<std::uint32_t>(i), masks[i]))
+            return fail("cannot write general remap masks");
+    }
+    if (!write_word(kProposalBase + 6, a) ||
+        !write_word(kProposalBase + 7, b) ||
+        !write_word(kProposalBase + 8, target ? 1u : 0u) ||
+        !write_word(kProposalBase + 9, slot_a) ||
+        !write_word(kProposalBase + 10, slot_b) ||
+        !write_word(kCommandBase, 5)) {
+        return fail("cannot write general remap command");
+    }
+    if (!run_command()) return false;
+    improved = (read_word(kResultBase + 0) & 1u) != 0;
+    before = static_cast<std::int32_t>(read_word(kResultBase + 1));
+    after = static_cast<std::int32_t>(read_word(kResultBase + 2));
+    return true;
+}
+
+bool RawFieldVM::remap_chart(Universe& universe, HeadArray& heads,
+                             std::uint8_t triad_a, std::uint8_t slot_a,
+                             std::uint8_t triad_b, std::uint8_t slot_b,
+                             std::uint32_t a, std::uint32_t b, bool target,
+                             bool& improved, std::int32_t& before,
+                             std::int32_t& after) {
+    if (triad_a >= kTriadCount || triad_b >= kTriadCount ||
+        triad_a == triad_b || slot_a >= kTriadSize || slot_b >= kTriadSize) {
+        return fail("invalid general remap triad/slot");
+    }
+    const auto& table = universe.triad_members();
+    const std::size_t base_a = static_cast<std::size_t>(triad_a) * kTriadSize;
+    const std::size_t base_b = static_cast<std::size_t>(triad_b) * kTriadSize;
+    std::array<std::uint16_t, 6> masks = {
+        heads.at(table[base_a + 0]).boolean_mask(),
+        heads.at(table[base_a + 1]).boolean_mask(),
+        heads.at(table[base_a + 2]).boolean_mask(),
+        heads.at(table[base_b + 0]).boolean_mask(),
+        heads.at(table[base_b + 1]).boolean_mask(),
+        heads.at(table[base_b + 2]).boolean_mask(),
+    };
+    if (!remap_general(masks, slot_a, slot_b, a, b, target,
+                       improved, before, after)) return false;
+    if (!improved) {
+        bump_triad_credit(universe.triad_credit()[triad_a], -1);
+        bump_triad_credit(universe.triad_credit()[triad_b], -1);
+        return true;
+    }
+    const std::uint8_t head_a = table[base_a + slot_a];
+    const std::uint8_t head_b = table[base_b + slot_b];
+    universe.triad_members()[base_a + slot_a] = head_b;
+    universe.triad_members()[base_b + slot_b] = head_a;
+    universe.triad_of()[head_b] = triad_a;
+    universe.triad_slot()[head_b] = slot_a;
+    universe.triad_of()[head_a] = triad_b;
+    universe.triad_slot()[head_a] = slot_b;
+    universe.triad_votes()[triad_a] = 0;
+    universe.triad_votes()[triad_b] = 0;
+    bump_triad_credit(universe.triad_credit()[triad_a], 1);
+    bump_triad_credit(universe.triad_credit()[triad_b], 1);
+    if (!field_vote(universe)) return false;
+    if (!coherence(universe)) return false;
     return true;
 }
 

@@ -22,6 +22,7 @@ JMP @field_driver_entry
 .include "../nan16/mth_field_coherence.nas"
 .include "../nan16/mth_triad_score.nas"
 .include "../nan16/mth_remap_decision.nas"
+.include "../nan16/mth_remap_general.nas"
 
 field_driver_entry:
   MOVI r13,1
@@ -45,6 +46,9 @@ field_driver_main:
   MOVI r3,4
   CMP r2,r3
   JMP[EQ] @field_driver_remap
+  MOVI r3,5
+  CMP r2,r3
+  JMP[EQ] @field_driver_remap_general
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -90,6 +94,25 @@ field_driver_remap:
   MOVI r10,0x4009
   LD r4,r10,0
   CALL @mth_remap_decision
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  JMP @field_driver_return
+
+field_driver_remap_general:
+  MOVI r1,0x4001
+  MOVI r10,0x400A
+  LD r2,r10,0
+  MOVI r10,0x400B
+  LD r3,r10,0
+  MOVI r10,0x4007
+  LD r4,r10,0
+  MOVI r10,0x4008
+  LD r5,r10,0
+  MOVI r10,0x4009
+  LD r6,r10,0
+  CALL @mth_remap_general
   MOVI r10,0x4010
   ST r1,r10,0
   ST r2,r10,1

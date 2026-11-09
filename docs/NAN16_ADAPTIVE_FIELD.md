@@ -21,6 +21,7 @@ adaptive-field mathematics:
 | `mth_field_coherence.nas` | 255 pairwise phase terms averaged to Q16.16 |
 | `mth_triad_score.nas` | correct-member + majority objective for one probe |
 | `mth_remap_decision.nas` | fixed A1/B0 trial swap with exact rollback |
+| `mth_remap_general.nas` | arbitrary triad-slot trial, exact table restore |
 | `mth/drivers/field_driver.nas` | guest command dispatcher for proposal, field vote, coherence and remap |
 | `include/nanlm/raw_field.hpp` | host orchestration: writes command words, runs the VM, reads results |
 
@@ -89,18 +90,21 @@ skip. The default fixtures cover:
 - exactly 43 accepted triads pass the field majority, 42 do not;
 - Q16.16 sin/cos at 0, 90, 180, and 270 degrees;
 - field coherence with 85 coherent triads and one perturbed triad;
-- a temporary triad remap accepted when it improves the majority objective,
-  and a destructive swap rejected with exact rollback;
+- a fixed and a general triad remap accepted only when they improve the
+  majority objective, with exact rollback and chart mapping commit;
 - the field-command driver and the `RawFieldVM` chart bridge;
 - `field-selftest` and `test_raw_field` on the vendored canonical VM.
 
 ## Remap decision
 
-`mth_remap_decision.nas` is a first raw remap gate: it scores two triads before
-and after a fixed A1/B0 mask swap, accepts only when the combined objective
-improves, and restores the table exactly on rejection. A production caller
-still needs a general slot/head mapping kernel and persistence of the accepted
-permutation; that broader remap path is not claimed here.
+`mth_remap_decision.nas` is the first raw remap gate: it scores two triads
+before and after a fixed A1/B0 mask swap, accepts only when the combined
+objective improves, and restores the table exactly on rejection.
+`mth_remap_general.nas` generalizes this to any two triad slots.
+`RawFieldVM::remap_chart` commits the corresponding chart mapping swap only
+after the raw guest returns an improvement; the mapping is serialized with
+the Universe. What remains open is the autonomous scheduler that chooses
+which triads to trial and when.
 
 ## Non-claims
 

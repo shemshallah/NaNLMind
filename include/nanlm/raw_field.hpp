@@ -49,6 +49,19 @@ public:
     bool remap(const std::array<std::uint16_t, 6>& masks,
                std::uint32_t a, std::uint32_t b, bool target,
                bool& improved, std::int32_t& before, std::int32_t& after);
+    bool remap_general(const std::array<std::uint16_t, 6>& masks,
+                       std::uint8_t slot_a, std::uint8_t slot_b,
+                       std::uint32_t a, std::uint32_t b, bool target,
+                       bool& improved, std::int32_t& before,
+                       std::int32_t& after);
+    // Chart bridge: trial a general member swap and commit the mapping only
+    // when the raw guest says the combined majority objective improves.
+    bool remap_chart(Universe& universe, HeadArray& heads,
+                     std::uint8_t triad_a, std::uint8_t slot_a,
+                     std::uint8_t triad_b, std::uint8_t slot_b,
+                     std::uint32_t a, std::uint32_t b, bool target,
+                     bool& improved, std::int32_t& before,
+                     std::int32_t& after);
 
     // Convenience bridge: run the guest and update the chart's triad voter.
     bool field_vote(Universe& universe);

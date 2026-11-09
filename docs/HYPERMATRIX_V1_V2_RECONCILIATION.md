@@ -161,7 +161,7 @@ Adapt for v2:
 | cross-repo build contract | done | `spec/unified-build.v1.json`, native `unification`, `make unified-check`, HERMES adapter |
 | raw NaN16 per-head proposal + triad vote | done | `mth/nan16/mth_triad_vote.nas`, `mth/tests/mth_triad_vote_test.nas` |
 | raw NaN16 field vote + Q16 trig/coherence | done | `mth_field_vote.nas`, `mth_q16_sin_cos.nas`, `mth_field_coherence.nas`; 5/5 fixtures |
-| general adaptive remap | partial | fixed A1/B0 raw trial + rollback; general slot/head mapping persistence remains open |
+| general adaptive remap | done | `mth_remap_general.nas` + `RawFieldVM::remap_chart`; mapping is serialized; autonomous remap scheduling remains open |
 | raw guest ↔ chart bridge | partial | `RawFieldVM` runs `field_driver.nas` on vendored NaN0S and updates proposer/field state; training scheduler still explicit |
 | symbiotic field plan | design | `SYMBIOTIC_FIELD_ARCHITECTURE.md` S0–S6 TODO; no micro-transformer/1 MiB bank claims |
 

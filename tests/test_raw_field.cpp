@@ -56,5 +56,27 @@ int main() {
     CHECK_EQ(universe.head_credit()[3], 1);
     CHECK_EQ(universe.triad_credit()[1], 1);
 
+    // General remap bridge: swap a member between triads only when the raw
+    // guest says the combined majority objective improves.
+    Universe map_universe;
+    HeadArray map_heads(map_universe, PageId::root());
+    CHECK(map_heads.at(3).set_boolean_mask(0x8000));
+    CHECK(map_heads.at(4).set_boolean_mask(0x0000));
+    CHECK(map_heads.at(5).set_boolean_mask(0x0000));
+    CHECK(map_heads.at(6).set_boolean_mask(0x8000));
+    CHECK(map_heads.at(7).set_boolean_mask(0x0000));
+    CHECK(map_heads.at(8).set_boolean_mask(0x0000));
+    bool chart_improved = false;
+    std::int32_t chart_before = 0, chart_after = 0;
+    CHECK(vm.remap_chart(map_universe, map_heads, 1, 1, 2, 0, 0, 0, true,
+                         chart_improved, chart_before, chart_after));
+    CHECK(chart_improved);
+    CHECK_EQ(map_universe.triad_of()[6], 1);
+    CHECK_EQ(map_universe.triad_slot()[6], 1);
+    CHECK_EQ(map_universe.triad_of()[4], 2);
+    CHECK_EQ(map_universe.triad_slot()[4], 0);
+    CHECK_EQ(map_universe.triad_credit()[1], 1);
+    CHECK_EQ(map_universe.triad_credit()[2], 1);
+
     return test_done("raw NaN16 field VM bridge");
 }

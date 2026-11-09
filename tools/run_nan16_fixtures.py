@@ -42,6 +42,8 @@ FIXTURES = (
             "MTH Q16 SIN COS PASS"),
     Fixture("triad_remap", "mth/tests/mth_remap_test.nas", 200_000,
             "MTH TRIAD REMAP PASS"),
+    Fixture("triad_remap_general", "mth/tests/mth_remap_general_test.nas", 200_000,
+            "MTH GENERAL REMAP PASS"),
     Fixture("field_coherence", "mth/tests/mth_field_coherence_test.nas", 2_000_000,
             "MTH FIELD COHERENCE PASS"),
     Fixture("field_driver", "mth/tests/mth_field_driver_test.nas", 5_000_000,
