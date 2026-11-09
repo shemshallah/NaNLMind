@@ -291,6 +291,8 @@ circuits and the field state.
 - [ ] S5.5 Triad 2/3 and field 43/85 commit with rollback and ledger.
 - [ ] S5.6 Reject updates that only improve training loss.
 - [ ] S5.7 Independent local training vs joint field backprop; measure gradient coupling.
+- [ ] S5.8 Native AdamW Q16.16 kernel with 8-bit/16-bit moment quantization.
+- [ ] S5.9 Block-scale quantization, deterministic error feedback and float32 Adam control.
 
 ### S6 — evaluation
 
@@ -304,6 +306,7 @@ circuits and the field state.
 - [ ] S6.5 Persistence, crash/replay and generation-CAS tests.
 - [ ] S6.6 Report ties/failures prominently; no open-domain fluency claim.
 - [ ] S6.7 Measure 256 MiB paged resident set, cache pressure and active-bank throughput.
+- [ ] S6.8 Compare 16-bit weights + 8-bit Adam (512 MiB) against 8-bit + 8-bit (768 MiB) and Lion.
 
 ## 8. Acceptance gates
 
@@ -317,6 +320,46 @@ circuits and the field state.
    digest unchanged; accepted updates replay byte-for-byte.
 6. **Evaluation gate**: source-disjoint held-out and free-generation results,
    with all controls and failures reported.
+
+## 8.5 Native Adam and 8-bit weights
+
+Yes, Adam can run natively on the NaNVM1 op set. The current ISA already has
+`FMUL/FADD/FDIV/FSQRT`, `CVTIF/CVTFI`, byte access and Q16.16 integer ops.
+No new opcode is required.
+
+The memory cost is the issue, not the arithmetic:
+
+| representation | weights/head | Adam m+v/head | total/head | 256 heads |
+|---|---:|---:|---:|---:|
+| 8-bit w + 8-bit m/v, block scales | 1 MiB | 2 MiB | 3 MiB | 768 MiB |
+| 16-bit w + 8-bit m/v, block scales | 1 MiB | 1 MiB | 2 MiB | 512 MiB |
+| 16-bit w + 16-bit m/v | 1 MiB | 2 MiB | 3 MiB | 768 MiB |
+| 8-bit w + 16-bit m/v | 1 MiB | 4 MiB | 5 MiB | 1.25 GiB |
+| Lion/one-state, 8-bit | 1 MiB | 1 MiB | 2 MiB | 512 MiB |
+
+The 768 MiB cases fit the 1 GiB resident ceiling only with paged/top-k active
+banks and a lean activation budget. The 1.25 GiB case does not fit all-resident.
+The 512 MiB cases are the practical all-resident independent targets.
+
+Native Adam step:
+
+```text
+m  = b1*m + (1-b1)*g
+v  = b2*v + (1-b2)*g*g
+mh = m * inv(1-b1^t)
+vh = v * inv(1-b2^t)
+w  = clamp(w - lr*mh/(sqrt(vh)+eps))
+```
+
+Bias-correction powers can be maintained iteratively; no `FEXP` needed. For
+8-bit weights/states, use per-block Q16.16 scales, saturating integer updates
+and deterministic error feedback. Quantization must be tested against a
+float32 Adam reference; held-out loss, not training loss, decides acceptance.
+
+A native Adam kernel is therefore feasible. The decision is a memory tier:
+512 MiB (16-bit weights + 8-bit moments) or 768 MiB (8-bit weights + 8-bit
+moments) for 256 independent heads, with sparse paging. Full 16-bit moments
+for all 256 heads is 1.25 GiB and is rejected for the 1 GiB resident target.
 
 ## 9. Non-claims
 
