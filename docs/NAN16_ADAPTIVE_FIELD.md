@@ -27,6 +27,7 @@ adaptive-field mathematics:
 | `mth_trail_credit.nas` | two-rail TD eligibility and credit, Q16.16 |
 | `mth_micro_block.nas` | raw two-token QKV/softmax/tanh micro-transformer forward |
 | `mth_hot_trihead.nas` | raw 255-head hot scan, 3-hot-head triad grouping and 85x3 auto-mapping |
+| `mth_micro_feature.nas` | raw two-token QKV/softmax/tanh feature feed for the sparse field |
 | `mth/drivers/field_driver.nas` | guest command dispatcher for proposal, field vote, coherence, remap, CFT, TRAIL and hot triheads |
 | `include/nanlm/raw_field.hpp` | host orchestration: writes command words, runs the VM, reads results |
 
@@ -78,6 +79,21 @@ chart only after the raw result passes.
 
 Raw fixture: `mth/tests/mth_hot_trihead_test.nas` (three non-contiguous hot
 heads -> one hot triad; 129 hot heads -> 43 hot triads and field gate).
+
+## Micro-feature ABI
+
+`mth_micro_feature.nas` is the first P1 feature-feed bridge. It takes two
+8-lane float32 token vectors, applies identity Q/K/V, two-token causal
+softmax, context mix and `FTANH`, and writes eight feature lanes:
+
+```text
+r1 x0[8], r2 x1[8], r3 output[8] -> r1 = 8
+```
+
+`RawFieldVM::micro_feature` writes the vectors, runs the guest, and converts
+the result into the native `SparseField` Q16.16 feature vector. The learned
+QKV/MLP matrices replace the identity path without changing this contract.
+The raw fixture is `mth/tests/mth_micro_feature_test.nas`.
 
 ## Learnable credit, not host gradients
 

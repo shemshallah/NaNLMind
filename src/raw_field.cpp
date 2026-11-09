@@ -16,6 +16,9 @@ constexpr std::uint32_t kFieldMasks = 0x5000;
 constexpr std::uint32_t kCoherencePhases = 0x6000;
 constexpr std::uint32_t kHotCredits = 0x7000;
 constexpr std::uint32_t kHotMapping = 0x8000;
+constexpr std::uint32_t kMicroX0 = 0x7000;
+constexpr std::uint32_t kMicroX1 = 0x7100;
+constexpr std::uint32_t kMicroOut = 0x7200;
 constexpr std::uint32_t kMaxSteps = 5'000'000;
 
 void bump_triad_credit(std::int16_t& value, int delta) {
@@ -282,6 +285,32 @@ bool RawFieldVM::hot_triheads(
                           t < out.hot_triads ? 1 : -1);
     }
     out.mapped = true;
+    return true;
+}
+
+
+bool RawFieldVM::micro_feature(
+    const std::array<float, kRawFeatureDim>& x0,
+    const std::array<float, kRawFeatureDim>& x1,
+    std::array<float, kRawFeatureDim>& out) {
+    for (std::size_t i = 0; i < kRawFeatureDim; ++i) {
+        std::uint32_t a = 0, b = 0;
+        std::memcpy(&a, &x0[i], sizeof(a));
+        std::memcpy(&b, &x1[i], sizeof(b));
+        if (!write_word(kMicroX0 + static_cast<std::uint32_t>(i), a) ||
+            !write_word(kMicroX1 + static_cast<std::uint32_t>(i), b)) {
+            return fail("cannot write raw micro-feature input");
+        }
+    }
+    if (!write_word(kCommandBase, 9)) return fail("cannot write micro-feature command");
+    if (!run_command()) return false;
+    if (read_word(kResultBase) != kRawFeatureDim) {
+        return fail("raw micro-feature returned the wrong count");
+    }
+    for (std::size_t i = 0; i < kRawFeatureDim; ++i) {
+        const std::uint32_t bits = read_word(kMicroOut + static_cast<std::uint32_t>(i));
+        std::memcpy(&out[i], &bits, sizeof(bits));
+    }
     return true;
 }
 

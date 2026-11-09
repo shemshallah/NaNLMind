@@ -13,6 +13,8 @@
 ; Hot triheads: 255 credits at 0x7000, threshold at 0x4001
 ;   results at 0x4010: hot heads, hot triads, field flag, mapped
 ;   mapping at 0x8000: 85 triads x 3 heads
+; Micro feature: x0 at 0x7000, x1 at 0x7100, output at 0x7200
+;   result at 0x4010: feature count (8)
 ;
 ; The driver contains no host math. It is assembled by nmk.awk and executed
 ; by the canonical NaN0S VM. The guest starts at word 0.
@@ -30,6 +32,7 @@ JMP @field_driver_entry
 .include "../nan16/mth_cft_credit.nas"
 .include "../nan16/mth_trail_credit.nas"
 .include "../nan16/mth_hot_trihead.nas"
+.include "../nan16/mth_micro_feature.nas"
 
 field_driver_entry:
   MOVI r13,1
@@ -65,6 +68,9 @@ field_driver_main:
   MOVI r3,8
   CMP r2,r3
   JMP[EQ] @field_driver_hot_trihead
+  MOVI r3,9
+  CMP r2,r3
+  JMP[EQ] @field_driver_micro_feature
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -184,6 +190,15 @@ field_driver_hot_trihead:
   ST r2,r10,1
   ST r3,r10,2
   ST r4,r10,3
+  JMP @field_driver_return
+
+field_driver_micro_feature:
+  MOVI r1,0x7000
+  MOVI r2,0x7100
+  MOVI r3,0x7200
+  CALL @mth_micro_feature
+  MOVI r10,0x4010
+  ST r1,r10,0
   JMP @field_driver_return
 
 field_driver_return:

@@ -1,5 +1,8 @@
 #include "nanlm/raw_field.hpp"
+#include "nanlm/sparse_field.hpp"
 #include "test_util.hpp"
+
+#include <cmath>
 
 #include <array>
 
@@ -142,6 +145,32 @@ int main() {
     CHECK_EQ(hot_universe.triad_of()[17], 0u);
     CHECK_EQ(hot_universe.triad_of()[99], 0u);
     CHECK_EQ(hot_universe.triad_slot()[99], 2u);
+
+    // Raw two-token QKV/softmax/tanh feature feed into the native sparse
+    // head/field bank.  Identity QKV is the P1 bridge point; learned matrices
+    // replace it without changing the output contract.
+    std::array<float, kRawFeatureDim> x0{};
+    std::array<float, kRawFeatureDim> x1{};
+    std::array<float, kRawFeatureDim> feature{};
+    for (std::size_t i = 0; i < kRawFeatureDim; ++i) {
+        x0[i] = 1.0f + static_cast<float>(i) * 0.125f;
+        x1[i] = 0.5f - static_cast<float>(i) * 0.03125f;
+    }
+    CHECK(vm.micro_feature(x0, x1, feature));
+    CHECK(std::isfinite(feature[0]));
+    CHECK(std::fabs(feature[0]) <= 1.0f);
+
+    Universe feature_universe;
+    SparseField feature_field(feature_universe);
+    CHECK(feature_field.configure(8, 2, 8));
+    feature_field.seed(0xFEED);
+    SparseField::Feature q16{};
+    for (std::size_t i = 0; i < kRawFeatureDim; ++i) {
+        q16[i] = static_cast<std::int32_t>(std::lrintf(feature[i] * 65536.0f));
+    }
+    SparseField::Result feature_result;
+    CHECK(feature_field.forward(q16, feature_result));
+    CHECK_EQ(feature_result.count, SparseField::kActive);
 
     return test_done("raw NaN16 field VM bridge");
 }

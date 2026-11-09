@@ -156,6 +156,13 @@ heads becomes a hot triad; cold heads fill the remaining slots. The C++ bridge
 The raw fixture covers three non-contiguous hot heads and 129 hot heads
 (43 hot triads).
 
+A raw two-token QKV/softmax/tanh feature feed, `mth_micro_feature.nas`, now
+crosses the native boundary into `SparseField`: `RawFieldVM::micro_feature`
+writes two 8-lane vectors, runs the guest, and converts the eight output lanes
+to Q16.16 for the native sparse head/field bank. This is the P1 feature-feed
+bridge; learned QKV/MLP matrices and the full context kernel are the next
+step.
+
 This is the native **head/field** half of the sparse trunk. The shared P1
 QKV/MLP trunk kernel and its feature feed are still the next native step; the
 current Python reference supplies that feature vector and is not counted as the

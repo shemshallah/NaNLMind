@@ -34,6 +34,8 @@ struct RawProposalResult {
     std::uint8_t candidate_rule = 0;
 };
 
+constexpr std::size_t kRawFeatureDim = 8;
+
 struct HotTriheadResult {
     std::uint16_t hot_heads = 0;
     std::uint16_t hot_triads = 0;
@@ -80,6 +82,10 @@ public:
     bool hot_triheads(Universe& universe,
                       const std::array<std::int32_t, kTriadMemberCount>& credits,
                       std::int32_t threshold, HotTriheadResult& out);
+    // Raw two-token identity QKV/softmax/tanh feature feed.
+    bool micro_feature(const std::array<float, kRawFeatureDim>& x0,
+                       const std::array<float, kRawFeatureDim>& x1,
+                       std::array<float, kRawFeatureDim>& out);
     bool remap(const std::array<std::uint16_t, 6>& masks,
                std::uint32_t a, std::uint32_t b, bool target,
                bool& improved, std::int32_t& before, std::int32_t& after);
