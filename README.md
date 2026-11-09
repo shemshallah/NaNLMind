@@ -242,6 +242,7 @@ baseline — a plain RNN matching the 256-head topology — is in
 | `docs/02_ARCHITECTURE.md` | one global topology, charts, cells, heads, layers, homeostasis |
 | `docs/03_MATHEMATICAL_STRUCTURE.md` | the formal object `(A,C,E,H,T,P,L)` |
 | `docs/04_REGISTER_FILE.md` | exact 8 MiB full-address chart layout and linked register file |
+| `docs/SYMBIOTIC_FIELD_ARCHITECTURE.md` | symbiotic micro-transformer/wave/hypermatrix/field architecture and TODO |
 | `docs/HYPERMATRIX_V1_V2_RECONCILIATION.md` | v1 NaNLM comparison, mapped hypermatrix, triad/field consensus and integration plan |
 | `docs/UNIFIED_BUILD_CONTRACT.md` | canonical build/authority boundary for NaNLMind, NaNROUTER and HERMES |
 | `docs/NAN16_ADAPTIVE_FIELD.md` | raw NaN16 per-head self-modification, triad/field votes, Q16 trig and coherence ABI |

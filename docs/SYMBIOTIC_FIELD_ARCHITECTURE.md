@@ -1,0 +1,274 @@
+# Symbiotic field architecture — memory, thinking circuits and geometric credit
+
+Status: **architecture plan and point-by-point TODO**. NaNLMind v2 is the
+target; NaNLM v1 is a reference only. The canonical VM is NaN0S; N16I is its
+raw-NaN guest interpreter, not a second VM.
+
+## 1. The memory constraint is real
+
+The exact 8 MiB root is fully allocated:
+
+| mapping | bytes |
+|---|---:|
+| 256 head registers × 128 B | 32,768 |
+| 32,640 mirror cells × 256 B | 8,355,840 |
+| total | 8,388,608 |
+
+We will **not** pretend that 85 fully parameterized transformers (let alone
+255) fit inside that root. The root remains the identity and working field.
+Anything larger is a sparse, mapped extension/child page with an explicit
+budget, never a second universe.
+
+NaNLMind v2's chart has a register-file layout plus a mapped hypermatrix and
+free extension. The design below uses:
+
+- the 8 MiB chart for the 256 heads, 32,640 mirror cells, hypermatrix,
+  triad/field state, address records and small leaf counters;
+- **85 shared triad transformer banks**, not 255 private full models;
+- per-head low-rank adapters (the 255 head interfaces);
+- optional sparse sidecar/child pages for inactive banks, long context and
+  larger d_model; only the active top-k window is resident.
+
+The system is one topology and one ledger even when weights are paged.
+
+## 2. Four mechanisms, four jobs
+
+| mechanism | job |
+|---|---|
+| **micro-transformer triads** | fast thinking circuits: QKV, MLP, sparse top-k routing, selective full triad attention |
+| **standing-wave fabric** | temporal substrate: cheap 255-head forward/inverse wave, eligibility and phase |
+| **hypermatrix + leaves** | compositional associative memory: pair rows, candidate bits, exact address/sub-definition leaves |
+| **global field** | shared working state: 85 triads, 43/85 field vote, gain and commit control |
+
+The 255 heads are **persistent specialized interfaces** between these
+mechanisms, not 255 minds and not 255 output neurons.
+
+## 3. Memory and layout targets
+
+| region | bytes | role |
+|---|---:|---|
+| 8 MiB root | 8,388,608 | canonical identity, 256 heads, 32,640 pairs |
+| hypermatrix | 1,044,480 | 32,640 rows × 256 candidate bits |
+| triad vote/field state | ~2 KiB | 85 masks, credits, field counter |
+| leaf counters | 65,536 | 256 heads × 256 leaf bits (8-bit signed) |
+| rail frames | ~32,640 | T=8 × 85 × 48 B staged frames |
+| 85 triad banks | 217,600 | 2,560 B each, shared QKV/MLP/gains |
+| head adapters | 65,280 | 255 × 256 B low-rank head interface |
+| **subtotal in extension** | ~1.37 MB | fits the available chart extension |
+| optional sidecar | operator budget | inactive banks, long context, larger d_model |
+
+A 255-private-bank design is rejected: it leaves no room for leaves, frames,
+context or sidecar coordination, and it contradicts the single-field model.
+Triad banks are shared by their three heads; heads differentiate through
+low-rank adapters, routing and credit.
+
+## 4. Sparse top-k routing and multiscale context
+
+Routing is hierarchical and sparse:
+
+1. **Head-local gate**: each of 255 heads scores a small context window and
+   proposes its triad.
+2. **Triad top-k**: each triad selects `k_t` of its members/adapters; only
+   those run the full QKV/MLP block.
+3. **Field top-k**: the field activates at most `k_f` triads per token; the
+   rest keep the cheap wave update.
+4. **Selective triad attention**: full triad attention runs only when the
+   routing margin and wave coherence exceed thresholds; otherwise the cheap
+   255-head wave state is the temporal substrate.
+
+Context is multiscale:
+
+| scale | state | use |
+|---|---|---|
+| 8/16 bytes | head scratch ring | immediate token/wave state |
+| 48 bytes | current window | baseline comparison |
+| 256 bytes | per-triad ring | short motif/relation context |
+| 4 KiB | chart scratch | paragraph/segment context |
+| 64 KiB | extension/child page | document/working-set context |
+| 65,536 addresses | hypermatrix rows/hashed postings | long-range associative recall |
+
+Long context is read through sparse top-k postings, not a dense 65,536×65,536
+attention matrix. Every context expansion is measured for throughput, resident
+memory and held-out loss.
+
+## 5. Learning: CFT base plus geometric credit hybrid
+
+No single local rule is assumed to equal BPTT. The native system uses a
+**base CFT (cycle-flux) credit** and hybrid geometric credits; a host
+differentiable reference provides gradient checks and a joint-training upper
+bound.
+
+### 5.1 Base CFT
+
+For triangle `(a,b,c)` with edge energies `E`:
+
+```text
+F = E(0,a,c) + E(a,b,c) - E(0,b,c)
+p = sum_d x_d F_d
+e = target - p
+Δ_d = η g e x_d
+E(0,a,c) += Δ/3; E(a,b,c) += Δ/3; E(0,b,c) -= Δ/3
+```
+
+The three updates change the circulation by exactly `Δ`; mirror antisymmetry
+is preserved. CFT is the base because it is already native and gauge-aware.
+
+### 5.2 Hybrid credit layers
+
+| layer | rule | role |
+|---|---|---|
+| TRAIL | two-rail TD eligibility in `s+`/`s-` | temporal credit without a tape |
+| CFT | triangle circulation residual | base geometric credit |
+| HOLO | cycle holonomy/gauge defect | order-sensitive phase credit |
+| RING | forward/inverse angular correlation over 255 lanes | rotation/triad mapping |
+| LEAF | hypermatrix row + exact leaf mask/counter | address/sub-definition credit |
+| TCA | leave-one-out triad advantage | specializes/penalizes heads |
+| FLUX | temporal-link divergence | working-state flow/relaxation |
+
+A bounded combination is:
+
+```text
+credit = α CFT + β TRAIL + γ HOLO + δ RING + ε LEAF + ζ TCA + η FLUX
+```
+
+Coefficients are validated on development data and frozen before test. No
+weight is chosen by training loss alone.
+
+### 5.3 Joint training with a differentiable reference
+
+The native path is integer NaN16. For joint training, a host reference mirrors
+the *same* shared projections, soft top-k routing, triad attention, field gate
+and wave recurrence. It uses straight-through/Gumbel routing for the discrete
+choices and backpropagates through the shared differentiable parts. The native
+path receives the resulting candidates and commits only through the triad
+(2/3) and field (43/85) votes.
+
+This gives three separate claims:
+
+1. **native forward** — exact NaN16 state and persistence;
+2. **host joint training** — gradient-checked differentiable reference, not the
+   native runtime;
+3. **native local credit** — CFT/TRAIL/hybrid updates that commit only after
+   votes and rollback checks.
+
+No claim is made that a local rule is equivalent to BPTT. The matched reference
+is used to falsify or validate it.
+
+### 5.4 Field commit
+
+A proposal is staged in scratch, voted by its triad (2/3), aggregated by the
+field (43/85), checked for stale generation, NaN/overflow and budget, then
+committed with a ledger event and rollback record. Rejection leaves `s+`/`s-`,
+checksums and generation unchanged.
+
+## 6. 255 heads as persistent interfaces
+
+Each head stores:
+
+- address identity, phase/energy, self-error, load and credits;
+- a 256-bit leaf mask and 256 signed leaf counters;
+- a low-rank adapter (the head's interface to its triad bank);
+- routing score, triad slot, vote and write budget;
+- provenance of the last accepted/rejected proposal.
+
+Heads do not own private full models. They specialize the shared triad
+circuits and the field state.
+
+## 7. Point-by-point TODO
+
+### S0 — constraints, VM and dependency
+
+- [ ] S0.1 Freeze the 8 MiB root map and the extension/sidecar budget in one
+  document; reject any plan that silently exceeds it.
+- [ ] S0.2 Keep one canonical NaN0S VM; N16I is a guest interpreter. Sync
+  `nanlmind_hermes/nan0s` byte-for-byte to canonical `shemshallah/NaN0S`.
+- [ ] S0.3 Add `QMUL/QADD` only if profiling proves the two-op Q16 multiply is
+  the bottleneck; no VM fork.
+- [ ] S0.4 Add a versioned layout/schema bump for new extension fields.
+
+### S1 — memory layout
+
+- [ ] S1.1 Place 85 triad banks (2,560 B) and per-head adapters (256 B) in the
+  extension; keep the 8 MiB root identity intact.
+- [ ] S1.2 Add 64 KiB leaf counters, 32-byte head leaf masks and 48-byte rail
+  frames with exact offsets.
+- [ ] S1.3 Add optional sidecar paging for inactive banks/long context; one
+  digest for the active set and a manifest for paged pages.
+- [ ] S1.4 Add a budget auditor that fails before overwriting a child page or
+  extension boundary.
+
+### S2 — micro-transformer P1
+
+- [ ] S2.1 d=8 block: QKV, 2 heads of d=4, residual, layer norm.
+- [ ] S2.2 MLP 8→16→8 with `FTANH`; raw NaN16 kernel plus C++ state adapter.
+- [ ] S2.3 Shared projections for 85 triad banks; 255 low-rank head adapters.
+- [ ] S2.4 Sparse top-k head→triad→field routing with margins and budgets.
+- [ ] S2.5 Selective full triad attention only above routing/coherence gates.
+- [ ] S2.6 Context scales 48/256/4KiB/64KiB and 65,536-address postings;
+  measure throughput, resident memory and held-out loss for each.
+- [ ] S2.7 Native/N16I parity on fixed vectors and generated tokens.
+
+### S3 — temporal substrate
+
+- [ ] S3.1 Keep the cheap 255-head forward/inverse wave update on every token.
+- [ ] S3.2 Add TRAIL eligibility in `s+`/`s-` without a full tape.
+- [ ] S3.3 Add HOLO phase/holonomy credit using the existing CORDIC.
+- [ ] S3.4 Add RING angular correlation and triad/field rotation votes.
+- [ ] S3.5 Add FLUX temporal-link divergence and bounded relaxation.
+- [ ] S3.6 Persist eligibility/frames; verify byte-identical replay.
+
+### S4 — hypermatrix and leaves
+
+- [ ] S4.1 Keep 32,640 pair rows × 256 candidate bits; no dense 255³ tensor.
+- [ ] S4.2 Implement exact leaf IDs `(cell, word, bit/byte)` and 256-bit head
+  leaf masks.
+- [ ] S4.3 Implement `LEAF` counter updates from local error.
+- [ ] S4.4 Link `R_ab[c]` and `L_c[l]`; add leaf-level ablation.
+- [ ] S4.5 Add `Descriptor.aux` support/credit/generation fields and a
+  versioned checksum.
+- [ ] S4.6 Add `TCA` leave-one-out advantage and triad/field promotion.
+- [ ] S4.7 Add CFT cycle banks; use them as the base control.
+
+### S5 — joint training and commit
+
+- [ ] S5.1 Host differentiable reference for shared projections, soft top-k,
+  triad attention, field gate and wave recurrence.
+- [ ] S5.2 Gradient checks against finite differences on a reversible block.
+- [ ] S5.3 Straight-through routing and field gate; no fabricated exact
+  gradient for discrete votes.
+- [ ] S5.4 Native CFT/TRAIL/HOLO/RING/LEAF/TCA/FLUX credit updates.
+- [ ] S5.5 Triad 2/3 and field 43/85 commit with rollback and ledger.
+- [ ] S5.6 Reject updates that only improve training loss.
+
+### S6 — evaluation
+
+- [ ] S6.1 Multi-author, source-disjoint held-out corpora; train/dev/test
+  frozen before test.
+- [ ] S6.2 Actual free generation, not stored answers; repetition/novelty/
+  validity metrics.
+- [ ] S6.3 Feature ablations: no hypermatrix, no leaf, no triad attention, no
+  wave, no field; matched dense controls.
+- [ ] S6.4 Throughput, RSS/cache/energy and context scaling on Android ARM.
+- [ ] S6.5 Persistence, crash/replay and generation-CAS tests.
+- [ ] S6.6 Report ties/failures prominently; no open-domain fluency claim.
+
+## 8. Acceptance gates
+
+1. **Layout gate**: exact byte accounting; no silent overflow.
+2. **P1 gate**: QKV/MLP parity native ↔ N16I; loss decreases on a tiny task.
+3. **Routing gate**: top-k sparsity improves throughput at equal or better
+   held-out loss; dense and random-routing controls.
+4. **Credit gate**: CFT/TRAIL/hybrid sign parity with finite differences on a
+   reversible block; ablations beat matched controls.
+5. **Field gate**: 2/3 and 43/85 thresholds exact; rejected proposals leave
+   digest unchanged; accepted updates replay byte-for-byte.
+6. **Evaluation gate**: source-disjoint held-out and free-generation results,
+   with all controls and failures reported.
+
+## 9. Non-claims
+
+- This is not a claim that 255 full transformers fit in 8 MiB.
+- This is not a claim that local geometric credit equals BPTT.
+- Host differentiable training is not the native runtime.
+- CFT/LEAF/hypermatrix gains must beat matched controls; ties are valid results.
+- No production NANNET route, canonical merge or fluency claim is implied.
