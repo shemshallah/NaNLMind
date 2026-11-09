@@ -52,7 +52,7 @@ def run(*, dense: bool = False, random_topk: bool = False, active: int = 8,
         tokens += ids.shape[0] * (ids.shape[1] - 1)
     elapsed = sum(times)
     result = {
-        "schema": "nanlm.sparse-shared/1",
+        "schema": "nanlm.sparse-shared/2",
         "mode": ("dense" if dense else
                  "random_topk" if random_topk else "sparse_hotspot"),
         "config": cfg.__dict__,
@@ -67,6 +67,8 @@ def run(*, dense: bool = False, random_topk: bool = False, active: int = 8,
         "active_fraction": 1.0 if dense else active / cfg.heads,
         "usage_nonzero": int((model.adapters.usage > 0).sum().item()),
         "hotspot_nonzero": int((model.adapters.hotspot > 0).sum().item()),
+        "memory_usage_nonzero": (int((model.memory.usage > 0).sum().item())
+                                 if model.memory is not None else 0),
     }
     return result
 
@@ -82,10 +84,15 @@ def main(argv=None) -> int:
     parser.add_argument("--layers", type=int, default=4)
     parser.add_argument("--mlp", type=int, default=256)
     parser.add_argument("--context", type=int, default=64)
+    parser.add_argument("--memory-slots", type=int, default=256)
+    parser.add_argument("--memory-active", type=int, default=8)
+    parser.add_argument("--memory-steps", type=int, default=1)
     parser.add_argument("--seed", type=int, default=17)
     args = parser.parse_args(argv)
     cfg = SparseConfig(d_model=args.d_model, layers=args.layers, mlp=args.mlp,
-                       context=args.context)
+                       context=args.context, memory_slots=args.memory_slots,
+                       memory_active=args.memory_active,
+                       memory_steps=args.memory_steps)
     result = run(dense=args.mode == "dense", random_topk=args.mode == "random",
                  active=args.active, steps=args.steps, seq=args.seq,
                  batch=args.batch, seed=args.seed, cfg=cfg)

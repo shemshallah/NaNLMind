@@ -25,6 +25,10 @@ class SparseConfig:
     heads: int = 255
     active: int = 8
     rank: int = 4
+    memory_slots: int = 256
+    memory_active: int = 8
+    memory_beta: float = 8.0
+    memory_steps: int = 1
 
 
 class Block(nn.Module):
@@ -66,6 +70,61 @@ class SharedTrunk(nn.Module):
         for block in self.blocks:
             x = block(x)
         return self.ln(x)
+
+
+class HopfieldMemory(nn.Module):
+    """Sparse modern-Hopfield associative memory inside the residual stream.
+
+    The stored patterns are both keys and values.  With full attention this is
+    the modern-Hopfield retrieval map
+
+        xi' = X^T softmax(beta X xi)
+
+    which is exactly one cross-attention read from a persistent pattern bank.
+    The reference keeps only the top-k patterns per token so the memory has the
+    same sparse budget as the head field.  The native port should update the
+    patterns with local CFT/LEAF credit, not backpropagate a tape through them.
+    """
+
+    def __init__(self, cfg: SparseConfig):
+        super().__init__()
+        self.cfg = cfg
+        self.patterns = nn.Parameter(torch.empty(cfg.memory_slots, cfg.d_model))
+        self.q_proj = nn.Linear(cfg.d_model, cfg.d_model)
+        self.out_proj = nn.Linear(cfg.d_model, cfg.d_model)
+        self.gate = nn.Linear(2 * cfg.d_model, 1)
+        nn.init.normal_(self.patterns, std=0.02)
+        nn.init.constant_(self.gate.bias, -2.0)
+        self.register_buffer("usage", torch.zeros(cfg.memory_slots))
+
+    def retrieve(self, x: torch.Tensor, *, active: int | None = None):
+        b, t, d = x.shape
+        slots = self.cfg.memory_slots
+        k = slots if active is None else max(1, min(active, slots))
+        q = self.q_proj(x)
+        logits = self.cfg.memory_beta * torch.einsum("btd,sd->bts", q, self.patterns)
+        if k == slots:
+            idx = torch.arange(slots, device=x.device).reshape(1, 1, slots).expand(b, t, slots)
+            weights = torch.softmax(logits, dim=-1)
+        else:
+            idx = torch.topk(logits, k, dim=-1).indices
+            selected = torch.gather(logits, -1, idx)
+            weights = torch.softmax(selected, dim=-1)
+        bank = self.patterns[idx]  # [b, t, k, d]
+        retrieved = torch.einsum("btk,btkd->btd", weights, bank)
+        self.usage += torch.bincount(idx.reshape(-1), minlength=slots).to(self.usage.dtype)
+        return retrieved, {"indices": idx, "weights": weights, "logits": logits}
+
+    def forward(self, x: torch.Tensor, *, active: int | None = None):
+        # One modern-Hopfield step is softmax retrieval; extra steps refine the
+        # state for tests/ablations but are normally not needed in the trunk.
+        state = x
+        aux = None
+        for _ in range(max(1, self.cfg.memory_steps)):
+            retrieved, aux = self.retrieve(state, active=active)
+            gate = torch.sigmoid(self.gate(torch.cat((state, retrieved), dim=-1)))
+            state = state + gate * self.out_proj(retrieved)
+        return state, aux
 
 
 class AdapterBank(nn.Module):
@@ -137,15 +196,22 @@ class SparseSharedModel(nn.Module):
         super().__init__()
         self.cfg = cfg or SparseConfig()
         self.trunk = SharedTrunk(self.cfg)
+        self.memory = (HopfieldMemory(self.cfg)
+                       if self.cfg.memory_slots > 0 else None)
         self.adapters = AdapterBank(self.cfg)
         self.head = nn.Linear(self.cfg.d_model, self.cfg.vocab)
 
     def forward(self, ids: torch.Tensor, *, active: int | None = None,
-                dense: bool = False, random: bool = False):
+                dense: bool = False, random: bool = False,
+                memory_active: int | None = None):
         x = self.trunk(ids)
         if ids.shape[1] > self.cfg.context:
             raise ValueError("sequence exceeds configured context")
+        mem_aux = None
+        if self.memory is not None:
+            x, mem_aux = self.memory(x, active=memory_active)
         delta, aux = self.adapters(x, active=active, dense=dense, random=random)
+        aux["memory"] = mem_aux
         return self.head(x + delta), aux
 
     def loss(self, ids: torch.Tensor, **kwargs):
@@ -160,10 +226,14 @@ def parameter_budget(cfg: SparseConfig | None = None) -> dict[str, int]:
     trunk = cfg.vocab * cfg.d_model + cfg.layers * trunk_per_layer + 2 * cfg.d_model
     adapters = cfg.heads * (2 * cfg.d_model * cfg.rank) + cfg.heads
     router = cfg.d_model * cfg.heads + cfg.heads
+    memory = (cfg.memory_slots * cfg.d_model + 2 * cfg.d_model * cfg.d_model
+              + 2 * cfg.d_model + 1) if cfg.memory_slots > 0 else 0
     head = cfg.d_model * cfg.vocab + cfg.vocab
-    total = trunk + adapters + router + head
+    total = trunk + adapters + router + memory + head
     return {
         "trunk": trunk, "adapters": adapters, "router": router,
-        "head": head, "total": total,
+        "memory": memory, "head": head, "total": total,
         "active_adapter_fraction": cfg.active / cfg.heads,
+        "active_memory_fraction": (cfg.memory_active / cfg.memory_slots
+                                  if cfg.memory_slots else 0.0),
     }

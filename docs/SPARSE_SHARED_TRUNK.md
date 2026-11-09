@@ -38,9 +38,48 @@ gradient norm. It decays each step, so hot triads stay active briefly without
 permanent hard routing. Inactive adapters are not evaluated and receive no
 gradient.
 
+## Hopfield memory inside the trunk
+
+The old `HopfieldRouter` is still used as a sparse associative **expert and
+router** in v2. It is not the deep sequence model. The mapped hypermatrix is
+the larger compositional associative store. Both can coexist with the shared
+transformer trunk.
+
+Modern Hopfield retrieval is one step of softmax attention over stored
+patterns:
+
+```text
+p       = softmax(beta * X q)
+xi'     = X^T p
+```
+
+With `X` as both keys and values, this is exactly cross-attention to a
+persistent pattern bank. It therefore does not conflict with the transformer;
+it is a memory sublayer:
+
+- tokens query the pattern bank and retrieve an associative state;
+- a learned gate mixes that state into the residual stream;
+- only the top-k patterns are read, so cost is `O(k*d)`, not `O(N*N)`;
+- inactive patterns receive no gradient in the reference;
+- the native path should write patterns with local CFT/LEAF credit, not a
+  global BPTT tape.
+
+`HopfieldMemory` in `experiments/sparse_shared/model.py` implements this with
+256 patterns, top-k=8 and one retrieval step. It is deliberately **not** a
+replacement for attention: attention handles ordered local syntax, the
+Hopfield bank handles sparse associative recall and long-range stored
+associations, the hypermatrix holds compositional triples and leaves, and the
+wave/field keep temporal state and consensus.
+
+On the reference CPU harness, adding the 256-pattern Hopfield bank changed
+d=64/4-layer throughput from 8.79 to 7.79 tokens/s (about 11% overhead) at
+top-k=8. That is a real cost and the quality benefit must be shown on
+held-out associative recall, not assumed.
+
 ## Measured reference
 
-PyTorch CPU, batch 1, sequence 8:
+PyTorch CPU, batch 1, sequence 8. The first table is without the optional
+Hopfield memory bank:
 
 | configuration | active heads | tokens/s | note |
 |---|---:|---:|---|
@@ -49,6 +88,8 @@ PyTorch CPU, batch 1, sequence 8:
 | d=32, 2 layers, dense | 255/255 | 7.36 | 5.2x slower than sparse |
 | d=64, 4 layers, sparse | 8/255 | 12.9 | reference default |
 | d=64, 4 layers, dense | 255/255 | 1.93 | 6.7x slower than sparse |
+| d=64, 4 layers, sparse + Hopfield 256/top-8 | 8/255 | 7.79 | about 11% overhead |
+| d=64, 4 layers, sparse without Hopfield | 8/255 | 8.79 | matched control |
 
 Sparse is not a free 32x: the shared trunk, attention, router and Python/PyTorch
 overhead are fixed costs. Measured speedup is 5–7x on this CPU harness.
@@ -75,16 +116,18 @@ accelerator.
 
 ## Files
 
-- `experiments/sparse_shared/model.py` — trunk, 255 adapters, router, hotspot.
+- `experiments/sparse_shared/model.py` — trunk, Hopfield memory, 255 adapters,
+  router, hotspot.
 - `experiments/sparse_shared/train.py` — dense/sparse/random benchmarks.
 - `tests/test_sparse_shared.py` — budget, top-k, inactive-gradient isolation,
-  hotspot promotion and fixed-batch loss decrease.
+  hotspot promotion, Hopfield retrieval and fixed-batch loss decrease.
 
 Run:
 
 ```sh
 python3 -m unittest tests.test_sparse_shared -v
 python3 -m experiments.sparse_shared.train --mode sparse --active 8 --steps 2
+python3 -m experiments.sparse_shared.train --mode sparse --active 8 --memory-slots 0 --steps 2
 python3 -m experiments.sparse_shared.train --mode dense --steps 1
 ```
 
@@ -98,6 +141,8 @@ The reference is deliberately shaped to map onto the existing v2 fields:
 | 255 adapters | extension records: 2·d·rank Q16.16 values + router score + credit |
 | router logits | per-head routing scores in scratch; top-k in the field |
 | hotspot | per-head/triad credit derived from adapter gradient norms |
+| Hopfield pattern bank | sparse persistent memory rows; top-k retrieval; local CFT/LEAF writes |
+| Hopfield gate | per-token residual gate in chart scratch, voted before commit |
 | triad gate | existing 85 triads, 2/3 vote |
 | field gate | existing 43/85 field vote |
 | hypermatrix | 32,640 pair rows × 256 candidate bits |

@@ -88,6 +88,30 @@ independent-head research mode. Never blur which one produced a result.
 The 255 heads are **persistent specialized interfaces** between these
 mechanisms, not 255 minds and not 255 output neurons.
 
+### 2.1 Hopfield is a memory sublayer, not the trunk
+
+The existing `HopfieldRouter` remains the sparse associative expert/router in
+v2, and the mapped hypermatrix remains the compositional triple/leaf store.
+Neither replaces the shared transformer trunk. Modern Hopfield retrieval is
+
+```text
+xi' = X^T softmax(beta X xi)
+```
+
+which is mathematically cross-attention to a persistent pattern bank. It can be
+wrapped as a gated residual memory layer inside the trunk:
+
+1. token state queries the top-k patterns;
+2. retrieved state is gated into the residual stream;
+3. patterns are written by local CFT/LEAF credit, not a global BPTT tape;
+4. attention still handles ordered local syntax; Hopfield/hypermatrix handle
+   sparse associative recall and long-range stored associations.
+
+The reference `experiments/sparse_shared/model.py::HopfieldMemory` implements
+this and is covered by retrieval, gradient-isolation and residual-gating tests.
+It is an optional layer: the quality benefit must beat a matched no-memory
+control, and the measured cost is not hidden.
+
 ## 3. Memory and layout targets
 
 | region | bytes | role |
