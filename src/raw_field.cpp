@@ -25,6 +25,21 @@ void bump_triad_credit(std::int16_t& value, int delta) {
     const int next = static_cast<int>(value) + delta;
     value = static_cast<std::int16_t>(std::max(-32768, std::min(32767, next)));
 }
+
+constexpr std::uint32_t kContextMapBase = 0x60000u;
+constexpr std::uint32_t kContextCopyBase = 0x80000u;
+constexpr std::uint32_t kContextMapSlots = 16384u;
+constexpr std::uint32_t kContextMapWords = kContextMapSlots * 3u;
+constexpr std::uint32_t kContextAuxMax = 1024u;
+
+// Keep this byte order and mixing identical to mth_context_copy.nas.
+std::uint32_t context_copy_hash(std::uint32_t key) {
+    std::uint32_t hash = 2166136261u;
+    for (int shift = 24; shift >= 0; shift -= 8) {
+        hash = (hash ^ ((key >> shift) & 0xFFu)) * 16777619u;
+    }
+    return hash;
+}
 } // namespace
 
 RawFieldVM::RawFieldVM(const std::string& driver_image) {
@@ -721,6 +736,80 @@ bool RawFieldVM::readout_context(std::uint8_t target, float learning_rate,
     std::memcpy(&loss, &ls, sizeof(ls));
     predicted_high = static_cast<std::uint8_t>(read_word(kResultBase + 2) & 15u);
     predicted_low = static_cast<std::uint8_t>(read_word(kResultBase + 3) & 15u);
+    return true;
+}
+
+bool RawFieldVM::reset_context_copy(
+    const std::vector<std::uint32_t>& exact_contexts,
+    std::size_t buckets, std::size_t aux_buckets) {
+    if (buckets == 0 || buckets > 16384 || aux_buckets == 0 ||
+        aux_buckets > kContextAuxMax) {
+        return fail("context copy table dimensions are invalid");
+    }
+    if (exact_contexts.size() > buckets) {
+        return fail("context copy exact map exceeds bucket count");
+    }
+    for (std::uint32_t i = 0; i < kContextMapWords; ++i) {
+        if (!write_word(kContextMapBase + i, 0)) {
+            return fail("cannot reset context exact-key map");
+        }
+    }
+    for (std::size_t bucket = 0; bucket < exact_contexts.size(); ++bucket) {
+        const std::uint32_t key = exact_contexts[bucket];
+        std::uint32_t slot = context_copy_hash(key) % kContextMapSlots;
+        for (std::uint32_t probe = 0; probe < kContextMapSlots; ++probe) {
+            const std::uint32_t base = kContextMapBase + slot * 3u;
+            if (read_word(base) == 0) {
+                if (!write_word(base, 1) ||
+                    !write_word(base + 1u, key) ||
+                    !write_word(base + 2u, static_cast<std::uint32_t>(bucket))) {
+                    return fail("cannot write context exact-key map");
+                }
+                break;
+            }
+            slot = (slot + 1u) % kContextMapSlots;
+            if (probe + 1u == kContextMapSlots) {
+                return fail("context exact-key map is full");
+            }
+        }
+    }
+    const std::size_t aux_words = 272u * aux_buckets;
+    for (std::size_t i = 0; i < aux_words; ++i) {
+        if (!write_word(kContextCopyBase + static_cast<std::uint32_t>(i), 0)) {
+            return fail("cannot reset context copy table");
+        }
+    }
+    return true;
+}
+
+bool RawFieldVM::readout_context_copy(
+    std::uint8_t target, float learning_rate, std::uint32_t context_key,
+    std::size_t buckets, std::size_t exact_count, std::size_t aux_buckets,
+    float gate_weight, bool& correct, float& loss,
+    std::uint8_t& predicted_class) {
+    if (buckets == 0 || buckets > 16384 || exact_count >= buckets ||
+        aux_buckets == 0 || aux_buckets > kContextAuxMax) {
+        return fail("invalid context copy readout dimensions");
+    }
+    std::uint32_t lr_bits = 0;
+    std::memcpy(&lr_bits, &learning_rate, sizeof(lr_bits));
+    std::uint32_t weight_bits = 0;
+    std::memcpy(&weight_bits, &gate_weight, sizeof(weight_bits));
+    if (!write_word(kProposalBase + 0, target) ||
+        !write_word(kProposalBase + 1, lr_bits) ||
+        !write_word(kProposalBase + 2, context_key) ||
+        !write_word(kProposalBase + 3, static_cast<std::uint32_t>(buckets)) ||
+        !write_word(kProposalBase + 4, static_cast<std::uint32_t>(exact_count)) ||
+        !write_word(kProposalBase + 5, static_cast<std::uint32_t>(aux_buckets)) ||
+        !write_word(kProposalBase + 6, weight_bits) ||
+        !write_word(kCommandBase, 26)) {
+        return fail("cannot write context copy command");
+    }
+    if (!run_command()) return false;
+    correct = (read_word(kResultBase + 0) & 1u) != 0;
+    const std::uint32_t ls = read_word(kResultBase + 1);
+    std::memcpy(&loss, &ls, sizeof(ls));
+    predicted_class = static_cast<std::uint8_t>(read_word(kResultBase + 2));
     return true;
 }
 

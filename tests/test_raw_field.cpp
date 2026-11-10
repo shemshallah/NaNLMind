@@ -538,5 +538,35 @@ int main() {
     CHECK(feature_field.forward(q16, feature_result));
     CHECK_EQ(feature_result.count, SparseField::kActive);
 
+    // Raw context copy/induction route: the guest resolves the exact-key map
+    // or 3-byte fallback, hashes the 2-byte suffix and combines both tables.
+    constexpr std::size_t copy_buckets = 8;
+    constexpr std::size_t copy_aux_buckets = 4;
+    const std::uint32_t exact_key = 0x41424344u; // "ABCD"
+    std::vector<std::uint32_t> exact_keys{exact_key};
+    CHECK(vm.reset_context_readout(copy_buckets));
+    CHECK(vm.reset_context_copy(exact_keys, copy_buckets, copy_aux_buckets));
+    bool copy_correct = false;
+    float copy_loss = 0.0f;
+    std::uint8_t copy_predicted = 0;
+    for (int step = 0; step < 8; ++step) {
+        CHECK(vm.readout_context_copy(
+            0x41, 0.5f, exact_key, copy_buckets, exact_keys.size(),
+            copy_aux_buckets, 0.2f, copy_correct, copy_loss,
+            copy_predicted));
+        CHECK(copy_correct);
+        CHECK_EQ(copy_predicted, 0x41u);
+    }
+    CHECK(vm.readout_context_copy(
+        0x41, 0.0f, exact_key, copy_buckets, exact_keys.size(),
+        copy_aux_buckets, 0.2f, copy_correct, copy_loss, copy_predicted));
+    CHECK(copy_correct);
+    CHECK_EQ(copy_predicted, 0x41u);
+    // A context outside the map exercises the guest-side 3-byte fallback and
+    // a different induction bucket without a host routing decision.
+    CHECK(vm.readout_context_copy(
+        0x42, 0.0f, 0x01020304u, copy_buckets, exact_keys.size(),
+        copy_aux_buckets, 0.2f, copy_correct, copy_loss, copy_predicted));
+
     return test_done("raw NaN16 field VM bridge");
 }
