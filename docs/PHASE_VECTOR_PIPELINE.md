@@ -403,6 +403,23 @@ byte-level; it does not silently turn control or UTF-8 bytes into text. Counts
 are chunk-local: a 65,536-byte chunk boundary can omit up to three n-grams
 that cross the boundary.
 
+Full-corpus run:
+
+```text
+bytes trained      100,648,974
+orders             1,2,3,4
+top entries/order  64
+artifact           3,072 bytes
+sha256             05c270b38e4d41322800107cd574952f7085ed9e7773673fdb21690fbaab3a5c
+release            phase-bank-gutenberg150-d64-v1
+assets             gutenberg150_ngrams.ngrams.bin / .json
+```
+
+The top unigram is space (`0x20`, 16,730,062 events), followed by newline
+(`0x0a`, 2,093,889) and `f` (`0x66`, 1,674,800). Bigram, trigram and
+quadrigram tables use packed exact byte keys and are trained from the same
+raw byte stream. `spec/byte_ngrams.v1.json` records the full artifact digest.
+
 For the full temporally split register:
 
 ```sh
