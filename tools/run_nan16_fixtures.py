@@ -70,6 +70,8 @@ FIXTURES = (
             "MTH CONTEXT CLASS PASS"),
     Fixture("micro_feature", "mth/tests/mth_micro_feature_test.nas", 200_000,
             "MTH MICRO FEATURE PASS"),
+    Fixture("context24", "mth/tests/mth_context24_test.nas", 200_000,
+            "MTH CONTEXT24 PASS"),
 )
 
 

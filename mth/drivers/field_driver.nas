@@ -65,6 +65,9 @@ JMP @field_driver_entry
 .include "../nan16/mth_role_step.nas"
 .include "../nan16/mth_sense_step.nas"
 .include "../nan16/mth_semantic_query.nas"
+.include "../nan16/mth_context_encode24.nas"
+.include "../nan16/mth_role_step24.nas"
+.include "../nan16/mth_sense_step24.nas"
 .include "../nan16/mth_context_hash.nas"
 .include "../nan16/mth_context_batch.nas"
 .include "../nan16/mth_context_copy.nas"
@@ -196,6 +199,15 @@ field_driver_main:
   MOVI r3,53
   CMP r2,r3
   JMP[EQ] @field_driver_semantic_query
+  MOVI r3,54
+  CMP r2,r3
+  JMP[EQ] @field_driver_context_encode24
+  MOVI r3,55
+  CMP r2,r3
+  JMP[EQ] @field_driver_role_step24
+  MOVI r3,56
+  CMP r2,r3
+  JMP[EQ] @field_driver_sense_step24
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -829,6 +841,24 @@ field_driver_sense_step:
   JMP @field_driver_return
 field_driver_semantic_query:
   CALL @mth_semantic_query
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  JMP @field_driver_return
+
+field_driver_context_encode24:
+  CALL @mth_context_encode24
+  MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
+field_driver_role_step24:
+  CALL @mth_role_step24
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  JMP @field_driver_return
+field_driver_sense_step24:
+  CALL @mth_sense_step24
   MOVI r10,0x4010
   ST r1,r10,0
   ST r2,r10,1

@@ -40,9 +40,18 @@ kernels now backpropagate through the shared encoder as well:
 - sense: softmax CE → `dh` → token embeddings, position gates, bias, order,
   sense heads and sense biases.
 
-This is a native raw role/sense training step at the compact D=8 guest width.
-The C++ PR50/PR52 D=24 reference remains the convergence/control path; it is
-not the raw implementation.
+The D=8 path is exercised by `test_raw_field`, and a D=24 raw variant now
+exists:
+
+- `mth_context_encode24.nas`
+- `mth_role_step24.nas`
+- `mth_sense_step24.nas`
+- fixture `mth/tests/mth_context24_test.nas`
+
+The D=24 fixture one-hot encodes a token, checks `tanh(1)`, runs a role update
+and a two-candidate sense softmax update. The C++ PR50/PR52 D=24 reference
+remains the convergence/control path; the raw D=24 kernels are now executable
+and are not a quality claim.
 
 ## Measured reference results
 
