@@ -189,6 +189,18 @@ public:
         const std::array<float, kRawFeatureDim>& relation,
         float relation_bias, float label, float learning_rate,
         float orientation, float& probability, float& delta);
+    struct SemanticAbility {
+        std::uint8_t subject = 0;
+        std::uint8_t action = 0;
+        std::uint8_t positive = 0;
+    };
+    bool semantic_query(
+        const std::vector<std::pair<std::uint8_t, std::uint8_t>>& isa_edges,
+        const std::vector<std::pair<std::uint8_t, std::uint8_t>>& negative_isa,
+        const std::vector<SemanticAbility>& abilities,
+        std::uint8_t query_type, std::uint8_t subject,
+        std::uint8_t object_or_action, std::uint8_t& state,
+        std::uint8_t& depth);
     bool read_role_state(std::array<float, kRawFeatureDim>& relation,
                          float& relation_bias) const;
     bool sense_step(

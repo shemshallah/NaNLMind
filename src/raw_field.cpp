@@ -346,6 +346,47 @@ bool RawFieldVM::read_sense_state(
     return true;
 }
 
+
+bool RawFieldVM::semantic_query(
+    const std::vector<std::pair<std::uint8_t, std::uint8_t>>& isa_edges,
+    const std::vector<std::pair<std::uint8_t, std::uint8_t>>& negative_isa,
+    const std::vector<SemanticAbility>& abilities,
+    std::uint8_t query_type, std::uint8_t subject,
+    std::uint8_t object_or_action, std::uint8_t& state,
+    std::uint8_t& depth) {
+    if (isa_edges.size() > 64 || negative_isa.size() > 32 ||
+        abilities.size() > 64 || subject >= 32 || object_or_action >= 32) {
+        return fail("semantic query bounds invalid");
+    }
+    for (std::size_t i = 0; i < isa_edges.size(); ++i) {
+        if (!write_word(0x7000u + static_cast<std::uint32_t>(2 * i), isa_edges[i].first) ||
+            !write_word(0x7001u + static_cast<std::uint32_t>(2 * i), isa_edges[i].second))
+            return fail("cannot write semantic ISA edges");
+    }
+    for (std::size_t i = 0; i < negative_isa.size(); ++i) {
+        if (!write_word(0x7100u + static_cast<std::uint32_t>(2 * i), negative_isa[i].first) ||
+            !write_word(0x7101u + static_cast<std::uint32_t>(2 * i), negative_isa[i].second))
+            return fail("cannot write semantic negative edges");
+    }
+    for (std::size_t i = 0; i < abilities.size(); ++i) {
+        if (!write_word(0x7200u + static_cast<std::uint32_t>(3 * i), abilities[i].subject) ||
+            !write_word(0x7201u + static_cast<std::uint32_t>(3 * i), abilities[i].action) ||
+            !write_word(0x7202u + static_cast<std::uint32_t>(3 * i), abilities[i].positive))
+            return fail("cannot write semantic abilities");
+    }
+    if (!write_word(0x7300u, query_type) ||
+        !write_word(0x7301u, subject) ||
+        !write_word(0x7302u, object_or_action) ||
+        !write_word(0x4001u, static_cast<std::uint32_t>(isa_edges.size())) ||
+        !write_word(0x4002u, static_cast<std::uint32_t>(negative_isa.size())) ||
+        !write_word(0x4003u, static_cast<std::uint32_t>(abilities.size())) ||
+        !write_word(kCommandBase, 53)) return fail("cannot write semantic query command");
+    if (!run_command()) return false;
+    state = static_cast<std::uint8_t>(read_word(kResultBase) & 3u);
+    depth = static_cast<std::uint8_t>(read_word(kResultBase + 1) & 0xFFu);
+    return true;
+}
+
 bool RawFieldVM::read_role_state(std::array<float, kRawFeatureDim>& relation,
                                  float& relation_bias) const {
     for (std::size_t d = 0; d < kRawFeatureDim; ++d) {

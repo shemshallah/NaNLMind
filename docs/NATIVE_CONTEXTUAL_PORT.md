@@ -68,6 +68,22 @@ shared tokens=40
 Both tests pass as compiled executables. These are controlled synthetic
 benchmarks, not Gutenberg or unrestricted semantic-acquisition results.
 
+## Raw bounded semantic query
+
+`mth/nan16/mth_semantic_query.nas` (command 53) is the first raw semantic
+graph kernel:
+
+- BFS over up to 32 concepts and 64 ISA edges;
+- direct negative ISA claims (support/refutation coexistence);
+- ability claims with nearest-ancestor specificity;
+- explicit `support | refute` state and depth;
+- PR44 five-synset fixture:
+  - artifact→entity ISA support+refutation at depth 3;
+  - fiction→entity unknown (contradiction is not ISA);
+  - artifact ability support+refutation at nearest specificity;
+  - object negative at distance 0;
+  - physical inherits entity's positive ability at distance 1.
+
 ## Compact head representation
 
 `include/nanlm/head_catalog.hpp` fixes cognitive heads to the canonical
