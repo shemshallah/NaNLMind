@@ -32,11 +32,17 @@ Two raw training heads now use it:
 - `mth/nan16/mth_sense_step.nas` — command 42, softmax exact-synset head CE
   and sense-head/bias update.
 
-Both have C++ bridges (`role_step`, `sense_step`) and guest tests. The
-**shared encoder parameters are frozen in this first raw slice**; PR50/PR52
-also backpropagate through the shared token/position encoder, which remains
-the next raw gradient extension. This is a genuine raw role/sense training
-path for the heads, not a claim of full shared-encoder parity.
+Both have C++ bridges (`role_step`, `sense_step`) and guest tests. The raw
+kernels now backpropagate through the shared encoder as well:
+
+- role: relation logit → `dh` → token embeddings, position gates, bias, order,
+  relation and relation bias;
+- sense: softmax CE → `dh` → token embeddings, position gates, bias, order,
+  sense heads and sense biases.
+
+This is a native raw role/sense training step at the compact D=8 guest width.
+The C++ PR50/PR52 D=24 reference remains the convergence/control path; it is
+not the raw implementation.
 
 ## Measured reference results
 
