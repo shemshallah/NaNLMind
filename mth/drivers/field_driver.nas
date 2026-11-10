@@ -4,6 +4,9 @@
 ;   [0] opcode: 1 proposal, 2 field vote, 3 coherence, 4 remap
 ; Proposal args at 0x4001: current, patch, m0, m1, m2, a, b, target
 ;   results at 0x4010: votes, accepted, candidate mask, candidate rule
+; Context readout: target/lr/bucket/buckets at 0x4001..0x4004; greedy
+;   command 25, joint head-pair routing command 30
+;   results at 0x4010: correct, loss, predicted high, predicted low
 ; Field vote: 85 masks at 0x5000, count 85 fixed
 ;   results at 0x4010: accepted count, field accepted
 ; Coherence: 255 phases at 0x6000
@@ -155,6 +158,9 @@ field_driver_main:
   MOVI r3,25
   CMP r2,r3
   JMP[EQ] @field_driver_readout_context
+  MOVI r3,30
+  CMP r2,r3
+  JMP[EQ] @field_driver_readout_context_joint
   MOVI r3,27
   CMP r2,r3
   JMP[EQ] @field_driver_combined_all
@@ -371,6 +377,20 @@ field_driver_readout_context:
   LD r3,r10,2
   LD r4,r10,3
   CALL @mth_context_hier
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  ST r4,r10,3
+  JMP @field_driver_return
+
+field_driver_readout_context_joint:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r4,r10,3
+  CALL @mth_context_hier_joint
   MOVI r10,0x4010
   ST r1,r10,0
   ST r2,r10,1

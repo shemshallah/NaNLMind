@@ -250,6 +250,16 @@ public:
                          bool& correct, float& loss,
                          std::uint8_t& predicted_high,
                          std::uint8_t& predicted_low);
+    bool readout_context_joint(std::uint8_t target, float learning_rate,
+                               std::uint32_t bucket, std::size_t buckets,
+                               bool& correct, float& loss,
+                               std::uint8_t& predicted_high,
+                               std::uint8_t& predicted_low);
+    bool set_context_high(std::size_t bucket, std::size_t high_class,
+                          float value, std::size_t buckets);
+    bool set_context_low(std::size_t bucket, std::size_t high_class,
+                         std::size_t low_class, float value,
+                         std::size_t buckets);
     void reset_readout();
     bool set_readout_row(std::uint8_t row,
                          const std::array<float, kRawFeatureDim>& values);
