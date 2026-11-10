@@ -315,34 +315,6 @@ bool RawFieldVM::micro_feature(
 }
 
 
-bool RawFieldVM::write_trunk_weights(const TrunkWeights& weights) {
-    auto write_float = [&](std::uint32_t index, float value) {
-        std::uint32_t bits = 0;
-        std::memcpy(&bits, &value, sizeof(bits));
-        return write_word(index, bits);
-    };
-    const struct {
-        const float* data;
-        std::uint32_t base;
-        std::size_t size;
-    } blocks[] = {
-        {weights.wq.data(), 0x9000, weights.wq.size()},
-        {weights.wk.data(), 0x9040, weights.wk.size()},
-        {weights.wv.data(), 0x9080, weights.wv.size()},
-        {weights.wout.data(), 0x90C0, weights.wout.size()},
-        {weights.w1.data(), 0x9100, weights.w1.size()},
-        {weights.w2.data(), 0x9180, weights.w2.size()},
-    };
-    for (const auto& block : blocks) {
-        for (std::size_t i = 0; i < block.size; ++i) {
-            if (!write_float(block.base + static_cast<std::uint32_t>(i),
-                             block.data[i])) {
-                return fail("cannot write causal-trunk weights");
-            }
-        }
-    }
-    return true;
-}
 
 bool RawFieldVM::write_trunk_inputs(
     const std::vector<std::array<float, kRawFeatureDim>>& tokens,
@@ -668,6 +640,50 @@ bool RawFieldVM::readout_hier(const float* feature, std::uint8_t target,
     return true;
 }
 
+bool RawFieldVM::reset_context_readout(std::size_t buckets) {
+    if (buckets == 0 || buckets > 16384) {
+        return fail("context bucket count outside 1..16384");
+    }
+    const std::size_t words = 16 * buckets + 16 * 16 * buckets;
+    for (std::size_t i = 0; i < words; ++i) {
+        if (!write_word(0x100000u + static_cast<std::uint32_t>(i), 0)) {
+            return fail("cannot reset context readout");
+        }
+    }
+    return true;
+}
+
+bool RawFieldVM::readout_context(std::uint8_t target, float learning_rate,
+                                 std::uint32_t bucket, std::size_t buckets,
+                                 bool& correct, float& loss,
+                                 std::uint8_t& predicted_high,
+                                 std::uint8_t& predicted_low) {
+    if (buckets == 0 || buckets > 16384 || bucket >= buckets) {
+        return fail("invalid context readout bucket");
+    }
+    std::uint32_t lr_bits = 0;
+    std::memcpy(&lr_bits, &learning_rate, sizeof(lr_bits));
+    if (!write_word(kProposalBase + 0, target) ||
+        !write_word(kProposalBase + 1, lr_bits) ||
+        !write_word(kProposalBase + 2, bucket) ||
+        !write_word(kProposalBase + 3, static_cast<std::uint32_t>(buckets)) ||
+        !write_word(kCommandBase, 25)) {
+        return fail("cannot write context readout command");
+    }
+    if (!run_command()) return false;
+    std::fprintf(stderr, "context_link_debug=0x%x r15=0x%x code0=0x%llx code1=0x%llx cmd=0x%x\n",
+                 read_word(4368u), nan_reg(vm_, 15),
+                 (unsigned long long)nan_word(vm_, 0),
+                 (unsigned long long)nan_word(vm_, 1),
+                 read_word(0x4000u));
+    correct = (read_word(kResultBase + 0) & 1u) != 0;
+    const std::uint32_t ls = read_word(kResultBase + 1);
+    std::memcpy(&loss, &ls, sizeof(ls));
+    predicted_high = static_cast<std::uint8_t>(read_word(kResultBase + 2) & 15u);
+    predicted_low = static_cast<std::uint8_t>(read_word(kResultBase + 3) & 15u);
+    return true;
+}
+
 void RawFieldVM::reset_readout() {
     for (std::uint32_t i = 0; i < 255u * 8u; ++i) {
         (void)write_word(0xB000u + i, 0);
@@ -879,6 +895,26 @@ bool RawFieldVM::trunk_credit_wide(std::uint8_t target,
 }
 
 
+
+bool RawFieldVM::combine_credits(const std::array<std::int32_t, 7>& credits,
+                                 const std::array<std::int32_t, 7>& coefficients,
+                                 std::int32_t& combined) {
+    for (std::size_t i = 0; i < 7; ++i) {
+        if (!write_word(0x7000u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(credits[i])) ||
+            !write_word(0x7100u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(coefficients[i]))) {
+            return fail("cannot write credit-combine args");
+        }
+    }
+    if (!write_word(kCommandBase, 25)) {
+        return fail("cannot write credit-combine command");
+    }
+    if (!run_command()) return false;
+    combined = static_cast<std::int32_t>(read_word(kResultBase));
+    return true;
+}
+
 bool RawFieldVM::cft_trunk_credit(std::uint8_t target, std::uint8_t best_wrong,
                                   std::int32_t base_lr_q16,
                                   std::int32_t threshold_q16,
@@ -926,6 +962,59 @@ bool RawFieldVM::credit_field_vote(
         votes[i] = static_cast<std::uint8_t>(read_word(0x7100u +
                                                       static_cast<std::uint32_t>(i)) & 1u);
     }
+    return true;
+}
+
+
+bool RawFieldVM::write_trunk_weights(const TrunkWeights& weights) {
+    auto write_block = [&](std::uint32_t base, const float* data,
+                           std::size_t count) {
+        for (std::size_t i = 0; i < count; ++i) {
+            std::uint32_t bits = 0;
+            std::memcpy(&bits, &data[i], sizeof(bits));
+            if (!write_word(base + static_cast<std::uint32_t>(i), bits)) {
+                return false;
+            }
+        }
+        return true;
+    };
+    return write_block(0x9000, weights.wq.data(), weights.wq.size()) &&
+           write_block(0x9040, weights.wk.data(), weights.wk.size()) &&
+           write_block(0x9080, weights.wv.data(), weights.wv.size()) &&
+           write_block(0x90C0, weights.wout.data(), weights.wout.size()) &&
+           write_block(0x9100, weights.w1.data(), weights.w1.size()) &&
+           write_block(0x9180, weights.w2.data(), weights.w2.size());
+}
+
+bool RawFieldVM::commit_cft_credit(
+    std::uint8_t target, std::uint8_t best_wrong,
+    std::int32_t base_lr_q16, std::int32_t cft_threshold_q16,
+    std::int32_t e_ab, std::int32_t e_bc, std::int32_t e_ca,
+    std::int32_t error, std::int32_t rate,
+    const std::array<std::int32_t, kTriadMemberCount>& head_credits,
+    std::int32_t head_threshold_q16,
+    bool& field_accepted, bool& committed) {
+    TrunkWeights snapshot{};
+    if (!read_trunk_weights(snapshot)) return fail("cannot snapshot trunk weights");
+    std::array<std::uint8_t, kTriadCount> votes{};
+    std::uint16_t accepted = 0;
+    if (!credit_field_vote(head_credits, head_threshold_q16, votes,
+                           accepted, field_accepted)) {
+        return false;
+    }
+    committed = false;
+    if (!field_accepted) return true;
+    bool applied = false;
+    if (!cft_trunk_credit(target, best_wrong, base_lr_q16, cft_threshold_q16,
+                          e_ab, e_bc, e_ca, error, rate, applied)) {
+        (void)write_trunk_weights(snapshot);
+        return false;
+    }
+    if (!applied) {
+        (void)write_trunk_weights(snapshot);
+        return true;
+    }
+    committed = true;
     return true;
 }
 

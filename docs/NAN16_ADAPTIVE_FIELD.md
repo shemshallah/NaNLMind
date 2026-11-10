@@ -43,6 +43,12 @@ adaptive-field mathematics:
 | `mth_trunk_credit_wide.nas` | runtime-width Wout/W1/W2 local-credit update |
 | `mth_credit_gate.nas` | CFT/TRAIL credit gate for local updates |
 | `mth_credit_field.nas` | 255 head credits -> 2/3 triad votes -> 43/85 field |
+| `mth_credit_combine.nas` | weighted 7-credit combination |
+| `mth_flux_credit.nas` | temporal-link flux/divergence credit |
+| `mth_tca_credit.nas` | leave-one-out triad advantage |
+| `mth_leaf_credit.nas` | hypermatrix leaf support and counter credit |
+| `mth_ring_credit.nas` | 255-lane angular correlation credit |
+| `mth_holo_credit.nas` | cycle holonomy / gauge defect credit |
 | `mth/drivers/field_driver.nas` | guest command dispatcher for proposal, field vote, coherence, remap, CFT, TRAIL and hot triheads |
 | `include/nanlm/raw_field.hpp` | host orchestration: writes command words, runs the VM, reads results |
 
@@ -206,6 +212,27 @@ The test covers 129 accepted heads → field accepted → committed, and 128 hea
 → field rejected → weights restored. This is a staged geometric commit, not a
 BPTT tape. Full CFT/TRAIL credit integration into every trunk weight is still
 open.
+
+## Geometric credit family
+
+All seven geometric credit paths now have raw NaN16 primitives:
+
+```text
+mth_trail_credit.nas       TRAIL two-rail TD eligibility
+mth_cft_credit.nas         CFT cycle-flux
+mth_holo_credit.nas        HOLO cycle holonomy / gauge defect
+mth_ring_credit.nas        RING 255-lane angular correlation
+mth_leaf_credit.nas        LEAF hypermatrix leaf support
+mth_tca_credit.nas         TCA leave-one-out advantage
+mth_flux_credit.nas        FLUX temporal-link divergence
+mth_credit_combine.nas     weighted sum of the seven credits
+```
+
+The suite fixture `mth/tests/mth_credit_suite_test.nas` exercises all seven and
+the combiner. `RawFieldVM::combine_credits` loads seven Q16.16 credits and seven
+coefficients into the guest and returns the combined credit. CFT/TRAIL remain
+the first integrated pair; HOLO/RING/LEAF/TCA/FLUX are now available as raw
+inputs to the same gate/field commit path.
 
 ## Learnable credit, not host gradients
 

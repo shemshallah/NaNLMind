@@ -142,11 +142,22 @@ public:
                          float learning_rate);
     bool trunk_credit_wide(std::uint8_t target, std::uint8_t best_wrong,
                            float learning_rate);
+    bool combine_credits(const std::array<std::int32_t, 7>& credits,
+                         const std::array<std::int32_t, 7>& coefficients,
+                         std::int32_t& combined);
     bool cft_trunk_credit(std::uint8_t target, std::uint8_t best_wrong,
                           std::int32_t base_lr_q16, std::int32_t threshold_q16,
                           std::int32_t e_ab, std::int32_t e_bc,
                           std::int32_t e_ca, std::int32_t error,
                           std::int32_t rate, bool& applied);
+    bool commit_cft_credit(
+        std::uint8_t target, std::uint8_t best_wrong,
+        std::int32_t base_lr_q16, std::int32_t cft_threshold_q16,
+        std::int32_t e_ab, std::int32_t e_bc, std::int32_t e_ca,
+        std::int32_t error, std::int32_t rate,
+        const std::array<std::int32_t, kTriadMemberCount>& head_credits,
+        std::int32_t head_threshold_q16,
+        bool& field_accepted, bool& committed);
     bool credit_field_vote(
         const std::array<std::int32_t, kTriadMemberCount>& credits,
         std::int32_t threshold,
@@ -181,6 +192,12 @@ public:
                       float learning_rate, std::size_t dim, bool& correct,
                       float& loss, std::uint8_t& predicted_high,
                       std::uint8_t& predicted_low);
+    bool reset_context_readout(std::size_t buckets);
+    bool readout_context(std::uint8_t target, float learning_rate,
+                         std::uint32_t bucket, std::size_t buckets,
+                         bool& correct, float& loss,
+                         std::uint8_t& predicted_high,
+                         std::uint8_t& predicted_low);
     void reset_readout();
     bool set_readout_row(std::uint8_t row,
                          const std::array<float, kRawFeatureDim>& values);

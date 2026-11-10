@@ -64,6 +64,8 @@ FIXTURES = (
             "MTH CREDIT PIPELINE PASS"),
     Fixture("hot_trihead", "mth/tests/mth_hot_trihead_test.nas", 5_000_000,
             "MTH HOT TRIHEAD PASS"),
+    Fixture("credit_suite", "mth/tests/mth_credit_suite_test.nas", 2_000_000,
+            "MTH CREDIT SUITE PASS"),
     Fixture("micro_feature", "mth/tests/mth_micro_feature_test.nas", 200_000,
             "MTH MICRO FEATURE PASS"),
 )

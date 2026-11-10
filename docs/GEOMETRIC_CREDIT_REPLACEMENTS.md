@@ -82,12 +82,13 @@ fits the free extension (32,640 links).
 
 ## Implementation status
 
-Raw NaN16 CFT and TRAIL credit primitives, a signed Q16 multiply, a field
-command driver, and a deterministic auto-remap scheduler now exist in
-`mth/nan16/` and `include/nanlm/raw_field.hpp`. The trunk also has diagnostic
-local error-corrective updates and a host autograd reference; neither is the
-production learning policy. CFT/TRAIL are still not fully wired into every
-trunk weight, and no quality claim follows from the primitives.
+All seven credit primitives now exist as raw NaN16 kernels: TRAIL, CFT, HOLO,
+RING, LEAF, TCA and FLUX, plus a weighted combiner. The trunk also has
+diagnostic local error-corrective updates and a host autograd reference;
+neither is the production learning policy. CFT/TRAIL are the first pair wired
+into the gate/field commit path; the other five are available but not yet
+fully wired into every trunk weight, and no quality claim follows from the
+primitives.
 
 ## Recommendation
 
