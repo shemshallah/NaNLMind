@@ -7,14 +7,15 @@
 ; ABI:
 ;   r1 = target byte 0..254
 ;   r2 = learning-rate float32 bits
+;   r3 = rotation salt (mixed into negative selection)
 ; Returns:
 ;   r1 = 1 when target beats the sampled negatives
 ;   r2 = target score bits
 ;   r3 = best sampled-negative score bits
 ;   r4 = one-margin hinge loss bits
 ;
-; The trainer scores the target plus 16 deterministic negatives
-; idx = (target + k*37) mod 255, k=1..16. This is a sampled training step,
+; The trainer scores the target plus 8 deterministic negatives
+; idx = (target + salt + k*37) mod 255, k=1..8. This is a sampled training step,
 ; not the full 255-class evaluation. Full evaluation remains readout-only.
 mth_readout_sample:
   MOVI r12,@mth_rs_link
@@ -23,6 +24,8 @@ mth_readout_sample:
   ST r1,r12,0
   MOVI r12,@mth_rs_lr
   ST r2,r12,0
+  MOVI r12,@mth_rs_salt
+  ST r3,r12,0
 
   ; target row pointer
   MOVI r12,@mth_rs_target
@@ -63,12 +66,15 @@ mth_rs_target_done:
   ST r0,r12,0
   MOVI r5,1
 mth_rs_neg:
-  MOVI r8,16
+  MOVI r8,8
   CMP r5,r8
   JMP[GT] @mth_rs_neg_done
   MOVI r8,37
   MUL r6,r5,r8
   MOVI r8,@mth_rs_target
+  LD r8,r8,0
+  ADD r6,r6,r8
+  MOVI r8,@mth_rs_salt
   LD r8,r8,0
   ADD r6,r6,r8
   MOVI r7,255
@@ -183,6 +189,8 @@ mth_rs_link:
 mth_rs_target:
   .word 0
 mth_rs_lr:
+  .word 0
+mth_rs_salt:
   .word 0
 mth_rs_target_row:
   .word 0

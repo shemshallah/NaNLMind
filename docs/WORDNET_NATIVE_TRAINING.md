@@ -34,11 +34,17 @@ python3 tools/wordnet_corpus.py \
   --manifest state/wordnet_corpus.json
 
 # 100 epochs over the whole corpus, reporting every 10,000 steps.
-./build/nanlm-universal trunk-train state/wordnet_corpus.txt 0 100 10000
+# Default "sampled" mode is the fast training path: 8 rotated negatives per
+# step plus a full 255-class step every 16th sample.
+./build/nanlm-universal trunk-train state/wordnet_corpus.txt 0 100 10000 sampled
 
-# Matched Python reference over the same samples.
+# Exact 255-class local update at every sample (slower, matches the original
+# one-epoch reference arithmetic).
+./build/nanlm-universal trunk-train state/wordnet_corpus.txt 0 100 10000 full
+
+# Matched Python reference over the same samples and mode.
 python3 experiments/native_trunk_reference.py state/wordnet_corpus.txt \
-  --epochs 100 --report-every 10000
+  --epochs 100 --report-every 10000 --mode sampled
 
 # Compare the two step logs.
 python3 tools/compare_trunk_runs.py \
@@ -62,6 +68,35 @@ The readout update is a local error-corrective step, not a BPTT tape. The
 raw guest computes the trunk, scores, target/best selection, hinge loss and
 update. The C++/Python host only tokenizes bytes, invokes the guest and
 accumulates metrics.
+
+## Speed path
+
+The first native run took 88.1 s per epoch because every sample re-ran the
+frozen trunk, rewrote all 512 trunk weights, and re-ran a 255 x 8 readout in a
+separate guest command. The optimized path keeps the same raw guest arithmetic
+but changes the intake and training schedule:
+
+- The frozen trunk feature is computed once per corpus sample and cached on
+  the host (`trunk_features`); the guest still computes that feature.
+- `mth_readout_only.nas` performs the exact 255-class local update from the
+  cached feature, with no trunk recomputation.
+- `mth_readout_sample.nas` performs 8 deterministic negative scores per step
+  (`idx = (target + salt + k*37) mod 255`). The salt is rotated per step.
+- Every 16th sample, rotated by epoch, takes the exact 255-class step instead
+  of the sampled step. The final metric is a separate full 255-class
+  evaluation over the whole corpus.
+
+Measured on the full 117,454-sample corpus on this device:
+
+| path | epoch | 100 epochs |
+|---|---:|---:|
+| original per-sample trunk/readout | 88.1 s | about 2 h 27 min |
+| cached feature + sampled 8 | about 4.5 s | about 8-9 min |
+
+The sampled loss is a training diagnostic, not the exact full-corpus hinge
+loss. Only the `trunk_full_eval` line (and the Python `full_eval` object) is
+the full 255-class evaluation. Sampled training is an optimization tradeoff;
+the exact `full` mode remains available for arithmetic/reference checks.
 
 ## Pipeline status
 

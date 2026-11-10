@@ -39,12 +39,12 @@ def _full_step(weights, x, target, lr):
     return ok, loss
 
 
-def _sampled_step(weights, x, target, lr):
+def _sampled_step(weights, x, target, lr, salt):
     target_score = float(weights[target] @ x)
     best_idx = target
     best_wrong = -np.inf
-    for k in range(1, 17):
-        idx = (target + k * 37) % 255
+    for k in range(1, 9):
+        idx = (target + salt + k * 37) % 255
         score = float(weights[idx] @ x)
         if score > best_wrong:
             best_wrong = score
@@ -58,7 +58,7 @@ def _sampled_step(weights, x, target, lr):
 
 
 def train(corpus: Path, max_lines: int = 0, epochs: int = 3,
-          report_every: int = 10000) -> dict:
+          report_every: int = 10000, mode: str = "sampled") -> dict:
     lines = corpus.read_bytes().splitlines()
     if max_lines:
         lines = lines[:max_lines]
@@ -78,10 +78,11 @@ def train(corpus: Path, max_lines: int = 0, epochs: int = 3,
             for j in range(8):
                 tokens[j, line[j] & 7] = 1.0
             x = feature(tokens)
-            if sample % 16 == 0:
+            if mode == "full" or (sample + epoch * 7) % 16 == 0:
                 ok, loss = _full_step(weights, x, target, np.float32(0.05))
             else:
-                ok, loss = _sampled_step(weights, x, target, np.float32(0.05))
+                ok, loss = _sampled_step(weights, x, target, np.float32(0.05),
+                                         global_step)
             global_step += 1
             total += 1
             report_total += 1
@@ -145,9 +146,10 @@ def main() -> int:
     ap.add_argument("--max-lines", type=int, default=0)
     ap.add_argument("--epochs", type=int, default=3)
     ap.add_argument("--report-every", type=int, default=10000)
+    ap.add_argument("--mode", choices=("sampled", "full"), default="sampled")
     args = ap.parse_args()
     print(json.dumps(train(args.corpus, args.max_lines, args.epochs,
-                           args.report_every), indent=2, sort_keys=True))
+                           args.report_every, args.mode), indent=2, sort_keys=True))
     return 0
 
 

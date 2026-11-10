@@ -37,12 +37,18 @@ std::array<float, kRawFeatureDim> token_vector(std::uint8_t byte) {
 
 int trunk_train_cli(int argc, char** argv) {
     if (argc < 3) {
-        std::cerr << "usage: nanlm-universal trunk-train CORPUS [MAX_LINES] [EPOCHS] [REPORT_EVERY]\n"
-                  << "Runs raw NaN16 trunk readout training over the whole corpus.\n";
+        std::cerr << "usage: nanlm-universal trunk-train CORPUS [MAX_LINES] [EPOCHS] [REPORT_EVERY] [sampled|full]\n"
+                  << "Runs raw NaN16 trunk readout training over the whole corpus.\n"
+                  << "sampled (default) is fast but mixes in full 255-class steps.\n";
         return 2;
     }
     const std::string corpus_path = argv[2];
     std::size_t max_lines = 0, epochs = 3, report_every = 1000;
+    std::string mode = argc > 6 ? argv[6] : "sampled";
+    if (mode != "sampled" && mode != "full") {
+        std::cerr << "mode must be sampled or full\n";
+        return 2;
+    }
     try {
         if (argc > 3) max_lines = static_cast<std::size_t>(std::stoull(argv[3]));
         if (argc > 4) epochs = static_cast<std::size_t>(std::stoull(argv[4]));
@@ -119,11 +125,13 @@ int trunk_train_cli(int argc, char** argv) {
             const std::uint8_t target = cached_targets[sample];
             bool correct = false;
             float target_score = 0.0f, best_wrong = 0.0f, loss = 0.0f;
-            const bool full_step = (sample % 16u) == 0u;
+            const bool full_step = mode == "full" ||
+                ((sample + epoch * 7u) % 16u) == 0u;
+            const std::uint32_t salt = static_cast<std::uint32_t>(global_step);
             const bool step_ok = full_step
                 ? vm.readout_only(cached_features[sample], target, 0.05f,
                                   correct, target_score, best_wrong, loss)
-                : vm.readout_sample(cached_features[sample], target, 0.05f,
+                : vm.readout_sample(cached_features[sample], target, 0.05f, salt,
                                     correct, target_score, best_wrong, loss);
             if (!step_ok) {
                 std::cerr << "native readout-only failed: " << vm.error() << "\n";
