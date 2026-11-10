@@ -62,6 +62,8 @@ JMP @field_driver_entry
 .include "../nan16/mth_context_hier.nas"
 .include "../nan16/mth_context_backoff.nas"
 .include "../nan16/mth_context_encode.nas"
+.include "../nan16/mth_role_step.nas"
+.include "../nan16/mth_sense_step.nas"
 .include "../nan16/mth_context_hash.nas"
 .include "../nan16/mth_context_batch.nas"
 .include "../nan16/mth_context_copy.nas"
@@ -181,6 +183,15 @@ field_driver_main:
   MOVI r3,30
   CMP r2,r3
   JMP[EQ] @field_driver_context_class
+  MOVI r3,50
+  CMP r2,r3
+  JMP[EQ] @field_driver_context_encode
+  MOVI r3,51
+  CMP r2,r3
+  JMP[EQ] @field_driver_role_step
+  MOVI r3,52
+  CMP r2,r3
+  JMP[EQ] @field_driver_sense_step
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -795,6 +806,23 @@ mth_credit_rate_float:
   FDIV r1,r1,r2
   RET
 
+field_driver_context_encode:
+  CALL @mth_context_encode
+  MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
+field_driver_role_step:
+  CALL @mth_role_step
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  JMP @field_driver_return
+field_driver_sense_step:
+  CALL @mth_sense_step
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  JMP @field_driver_return
 field_driver_return:
   MOVI r10,@field_driver_link
   LD r15,r10,0

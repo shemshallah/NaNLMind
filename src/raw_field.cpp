@@ -255,7 +255,7 @@ bool RawFieldVM::context_encode(
     std::memcpy(&obits, &orientation, sizeof(obits));
     if (!write_word(kProposalBase + 0, static_cast<std::uint32_t>(token_count)) ||
         !write_word(kProposalBase + 1, obits) ||
-        !write_word(kCommandBase, 40)) {
+        !write_word(kCommandBase, 50)) {
         return fail("cannot write context-encode command");
     }
     if (!run_command()) return false;
@@ -321,7 +321,7 @@ bool RawFieldVM::sense_step(
         !write_word(0x7523u, static_cast<std::uint32_t>(target)) ||
         !write_word(kProposalBase + 0, static_cast<std::uint32_t>(token_count)) ||
         !write_word(kProposalBase + 1, obits) ||
-        !write_word(kCommandBase, 42)) return fail("cannot write sense-step command");
+        !write_word(kCommandBase, 52)) return fail("cannot write sense-step command");
     if (!run_command()) return false;
     const std::uint32_t pbits = read_word(kResultBase);
     const std::uint32_t lbits = read_word(kResultBase + 1);
@@ -402,7 +402,7 @@ bool RawFieldVM::role_step(
         !wf(0x7522u, learning_rate) ||
         !write_word(kProposalBase + 0, static_cast<std::uint32_t>(token_count)) ||
         !write_word(kProposalBase + 1, obits) ||
-        !write_word(kCommandBase, 41)) {
+        !write_word(kCommandBase, 51)) {
         return fail("cannot write role-step command");
     }
     if (!run_command()) return false;

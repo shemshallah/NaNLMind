@@ -538,5 +538,32 @@ int main() {
     CHECK(feature_field.forward(q16, feature_result));
     CHECK_EQ(feature_result.count, SparseField::kActive);
 
+    // Raw contextual role/sense steps (encoder + local gradients).
+    std::vector<std::array<float, kRawFeatureDim>> ctx_words(64);
+    std::array<std::array<float, kRawFeatureDim>, 4> ctx_gates{};
+    ctx_words[0][0] = 1.0f;
+    ctx_gates[0][0] = 1.0f;
+    std::array<float, kRawFeatureDim> ctx_bias{}, ctx_order{}, rel{};
+    std::array<float, kRawFeatureDim> enc_dbg{};
+    CHECK(vm.context_encode(1, {0}, {0}, ctx_words, ctx_gates, ctx_bias, ctx_order, 1.0f, enc_dbg));
+    rel[0] = 1.0f;
+    float rp1 = 0.0f, rp2 = 0.0f, rd = 0.0f, rb = 0.0f;
+    CHECK(vm.role_step(1, {0}, {0}, ctx_words, ctx_gates, ctx_bias, ctx_order,
+                       rel, 0.0f, 1.0f, 0.5f, 1.0f, rp1, rd));
+    CHECK(vm.read_role_state(rel, rb));
+    CHECK(vm.role_step(1, {0}, {0}, ctx_words, ctx_gates, ctx_bias, ctx_order,
+                       rel, rb, 1.0f, 0.5f, 1.0f, rp2, rd));
+    CHECK(rp2 > rp1);
+    std::vector<std::array<float, kRawFeatureDim>> senses(2);
+    senses[1][0] = 1.0f;
+    std::vector<float> sbias(2, 0.0f);
+    float sp1 = 0.0f, sp2 = 0.0f, sl = 0.0f;
+    CHECK(vm.sense_step(1, {0}, {0}, ctx_words, ctx_gates, ctx_bias, ctx_order,
+                        senses, sbias, 1, 0.5f, 1.0f, sp1, sl));
+    CHECK(vm.read_sense_state(2, senses, sbias));
+    CHECK(vm.sense_step(1, {0}, {0}, ctx_words, ctx_gates, ctx_bias, ctx_order,
+                        senses, sbias, 1, 0.5f, 1.0f, sp2, sl));
+    CHECK(sp2 > sp1);
+
     return test_done("raw NaN16 field VM bridge");
 }

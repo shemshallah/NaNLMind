@@ -49,7 +49,7 @@ mth_ce_init:
 mth_ce_sum:
   MOVI r10,@mth_ce_T
   LD r1,r10,0
-  CVTFI r1,r1
+  CVTIF r1,r1
   FSQRT r1,r1
   MOVI r2,0
   MOVHI r2,0x3F80
