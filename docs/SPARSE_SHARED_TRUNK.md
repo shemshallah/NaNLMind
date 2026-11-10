@@ -171,18 +171,21 @@ training and credit updates are the next gate.
 The wide path `mth_trunk_wide.nas` supports runtime D up to 128, hidden H up
 to 512, and 1024 tokens. `RawFieldVM::causal_trunk_wide` writes host-loaded
 matrices and returns D features; the test exercises D=16 with T=1 exact math
-and T=1024. The readout trainer is already raw. A local credit step for Wout/W1/W2 is
-implemented in `mth_trunk_credit.nas` (command 14). A proper autograd reference
-for QKV/Wout/W1/W2/readout is in `experiments/native_trunk_backprop.py`; it is
-gradient-checked and is the upper bound, not the native path. A raw attention/QKV local-credit step now exists in
-`mth_qkv_credit.nas` (command 15): it backpropagates the local output error
-through the causal softmax to Wq/Wk/Wv using the cached alpha/q/k/v state.
-This is fixed 8-wide trunk credit. The runtime-width QKV credit is in
-`mth_qkv_credit_wide.nas` (command 18) and is exercised at D=16/T=1024.
-The wide Wout/W1/W2 local credit is now in
-`mth_trunk_credit_wide.nas` (command 20). Exact local-credit parity for the wide
-path is exercised at D=4/H=8/T=4, and the 1024-token path exercises both wide
-QKV and wide output/MLP credit. Full multi-layer raw BPTT remains open.
+and T=1024.
+
+The raw local credit commands (14, 15, 18, 20) are **diagnostic local
+error-corrective updates**, not BPTT and not the production credit policy.
+They use the last forward's activations and a readout error, with no saved
+sequence tape. The production path is CFT/TRAIL/geometric credit:
+
+- `mth_cft_credit.nas` — cycle-flux credit;
+- `mth_trail_credit.nas` — two-rail TD eligibility;
+- `mth_field_commit.nas` — credit → 2/3 triad → 43/85 field.
+
+Exact local-credit parity is exercised at D=4/H=8/T=4, and the 1024-token path
+exercises QKV and output/MLP local credit. The next step is to gate those
+updates with CFT/TRAIL credit and triad/field votes; adding a global BPTT tape
+is explicitly not the plan.
 
 This is the native **head/field** half of the sparse trunk. The shared P1
 QKV/MLP trunk kernel and its feature feed are still the next native step; the

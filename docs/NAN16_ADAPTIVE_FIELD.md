@@ -150,63 +150,40 @@ the matrices and tokens, runs command 13, and returns D features. The test
 covers D=16, T=1 exact math, and T=1024. This is 1024-token context, not
 GPT-2-quality depth or training.
 
-## Backprop reference and raw local credit
+## Credit policy: CFT/TRAIL first, not BPTT
 
-`experiments/native_trunk_backprop.py` is a proper autograd reference for the
-same block. It trains QKV/Wout/W1/W2/readout with Adam, runs a finite-difference
-gradient check, and reports loss reduction. It is the differentiable upper
-bound, not the raw runtime.
+The native production path is **CFT/TRAIL/geometric credit**, not BPTT. There is
+no saved activation tape and no global backward pass through the sequence in
+the raw runtime. The existing raw primitives are:
 
-`mth_trunk_credit.nas` is the raw local credit step for the fixed 8-wide block:
+- `mth_cft_credit.nas` — triangle cycle-flux credit;
+- `mth_trail_credit.nas` — two-rail TD eligibility credit;
+- `mth_field_commit.nas` — CFT/TRAIL credit → triad votes → 43/85 field gate.
+
+The trunk's local error-corrective updates are a **bootstrap/diagnostic**:
+they use one forward's local activations and readout error, not a sequence
+tape. They are useful for checking the forward path and for a matched control,
+but they are not the production credit policy.
+
+`experiments/native_trunk_backprop.py` is only a proper autograd reference and
+upper bound. It is not called by the native runtime and is not the target
+learning rule.
+
+The corrected local-output equations currently used for diagnostics are:
 
 ```text
-e[d] = W[target][d] - W[best_wrong][d]
-Wout[d][i] += lr e[d] context[i]
+e[d] = R[target][d] - R[best_wrong][d]
+g[j] = (1 - hidden[j]^2) * sum_d e[d] W2[d][j]
+h_err[d] = e[d] + sum_j W1[j][d] g[j]
+
+Wout[d][i] += lr h_err[d] context[i]
 W2[d][j]   += lr e[d] hidden[j]
-g[j]       = sum_d e[d] W2[d][j] (1 - hidden[j]^2)
 W1[j][i]   += lr g[j] h[i]
 ```
 
-Command 14 applies this update. It is a true local error-corrective gradient for
-the output and MLP layers.
-
-Command 15 (`mth_qkv_credit.nas`) extends the same local credit through the
-causal softmax:
-
-```text
-dc[k]      = sum_i h_err[i] Wout[i][k]
-dalpha[s]  = dot(dc, v_s)
-dz[s]      = alpha[s] (dalpha[s] - sum_t alpha[t] dalpha[t])
-dq         = sum_s dz[s] k_s
-dk_s       = dz[s] q
-dv_s       = alpha[s] dc
-Wq += lr dq x_last^T
-Wk += lr sum_s dk_s x_s^T
-Wv += lr sum_s dv_s x_s^T
-```
-
-It uses the alpha/q/k/v state cached by the last fixed 8-wide forward. QKV
-local credit is therefore raw and functional for the fixed trunk.
-
-`mth_qkv_credit_wide.nas` (command 18) is the runtime-width version. It reads
-the wide forward's cached alpha at `0x58000`, values at `0x30000`, and the
-dynamic weight pointers; it updates Wq/Wk/Wv for D<=128, H<=512 and T<=1024.
-The readout rows are loaded at `0x180000`. The test exercises D=16, T=1024: forward, local QKV credit, cached forward,
-and a changed output.
-
-`mth_trunk_credit_wide.nas` (command 20) adds the wide output/MLP credit:
-
-```text
-g[j]  = (1-hidden[j]^2) sum_d e[d] W2[d][j]
-h_err = e + W1^T g
-Wout += lr h_err context^T
-W2   += lr e hidden^T
-W1   += lr g h^T
-```
-
-The D=4/H=8/T=4 parity test compares every raw Wq/Wk/Wv/Wout/W1/W2 update
-against the same float32 local-score equations and passes at 3e-3 tolerance.
-This is exact local-credit parity, not full multi-layer BPTT.
+The next production step is to replace/gate these diagnostic updates with the
+CFT/TRAIL credit decision, not to add a BPTT tape. Full geometric-credit
+integration into every trunk weight is still open.
 
 ## Learnable credit, not host gradients
 
