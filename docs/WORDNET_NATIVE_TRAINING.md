@@ -54,12 +54,12 @@ python3 tools/wordnet_corpus.py \
 ./build/nanlm-universal hier-train state/wordnet_corpus.txt 0 3 10000 0.1 1.0 1
 
 # Context-indexed 16x16 class memory: the current best learning path.
-# Each last-3-byte context hashes to one bucket; only that column of the
+# Each last-4-byte context hashes to one bucket; only that column of the
 # high/low class tables is read or updated.
-./build/nanlm-universal context-train state/wordnet_corpus.txt 0 3 10000 8192 3 0.5 1
+./build/nanlm-universal context-train state/wordnet_corpus.txt 0 3 100000 11456 4 0.1 1
 
 # Same path with a random 80/20 train/held-out split.
-./build/nanlm-universal context-train state/wordnet_corpus.txt 0 3 10000 8192 3 0.5 1 0.8
+./build/nanlm-universal context-train state/wordnet_corpus.txt 0 5 100000 11456 4 0.1 1 0.8
 
 # Matched Python reference over the same samples and mode.
 python3 experiments/native_trunk_reference.py state/wordnet_corpus.txt \
@@ -206,26 +206,34 @@ This is a native-friendly version of an n-gram class memory and maps directly
 onto the 255-head/field topology: the high nibble groups are the field
 groups, and the low classes are head rows.
 
-Native full-corpus result, 3 epochs, 8,192 buckets:
+Native full-corpus result, 3 epochs, 11,456 buckets, 4-byte context:
 
 | metric | value |
 |---|---:|
-| training-window accuracy | `61.3159%` |
-| same-corpus full accuracy | **`57.8644%`** |
-| same-corpus loss | `1.40043` |
-| epoch training time | about `35 s` total for 3 epochs |
-| full evaluation time | `6.79 s` |
+| training-window accuracy | `66.9343%` |
+| same-corpus full accuracy | **`66.4822%`** |
+| same-corpus loss | `1.9452` |
+| 3-epoch training time | about `32 s` |
+| full evaluation time | `6.22 s` |
 
-A matched host probe on a random 80/20 split gives **55.43% held-out**
-accuracy (`k=3`, 8,192 buckets). A native random 80/20 run gives
-**55.9874% held-out** accuracy after 3 epochs (`61.3539%` training-window
-accuracy), with 93,963 training samples and 23,491 held-out samples. The
-held-out split is measured, not inferred from the training set.
+A native random 80/20 run at the same setting gives **61.3639% held-out**
+accuracy after 5 epochs (`67.3435%` training-window), with 93,963 training
+samples and 23,491 held-out samples. The held-out split is measured, not
+inferred from the training set.
 
 ```sh
+# Best same-corpus setting.
 ./build/nanlm-universal context-train state/wordnet_corpus.txt \
-  0 3 10000 8192 3 0.5 1 0.8
+  0 3 100000 11456 4 0.1 1
+
+# Best held-out setting.
+./build/nanlm-universal context-train state/wordnet_corpus.txt \
+  0 5 100000 11456 4 0.1 1 0.8
 ```
+
+The earlier 8,192-bucket / 3-byte setting reached `57.8644%` same-corpus and
+`55.9874%` held-out; the larger 4-byte memory is better. `11,456` is close to
+the fixed VM table limit (`272 * B` words plus the `0x100000` base).
 
 ## Pipeline status
 

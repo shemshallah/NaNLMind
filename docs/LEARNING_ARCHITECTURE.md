@@ -42,16 +42,17 @@ per sample. It is the basis of the native `hier-train` path.
 ### 0. Context-indexed class memory
 
 The strongest immediate result is a sparse n-gram class memory, not a wider
-dense readout. Hash the last 3 bytes to one of 8,192 buckets, then store a
+dense readout. Hash the last 4 bytes to one of 11,456 buckets, then store a
 16-class high-nibble head and 16x16 conditional low-nibble heads per bucket.
 Only one table column is read or updated per sample.
 
 - Native `context-train` / `mth_context_hier.nas` / `mth_softmax16_table.nas`.
-- Full-corpus, 3 epochs: **57.8644% same-corpus** accuracy, about 35 s of
-  training and 6.8 s of evaluation.
-- Native random 80/20: **55.9874% held-out** (`61.3539%` training-window)
-  after 3 epochs.
-- Python random 80/20 probe: **55.43% held-out** at the same bucket count.
+- Full-corpus, 3 epochs: **66.4822% same-corpus** accuracy, about 32 s of
+  training and 6.2 s of evaluation.
+- Native random 80/20: **61.3639% held-out** (`67.3435%` training-window)
+  after 5 epochs.
+- Earlier 8,192-bucket / 3-byte setting: `57.8644%` same-corpus and
+  `55.9874%` held-out.
 - This maps directly to the existing topology: high nibbles are field groups,
   low classes are head rows; the context bucket is sparse memory.
 
@@ -138,8 +139,10 @@ evaluation across runner slots. Keep the raw arithmetic unchanged.
 
 ## Current native evidence
 
-- `context-train ... 8192 3 0.5 1`: **57.8644% same-corpus** full accuracy
-  after 3 epochs; native random 80/20 **55.9874% held-out**.
+- `context-train ... 11456 4 0.1 1`: **66.4822% same-corpus** full accuracy
+  after 3 epochs; native random 80/20 **61.3639% held-out** after 5 epochs.
+- `context-train ... 8192 3 0.5 1`: earlier `57.8644%` same-corpus and
+  `55.9874%` held-out.
 - `trunk-train ... softmax shuffle 0.1`: one epoch `19.8341%`; three fixed-rate
   epochs `19.8341 / 21.2151 / 18.4719%` (best at epoch 2).
 - `hier-train ... 0.5`: first full-corpus run `28.2102%`, one epoch.
