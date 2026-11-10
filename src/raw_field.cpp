@@ -20,6 +20,9 @@ constexpr std::uint32_t kMicroX0 = 0x7000;
 constexpr std::uint32_t kMicroX1 = 0x7100;
 constexpr std::uint32_t kMicroOut = 0x7200;
 constexpr std::uint32_t kMaxSteps = 200'000'000;
+constexpr std::uint32_t kContextTableBase = 0x100000;
+constexpr std::uint32_t kContextWordsPerBucket = 272;
+constexpr std::uint32_t kGuestWordCount = 0x400000;
 
 void bump_triad_credit(std::int16_t& value, int delta) {
     const int next = static_cast<int>(value) + delta;
@@ -984,34 +987,72 @@ bool RawFieldVM::readout_context(std::uint8_t target, float learning_rate,
     return true;
 }
 
-bool RawFieldVM::readout_context_hashed(
-    std::uint8_t target, float learning_rate, std::uint32_t packed_context,
-    std::uint8_t context_bytes, std::size_t buckets, bool& correct,
-    float& loss, std::uint8_t& predicted_high, std::uint8_t& predicted_low,
-    std::uint32_t& bucket) {
-    if (buckets == 0 || buckets > 16384 || context_bytes == 0 ||
-        context_bytes > 4) {
-        return fail("invalid hashed-context readout input");
+bool RawFieldVM::readout_context_batch(
+    const std::uint8_t* targets, const std::uint32_t* buckets,
+    const float* learning_rates, std::size_t count, std::size_t bucket_count,
+    std::size_t& correct_count, float& loss_sum, std::size_t& processed) {
+    if (bucket_count == 0 || bucket_count > 16384) {
+        return fail("invalid context batch bucket count");
     }
-    std::uint32_t lr_bits = 0;
-    std::memcpy(&lr_bits, &learning_rate, sizeof(lr_bits));
-    if (!write_word(kProposalBase + 0, target) ||
-        !write_word(kProposalBase + 1, lr_bits) ||
-        !write_word(kProposalBase + 2, packed_context) ||
-        !write_word(kProposalBase + 3, context_bytes) ||
-        !write_word(kProposalBase + 4, static_cast<std::uint32_t>(buckets)) ||
-        !write_word(kCommandBase, 30)) {
-        return fail("cannot write hashed-context readout command");
+    if (count > kRawContextBatchMax) {
+        return fail("context batch exceeds kRawContextBatchMax");
+    }
+    if (count == 0) {
+        correct_count = 0;
+        loss_sum = 0.0f;
+        processed = 0;
+        return true;
+    }
+    if (targets == nullptr || buckets == nullptr || learning_rates == nullptr) {
+        return fail("context batch arrays are null");
+    }
+    for (std::size_t i = 0; i < count; ++i) {
+        if (buckets[i] >= bucket_count) {
+            return fail("context batch bucket outside table");
+        }
+    }
+
+    // The context table grows from 0x100000. Place the three host-marshalled
+    // arrays in guest words immediately above it, aligned to a page of words.
+    const std::uint64_t table_end =
+        static_cast<std::uint64_t>(kContextTableBase) +
+        static_cast<std::uint64_t>(kContextWordsPerBucket) * bucket_count;
+    const std::uint64_t array_base = (table_end + 0xFFFu) & ~std::uint64_t(0xFFFu);
+    if (array_base > kGuestWordCount ||
+        count > (kGuestWordCount - array_base) / 3u) {
+        return fail("context batch arrays do not fit guest memory");
+    }
+    const std::uint32_t targets_base = static_cast<std::uint32_t>(array_base);
+    const std::uint32_t buckets_base =
+        static_cast<std::uint32_t>(array_base + count);
+    const std::uint32_t lrs_base =
+        static_cast<std::uint32_t>(array_base + 2u * count);
+    for (std::size_t i = 0; i < count; ++i) {
+        std::uint32_t lr_bits = 0;
+        std::memcpy(&lr_bits, &learning_rates[i], sizeof(lr_bits));
+        if (!write_word(targets_base + static_cast<std::uint32_t>(i),
+                        targets[i]) ||
+            !write_word(buckets_base + static_cast<std::uint32_t>(i),
+                        buckets[i]) ||
+            !write_word(lrs_base + static_cast<std::uint32_t>(i), lr_bits)) {
+            return fail("cannot write context batch arrays");
+        }
+    }
+    if (!write_word(kProposalBase + 0, static_cast<std::uint32_t>(count)) ||
+        !write_word(kProposalBase + 1, targets_base) ||
+        !write_word(kProposalBase + 2, buckets_base) ||
+        !write_word(kProposalBase + 3, lrs_base) ||
+        !write_word(kProposalBase + 4, static_cast<std::uint32_t>(bucket_count)) ||
+        !write_word(kCommandBase, 26)) {
+        return fail("cannot write context batch command");
     }
     if (!run_command()) return false;
-    correct = (read_word(kResultBase + 0) & 1u) != 0;
+    correct_count = read_word(kResultBase + 0);
     const std::uint32_t ls = read_word(kResultBase + 1);
-    std::memcpy(&loss, &ls, sizeof(ls));
-    predicted_high = static_cast<std::uint8_t>(read_word(kResultBase + 2) & 15u);
-    predicted_low = static_cast<std::uint8_t>(read_word(kResultBase + 3) & 15u);
-    bucket = read_word(kResultBase + 4);
-    if (bucket >= buckets) {
-        return fail("raw context hash returned an out-of-range bucket");
+    std::memcpy(&loss_sum, &ls, sizeof(ls));
+    processed = read_word(kResultBase + 2);
+    if (correct_count > count || processed != count) {
+        return fail("context batch result outside request");
     }
     return true;
 }

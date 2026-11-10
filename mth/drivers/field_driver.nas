@@ -27,8 +27,8 @@
 ; Credit combine: 7 credits at 0x7000, 7 coefficients at 0x7100, result 0x4010
 ; Credit bundle: state at 0x8000, credits at 0x7200; command 29
 ; Combined gated credit: target/best/base/threshold 0x4001..4, credits 0x7000, coeffs 0x7100
-; Hashed context: target/lr/packed bytes/count/B at 0x4001..0x4005, command 30
-;   results at 0x4010: correct, loss, high, low, guest FNV bucket
+; Batched context: count/targets/buckets/lrs/B at 0x4001..0x4005, command 26
+;   results at 0x4010: correct, loss sum bits, processed, reserved
 ;
 ; The driver contains no host math. It is assembled by nmk.awk and executed
 ; by the canonical NaN0S VM. The guest starts at word 0.
@@ -57,10 +57,7 @@ JMP @field_driver_entry
 .include "../nan16/mth_softmax16.nas"
 .include "../nan16/mth_softmax16_table.nas"
 .include "../nan16/mth_context_hier.nas"
-.include "../nan16/mth_context_encode.nas"
-.include "../nan16/mth_role_step.nas"
-.include "../nan16/mth_sense_step.nas"
-.include "../nan16/mth_context_hash.nas"
+.include "../nan16/mth_context_batch.nas"
 .include "../nan16/mth_readout_hier.nas"
 .include "../nan16/mth_trunk_credit.nas"
 .include "../nan16/mth_qkv_credit.nas"
@@ -161,6 +158,9 @@ field_driver_main:
   MOVI r3,25
   CMP r2,r3
   JMP[EQ] @field_driver_readout_context
+  MOVI r3,26
+  CMP r2,r3
+  JMP[EQ] @field_driver_readout_context_batch
   MOVI r3,27
   CMP r2,r3
   JMP[EQ] @field_driver_combined_all
@@ -402,20 +402,19 @@ field_driver_readout_context:
   ST r4,r10,3
   JMP @field_driver_return
 
-field_driver_context_hash:
+field_driver_readout_context_batch:
   MOVI r10,0x4001
   LD r1,r10,0
   LD r2,r10,1
   LD r3,r10,2
   LD r4,r10,3
   LD r5,r10,4
-  CALL @mth_context_hash
+  CALL @mth_context_batch
   MOVI r10,0x4010
   ST r1,r10,0
   ST r2,r10,1
   ST r3,r10,2
   ST r4,r10,3
-  ST r5,r10,4
   JMP @field_driver_return
 
 field_driver_field_commit:

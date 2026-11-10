@@ -3,6 +3,10 @@
 #include "test_util.hpp"
 
 #include <cmath>
+#include <cstdio>
+#include <cstring>
+#include <fstream>
+#include <iterator>
 
 #include <array>
 
@@ -538,78 +542,70 @@ int main() {
     CHECK(feature_field.forward(q16, feature_result));
     CHECK_EQ(feature_result.count, SparseField::kActive);
 
-    // Guest-side FNV-1a context bucket: compare against the host reference
-    // across raw byte widths and bucket counts.
-    const std::array<std::array<std::uint8_t, 4>, 8> context_samples = {{
-        {{0x00, 0x00, 0x00, 0x00}},
-        {{0x41, 0x42, 0x43, 0x44}},
-        {{'t', 'h', 'e', ' '}},
-        {{0xFF, 0x00, 0x7F, 0x80}},
-        {{'c', 'o', 'n', 't'}},
-        {{0x01, 0x23, 0x45, 0x67}},
-        {{'z', 'z', 'z', 'z'}},
-        {{0xDE, 0xAD, 0xBE, 0xEF}},
-    }};
-    const auto host_bucket = [](const std::array<std::uint8_t, 4>& bytes,
-                                std::size_t width, std::uint32_t buckets) {
-        std::uint32_t hash = 2166136261u;
-        for (std::size_t j = 0; j < width; ++j) {
-            hash = (hash ^ bytes[j]) * 16777619u;
-        }
-        return hash % buckets;
-    };
-    const auto pack_bytes = [](const std::array<std::uint8_t, 4>& bytes,
-                               std::size_t width) {
-        std::uint32_t packed = 0;
-        for (std::size_t j = 0; j < width; ++j) {
-            packed |= static_cast<std::uint32_t>(bytes[j]) << (8 * j);
-        }
-        return packed;
-    };
-    const std::uint32_t hash_buckets = 257;
-    CHECK(vm.reset_context_readout(hash_buckets));
-    for (std::size_t width = 1; width <= 4; ++width) {
-        for (const auto& bytes : context_samples) {
-            for (const std::uint32_t buckets : {1u, 2u, 7u, 64u, 257u}) {
-                bool hash_correct = false;
-                float hash_loss = 0.0f;
-                std::uint8_t hash_high = 0, hash_low = 0;
-                std::uint32_t bucket = 0;
-                CHECK(vm.readout_context_hashed(
-                    0x35, 0.0f, pack_bytes(bytes, width),
-                    static_cast<std::uint8_t>(width), buckets, hash_correct,
-                    hash_loss, hash_high, hash_low, bucket));
-                CHECK_EQ(bucket, host_bucket(bytes, width, buckets));
-            }
-        }
+    // Batched context readout: 1,500 samples must produce the same guest
+    // state, correct count and float32 loss sum as 1,500 per-sample commands.
+    // The batching only removes host round trips; the guest still calls the
+    // mth_context_hier kernel once per sample.
+    constexpr std::size_t batch_buckets = 512;
+    constexpr std::size_t batch_samples = 1500;
+    RawFieldVM batch_vm("build/field_driver.nan");
+    RawFieldVM ref_vm("build/field_driver.nan");
+    CHECK(batch_vm.ready());
+    CHECK(ref_vm.ready());
+    CHECK(batch_vm.reset_context_readout(batch_buckets));
+    CHECK(ref_vm.reset_context_readout(batch_buckets));
+    std::vector<std::uint8_t> batch_targets(batch_samples);
+    std::vector<std::uint32_t> batch_contexts(batch_samples);
+    std::vector<float> batch_lrs(batch_samples);
+    std::uint32_t lcg = 0x9E3779B9u;
+    for (std::size_t i = 0; i < batch_samples; ++i) {
+        lcg = lcg * 1664525u + 1013904223u;
+        batch_targets[i] =
+            static_cast<std::uint8_t>((lcg >> 24) % 255u);
+        batch_contexts[i] =
+            static_cast<std::uint32_t>((lcg >> 8) % batch_buckets);
+        batch_lrs[i] = (i % 17 == 0) ? 0.0f
+                                     : 0.05f + 0.001f * static_cast<float>(i % 23);
     }
+    std::size_t ref_correct = 0;
+    float ref_loss = 0.0f;
+    for (std::size_t i = 0; i < batch_samples; ++i) {
+        bool sample_correct = false;
+        float sample_loss = 0.0f;
+        std::uint8_t predicted_high = 0, predicted_low = 0;
+        CHECK(ref_vm.readout_context(
+            batch_targets[i], batch_lrs[i], batch_contexts[i], batch_buckets,
+            sample_correct, sample_loss, predicted_high, predicted_low));
+        ref_correct += sample_correct ? 1u : 0u;
+        ref_loss += sample_loss;
+    }
+    std::size_t batch_correct = 0, batch_processed = 0;
+    float batch_loss = 0.0f;
+    CHECK(batch_vm.readout_context_batch(
+        batch_targets.data(), batch_contexts.data(), batch_lrs.data(),
+        batch_samples, batch_buckets, batch_correct, batch_loss,
+        batch_processed));
+    CHECK_EQ(batch_processed, batch_samples);
+    CHECK_EQ(batch_correct, ref_correct);
+    std::uint32_t batch_loss_bits = 0, ref_loss_bits = 0;
+    std::memcpy(&batch_loss_bits, &batch_loss, sizeof(batch_loss_bits));
+    std::memcpy(&ref_loss_bits, &ref_loss, sizeof(ref_loss_bits));
+    CHECK_EQ(batch_loss_bits, ref_loss_bits);
 
-    // Small deterministic training smoke through the guest-hashed readout.
-    const std::uint32_t smoke_buckets = 64;
-    CHECK(vm.reset_context_readout(smoke_buckets));
-    const std::array<std::uint8_t, 4> smoke_bytes = {'a', 'b', 'c', 'd'};
-    const std::uint32_t smoke_packed = pack_bytes(smoke_bytes, 3);
-    bool smoke_correct = false;
-    float smoke_loss = 0.0f;
-    std::uint8_t smoke_high = 0, smoke_low = 0;
-    std::uint32_t smoke_bucket_before = 0, smoke_bucket_after = 0;
-    CHECK(vm.readout_context_hashed(0x35, 0.0f, smoke_packed, 3,
-                                    smoke_buckets, smoke_correct, smoke_loss,
-                                    smoke_high, smoke_low,
-                                    smoke_bucket_before));
-    CHECK(!smoke_correct);
-    const float first_loss = smoke_loss;
-    for (int step = 0; step < 24; ++step) {
-        CHECK(vm.readout_context_hashed(0x35, 1.0f, smoke_packed, 3,
-                                        smoke_buckets, smoke_correct,
-                                        smoke_loss, smoke_high, smoke_low,
-                                        smoke_bucket_after));
-    }
-    CHECK(smoke_correct);
-    CHECK(smoke_loss < first_loss);
-    CHECK_EQ(smoke_bucket_after,
-             host_bucket(smoke_bytes, 3, smoke_buckets));
-    CHECK_EQ(smoke_bucket_after, smoke_bucket_before);
+    const char* batch_path = "build/context_batch_parity.nmc";
+    const char* ref_path = "build/context_ref_parity.nmc";
+    CHECK(batch_vm.save_context_readout(batch_path, batch_buckets));
+    CHECK(ref_vm.save_context_readout(ref_path, batch_buckets));
+    std::ifstream batch_file(batch_path, std::ios::binary);
+    std::ifstream ref_file(ref_path, std::ios::binary);
+    const std::string batch_bytes((std::istreambuf_iterator<char>(batch_file)),
+                                  std::istreambuf_iterator<char>());
+    const std::string ref_bytes((std::istreambuf_iterator<char>(ref_file)),
+                                std::istreambuf_iterator<char>());
+    CHECK(!batch_bytes.empty());
+    CHECK(batch_bytes == ref_bytes);
+    std::remove(batch_path);
+    std::remove(ref_path);
 
     return test_done("raw NaN16 field VM bridge");
 }
