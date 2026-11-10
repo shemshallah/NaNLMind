@@ -25,6 +25,7 @@
 ; CFT/TRAIL gated local credit: command 22/23
 ; Credit field: 255 credits at 0x7000, threshold 0x4001, votes 0x7100
 ; Credit combine: 7 credits at 0x7000, 7 coefficients at 0x7100, result 0x4010
+; Combined gated credit: target/best/base/threshold 0x4001..4, credits 0x7000, coeffs 0x7100
 ;
 ; The driver contains no host math. It is assembled by nmk.awk and executed
 ; by the canonical NaN0S VM. The guest starts at word 0.
@@ -508,6 +509,30 @@ field_driver_credit_combine:
   MOVI r2,0x7100
   CALL @mth_credit_combine
   MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_combined_credit:
+  MOVI r1,0x7000
+  MOVI r2,0x7100
+  CALL @mth_credit_combine
+  ADD r6,r1,r0
+  MOVI r10,0x4003
+  LD r2,r10,0
+  MOVI r10,0x4004
+  LD r3,r10,0
+  ADD r1,r6,r0
+  CALL @mth_credit_gate
+  CMP r1,r0
+  JMP[EQ] @field_driver_credit_rejected
+  ADD r6,r1,r0
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  ADD r3,r6,r0
+  CALL @mth_trunk_credit
+  MOVI r10,0x4010
+  MOVI r1,1
   ST r1,r10,0
   JMP @field_driver_return
 

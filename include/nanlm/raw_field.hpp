@@ -145,6 +145,11 @@ public:
     bool combine_credits(const std::array<std::int32_t, 7>& credits,
                          const std::array<std::int32_t, 7>& coefficients,
                          std::int32_t& combined);
+    bool combined_trunk_credit(
+        std::uint8_t target, std::uint8_t best_wrong,
+        std::int32_t base_lr_q16, std::int32_t threshold_q16,
+        const std::array<std::int32_t, 7>& credits,
+        const std::array<std::int32_t, 7>& coefficients, bool& applied);
     bool cft_trunk_credit(std::uint8_t target, std::uint8_t best_wrong,
                           std::int32_t base_lr_q16, std::int32_t threshold_q16,
                           std::int32_t e_ab, std::int32_t e_bc,

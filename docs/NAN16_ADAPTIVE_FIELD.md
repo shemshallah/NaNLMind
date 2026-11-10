@@ -43,7 +43,7 @@ adaptive-field mathematics:
 | `mth_trunk_credit_wide.nas` | runtime-width Wout/W1/W2 local-credit update |
 | `mth_credit_gate.nas` | CFT/TRAIL credit gate for local updates |
 | `mth_credit_field.nas` | 255 head credits -> 2/3 triad votes -> 43/85 field |
-| `mth_credit_combine.nas` | weighted 7-credit combination |
+| `mth_credit_combine.nas` | weighted 7-credit combination (command 25) |
 | `mth_flux_credit.nas` | temporal-link flux/divergence credit |
 | `mth_tca_credit.nas` | leave-one-out triad advantage |
 | `mth_leaf_credit.nas` | hypermatrix leaf support and counter credit |
@@ -233,6 +233,12 @@ the combiner. `RawFieldVM::combine_credits` loads seven Q16.16 credits and seven
 coefficients into the guest and returns the combined credit. CFT/TRAIL remain
 the first integrated pair; HOLO/RING/LEAF/TCA/FLUX are now available as raw
 inputs to the same gate/field commit path.
+
+Command 26 (`mth_credit_combine` → `mth_credit_gate` → `mth_trunk_credit`)
+now takes the seven combined credits and gates the local update. The C++ bridge
+is `RawFieldVM::combined_trunk_credit`. Tests verify a positive combined credit
+applies and a zero credit is rejected. Coefficient learning/ablation remains
+open.
 
 ## Learnable credit, not host gradients
 
