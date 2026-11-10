@@ -1,0 +1,24 @@
+{
+  "schema": "nanlm.nannet.training-routes/1",
+  "canonical_universe": "HW0::BS0",
+  "ring_route": "HW5:0",
+  "note": "HW4 and HW5 are training-job labels in this manifest, not instantiated HW nodes. The canonical universe remains HW0::BS0; HW5:0 names the runner ring.",
+  "routes": {
+    "HW4": {
+      "job": "wordnet",
+      "route_uri": "HW4:0::0:HW0",
+      "corpus": "state/wordnet_corpus.txt",
+      "checkpoint": "state/transfer/wn_full10.ctx",
+      "trainer": "context-train",
+      "epochs": 10
+    },
+    "HW5": {
+      "job": "gutenberg",
+      "route_uri": "HW5:0::0:HW0",
+      "corpus": "state/gutenberg_corpus.txt",
+      "checkpoint": "state/transfer/wn_full_gut10.ctx",
+      "trainer": "context-train",
+      "epochs": 10
+    }
+  }
+}
