@@ -23,6 +23,7 @@
 ;   result r1=1 at 0x4010
 ; QKV local credit: same target/best/lr, command 15, uses last forward
 ; CFT/TRAIL gated local credit: command 22/23
+; Credit field: 255 credits at 0x7000, threshold 0x4001, votes 0x7100
 ;
 ; The driver contains no host math. It is assembled by nmk.awk and executed
 ; by the canonical NaN0S VM. The guest starts at word 0.
@@ -55,6 +56,7 @@ JMP @field_driver_entry
 .include "../nan16/mth_qkv_credit_wide.nas"
 .include "../nan16/mth_trunk_credit_wide.nas"
 .include "../nan16/mth_credit_gate.nas"
+.include "../nan16/mth_credit_field.nas"
 
 field_driver_entry:
   MOVI r13,1
@@ -135,6 +137,9 @@ field_driver_main:
   MOVI r3,23
   CMP r2,r3
   JMP[EQ] @field_driver_trail_credit
+  MOVI r3,24
+  CMP r2,r3
+  JMP[EQ] @field_driver_credit_field
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -464,6 +469,17 @@ field_driver_trail_credit:
   MOVI r10,0x4010
   MOVI r1,1
   ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_credit_field:
+  MOVI r1,0x7000
+  MOVI r10,0x4001
+  LD r2,r10,0
+  MOVI r3,0x7100
+  CALL @mth_credit_field
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
   JMP @field_driver_return
 
 field_driver_return:

@@ -31,6 +31,8 @@ adaptive-field mathematics:
 | `mth_readout_only.nas` | cached trunk feature -> exact 255-class local readout update |
 | `mth_readout_sample.nas` | cached feature -> 8 rotating-negative readout update |
 | `mth_readout_softmax.nas` | cached feature -> full 255-class softmax readout update |
+| `mth_softmax16.nas` | generic 16-class softmax head for the hierarchical readout |
+| `mth_readout_hier.nas` | conditional 16x16 nibble readout over a positional feature bank |
 | `mth_hot_trihead.nas` | raw 255-head hot scan, 3-hot-head triad grouping and 85x3 auto-mapping |
 | `mth_micro_feature.nas` | raw two-token QKV/softmax/tanh feature feed for the sparse field |
 | `mth_trunk_causal.nas` | raw learned QKV/MLP causal feature block, 1..256 tokens |
@@ -39,6 +41,8 @@ adaptive-field mathematics:
 | `mth_qkv_credit.nas` | raw softmax/QKV local-credit update for Wq/Wk/Wv (fixed 8) |
 | `mth_qkv_credit_wide.nas` | runtime-width QKV local-credit update, up to 1024 tokens |
 | `mth_trunk_credit_wide.nas` | runtime-width Wout/W1/W2 local-credit update |
+| `mth_credit_gate.nas` | CFT/TRAIL credit gate for local updates |
+| `mth_credit_field.nas` | 255 head credits -> 2/3 triad votes -> 43/85 field |
 | `mth/drivers/field_driver.nas` | guest command dispatcher for proposal, field vote, coherence, remap, CFT, TRAIL and hot triheads |
 | `include/nanlm/raw_field.hpp` | host orchestration: writes command words, runs the VM, reads results |
 
@@ -182,8 +186,17 @@ W1[j][i]   += lr g[j] h[i]
 ```
 
 The next production step is to replace/gate these diagnostic updates with the
-CFT/TRAIL credit decision, not to add a BPTT tape. Full geometric-credit
-integration into every trunk weight is still open.
+CFT/TRAIL credit decision, not to add a BPTT tape.
+
+`mth_credit_gate.nas` (command 22/23) already gates local updates from a CFT
+residual or TRAIL credit. `mth_credit_field.nas` (command 24) now turns 255
+signed head credits into 85 three-member triad votes (2/3) and a 43/85 field
+decision. It is tested with 129 accepted heads -> 43 triads -> field accepted,
+and 128 -> 42 -> rejected.
+
+Staging a candidate trunk delta, voting it through these gates, and committing
+only on acceptance with rollback is the next integration step. Full
+geometric-credit integration into every trunk weight is still open.
 
 ## Learnable credit, not host gradients
 
@@ -234,6 +247,8 @@ skip. The default fixtures cover:
   path;
 - a full-softmax readout update that trains all 255 rows from the cached
   feature;
+- a conditional 16x16 hierarchical softmax with a generic 16-class raw head
+  and positional nibble features;
 - a composed CFT -> TRAIL -> 43/85 field-commit pipeline fixture;
 - the field-command driver and the `RawFieldVM` chart bridge;
 - `field-selftest` and `test_raw_field` on the vendored canonical VM.

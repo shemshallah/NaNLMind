@@ -903,6 +903,32 @@ bool RawFieldVM::cft_trunk_credit(std::uint8_t target, std::uint8_t best_wrong,
     return true;
 }
 
+
+bool RawFieldVM::credit_field_vote(
+    const std::array<std::int32_t, kTriadMemberCount>& credits,
+    std::int32_t threshold,
+    std::array<std::uint8_t, kTriadCount>& votes,
+    std::uint16_t& accepted_count, bool& field_accepted) {
+    for (std::size_t i = 0; i < credits.size(); ++i) {
+        if (!write_word(0x7000u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(credits[i]))) {
+            return fail("cannot write credit-field credits");
+        }
+    }
+    if (!write_word(kProposalBase, static_cast<std::uint32_t>(threshold)) ||
+        !write_word(kCommandBase, 24)) {
+        return fail("cannot write credit-field command");
+    }
+    if (!run_command()) return false;
+    accepted_count = static_cast<std::uint16_t>(read_word(kResultBase + 0));
+    field_accepted = (read_word(kResultBase + 1) & 1u) != 0;
+    for (std::size_t i = 0; i < votes.size(); ++i) {
+        votes[i] = static_cast<std::uint8_t>(read_word(0x7100u +
+                                                      static_cast<std::uint32_t>(i)) & 1u);
+    }
+    return true;
+}
+
 bool RawFieldVM::remap(const std::array<std::uint16_t, 6>& masks,
                        std::uint32_t a, std::uint32_t b, bool target,
                        bool& improved, std::int32_t& before,

@@ -147,6 +147,11 @@ public:
                           std::int32_t e_ab, std::int32_t e_bc,
                           std::int32_t e_ca, std::int32_t error,
                           std::int32_t rate, bool& applied);
+    bool credit_field_vote(
+        const std::array<std::int32_t, kTriadMemberCount>& credits,
+        std::int32_t threshold,
+        std::array<std::uint8_t, kTriadCount>& votes,
+        std::uint16_t& accepted_count, bool& field_accepted);
     // Raw local credit update for the fixed 8-wide output/MLP layers.
     bool trunk_credit(std::uint8_t target, std::uint8_t best_wrong,
                       float learning_rate);
