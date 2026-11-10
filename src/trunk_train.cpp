@@ -908,7 +908,7 @@ int phase_ingest_cli(int argc, char** argv) {
     bool field_accept = false;
     if (!samples.empty()) {
         pipeline_dim = std::min<std::size_t>(dim * 2, 128);
-        pq_codewords = std::min<std::size_t>(samples.size(), 256);
+        pq_codewords = std::min<std::size_t>(samples.size(), 32);
         std::vector<std::int32_t> sample_bank;
         sample_bank.reserve(samples.size() * pipeline_dim);
         for (const auto& sample : samples)

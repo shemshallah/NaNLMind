@@ -237,9 +237,10 @@ The host stages byte windows and writes:
   updates, probe head/score, hot heads/triads, and the 43/85 field flag.
 
 The ingest pipeline trains its codebook in the guest with `mth_pq_train`
-(initialized from up to 256 encoded windows, one assignment/centroid pass),
-then writes residual payloads with `mth_pq_residual`. The codebook remains
-per-ingest, not a corpus-wide trained artifact.
+(up to 32 codewords from the first pipeline window, one assignment/centroid
+pass), then writes residual payloads with `mth_pq_residual`. This is a
+trained first-stage codebook, not yet a corpus-wide 8-subvector 256-entry
+PQ model.
 
 ## 9. Honest boundary
 
@@ -288,6 +289,22 @@ python3 -m runner_riddle.phase_bank_runner \
 The runner refuses repository output unless `--allow-repo` is explicit. It
 does not calculate any vector, trig, PQ, spectral or kNN value; it only
 schedules the guest, computes host storage digests, and writes the manifest.
+
+For releases, use chunked assets so a bank never needs to exist as one large
+local file:
+
+```sh
+python3 -m runner_riddle.phase_bank_runner \
+  --nanlmind /data/data/com.termux/files/home/NaNLMind \
+  --corpus state/gutenberg_150_clean_corpus.txt \
+  --out-dir /data/data/com.termux/files/usr/tmp/phase_bank \
+  --name gutenberg150_d64 --dim 64 --window 8 \
+  --release --chunk-bytes 188743680 --cleanup-local
+```
+
+`--chunk-bytes` writes `PREFIX.parts.json` and ordered part assets of at most
+that size. `--cleanup-local` removes the generated bank, parts and sidecars
+only after every release upload succeeds.
 
 ### Completed 150-book bank
 
