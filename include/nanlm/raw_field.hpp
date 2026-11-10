@@ -119,6 +119,32 @@ public:
         const std::array<float, kRawFeatureDim>& order,
         float orientation,
         std::array<float, kRawFeatureDim>& out);
+    bool role_step(
+        std::size_t token_count, const std::vector<std::uint8_t>& tokens,
+        const std::vector<std::uint8_t>& positions,
+        const std::vector<std::array<float, kRawFeatureDim>>& word_embeddings,
+        const std::array<std::array<float, kRawFeatureDim>, 4>& position_gates,
+        const std::array<float, kRawFeatureDim>& bias,
+        const std::array<float, kRawFeatureDim>& order,
+        const std::array<float, kRawFeatureDim>& relation,
+        float relation_bias, float label, float learning_rate,
+        float orientation, float& probability, float& delta);
+    bool read_role_state(std::array<float, kRawFeatureDim>& relation,
+                         float& relation_bias) const;
+    bool sense_step(
+        std::size_t token_count, const std::vector<std::uint8_t>& tokens,
+        const std::vector<std::uint8_t>& positions,
+        const std::vector<std::array<float, kRawFeatureDim>>& word_embeddings,
+        const std::array<std::array<float, kRawFeatureDim>, 4>& position_gates,
+        const std::array<float, kRawFeatureDim>& bias,
+        const std::array<float, kRawFeatureDim>& order,
+        const std::vector<std::array<float, kRawFeatureDim>>& sense_heads,
+        const std::vector<float>& sense_bias, std::size_t target,
+        float learning_rate, float orientation, float& probability,
+        float& loss);
+    bool read_sense_state(std::size_t count,
+                          std::vector<std::array<float, kRawFeatureDim>>& heads,
+                          std::vector<float>& biases) const;
     bool holo(const std::array<std::uint16_t, 3>& phases,
               std::array<std::int32_t, 2>& out);
     bool ring(const std::array<std::uint16_t, kTriadMemberCount>& phases,

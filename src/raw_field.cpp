@@ -242,6 +242,152 @@ bool RawFieldVM::context_encode(
     return true;
 }
 
+
+
+
+bool RawFieldVM::sense_step(
+    std::size_t token_count, const std::vector<std::uint8_t>& tokens,
+    const std::vector<std::uint8_t>& positions,
+    const std::vector<std::array<float, kRawFeatureDim>>& word_embeddings,
+    const std::array<std::array<float, kRawFeatureDim>, 4>& position_gates,
+    const std::array<float, kRawFeatureDim>& bias,
+    const std::array<float, kRawFeatureDim>& order,
+    const std::vector<std::array<float, kRawFeatureDim>>& sense_heads,
+    const std::vector<float>& sense_bias, std::size_t target,
+    float learning_rate, float orientation, float& probability, float& loss) {
+    if (token_count == 0 || token_count > 16 || tokens.size() != token_count ||
+        positions.size() != token_count || word_embeddings.size() < 64 ||
+        sense_heads.empty() || sense_heads.size() > 8 ||
+        sense_bias.size() != sense_heads.size() || target >= sense_heads.size()) {
+        return fail("sense-step dimensions invalid");
+    }
+    auto wf = [&](std::uint32_t index, float value) {
+        std::uint32_t bits = 0;
+        std::memcpy(&bits, &value, sizeof(bits));
+        return write_word(index, bits);
+    };
+    for (std::size_t i = 0; i < token_count; ++i)
+        if (!write_word(0x7000u + static_cast<std::uint32_t>(i), tokens[i]) ||
+            !write_word(0x7400u + static_cast<std::uint32_t>(i), positions[i]))
+            return fail("cannot write sense tokens");
+    for (std::size_t i = 0; i < 64; ++i)
+        for (std::size_t d = 0; d < kRawFeatureDim; ++d)
+            if (!wf(0x7100u + static_cast<std::uint32_t>(i * 8 + d),
+                    word_embeddings[i][d])) return fail("cannot write sense embeddings");
+    for (std::size_t p = 0; p < 4; ++p)
+        for (std::size_t d = 0; d < kRawFeatureDim; ++d)
+            if (!wf(0x7300u + static_cast<std::uint32_t>(p * 8 + d),
+                    position_gates[p][d])) return fail("cannot write sense gates");
+    for (std::size_t d = 0; d < kRawFeatureDim; ++d)
+        if (!wf(0x7380u + static_cast<std::uint32_t>(d), bias[d]) ||
+            !wf(0x7390u + static_cast<std::uint32_t>(d), order[d]))
+            return fail("cannot write sense vectors");
+    for (std::size_t k = 0; k < sense_heads.size(); ++k) {
+        for (std::size_t d = 0; d < kRawFeatureDim; ++d)
+            if (!wf(0x7600u + static_cast<std::uint32_t>(k * 8 + d),
+                    sense_heads[k][d])) return fail("cannot write sense head");
+        if (!wf(0x7700u + static_cast<std::uint32_t>(k), sense_bias[k]))
+            return fail("cannot write sense bias");
+    }
+    std::uint32_t obits = 0;
+    std::memcpy(&obits, &orientation, sizeof(obits));
+    if (!wf(0x7522u, learning_rate) ||
+        !write_word(0x4003u, static_cast<std::uint32_t>(sense_heads.size())) ||
+        !write_word(0x7523u, static_cast<std::uint32_t>(target)) ||
+        !write_word(kProposalBase + 0, static_cast<std::uint32_t>(token_count)) ||
+        !write_word(kProposalBase + 1, obits) ||
+        !write_word(kCommandBase, 42)) return fail("cannot write sense-step command");
+    if (!run_command()) return false;
+    const std::uint32_t pbits = read_word(kResultBase);
+    const std::uint32_t lbits = read_word(kResultBase + 1);
+    std::memcpy(&probability, &pbits, sizeof(pbits));
+    std::memcpy(&loss, &lbits, sizeof(lbits));
+    return true;
+}
+bool RawFieldVM::read_sense_state(
+    std::size_t count, std::vector<std::array<float, kRawFeatureDim>>& heads,
+    std::vector<float>& biases) const {
+    if (count == 0 || count > 8) return false;
+    heads.assign(count, {});
+    biases.assign(count, 0.0f);
+    for (std::size_t k = 0; k < count; ++k) {
+        for (std::size_t d = 0; d < kRawFeatureDim; ++d) {
+            const std::uint32_t bits = read_word(0x7600u + static_cast<std::uint32_t>(k * 8 + d));
+            std::memcpy(&heads[k][d], &bits, sizeof(bits));
+        }
+        const std::uint32_t bits = read_word(0x7700u + static_cast<std::uint32_t>(k));
+        std::memcpy(&biases[k], &bits, sizeof(bits));
+    }
+    return true;
+}
+
+bool RawFieldVM::read_role_state(std::array<float, kRawFeatureDim>& relation,
+                                 float& relation_bias) const {
+    for (std::size_t d = 0; d < kRawFeatureDim; ++d) {
+        const std::uint32_t bits = read_word(0x7500u + static_cast<std::uint32_t>(d));
+        std::memcpy(&relation[d], &bits, sizeof(bits));
+    }
+    const std::uint32_t bits = read_word(0x7520u);
+    std::memcpy(&relation_bias, &bits, sizeof(bits));
+    return true;
+}
+
+bool RawFieldVM::role_step(
+    std::size_t token_count, const std::vector<std::uint8_t>& tokens,
+    const std::vector<std::uint8_t>& positions,
+    const std::vector<std::array<float, kRawFeatureDim>>& word_embeddings,
+    const std::array<std::array<float, kRawFeatureDim>, 4>& position_gates,
+    const std::array<float, kRawFeatureDim>& bias,
+    const std::array<float, kRawFeatureDim>& order,
+    const std::array<float, kRawFeatureDim>& relation,
+    float relation_bias, float label, float learning_rate,
+    float orientation, float& probability, float& delta) {
+    if (token_count == 0 || token_count > 16 || tokens.size() != token_count ||
+        positions.size() != token_count || word_embeddings.size() < 64) {
+        return fail("role-step dimensions invalid");
+    }
+    auto wf = [&](std::uint32_t index, float value) {
+        std::uint32_t bits = 0;
+        std::memcpy(&bits, &value, sizeof(bits));
+        return write_word(index, bits);
+    };
+    for (std::size_t i = 0; i < token_count; ++i) {
+        if (!write_word(0x7000u + static_cast<std::uint32_t>(i), tokens[i]) ||
+            !write_word(0x7400u + static_cast<std::uint32_t>(i), positions[i]))
+            return fail("cannot write role tokens");
+    }
+    for (std::size_t i = 0; i < 64; ++i)
+        for (std::size_t d = 0; d < kRawFeatureDim; ++d)
+            if (!wf(0x7100u + static_cast<std::uint32_t>(i * 8 + d),
+                    word_embeddings[i][d])) return fail("cannot write role embeddings");
+    for (std::size_t p = 0; p < 4; ++p)
+        for (std::size_t d = 0; d < kRawFeatureDim; ++d)
+            if (!wf(0x7300u + static_cast<std::uint32_t>(p * 8 + d),
+                    position_gates[p][d])) return fail("cannot write role gates");
+    for (std::size_t d = 0; d < kRawFeatureDim; ++d) {
+        if (!wf(0x7380u + static_cast<std::uint32_t>(d), bias[d]) ||
+            !wf(0x7390u + static_cast<std::uint32_t>(d), order[d]) ||
+            !wf(0x7500u + static_cast<std::uint32_t>(d), relation[d])) {
+            return fail("cannot write role vectors");
+        }
+    }
+    std::uint32_t obits = 0;
+    std::memcpy(&obits, &orientation, sizeof(obits));
+    if (!wf(0x7520u, relation_bias) || !wf(0x7521u, label) ||
+        !wf(0x7522u, learning_rate) ||
+        !write_word(kProposalBase + 0, static_cast<std::uint32_t>(token_count)) ||
+        !write_word(kProposalBase + 1, obits) ||
+        !write_word(kCommandBase, 41)) {
+        return fail("cannot write role-step command");
+    }
+    if (!run_command()) return false;
+    const std::uint32_t pbits = read_word(kResultBase);
+    const std::uint32_t dbits = read_word(kResultBase + 1);
+    std::memcpy(&probability, &pbits, sizeof(pbits));
+    std::memcpy(&delta, &dbits, sizeof(dbits));
+    return true;
+}
+
 bool RawFieldVM::holo(const std::array<std::uint16_t, 3>& phases,
                       std::array<std::int32_t, 2>& out) {
     for (std::size_t i = 0; i < phases.size(); ++i)
