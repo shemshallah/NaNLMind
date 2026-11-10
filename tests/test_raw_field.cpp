@@ -565,5 +565,54 @@ int main() {
                         senses, sbias, 1, 0.5f, 1.0f, sp2, sl));
     CHECK(sp2 > sp1);
 
+    // D=24 raw contextual training loop. The host only stages tokens and
+    // reads probabilities; all forward, softmax, and local-gradient work is
+    // executed by the raw NaN16 guest.
+    std::vector<std::array<float, 24>> ctx24_words(64);
+    std::array<std::array<float, 24>, 4> ctx24_gates{};
+    ctx24_words[0][0] = 1.0f;
+    ctx24_gates[0][0] = 1.0f;
+    std::array<float, 24> ctx24_bias{}, ctx24_order{}, rel24{};
+    CHECK(vm.init_context24(ctx24_words, ctx24_gates, ctx24_bias, ctx24_order));
+    rel24[0] = 1.0f;
+    CHECK(vm.init_role24(rel24, 0.0f));
+    float r24_prev = 0.0f;
+    for (int step = 0; step < 4; ++step) {
+        float p = 0.0f, d = 0.0f;
+        CHECK(vm.role_step24_cached(1, {0}, {0}, 1.0f, 0.5f, 1.0f, p, d));
+        CHECK(std::isfinite(p) && std::isfinite(d));
+        CHECK(p > r24_prev);
+        r24_prev = p;
+    }
+
+    // Multiple relation heads: reset the encoder and train relation 0 while
+    // relation 1 provides a competing score.
+    CHECK(vm.init_context24(ctx24_words, ctx24_gates, ctx24_bias, ctx24_order));
+    std::vector<std::array<float, 24>> rel24_heads(2);
+    rel24_heads[1][0] = -1.0f;
+    std::vector<float> rel24_bias(2, 0.0f);
+    CHECK(vm.init_role24k(rel24_heads, rel24_bias));
+    float r24k_prev = 0.0f;
+    for (int step = 0; step < 4; ++step) {
+        float p = 0.0f, d = 0.0f;
+        CHECK(vm.role_step24k_cached(1, {0}, {0}, 0, 1.0f, 0.5f, 1.0f, p, d));
+        CHECK(std::isfinite(p) && std::isfinite(d));
+        CHECK(p > r24k_prev);
+        r24k_prev = p;
+    }
+
+    std::vector<std::array<float, 24>> senses24(2);
+    senses24[1][0] = 1.0f;
+    std::vector<float> sbias24(2, 0.0f);
+    CHECK(vm.init_sense24(senses24, sbias24));
+    float s24_prev = 0.0f;
+    for (int step = 0; step < 4; ++step) {
+        float p = 0.0f, loss = 0.0f;
+        CHECK(vm.sense_step24_cached(1, {0}, {0}, 1, 0.5f, 1.0f, p, loss));
+        CHECK(std::isfinite(p) && std::isfinite(loss));
+        CHECK(p > s24_prev);
+        s24_prev = p;
+    }
+
     return test_done("raw NaN16 field VM bridge");
 }

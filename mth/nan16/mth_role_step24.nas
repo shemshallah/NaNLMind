@@ -2,8 +2,8 @@
 ;
 ; Memory:
 ;   encoder state per mth_context_encode
-;   relation vector 0x8760[8], relation bias 0x8780
-;   label 0x8781, learning rate 0x8782, dh 0x87A0[8]
+;   relation vector 0x8760[24], relation bias 0x8780
+;   label 0x8781, learning rate 0x8782, dh 0x87A0[24]
 ;   command 41; returns r1=p, r2=delta.
 mth_role_step24:
   MOVI r12,@mth_rs24_link

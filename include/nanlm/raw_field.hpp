@@ -179,6 +179,42 @@ public:
         const std::array<float, kRawFeatureDim>& order,
         float orientation,
         std::array<float, kRawFeatureDim>& out);
+    using Feature24 = std::array<float, 24>;
+    bool init_context24(
+        const std::vector<std::array<float, 24>>& word_embeddings,
+        const std::array<std::array<float, 24>, 4>& position_gates,
+        const std::array<float, 24>& bias,
+        const std::array<float, 24>& order);
+    bool init_role24(const std::array<float, 24>& relation, float relation_bias);
+    bool init_role24k(const std::vector<std::array<float, 24>>& relation_heads,
+                      const std::vector<float>& relation_bias);
+    bool role_step24k_cached(std::size_t token_count,
+                             const std::vector<std::uint8_t>& tokens,
+                             const std::vector<std::uint8_t>& positions,
+                             std::size_t target_relation, float label,
+                             float learning_rate, float orientation,
+                             float& probability, float& delta);
+    bool read_context24(std::vector<std::array<float, 24>>& word_embeddings,
+                        std::array<std::array<float, 24>, 4>& position_gates,
+                        std::array<float, 24>& bias,
+                        std::array<float, 24>& order);
+    bool read_role24k_state(std::vector<std::array<float, 24>>& heads,
+                            std::vector<float>& biases);
+    bool read_sense24(std::vector<std::array<float, 24>>& heads,
+                      std::vector<float>& biases);
+    bool role_step24_cached(std::size_t token_count,
+                            const std::vector<std::uint8_t>& tokens,
+                            const std::vector<std::uint8_t>& positions,
+                            float label, float learning_rate, float orientation,
+                            float& probability, float& delta);
+    bool init_sense24(
+        const std::vector<std::array<float, 24>>& sense_heads,
+        const std::vector<float>& sense_bias);
+    bool sense_step24_cached(std::size_t token_count,
+                             const std::vector<std::uint8_t>& tokens,
+                             const std::vector<std::uint8_t>& positions,
+                             std::size_t target, float learning_rate,
+                             float orientation, float& probability, float& loss);
     bool role_step(
         std::size_t token_count, const std::vector<std::uint8_t>& tokens,
         const std::vector<std::uint8_t>& positions,

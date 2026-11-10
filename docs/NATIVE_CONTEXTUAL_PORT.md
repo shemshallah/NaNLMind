@@ -1,9 +1,14 @@
 # Contextual role/sense port and compact head catalog
 
-Status: **reference port**, not a raw-NaN production claim. The role and sense
-learners are C++ double-precision references ported from nanlm-test PR50/PR52
-into NaNLMind. Their arithmetic must still be moved to 0xNaN before being
-counted as native runtime.
+Status: **raw-NaN production path**. The role and sense learners now train
+inside the NaN0S VM at D=24. The C++ double-precision PR50/PR52 ports remain
+as convergence and scrambled-label controls; they are no longer the production
+contextual training loop.
+
+The host only tokenizes text and stages token ids, positions, oracle relation /
+sense targets, and the initial parameter blocks. Every forward pass, sigmoid or
+softmax, shared-encoder local gradient, relation/sense head update, and bias
+update runs in `mth/drivers/field_driver.nas`.
 
 ## Ported
 
@@ -40,18 +45,42 @@ kernels now backpropagate through the shared encoder as well:
 - sense: softmax CE → `dh` → token embeddings, position gates, bias, order,
   sense heads and sense biases.
 
-The D=8 path is exercised by `test_raw_field`, and a D=24 raw variant now
-exists:
+The D=8 path is exercised by `test_raw_field`; the production corpus path uses
+D=24:
 
-- `mth_context_encode24.nas`
-- `mth_role_step24.nas`
-- `mth_sense_step24.nas`
-- fixture `mth/tests/mth_context24_test.nas`
+- `mth_context_encode24.nas` — shared contextual encoder;
+- `mth_role_step24.nas` — single-relation raw role kernel;
+- `mth_role_step24k.nas` — multi-relation raw role heads (command 57);
+- `mth_sense_step24.nas` — exact-sense softmax head (command 56);
+- fixture `mth/tests/mth_context24_test.nas`;
+- corpus test `tests/test_raw_contextual.cpp`.
 
-The D=24 fixture one-hot encodes a token, checks `tanh(1)`, runs a role update
-and a two-candidate sense softmax update. The C++ PR50/PR52 D=24 reference
-remains the convergence/control path; the raw D=24 kernels are now executable
-and are not a quality claim.
+The corpus test uses the same PR50/PR52 synthetic splits as the C++ controls
+(288/144/144 role rows and 120 train / 8 held-out sense rows), but the host
+does not call `ContextualRoleLearner` or `ContextualSenseLearner`. Measured raw
+result:
+
+```text
+RAW_CONTEXTUAL PASS
+role_train=288 role_dev=144 role_test=144
+role_dev_accuracy=1 role_test_accuracy=1
+role_inversion=yes role_restored_accuracy=1 role_shuffled_accuracy=0.5
+role_updates=25920
+sense_train=120 sense_test=8
+sense_accuracy=0.875 sense_restored_accuracy=0.875
+sense_shuffled_accuracy=0.375 sense_updates=14400
+```
+
+Role features follow PR50: subject/object tokens are removed, the remaining
+lexical tokens use four relative position slots, and orientation is +1/-1 from
+subject/object order. Sense features follow PR52: the target surface form is
+removed and the remaining context uses pre/post-target slots. Unknown test
+words are skipped exactly as in the C++ reference.
+
+The raw context, multi-relation head bank, sense heads, and biases are read
+back from guest memory and reloaded into fresh VMs. Both restored models keep
+their held-out accuracy exactly, so the checkpoint state is not trapped in one
+host process.
 
 ## Measured reference results
 
@@ -111,7 +140,8 @@ Test: `build/test_head_catalog` → PASS.
 
 ## Remaining
 
-- Port role/sense forward and gradient updates to raw `mth/*.nas`.
-- Feed the shared contextual state from the UnifiedWave/context memory.
+- Feed the shared contextual raw state from the UnifiedWave/context memory.
+- Promote the in-memory D=24 checkpoint round-trip into the persistent
+  role/sense checkpoint container.
 - Keep exact WordNet IDs in the sparse semantic ledger, not in 256 head buckets.
 - Evaluate on source-disjoint prose after the raw port.

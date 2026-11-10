@@ -2,9 +2,9 @@
 ;
 ; Fixed memory:
 ;   0x7000 tokens[T] word ids 0..63
-;   0x8000 word embeddings 64 x 8 float32
-;   0x8600 position gates 4 x 8 float32
-;   0x8700 bias[8], 0x8720 order[8], 0x8740 output[8]
+;   0x8000 word embeddings 64 x 24 float32
+;   0x8600 position gates 4 x 24 float32
+;   0x8700 bias[24], 0x8720 order[24], 0x8740 output[24]
 ;   0x7400 positions[T] in 0..3
 ;   0x4001 T, 0x4002 orientation float32 bits
 ; Returns r1=8.

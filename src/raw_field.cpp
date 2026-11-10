@@ -398,6 +398,239 @@ bool RawFieldVM::read_role_state(std::array<float, kRawFeatureDim>& relation,
     return true;
 }
 
+
+bool RawFieldVM::init_context24(
+    const std::vector<std::array<float, 24>>& word_embeddings,
+    const std::array<std::array<float, 24>, 4>& position_gates,
+    const std::array<float, 24>& bias,
+    const std::array<float, 24>& order) {
+    if (word_embeddings.size() < 64) return fail("context24 embeddings short");
+    auto wf = [&](std::uint32_t index, float value) {
+        std::uint32_t bits = 0;
+        std::memcpy(&bits, &value, sizeof(bits));
+        return write_word(index, bits);
+    };
+    for (std::size_t t = 0; t < 64; ++t)
+        for (std::size_t d = 0; d < 24; ++d)
+            if (!wf(0x8000u + static_cast<std::uint32_t>(t * 24 + d),
+                    word_embeddings[t][d])) return fail("init context24 embedding");
+    for (std::size_t p = 0; p < 4; ++p)
+        for (std::size_t d = 0; d < 24; ++d)
+            if (!wf(0x8600u + static_cast<std::uint32_t>(p * 24 + d),
+                    position_gates[p][d])) return fail("init context24 gate");
+    for (std::size_t d = 0; d < 24; ++d)
+        if (!wf(0x8700u + static_cast<std::uint32_t>(d), bias[d]) ||
+            !wf(0x8720u + static_cast<std::uint32_t>(d), order[d]))
+            return fail("init context24 vector");
+    return true;
+}
+
+bool RawFieldVM::init_role24(const std::array<float, 24>& relation,
+                             float relation_bias) {
+    auto wf = [&](std::uint32_t index, float value) {
+        std::uint32_t bits = 0;
+        std::memcpy(&bits, &value, sizeof(bits));
+        return write_word(index, bits);
+    };
+    for (std::size_t d = 0; d < 24; ++d)
+        if (!wf(0x8760u + static_cast<std::uint32_t>(d), relation[d]))
+            return fail("init role24 relation");
+    return wf(0x8780u, relation_bias);
+}
+
+
+bool RawFieldVM::init_role24k(
+    const std::vector<std::array<float, 24>>& relation_heads,
+    const std::vector<float>& relation_bias) {
+    if (relation_heads.empty() || relation_heads.size() > 8 ||
+        relation_bias.size() != relation_heads.size())
+        return fail("role24k init bounds");
+    auto wf = [&](std::uint32_t index, float value) {
+        std::uint32_t bits = 0;
+        std::memcpy(&bits, &value, sizeof(bits));
+        return write_word(index, bits);
+    };
+    for (std::size_t k = 0; k < relation_heads.size(); ++k) {
+        for (std::size_t d = 0; d < 24; ++d)
+            if (!wf(0x8A00u + static_cast<std::uint32_t>(k * 24 + d),
+                    relation_heads[k][d])) return fail("role24k head");
+        if (!wf(0x8C00u + static_cast<std::uint32_t>(k), relation_bias[k]))
+            return fail("role24k bias");
+    }
+    return write_word(0x8C08u, static_cast<std::uint32_t>(relation_heads.size()));
+}
+
+
+
+
+bool RawFieldVM::read_context24(
+    std::vector<std::array<float, 24>>& word_embeddings,
+    std::array<std::array<float, 24>, 4>& position_gates,
+    std::array<float, 24>& bias, std::array<float, 24>& order) {
+    auto rf = [&](std::uint32_t index, float& value) {
+        const std::uint32_t bits = read_word(index);
+        std::memcpy(&value, &bits, sizeof(value));
+    };
+    word_embeddings.assign(64, {});
+    for (std::size_t t = 0; t < 64; ++t)
+        for (std::size_t d = 0; d < 24; ++d)
+            rf(0x8000u + static_cast<std::uint32_t>(t * 24 + d),
+               word_embeddings[t][d]);
+    for (std::size_t p = 0; p < 4; ++p)
+        for (std::size_t d = 0; d < 24; ++d)
+            rf(0x8600u + static_cast<std::uint32_t>(p * 24 + d),
+               position_gates[p][d]);
+    for (std::size_t d = 0; d < 24; ++d) {
+        rf(0x8700u + static_cast<std::uint32_t>(d), bias[d]);
+        rf(0x8720u + static_cast<std::uint32_t>(d), order[d]);
+    }
+    return true;
+}
+
+bool RawFieldVM::read_sense24(
+    std::vector<std::array<float, 24>>& heads, std::vector<float>& biases) {
+    const std::uint32_t count = read_word(0x4003u);
+    if (count == 0 || count > 8) return fail("sense24 state count");
+    heads.assign(count, {});
+    biases.assign(count, 0.0f);
+    for (std::uint32_t k = 0; k < count; ++k) {
+        for (std::uint32_t d = 0; d < 24; ++d) {
+            const std::uint32_t bits = read_word(0x8800u + k * 24u + d);
+            std::memcpy(&heads[k][d], &bits, sizeof(bits));
+        }
+        const std::uint32_t bits = read_word(0x8900u + k);
+        std::memcpy(&biases[k], &bits, sizeof(bits));
+    }
+    return true;
+}
+
+bool RawFieldVM::read_role24k_state(
+    std::vector<std::array<float, 24>>& heads, std::vector<float>& biases) {
+    const std::uint32_t count = read_word(0x8C08u);
+    if (count == 0 || count > 8) return fail("role24k state count");
+    heads.assign(count, {});
+    biases.assign(count, 0.0f);
+    for (std::uint32_t k = 0; k < count; ++k) {
+        for (std::uint32_t d = 0; d < 24; ++d) {
+            const std::uint32_t bits = read_word(0x8A00u + k * 24u + d);
+            std::memcpy(&heads[k][d], &bits, sizeof(bits));
+        }
+        const std::uint32_t bits = read_word(0x8C00u + k);
+        std::memcpy(&biases[k], &bits, sizeof(bits));
+    }
+    return true;
+}
+
+bool RawFieldVM::role_step24k_cached(
+    std::size_t token_count, const std::vector<std::uint8_t>& tokens,
+    const std::vector<std::uint8_t>& positions, std::size_t target_relation,
+    float label, float learning_rate, float orientation, float& probability,
+    float& delta) {
+    if (token_count == 0 || token_count > 16 || tokens.size() != token_count ||
+        positions.size() != token_count) return fail("role24k token count");
+    for (std::size_t i = 0; i < token_count; ++i)
+        if (!write_word(0x7000u + static_cast<std::uint32_t>(i), tokens[i]) ||
+            !write_word(0x7400u + static_cast<std::uint32_t>(i), positions[i]))
+            return fail("role24k tokens");
+    auto wf = [&](std::uint32_t index, float value) {
+        std::uint32_t bits = 0;
+        std::memcpy(&bits, &value, sizeof(bits));
+        return write_word(index, bits);
+    };
+    std::uint32_t obits = 0;
+    std::memcpy(&obits, &orientation, sizeof(obits));
+    if (!wf(0x8781u, label) || !wf(0x8782u, learning_rate) ||
+        !write_word(0x8C09u, static_cast<std::uint32_t>(target_relation)) ||
+        !write_word(kProposalBase + 0, static_cast<std::uint32_t>(token_count)) ||
+        !write_word(kProposalBase + 1, obits) ||
+        !write_word(kCommandBase, 57)) return fail("role24k command");
+    if (!run_command()) return false;
+    const std::uint32_t pbits = read_word(kResultBase);
+    const std::uint32_t dbits = read_word(kResultBase + 1);
+    std::memcpy(&probability, &pbits, sizeof(pbits));
+    std::memcpy(&delta, &dbits, sizeof(dbits));
+    return true;
+}
+
+bool RawFieldVM::role_step24_cached(
+    std::size_t token_count, const std::vector<std::uint8_t>& tokens,
+    const std::vector<std::uint8_t>& positions, float label,
+    float learning_rate, float orientation, float& probability, float& delta) {
+    if (token_count == 0 || token_count > 16 || tokens.size() != token_count ||
+        positions.size() != token_count) return fail("role24 token count");
+    for (std::size_t i = 0; i < token_count; ++i)
+        if (!write_word(0x7000u + static_cast<std::uint32_t>(i), tokens[i]) ||
+            !write_word(0x7400u + static_cast<std::uint32_t>(i), positions[i]))
+            return fail("role24 tokens");
+    auto wf = [&](std::uint32_t index, float value) {
+        std::uint32_t bits = 0;
+        std::memcpy(&bits, &value, sizeof(bits));
+        return write_word(index, bits);
+    };
+    std::uint32_t obits = 0;
+    std::memcpy(&obits, &orientation, sizeof(obits));
+    if (!wf(0x8781u, label) || !wf(0x8782u, learning_rate) ||
+        !write_word(kProposalBase + 0, static_cast<std::uint32_t>(token_count)) ||
+        !write_word(kProposalBase + 1, obits) ||
+        !write_word(kCommandBase, 55)) return fail("role24 command");
+    if (!run_command()) return false;
+    const std::uint32_t pbits = read_word(kResultBase);
+    const std::uint32_t dbits = read_word(kResultBase + 1);
+    std::memcpy(&probability, &pbits, sizeof(pbits));
+    std::memcpy(&delta, &dbits, sizeof(dbits));
+    return true;
+}
+
+bool RawFieldVM::init_sense24(
+    const std::vector<std::array<float, 24>>& sense_heads,
+    const std::vector<float>& sense_bias) {
+    if (sense_heads.empty() || sense_heads.size() > 8 ||
+        sense_bias.size() != sense_heads.size()) return fail("sense24 init bounds");
+    auto wf = [&](std::uint32_t index, float value) {
+        std::uint32_t bits = 0;
+        std::memcpy(&bits, &value, sizeof(bits));
+        return write_word(index, bits);
+    };
+    for (std::size_t k = 0; k < sense_heads.size(); ++k) {
+        for (std::size_t d = 0; d < 24; ++d)
+            if (!wf(0x8800u + static_cast<std::uint32_t>(k * 24 + d),
+                    sense_heads[k][d])) return fail("sense24 head");
+        if (!wf(0x8900u + static_cast<std::uint32_t>(k), sense_bias[k]))
+            return fail("sense24 bias");
+    }
+    return write_word(0x4003u, static_cast<std::uint32_t>(sense_heads.size()));
+}
+
+bool RawFieldVM::sense_step24_cached(
+    std::size_t token_count, const std::vector<std::uint8_t>& tokens,
+    const std::vector<std::uint8_t>& positions, std::size_t target,
+    float learning_rate, float orientation, float& probability, float& loss) {
+    if (token_count == 0 || token_count > 16 || tokens.size() != token_count ||
+        positions.size() != token_count) return fail("sense24 token count");
+    for (std::size_t i = 0; i < token_count; ++i)
+        if (!write_word(0x7000u + static_cast<std::uint32_t>(i), tokens[i]) ||
+            !write_word(0x7400u + static_cast<std::uint32_t>(i), positions[i]))
+            return fail("sense24 tokens");
+    auto wf = [&](std::uint32_t index, float value) {
+        std::uint32_t bits = 0;
+        std::memcpy(&bits, &value, sizeof(bits));
+        return write_word(index, bits);
+    };
+    std::uint32_t obits = 0;
+    std::memcpy(&obits, &orientation, sizeof(obits));
+    if (!wf(0x8782u, learning_rate) ||
+        !write_word(0x8783u, static_cast<std::uint32_t>(target)) ||
+        !write_word(kProposalBase + 0, static_cast<std::uint32_t>(token_count)) ||
+        !write_word(kProposalBase + 1, obits) ||
+        !write_word(kCommandBase, 56)) return fail("sense24 command");
+    if (!run_command()) return false;
+    const std::uint32_t pbits = read_word(kResultBase);
+    const std::uint32_t lbits = read_word(kResultBase + 1);
+    std::memcpy(&probability, &pbits, sizeof(pbits));
+    std::memcpy(&loss, &lbits, sizeof(lbits));
+    return true;
+}
+
 bool RawFieldVM::role_step(
     std::size_t token_count, const std::vector<std::uint8_t>& tokens,
     const std::vector<std::uint8_t>& positions,

@@ -3,7 +3,7 @@
 ; softmax CE and its local encoder gradient.
 ;
 ; Memory:
-;   candidate heads K x 8 at 0x8800, biases at 0x8900 (K<=8)
+;   candidate heads K x 24 at 0x8800, biases at 0x8900 (K<=8)
 ;   K 0x4003, target index 0x8783, learning rate 0x8782
 ;   command 42; returns r1=target probability, r2=loss
 mth_sense_step24:
