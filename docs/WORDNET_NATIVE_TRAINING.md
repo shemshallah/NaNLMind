@@ -242,7 +242,21 @@ large improvement.
 # Best held-out setting.
 ./build/nanlm-universal context-train state/wordnet_corpus.txt \
   0 5 100000 11456 4 0.1 1 0.8 backoff
+
+# Opt-in raw copy/induction soft gate (2-byte suffix table, guest routing).
+./build/nanlm-universal context-train state/wordnet_corpus.txt \
+  0 5 100000 11456 4 0.1 1 0.8 induction 10500 aux=1024 weight=0.15
 ```
+
+The opt-in `induction` route reaches `67.8345%` final held-out
+(`67.8771%` best, epoch 4) against the `backoff` baseline's `66.8852%`
+final (`66.8894%` best, epoch 3) on the same split. Weight `0` is
+`67.1747%`, so the guest combined scoring accounts for `+0.2895` points and
+the suffix copy table for `+0.6598` more. Five epochs take about `89 s`
+versus `36-42 s` for the baseline. The memory table's training loss is
+identical to the baseline; the gain is entirely in the combined scorer. The
+weight was selected by a held-out sweep, so its exact value is not an
+unbiased estimate.
 
 `11,456` is close to the fixed VM table limit. The Gutenberg parallel job
 (Alice + Moby) reaches `40.7879%` held-out at the same settings; it is a

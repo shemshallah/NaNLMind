@@ -624,13 +624,13 @@ int context_hash_check_cli(int argc, char** argv) {
 int context_train_cli(int argc, char** argv) {
     if (argc < 3) {
         std::cerr << "usage: nanlm-universal context-train CORPUS [MAX_LINES] [EPOCHS]"
-                     " [REPORT_EVERY] [BUCKETS] [CONTEXT_BYTES] [LR] [EVAL_EVERY] [TRAIN_FRACTION] [backoff|backoffcopy] [EXACT_BUCKETS] [fallback=N] [batch=N]\n"
+                     " [REPORT_EVERY] [BUCKETS] [CONTEXT_BYTES] [LR] [EVAL_EVERY] [TRAIN_FRACTION] [backoff|backoffcopy|induction] [EXACT_BUCKETS] [fallback=N] [aux=N] [weight=F]\n"
                   << "Trains a raw context-indexed 16x16 class-memory readout.\n"
                   << "TRAIN_FRACTION <1 holds out a random evaluation split.\n"
                   << "backoff uses exact high-frequency 4-byte contexts plus a 3-byte fallback.\n"
                   << "backoffcopy routes unseen 3-byte contexts to a copy/unigram table.\n"
-                  << "batch=N groups N samples into one raw guest command"
-                     " (0=off, 1..8192).\n";
+                  << "induction adds a raw 2-byte suffix continuation table; exact/backoff\n"
+                  << "routing and the combined copy gate run in mth_context_copy.nas.\n";
         return 2;
     }
     const std::string corpus_path = argv[2];
@@ -639,9 +639,11 @@ int context_train_cli(int argc, char** argv) {
     float base_lr = 0.5f, train_fraction = 1.0f;
     bool backoff_mode = false;
     bool copy_backoff = false;
+    bool induction_mode = false;
     std::size_t exact_limit_arg = 10500;
     std::size_t fallback_bytes = 3;
-    std::size_t batch_size = 0;
+    std::size_t aux_buckets = 1024;
+    float gate_weight = 0.15f;
     std::string load_path;
     std::string save_path;
     try {
@@ -655,8 +657,10 @@ int context_train_cli(int argc, char** argv) {
         if (argc > 10) train_fraction = std::stof(argv[10]);
         if (argc > 11) {
             const std::string route = argv[11];
-            backoff_mode = route == "backoff" || route == "backoffcopy";
+            backoff_mode = route == "backoff" || route == "backoffcopy" ||
+                route == "induction";
             copy_backoff = route == "backoffcopy";
+            induction_mode = route == "induction";
         }
         if (argc > 12) exact_limit_arg = static_cast<std::size_t>(std::stoull(argv[12]));
         for (int i = 13; i < argc; ++i) {
@@ -665,17 +669,25 @@ int context_train_cli(int argc, char** argv) {
             else if (arg.rfind("save=", 0) == 0) save_path = arg.substr(5);
             else if (arg.rfind("fallback=", 0) == 0) {
                 fallback_bytes = static_cast<std::size_t>(std::stoull(arg.substr(9)));
-            } else if (arg.rfind("batch=", 0) == 0) {
-                batch_size = static_cast<std::size_t>(std::stoull(arg.substr(6)));
+            } else if (arg.rfind("aux=", 0) == 0) {
+                aux_buckets = static_cast<std::size_t>(std::stoull(arg.substr(4)));
+            } else if (arg.rfind("weight=", 0) == 0) {
+                gate_weight = std::stof(arg.substr(7));
             }
         }
     } catch (...) { std::cerr << "invalid numeric argument\n"; return 2; }
     if (buckets == 0 || buckets > 16384 || context_bytes == 0 || context_bytes > 8 ||
-        fallback_bytes == 0 || fallback_bytes > 8 || batch_size > kRawContextBatchMax ||
-        base_lr <= 0.0f || train_fraction <= 0.0f || train_fraction > 1.0f) {
-        std::cerr << "buckets 1..16384, context bytes 1..8, batch 1.."
-                  << kRawContextBatchMax << ", positive LR,"
+        fallback_bytes == 0 || fallback_bytes > 8 ||
+        aux_buckets == 0 || aux_buckets > 1024 ||
+        base_lr <= 0.0f || train_fraction <= 0.0f || train_fraction > 1.0f ||
+        gate_weight < 0.0f) {
+        std::cerr << "buckets 1..16384, context bytes 1..8, aux 1..1024,"
+                     " non-negative gate weight, positive LR,"
                      " train fraction in (0,1] required\n";
+        return 2;
+    }
+    if (induction_mode && (!load_path.empty() || !save_path.empty())) {
+        std::cerr << "induction checkpoints are not implemented\n";
         return 2;
     }
     std::ifstream in(corpus_path, std::ios::binary);
@@ -707,18 +719,26 @@ int context_train_cli(int argc, char** argv) {
     // selection path because they need residency/rank bookkeeping.
     const bool raw_context_hash = !backoff_mode && context_bytes <= 4;
     std::vector<std::uint32_t> context_buckets(usable.size());
-    std::vector<std::uint32_t> context_words(usable.size());
+    std::vector<std::uint32_t> packed_contexts(usable.size());
     std::vector<std::uint8_t> targets(usable.size());
     for (std::size_t i = 0; i < usable.size(); ++i) {
         const auto line = usable[i];
         targets[i] = static_cast<std::uint8_t>(line[8]);
-        if (raw_context_hash) {
-            context_words[i] = pack_context_bytes(line, context_bytes);
-            continue;
+        packed_contexts[i] =
+            (static_cast<std::uint32_t>(static_cast<std::uint8_t>(line[4])) << 24) |
+            (static_cast<std::uint32_t>(static_cast<std::uint8_t>(line[5])) << 16) |
+            (static_cast<std::uint32_t>(static_cast<std::uint8_t>(line[6])) << 8) |
+            static_cast<std::uint32_t>(static_cast<std::uint8_t>(line[7]));
+        std::uint32_t hash = 2166136261u;
+        for (std::size_t j = 0; j < context_bytes; ++j) {
+            const auto byte = static_cast<std::uint8_t>(line[8 - context_bytes + j]);
+            hash = (hash ^ byte) * 16777619u;
         }
         context_buckets[i] = reference_fnv_context_bucket(
             line, context_bytes, static_cast<std::uint32_t>(buckets));
     }
+    std::size_t exact_count = 0;
+    std::vector<std::uint32_t> exact_keys;
     std::vector<std::size_t> all_indices(usable.size());
     for (std::size_t i = 0; i < all_indices.size(); ++i) all_indices[i] = i;
     std::vector<std::size_t> train_indices;
@@ -755,11 +775,13 @@ int context_train_cli(int argc, char** argv) {
         std::sort(ranked.begin(), ranked.end(),
                   [](const auto& a, const auto& b) { return a.first > b.first; });
         const std::size_t exact_limit = std::min<std::size_t>(exact_limit_arg, buckets - 1);
-        const std::size_t exact_count = std::min(exact_limit, ranked.size());
+        exact_count = std::min(exact_limit, ranked.size());
         std::unordered_map<std::uint32_t, std::uint32_t> exact;
         exact.reserve(exact_count * 2);
+        exact_keys.assign(exact_count, 0);
         for (std::size_t i = 0; i < exact_count; ++i) {
             exact.emplace(ranked[i].second, static_cast<std::uint32_t>(i));
+            exact_keys[i] = ranked[i].second;
         }
         const std::size_t fallback = buckets - exact_count;
         const std::size_t k3_fallback = copy_backoff && fallback > 1
@@ -819,7 +841,13 @@ int context_train_cli(int argc, char** argv) {
         return 7;
     }
     const auto reset_started = std::chrono::steady_clock::now();
-    if (!load_path.empty()) {
+    if (induction_mode) {
+        if (!vm.reset_context_readout(buckets) ||
+            !vm.reset_context_copy(exact_keys, buckets, aux_buckets)) {
+            std::cerr << "cannot reset context copy readout: " << vm.error() << "\n";
+            return 7;
+        }
+    } else if (!load_path.empty()) {
         if (!vm.load_context_readout(load_path, buckets)) {
             std::cerr << "cannot load context readout: " << vm.error() << "\n";
             return 7;
@@ -830,67 +858,39 @@ int context_train_cli(int argc, char** argv) {
     }
     std::cout << "context_tables buckets=" << buckets
               << " train_samples=" << train_indices.size()
-              << " eval_samples=" << eval_indices.size()
-              << " batch=" << batch_size
-              << " reset_seconds="
+              << " eval_samples=" << eval_indices.size();
+    if (induction_mode) {
+        std::cout << " route=induction exact=" << exact_count
+                  << " aux_buckets=" << aux_buckets
+                  << " weight=" << gate_weight;
+    }
+    std::cout << " reset_seconds="
               << std::chrono::duration<double>(
                      std::chrono::steady_clock::now() - reset_started).count()
               << "\n";
-    std::vector<std::uint8_t> batch_targets;
-    std::vector<std::uint32_t> batch_contexts;
-    std::vector<float> batch_lrs;
-    const auto run_batch = [&](const std::size_t* samples, std::size_t count,
-                               float learning_rate, std::size_t& correct_count,
-                               float& loss_sum) -> bool {
-        batch_targets.resize(count);
-        batch_contexts.resize(count);
-        batch_lrs.resize(count);
-        for (std::size_t i = 0; i < count; ++i) {
-            batch_targets[i] = targets[samples[i]];
-            batch_contexts[i] = context_buckets[samples[i]];
-            batch_lrs[i] = learning_rate;
+    const auto run_context = [&](std::size_t sample, float lr, bool& correct,
+                                 float& loss) -> bool {
+        if (induction_mode) {
+            std::uint8_t predicted = 0;
+            return vm.readout_context_copy(
+                targets[sample], lr, packed_contexts[sample], buckets,
+                exact_count, aux_buckets, gate_weight, correct, loss, predicted);
         }
-        std::size_t processed = 0;
-        if (!vm.readout_context_batch(
-                batch_targets.data(), batch_contexts.data(), batch_lrs.data(),
-                count, buckets, correct_count, loss_sum, processed)) {
-            std::cerr << "context batch failed: " << vm.error() << "\n";
-            return false;
-        }
-        if (processed != count) {
-            std::cerr << "context batch processed " << processed << " of "
-                      << count << "\n";
-            return false;
-        }
-        return true;
+        std::uint8_t ph = 0, pl = 0;
+        return vm.readout_context(targets[sample], lr,
+                                  context_buckets[sample], buckets,
+                                  correct, loss, ph, pl);
     };
     const auto evaluate = [&](std::size_t epoch, bool final) -> bool {
         const auto started = std::chrono::steady_clock::now();
         std::size_t total = 0, correct_count = 0;
         double loss_sum = 0.0;
-        for (std::size_t position = 0; position < eval_indices.size();) {
-            const std::size_t chunk = batch_size
-                ? std::min(batch_size, eval_indices.size() - position) : 1;
-            std::size_t chunk_correct = 0;
-            float chunk_loss = 0.0f;
-            if (batch_size) {
-                if (!run_batch(eval_indices.data() + position, chunk, 0.0f,
-                               chunk_correct, chunk_loss)) {
-                    return false;
-                }
-            } else {
-                const std::size_t sample = eval_indices[position];
-                bool correct = false;
-                float loss = 0.0f;
-                std::uint8_t ph = 0, pl = 0;
-                if (!vm.readout_context(targets[sample], 0.0f,
-                                        context_buckets[sample], buckets,
-                                        correct, loss, ph, pl)) {
-                    std::cerr << "context eval failed: " << vm.error() << "\n";
-                    return false;
-                }
-                chunk_correct = correct ? 1u : 0u;
-                chunk_loss = loss;
+        for (const std::size_t sample : eval_indices) {
+            bool correct = false;
+            float loss = 0.0f;
+            if (!run_context(sample, 0.0f, correct, loss)) {
+                std::cerr << "context eval failed: " << vm.error() << "\n";
+                return false;
             }
             total += chunk;
             correct_count += chunk_correct;
@@ -922,29 +922,13 @@ int context_train_cli(int argc, char** argv) {
         std::size_t epoch_total = 0, epoch_correct = 0;
         std::size_t report_total = 0, report_correct = 0;
         double epoch_loss = 0.0, report_loss = 0.0;
-        for (std::size_t position = 0; position < order.size();) {
-            const std::size_t chunk = batch_size
-                ? std::min(batch_size, order.size() - position) : 1;
-            std::size_t chunk_correct = 0;
-            float chunk_loss = 0.0f;
-            if (batch_size) {
-                if (!run_batch(order.data() + position, chunk, base_lr,
-                               chunk_correct, chunk_loss)) {
-                    return 7;
-                }
-            } else {
-                const std::size_t sample = order[position];
-                bool correct = false;
-                float loss = 0.0f;
-                std::uint8_t ph = 0, pl = 0;
-                if (!vm.readout_context(targets[sample], base_lr,
-                                        context_buckets[sample], buckets,
-                                        correct, loss, ph, pl)) {
-                    std::cerr << "context step failed: " << vm.error() << "\n";
-                    return 7;
-                }
-                chunk_correct = correct ? 1u : 0u;
-                chunk_loss = loss;
+        for (std::size_t position = 0; position < order.size(); ++position) {
+            const std::size_t sample = order[position];
+            bool correct = false;
+            float loss = 0.0f;
+            if (!run_context(sample, base_lr, correct, loss)) {
+                std::cerr << "context step failed: " << vm.error() << "\n";
+                return 7;
             }
             global_step += chunk;
             epoch_total += chunk;

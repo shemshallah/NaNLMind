@@ -133,12 +133,41 @@ Do not report sampled-window accuracy as model quality.
 
 ### 6. Copy and induction heads
 
-The `backoffcopy` route allocates a small unigram/copy table for contexts that
+The `backoffcopy` route allocated a small unigram/copy table for contexts that
 have no seen 3-byte history. It was tested against the 3-byte backoff:
-WordNet held-out `66.7788%` versus `66.8894%`, so the 3-byte backoff remains
-the default. The route and table partition are implemented, but the copy
-expert is not yet a win. A learned gate rather than a hard route is the next
-step.
+WordNet held-out `66.7788%` versus `66.8894%`, so the hard copy route is not
+a win and is not the default.
+
+The opt-in `induction` route is a soft-gated copy/induction expert. It trains
+a second sparse 16x16 table on every sample, keyed by the two-byte suffix
+(`mth_context_copy.nas`, 1024 raw-hashed buckets at guest `0x80000`). The
+guest also resolves the exact 4-byte context from a guest-resident key map,
+falls back to the 3-byte hash, and combines the two tables:
+
+```text
+score(c) = mem_hi[h] + w*ind_hi[h] + mem_lo[h,l] + w*ind_lo[h,l]
+```
+
+over the two best combined high-nibble groups. Raw NaN16 code owns the
+per-sample routing, suffix hash, gate and scoring; the host only transports
+bytes, the prebuilt exact-key map and the gate weight.
+
+WordNet 80/20, identical split and 5 epochs, `weight=0.15`:
+
+| route | final held-out | best held-out |
+|---|---:|---:|
+| `backoff` baseline | `66.8852%` | `66.8894%` (epoch 3) |
+| `induction`, weight 0 | `67.1747%` | - |
+| `induction`, weight 0.15 | **`67.8345%`** | **`67.8771%`** (epoch 4) |
+
+The memory-table training loss is bit-identical to the baseline, so the gain
+comes from the combined scoring/gate, not a changed memory trajectory. Weight
+`0` (full-joint memory scoring only) is `+0.2895` points; the suffix table
+adds `+0.6598` more. The route is about 2-2.5x slower than the baseline
+(`~89 s` versus `~36-42 s` for five epochs on this device). This is a
+next-byte held-out measurement, not evidence of language quality; the weight
+was selected from the same held-out sweep, so its exact value is not an
+unbiased estimate.
 
 ### 7. Batching and parallel runners
 

@@ -27,9 +27,8 @@
 ; Credit combine: 7 credits at 0x7000, 7 coefficients at 0x7100, result 0x4010
 ; Credit bundle: state at 0x8000, credits at 0x7200; command 29
 ; Combined gated credit: target/best/base/threshold 0x4001..4, credits 0x7000, coeffs 0x7100
-; Context class link (command 30): table/mode at 0x4001..0x4007, credit mode
-;   at 0x4008, threshold at 0x4009, CFT args 0x400A..0x400E, TRAIL args
-;   0x7300..0x730A, 255 credits at 0x7000; results 0x4010, votes 0x7100.
+; Context copy/induction: target/lr/context key/B/E/C/weight at 0x4001..7
+;   result at 0x4010: correct, memory CE, combined class
 ;
 ; The driver contains no host math. It is assembled by nmk.awk and executed
 ; by the canonical NaN0S VM. The guest starts at word 0.
@@ -58,7 +57,7 @@ JMP @field_driver_entry
 .include "../nan16/mth_softmax16.nas"
 .include "../nan16/mth_softmax16_table.nas"
 .include "../nan16/mth_context_hier.nas"
-.include "../nan16/mth_context_class.nas"
+.include "../nan16/mth_context_copy.nas"
 .include "../nan16/mth_readout_hier.nas"
 .include "../nan16/mth_trunk_credit.nas"
 .include "../nan16/mth_qkv_credit.nas"
@@ -161,7 +160,7 @@ field_driver_main:
   JMP[EQ] @field_driver_readout_context
   MOVI r3,26
   CMP r2,r3
-  JMP[EQ] @field_driver_readout_context_batch
+  JMP[EQ] @field_driver_readout_copy
   MOVI r3,27
   CMP r2,r3
   JMP[EQ] @field_driver_combined_all
@@ -388,19 +387,20 @@ field_driver_readout_context:
   ST r4,r10,3
   JMP @field_driver_return
 
-field_driver_readout_context_batch:
+field_driver_readout_copy:
   MOVI r10,0x4001
   LD r1,r10,0
   LD r2,r10,1
   LD r3,r10,2
   LD r4,r10,3
   LD r5,r10,4
-  CALL @mth_context_batch
+  LD r6,r10,5
+  LD r7,r10,6
+  CALL @mth_context_copy
   MOVI r10,0x4010
   ST r1,r10,0
   ST r2,r10,1
   ST r3,r10,2
-  ST r4,r10,3
   JMP @field_driver_return
 
 field_driver_field_commit:

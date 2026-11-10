@@ -671,70 +671,35 @@ int main() {
     CHECK(feature_field.forward(q16, feature_result));
     CHECK_EQ(feature_result.count, SparseField::kActive);
 
-    // Batched context readout: 1,500 samples must produce the same guest
-    // state, correct count and float32 loss sum as 1,500 per-sample commands.
-    // The batching only removes host round trips; the guest still calls the
-    // mth_context_hier kernel once per sample.
-    constexpr std::size_t batch_buckets = 512;
-    constexpr std::size_t batch_samples = 1500;
-    RawFieldVM batch_vm("build/field_driver.nan");
-    RawFieldVM ref_vm("build/field_driver.nan");
-    CHECK(batch_vm.ready());
-    CHECK(ref_vm.ready());
-    CHECK(batch_vm.reset_context_readout(batch_buckets));
-    CHECK(ref_vm.reset_context_readout(batch_buckets));
-    std::vector<std::uint8_t> batch_targets(batch_samples);
-    std::vector<std::uint32_t> batch_contexts(batch_samples);
-    std::vector<float> batch_lrs(batch_samples);
-    std::uint32_t lcg = 0x9E3779B9u;
-    for (std::size_t i = 0; i < batch_samples; ++i) {
-        lcg = lcg * 1664525u + 1013904223u;
-        batch_targets[i] =
-            static_cast<std::uint8_t>((lcg >> 24) % 255u);
-        batch_contexts[i] =
-            static_cast<std::uint32_t>((lcg >> 8) % batch_buckets);
-        batch_lrs[i] = (i % 17 == 0) ? 0.0f
-                                     : 0.05f + 0.001f * static_cast<float>(i % 23);
+    // Raw context copy/induction route: the guest resolves the exact-key map
+    // or 3-byte fallback, hashes the 2-byte suffix and combines both tables.
+    constexpr std::size_t copy_buckets = 8;
+    constexpr std::size_t copy_aux_buckets = 4;
+    const std::uint32_t exact_key = 0x41424344u; // "ABCD"
+    std::vector<std::uint32_t> exact_keys{exact_key};
+    CHECK(vm.reset_context_readout(copy_buckets));
+    CHECK(vm.reset_context_copy(exact_keys, copy_buckets, copy_aux_buckets));
+    bool copy_correct = false;
+    float copy_loss = 0.0f;
+    std::uint8_t copy_predicted = 0;
+    for (int step = 0; step < 8; ++step) {
+        CHECK(vm.readout_context_copy(
+            0x41, 0.5f, exact_key, copy_buckets, exact_keys.size(),
+            copy_aux_buckets, 0.2f, copy_correct, copy_loss,
+            copy_predicted));
+        CHECK(copy_correct);
+        CHECK_EQ(copy_predicted, 0x41u);
     }
-    std::size_t ref_correct = 0;
-    float ref_loss = 0.0f;
-    for (std::size_t i = 0; i < batch_samples; ++i) {
-        bool sample_correct = false;
-        float sample_loss = 0.0f;
-        std::uint8_t predicted_high = 0, predicted_low = 0;
-        CHECK(ref_vm.readout_context(
-            batch_targets[i], batch_lrs[i], batch_contexts[i], batch_buckets,
-            sample_correct, sample_loss, predicted_high, predicted_low));
-        ref_correct += sample_correct ? 1u : 0u;
-        ref_loss += sample_loss;
-    }
-    std::size_t batch_correct = 0, batch_processed = 0;
-    float batch_loss = 0.0f;
-    CHECK(batch_vm.readout_context_batch(
-        batch_targets.data(), batch_contexts.data(), batch_lrs.data(),
-        batch_samples, batch_buckets, batch_correct, batch_loss,
-        batch_processed));
-    CHECK_EQ(batch_processed, batch_samples);
-    CHECK_EQ(batch_correct, ref_correct);
-    std::uint32_t batch_loss_bits = 0, ref_loss_bits = 0;
-    std::memcpy(&batch_loss_bits, &batch_loss, sizeof(batch_loss_bits));
-    std::memcpy(&ref_loss_bits, &ref_loss, sizeof(ref_loss_bits));
-    CHECK_EQ(batch_loss_bits, ref_loss_bits);
-
-    const char* batch_path = "build/context_batch_parity.nmc";
-    const char* ref_path = "build/context_ref_parity.nmc";
-    CHECK(batch_vm.save_context_readout(batch_path, batch_buckets));
-    CHECK(ref_vm.save_context_readout(ref_path, batch_buckets));
-    std::ifstream batch_file(batch_path, std::ios::binary);
-    std::ifstream ref_file(ref_path, std::ios::binary);
-    const std::string batch_bytes((std::istreambuf_iterator<char>(batch_file)),
-                                  std::istreambuf_iterator<char>());
-    const std::string ref_bytes((std::istreambuf_iterator<char>(ref_file)),
-                                std::istreambuf_iterator<char>());
-    CHECK(!batch_bytes.empty());
-    CHECK(batch_bytes == ref_bytes);
-    std::remove(batch_path);
-    std::remove(ref_path);
+    CHECK(vm.readout_context_copy(
+        0x41, 0.0f, exact_key, copy_buckets, exact_keys.size(),
+        copy_aux_buckets, 0.2f, copy_correct, copy_loss, copy_predicted));
+    CHECK(copy_correct);
+    CHECK_EQ(copy_predicted, 0x41u);
+    // A context outside the map exercises the guest-side 3-byte fallback and
+    // a different induction bucket without a host routing decision.
+    CHECK(vm.readout_context_copy(
+        0x42, 0.0f, 0x01020304u, copy_buckets, exact_keys.size(),
+        copy_aux_buckets, 0.2f, copy_correct, copy_loss, copy_predicted));
 
     return test_done("raw NaN16 field VM bridge");
 }

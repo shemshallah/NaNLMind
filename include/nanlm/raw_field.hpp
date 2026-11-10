@@ -373,15 +373,17 @@ public:
                          bool& correct, float& loss,
                          std::uint8_t& predicted_high,
                          std::uint8_t& predicted_low);
-    // Raw batched context readout. The host only marshals target, bucket and
-    // learning-rate word arrays; the guest loops mth_context_hier and returns
-    // the aggregate correct count and float32 loss sum.
-    bool readout_context_batch(const std::uint8_t* targets,
-                               const std::uint32_t* buckets,
-                               const float* learning_rates,
-                               std::size_t count, std::size_t bucket_count,
-                               std::size_t& correct_count, float& loss_sum,
-                               std::size_t& processed);
+    // Raw context memory + copy/induction table.  The exact-key map is data
+    // transported once; per-sample exact/backoff routing, the suffix hash and
+    // the combined scoring gate all execute in mth_context_copy.nas.
+    bool reset_context_copy(const std::vector<std::uint32_t>& exact_contexts,
+                            std::size_t buckets, std::size_t aux_buckets);
+    bool readout_context_copy(std::uint8_t target, float learning_rate,
+                              std::uint32_t context_key,
+                              std::size_t buckets, std::size_t exact_count,
+                              std::size_t aux_buckets, float gate_weight,
+                              bool& correct, float& loss,
+                              std::uint8_t& predicted_class);
     void reset_readout();
     bool set_readout_row(std::uint8_t row,
                          const std::array<float, kRawFeatureDim>& values);
