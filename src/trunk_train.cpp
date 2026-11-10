@@ -79,6 +79,35 @@ int trunk_train_cli(int argc, char** argv) {
     }
     vm.reset_readout();
     const TrunkWeights weights = identity_trunk();
+    if (!vm.write_trunk_weights(weights)) {
+        std::cerr << "raw trunk weights unavailable: " << vm.error() << "\n";
+        return 7;
+    }
+    // The trunk is frozen in this run. Compute every feature once, then train
+    // only the readout in the epoch loop.
+    std::vector<std::array<float, kRawFeatureDim>> cached_features;
+    std::vector<std::uint8_t> cached_targets;
+    cached_features.reserve(usable.size());
+    cached_targets.reserve(usable.size());
+    const auto feature_started = std::chrono::steady_clock::now();
+    for (const auto line : usable) {
+        std::vector<std::array<float, kRawFeatureDim>> tokens;
+        tokens.reserve(8);
+        for (std::size_t j = 0; j < 8; ++j) {
+            tokens.push_back(token_vector(static_cast<std::uint8_t>(line[j])));
+        }
+        std::array<float, kRawFeatureDim> feature{};
+        if (!vm.trunk_feature(tokens, feature)) {
+            std::cerr << "native trunk feature failed: " << vm.error() << "\n";
+            return 7;
+        }
+        cached_features.push_back(feature);
+        cached_targets.push_back(static_cast<std::uint8_t>(line[8]));
+    }
+    const double feature_seconds = std::chrono::duration<double>(
+        std::chrono::steady_clock::now() - feature_started).count();
+    std::cout << "trunk_features samples=" << cached_features.size()
+              << " seconds=" << feature_seconds << "\n";
     const auto started = std::chrono::steady_clock::now();
     std::size_t global_step = 0;
     for (std::size_t epoch = 1; epoch <= epochs; ++epoch) {
@@ -86,18 +115,18 @@ int trunk_train_cli(int argc, char** argv) {
         double epoch_loss = 0.0;
         std::size_t report_total = 0, report_correct = 0;
         double report_loss = 0.0;
-        for (const auto line : usable) {
-            const std::uint8_t target = static_cast<std::uint8_t>(line[8]);
-            std::vector<std::array<float, kRawFeatureDim>> tokens;
-            tokens.reserve(8);
-            for (std::size_t j = 0; j < 8; ++j) {
-                tokens.push_back(token_vector(static_cast<std::uint8_t>(line[j])));
-            }
+        for (std::size_t sample = 0; sample < cached_features.size(); ++sample) {
+            const std::uint8_t target = cached_targets[sample];
             bool correct = false;
             float target_score = 0.0f, best_wrong = 0.0f, loss = 0.0f;
-            if (!vm.readout_train(tokens, weights, target, 0.05f,
-                                  correct, target_score, best_wrong, loss)) {
-                std::cerr << "native trunk readout failed: " << vm.error() << "\n";
+            const bool full_step = (sample % 16u) == 0u;
+            const bool step_ok = full_step
+                ? vm.readout_only(cached_features[sample], target, 0.05f,
+                                  correct, target_score, best_wrong, loss)
+                : vm.readout_sample(cached_features[sample], target, 0.05f,
+                                    correct, target_score, best_wrong, loss);
+            if (!step_ok) {
+                std::cerr << "native readout-only failed: " << vm.error() << "\n";
                 return 7;
             }
             ++global_step;
@@ -136,6 +165,30 @@ int trunk_train_cli(int argc, char** argv) {
                   << " seconds=" << elapsed
                   << "\n";
     }
+    // Full 255-class evaluation after the sampled training run.
+    const auto eval_started = std::chrono::steady_clock::now();
+    std::size_t eval_total = 0, eval_correct = 0;
+    double eval_loss = 0.0;
+    for (std::size_t sample = 0; sample < cached_features.size(); ++sample) {
+        bool correct = false;
+        float target_score = 0.0f, best_wrong = 0.0f, loss = 0.0f;
+        if (!vm.readout_only(cached_features[sample], cached_targets[sample], 0.0f,
+                             correct, target_score, best_wrong, loss)) {
+            std::cerr << "native full evaluation failed: " << vm.error() << "\n";
+            return 7;
+        }
+        ++eval_total;
+        eval_correct += correct ? 1u : 0u;
+        eval_loss += loss;
+    }
+    const double eval_seconds = std::chrono::duration<double>(
+        std::chrono::steady_clock::now() - eval_started).count();
+    std::cout << "trunk_full_eval samples=" << eval_total
+              << " loss=" << (eval_loss / std::max<std::size_t>(1, eval_total))
+              << " accuracy="
+              << (100.0 * eval_correct / std::max<std::size_t>(1, eval_total))
+              << " seconds=" << eval_seconds
+              << "\n";
     return 0;
 }
 

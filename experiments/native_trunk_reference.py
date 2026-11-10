@@ -24,6 +24,39 @@ def feature(tokens: np.ndarray) -> np.ndarray:
     return (h + np.tanh(h)).astype(np.float32)
 
 
+def _full_step(weights, x, target, lr):
+    scores = (weights @ x).astype(np.float32)
+    target_score = float(scores[target])
+    masked = scores.copy()
+    masked[target] = -np.inf
+    best_idx = int(np.argmax(masked))
+    best_wrong = float(masked[best_idx])
+    loss = max(0.0, best_wrong - target_score + 1.0)
+    ok = target_score > best_wrong
+    if loss > 0.0:
+        weights[target] = (weights[target] + lr * x).astype(np.float32)
+        weights[best_idx] = (weights[best_idx] - lr * x).astype(np.float32)
+    return ok, loss
+
+
+def _sampled_step(weights, x, target, lr):
+    target_score = float(weights[target] @ x)
+    best_idx = target
+    best_wrong = -np.inf
+    for k in range(1, 17):
+        idx = (target + k * 37) % 255
+        score = float(weights[idx] @ x)
+        if score > best_wrong:
+            best_wrong = score
+            best_idx = idx
+    loss = max(0.0, best_wrong - target_score + 1.0)
+    ok = target_score > best_wrong
+    if loss > 0.0:
+        weights[target] = (weights[target] + lr * x).astype(np.float32)
+        weights[best_idx] = (weights[best_idx] - lr * x).astype(np.float32)
+    return ok, loss
+
+
 def train(corpus: Path, max_lines: int = 0, epochs: int = 3,
           report_every: int = 10000) -> dict:
     lines = corpus.read_bytes().splitlines()
@@ -32,31 +65,23 @@ def train(corpus: Path, max_lines: int = 0, epochs: int = 3,
     usable = [line for line in lines if len(line) >= 9 and line[8] < 255]
     weights = np.zeros((255, 8), dtype=np.float32)
     global_step = 0
-    starts = []
+    steps = []
     epochs_out = []
     for epoch in range(1, epochs + 1):
         total = correct = 0
         loss_sum = 0.0
         report_total = report_correct = 0
         report_loss = 0.0
-        for line in usable:
+        for sample, line in enumerate(usable):
             target = int(line[8])
             tokens = np.zeros((8, 8), dtype=np.float32)
             for j in range(8):
                 tokens[j, line[j] & 7] = 1.0
             x = feature(tokens)
-            scores = (weights @ x).astype(np.float32)
-            target_score = float(scores[target])
-            masked = scores.copy()
-            masked[target] = -np.inf
-            best_idx = int(np.argmax(masked))
-            best_wrong = float(masked[best_idx])
-            ok = target_score > best_wrong
-            loss = max(0.0, best_wrong - target_score + 1.0)
-            if not ok:
-                lr = np.float32(0.05)
-                weights[target] = (weights[target] + lr * x).astype(np.float32)
-                weights[best_idx] = (weights[best_idx] - lr * x).astype(np.float32)
+            if sample % 16 == 0:
+                ok, loss = _full_step(weights, x, target, np.float32(0.05))
+            else:
+                ok, loss = _sampled_step(weights, x, target, np.float32(0.05))
             global_step += 1
             total += 1
             report_total += 1
@@ -65,7 +90,7 @@ def train(corpus: Path, max_lines: int = 0, epochs: int = 3,
             loss_sum += loss
             report_loss += loss
             if report_every and report_total >= report_every:
-                starts.append({
+                steps.append({
                     "epoch": epoch, "step": global_step,
                     "train_loss": report_loss / report_total,
                     "train_accuracy": 100.0 * report_correct / report_total,
@@ -73,7 +98,7 @@ def train(corpus: Path, max_lines: int = 0, epochs: int = 3,
                 report_total = report_correct = 0
                 report_loss = 0.0
         if report_total:
-            starts.append({
+            steps.append({
                 "epoch": epoch, "step": global_step,
                 "train_loss": report_loss / report_total,
                 "train_accuracy": 100.0 * report_correct / report_total,
@@ -83,14 +108,36 @@ def train(corpus: Path, max_lines: int = 0, epochs: int = 3,
             "train_loss": loss_sum / max(1, total),
             "train_accuracy": 100.0 * correct / max(1, total),
         })
+    # Full 255-class evaluation after training.
+    eval_total = eval_correct = 0
+    eval_loss = 0.0
+    for line in usable:
+        target = int(line[8])
+        tokens = np.zeros((8, 8), dtype=np.float32)
+        for j in range(8):
+            tokens[j, line[j] & 7] = 1.0
+        x = feature(tokens)
+        scores = (weights @ x).astype(np.float32)
+        target_score = float(scores[target])
+        masked = scores.copy()
+        masked[target] = -np.inf
+        best_wrong = float(np.max(masked))
+        loss = max(0.0, best_wrong - target_score + 1.0)
+        eval_total += 1
+        eval_correct += int(target_score > best_wrong)
+        eval_loss += loss
     return {
         "schema": "nanlm.trunk-reference/1",
         "samples": len(usable),
         "epochs": epochs,
-        "steps": starts,
+        "steps": steps,
         "epoch_metrics": epochs_out,
+        "full_eval": {
+            "samples": eval_total,
+            "loss": eval_loss / max(1, eval_total),
+            "accuracy": 100.0 * eval_correct / max(1, eval_total),
+        },
     }
-
 
 def main() -> int:
     ap = argparse.ArgumentParser()
