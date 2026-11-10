@@ -185,9 +185,11 @@ sequence tape. The production path is CFT/TRAIL/geometric credit:
 Exact local-credit parity is exercised at D=4/H=8/T=4, and the 1024-token path
 exercises QKV and output/MLP local credit. CFT/TRAIL gating now exists through `mth_credit_gate.nas`, and
 `mth_credit_field.nas` performs raw 2/3 triad and 43/85 field votes over 255
-signed head credits. The next step is to stage candidate trunk deltas, vote
-them, and commit only on acceptance with rollback. Adding a global BPTT tape is
-explicitly not the plan.
+signed head credits. `RawFieldVM::commit_cft_credit` now stages the fixed-trunk update: snapshot,
+255-credit → 2/3 → 43/85 raw vote, CFT-gated local credit, and snapshot restore
+on rejection or non-application. The test covers accepted and rejected field
+votes. Adding a global BPTT tape is explicitly not the plan; full CFT/TRAIL
+coverage of every weight remains open.
 
 This is the native **head/field** half of the sparse trunk. The shared P1
 QKV/MLP trunk kernel and its feature feed are still the next native step; the

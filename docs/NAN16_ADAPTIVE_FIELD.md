@@ -194,9 +194,18 @@ signed head credits into 85 three-member triad votes (2/3) and a 43/85 field
 decision. It is tested with 129 accepted heads -> 43 triads -> field accepted,
 and 128 -> 42 -> rejected.
 
-Staging a candidate trunk delta, voting it through these gates, and committing
-only on acceptance with rollback is the next integration step. Full
-geometric-credit integration into every trunk weight is still open.
+`RawFieldVM::commit_cft_credit` now stages this path for the fixed trunk:
+
+1. snapshot the chart trunk weights;
+2. run the raw 255-credit → 2/3 → 43/85 field vote;
+3. if the field rejects, restore the snapshot and leave weights unchanged;
+4. if accepted, run the CFT-gated local credit;
+5. only an applied credit is kept; otherwise restore the snapshot.
+
+The test covers 129 accepted heads → field accepted → committed, and 128 heads
+→ field rejected → weights restored. This is a staged geometric commit, not a
+BPTT tape. Full CFT/TRAIL credit integration into every trunk weight is still
+open.
 
 ## Learnable credit, not host gradients
 
