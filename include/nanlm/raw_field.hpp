@@ -77,6 +77,22 @@ struct HotTriheadResult {
     std::array<std::uint8_t, kTriadMemberCount> members{};
 };
 
+struct ContextBackoffSelection {
+    std::uint32_t exact_count = 0;
+    std::uint32_t fallback = 0;
+    std::uint32_t threshold = 0;
+    std::uint32_t unique = 0;
+};
+
+struct ContextBackoffStep {
+    bool correct = false;
+    float loss = 0.0f;
+    std::uint8_t predicted_high = 0;
+    std::uint8_t predicted_low = 0;
+    bool exact = false;
+    std::uint32_t bucket = 0;
+};
+
 class RawFieldVM {
 public:
     explicit RawFieldVM(const std::string& driver_image);
@@ -250,6 +266,15 @@ public:
                          bool& correct, float& loss,
                          std::uint8_t& predicted_high,
                          std::uint8_t& predicted_low);
+    // Multi-order raw route: the guest owns the exact k=4 hash table, its
+    // frequency selection, and the k=3 fallback hash.
+    bool reset_context_backoff();
+    bool context_backoff_build(std::uint32_t key, bool* inserted = nullptr);
+    bool context_backoff_select(std::size_t buckets, std::size_t exact_limit,
+                                ContextBackoffSelection& out);
+    bool readout_context_backoff(std::uint8_t target, float learning_rate,
+                                 std::uint32_t key, std::size_t buckets,
+                                 ContextBackoffStep& out);
     void reset_readout();
     bool set_readout_row(std::uint8_t row,
                          const std::array<float, kRawFeatureDim>& values);

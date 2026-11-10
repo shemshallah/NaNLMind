@@ -430,7 +430,8 @@ int context_train_cli(int argc, char** argv) {
                   << "Trains a raw context-indexed 16x16 class-memory readout.\n"
                   << "TRAIN_FRACTION <1 holds out a random evaluation split.\n"
                   << "backoff uses exact high-frequency 4-byte contexts plus a 3-byte fallback.\n"
-                  << "backoffcopy routes unseen 3-byte contexts to a copy/unigram table.\n";
+                  << "backoffcopy routes unseen 3-byte contexts to a copy/unigram table.\n"
+                  << "guestbackoff builds the exact/compact k=4 table and k=3 fallback route in the raw guest.\n";
         return 2;
     }
     const std::string corpus_path = argv[2];
@@ -439,6 +440,7 @@ int context_train_cli(int argc, char** argv) {
     float base_lr = 0.5f, train_fraction = 1.0f;
     bool backoff_mode = false;
     bool copy_backoff = false;
+    bool guest_backoff = false;
     std::size_t exact_limit_arg = 10500;
     std::size_t fallback_bytes = 3;
     std::string load_path;
@@ -454,8 +456,10 @@ int context_train_cli(int argc, char** argv) {
         if (argc > 10) train_fraction = std::stof(argv[10]);
         if (argc > 11) {
             const std::string route = argv[11];
-            backoff_mode = route == "backoff" || route == "backoffcopy";
+            backoff_mode = route == "backoff" || route == "backoffcopy" ||
+                route == "guestbackoff";
             copy_backoff = route == "backoffcopy";
+            guest_backoff = route == "guestbackoff";
         }
         if (argc > 12) exact_limit_arg = static_cast<std::size_t>(std::stoull(argv[12]));
         for (int i = 13; i < argc; ++i) {
@@ -472,6 +476,12 @@ int context_train_cli(int argc, char** argv) {
         base_lr <= 0.0f || train_fraction <= 0.0f || train_fraction > 1.0f) {
         std::cerr << "buckets 1..16384, context bytes 1..8, positive LR,"
                      " train fraction in (0,1] required\n";
+        return 2;
+    }
+    if (guest_backoff && (context_bytes != 4 || fallback_bytes != 3 ||
+                          buckets < 2)) {
+        std::cerr << "guestbackoff requires 4-byte contexts, a 3-byte fallback,"
+                     " and at least 2 buckets\n";
         return 2;
     }
     std::ifstream in(corpus_path, std::ios::binary);
@@ -498,17 +508,32 @@ int context_train_cli(int argc, char** argv) {
             usable.push_back(line);
         }
     }
-    std::vector<std::uint32_t> context_buckets(usable.size());
+    std::vector<std::uint32_t> context_buckets;
+    std::vector<std::uint32_t> context_keys;
     std::vector<std::uint8_t> targets(usable.size());
-    for (std::size_t i = 0; i < usable.size(); ++i) {
-        const auto line = usable[i];
-        targets[i] = static_cast<std::uint8_t>(line[8]);
-        std::uint32_t hash = 2166136261u;
-        for (std::size_t j = 0; j < context_bytes; ++j) {
-            const auto byte = static_cast<std::uint8_t>(line[8 - context_bytes + j]);
-            hash = (hash ^ byte) * 16777619u;
+    if (guest_backoff) {
+        context_keys.resize(usable.size());
+        for (std::size_t i = 0; i < usable.size(); ++i) {
+            const auto line = usable[i];
+            targets[i] = static_cast<std::uint8_t>(line[8]);
+            context_keys[i] =
+                (static_cast<std::uint32_t>(static_cast<std::uint8_t>(line[4])) << 24) |
+                (static_cast<std::uint32_t>(static_cast<std::uint8_t>(line[5])) << 16) |
+                (static_cast<std::uint32_t>(static_cast<std::uint8_t>(line[6])) << 8) |
+                static_cast<std::uint32_t>(static_cast<std::uint8_t>(line[7]));
         }
-        context_buckets[i] = hash % static_cast<std::uint32_t>(buckets);
+    } else {
+        context_buckets.resize(usable.size());
+        for (std::size_t i = 0; i < usable.size(); ++i) {
+            const auto line = usable[i];
+            targets[i] = static_cast<std::uint8_t>(line[8]);
+            std::uint32_t hash = 2166136261u;
+            for (std::size_t j = 0; j < context_bytes; ++j) {
+                const auto byte = static_cast<std::uint8_t>(line[8 - context_bytes + j]);
+                hash = (hash ^ byte) * 16777619u;
+            }
+            context_buckets[i] = hash % static_cast<std::uint32_t>(buckets);
+        }
     }
     std::vector<std::size_t> all_indices(usable.size());
     for (std::size_t i = 0; i < all_indices.size(); ++i) all_indices[i] = i;
@@ -525,7 +550,7 @@ int context_train_cli(int argc, char** argv) {
         train_indices.assign(all_indices.begin(), all_indices.begin() + split);
         eval_indices.assign(all_indices.begin() + split, all_indices.end());
     }
-    if (backoff_mode) {
+    if (backoff_mode && !guest_backoff) {
         if (buckets < 2) {
             std::cerr << "backoff requires at least 2 buckets\n";
             return 2;
@@ -619,6 +644,38 @@ int context_train_cli(int argc, char** argv) {
         std::cerr << "cannot reset context readout: " << vm.error() << "\n";
         return 7;
     }
+    if (guest_backoff) {
+        const auto build_started = std::chrono::steady_clock::now();
+        if (!vm.reset_context_backoff()) {
+            std::cerr << "cannot reset guest context backoff: " << vm.error() << "\n";
+            return 7;
+        }
+        std::size_t inserted_keys = 0;
+        for (const std::size_t sample : train_indices) {
+            bool inserted = false;
+            if (!vm.context_backoff_build(context_keys[sample], &inserted)) {
+                std::cerr << "guest context backoff build failed: "
+                          << vm.error() << "\n";
+                return 7;
+            }
+            inserted_keys += inserted ? 1u : 0u;
+        }
+        ContextBackoffSelection selection;
+        if (!vm.context_backoff_select(buckets, exact_limit_arg, selection)) {
+            std::cerr << "guest context backoff select failed: "
+                      << vm.error() << "\n";
+            return 7;
+        }
+        std::cout << "context_guest_backoff exact=" << selection.exact_count
+                  << " fallback=" << selection.fallback
+                  << " threshold=" << selection.threshold
+                  << " unique=" << selection.unique
+                  << " inserted=" << inserted_keys
+                  << " build_seconds="
+                  << std::chrono::duration<double>(
+                         std::chrono::steady_clock::now() - build_started).count()
+                  << "\n";
+    }
     std::cout << "context_tables buckets=" << buckets
               << " train_samples=" << train_indices.size()
               << " eval_samples=" << eval_indices.size()
@@ -634,9 +691,22 @@ int context_train_cli(int argc, char** argv) {
             bool correct = false;
             float loss = 0.0f;
             std::uint8_t ph = 0, pl = 0;
-            if (!vm.readout_context(targets[sample], 0.0f,
-                                    context_buckets[sample], buckets,
-                                    correct, loss, ph, pl)) {
+            bool ok = false;
+            if (guest_backoff) {
+                ContextBackoffStep step;
+                ok = vm.readout_context_backoff(targets[sample], 0.0f,
+                                                context_keys[sample], buckets,
+                                                step);
+                correct = step.correct;
+                loss = step.loss;
+                ph = step.predicted_high;
+                pl = step.predicted_low;
+            } else {
+                ok = vm.readout_context(targets[sample], 0.0f,
+                                        context_buckets[sample], buckets,
+                                        correct, loss, ph, pl);
+            }
+            if (!ok) {
                 std::cerr << "context eval failed: " << vm.error() << "\n";
                 return false;
             }
@@ -674,9 +744,22 @@ int context_train_cli(int argc, char** argv) {
             bool correct = false;
             float loss = 0.0f;
             std::uint8_t ph = 0, pl = 0;
-            if (!vm.readout_context(targets[sample], base_lr,
-                                    context_buckets[sample], buckets,
-                                    correct, loss, ph, pl)) {
+            bool ok = false;
+            if (guest_backoff) {
+                ContextBackoffStep step;
+                ok = vm.readout_context_backoff(targets[sample], base_lr,
+                                                context_keys[sample], buckets,
+                                                step);
+                correct = step.correct;
+                loss = step.loss;
+                ph = step.predicted_high;
+                pl = step.predicted_low;
+            } else {
+                ok = vm.readout_context(targets[sample], base_lr,
+                                        context_buckets[sample], buckets,
+                                        correct, loss, ph, pl);
+            }
+            if (!ok) {
                 std::cerr << "context step failed: " << vm.error() << "\n";
                 return 7;
             }

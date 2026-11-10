@@ -19,6 +19,11 @@ constexpr std::uint32_t kHotMapping = 0x8000;
 constexpr std::uint32_t kMicroX0 = 0x7000;
 constexpr std::uint32_t kMicroX1 = 0x7100;
 constexpr std::uint32_t kMicroOut = 0x7200;
+constexpr std::uint32_t kContextBackoffTable = 0x40000;
+constexpr std::uint32_t kContextBackoffTableWords = 32768u * 3u;
+constexpr std::uint32_t kContextBackoffHist = 0x58000;
+constexpr std::uint32_t kContextBackoffHistWords = 4096u;
+constexpr std::uint32_t kContextBackoffCommand = 30;
 constexpr std::uint32_t kMaxSteps = 200'000'000;
 
 void bump_triad_credit(std::int16_t& value, int delta) {
@@ -721,6 +726,83 @@ bool RawFieldVM::readout_context(std::uint8_t target, float learning_rate,
     std::memcpy(&loss, &ls, sizeof(ls));
     predicted_high = static_cast<std::uint8_t>(read_word(kResultBase + 2) & 15u);
     predicted_low = static_cast<std::uint8_t>(read_word(kResultBase + 3) & 15u);
+    return true;
+}
+
+bool RawFieldVM::reset_context_backoff() {
+    for (std::uint32_t i = 0; i < kContextBackoffTableWords; ++i) {
+        if (!write_word(kContextBackoffTable + i, 0)) {
+            return fail("cannot reset context backoff table");
+        }
+    }
+    for (std::uint32_t i = 0; i < kContextBackoffHistWords; ++i) {
+        if (!write_word(kContextBackoffHist + i, 0)) {
+            return fail("cannot reset context backoff histogram");
+        }
+    }
+    return true;
+}
+
+bool RawFieldVM::context_backoff_build(std::uint32_t key,
+                                       bool* inserted) {
+    if (!write_word(kProposalBase + 0, 1) ||
+        !write_word(kProposalBase + 1, key) ||
+        !write_word(kCommandBase, kContextBackoffCommand)) {
+        return fail("cannot write context backoff build command");
+    }
+    if (!run_command()) return false;
+    if (inserted) *inserted = (read_word(kResultBase + 0) & 1u) != 0;
+    return true;
+}
+
+bool RawFieldVM::context_backoff_select(std::size_t buckets,
+                                        std::size_t exact_limit,
+                                        ContextBackoffSelection& out) {
+    if (buckets < 2 || buckets > 16384 ||
+        exact_limit > 16384) {
+        return fail("context backoff buckets 2..16384, exact limit <= 16384");
+    }
+    if (!write_word(kProposalBase + 0, 2) ||
+        !write_word(kProposalBase + 1, static_cast<std::uint32_t>(buckets)) ||
+        !write_word(kProposalBase + 2,
+                    static_cast<std::uint32_t>(exact_limit)) ||
+        !write_word(kCommandBase, kContextBackoffCommand)) {
+        return fail("cannot write context backoff select command");
+    }
+    if (!run_command()) return false;
+    out.exact_count = read_word(kResultBase + 0);
+    out.fallback = read_word(kResultBase + 1);
+    out.threshold = read_word(kResultBase + 2);
+    out.unique = read_word(kResultBase + 3);
+    return true;
+}
+
+bool RawFieldVM::readout_context_backoff(std::uint8_t target,
+                                         float learning_rate,
+                                         std::uint32_t key,
+                                         std::size_t buckets,
+                                         ContextBackoffStep& out) {
+    if (buckets < 2 || buckets > 16384) {
+        return fail("context backoff buckets outside 2..16384");
+    }
+    std::uint32_t lr_bits = 0;
+    std::memcpy(&lr_bits, &learning_rate, sizeof(lr_bits));
+    if (!write_word(kProposalBase + 0, 3) ||
+        !write_word(kProposalBase + 1, target) ||
+        !write_word(kProposalBase + 2, lr_bits) ||
+        !write_word(kProposalBase + 3, key) ||
+        !write_word(kProposalBase + 4, static_cast<std::uint32_t>(buckets)) ||
+        !write_word(kCommandBase, kContextBackoffCommand)) {
+        return fail("cannot write context backoff step command");
+    }
+    if (!run_command()) return false;
+    out.correct = (read_word(kResultBase + 0) & 1u) != 0;
+    const std::uint32_t loss_bits = read_word(kResultBase + 1);
+    std::memcpy(&out.loss, &loss_bits, sizeof(loss_bits));
+    out.predicted_high = static_cast<std::uint8_t>(read_word(kResultBase + 2) & 15u);
+    out.predicted_low = static_cast<std::uint8_t>(read_word(kResultBase + 3) & 15u);
+    out.exact = (read_word(kResultBase + 4) & 1u) != 0;
+    out.bucket = read_word(kResultBase + 5);
     return true;
 }
 
