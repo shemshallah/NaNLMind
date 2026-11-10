@@ -860,5 +860,21 @@ int main() {
     CHECK_EQ(matrix_hot.hot_heads, 3u);
     CHECK_EQ(matrix_hot.hot_triads, 1u);
     CHECK(!matrix_hot.field_hot);
+    // Triangle-shape model is independent of the matrix/field state.
+    {
+        std::array<std::int32_t, 3> tsides = {100, 110, 105};
+        CHECK(vm.triangle_model_reset());
+        std::int32_t tcount = 0;
+        CHECK(vm.triangle_model_observe(tsides, 105, 50000, 1, tcount));
+        CHECK_EQ(tcount, 1);
+        std::int32_t tscore = 0;
+        CHECK(vm.triangle_model_score(tsides, 105, 50000, tscore));
+        CHECK(tscore > 0);
+        std::array<std::int32_t, 3> tstats{};
+        std::array<std::int32_t, 2> torient{};
+        CHECK(vm.read_triangle_model(tstats, torient));
+        CHECK_EQ(tstats[2], 1);
+    }
+
     return test_done("raw NaN16 field VM bridge");
 }
