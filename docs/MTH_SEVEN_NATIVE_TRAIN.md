@@ -8,6 +8,7 @@ Run:
 ```sh
 make -j2 build/nanlm-train build/test_raw_field
 ./build/nanlm-train tests/fixtures/mth-seven-positive.n16mth --out build/mth-trained.weights
+./build/nanlm-train tests/fixtures/mth-seven-rejected.n16mth --out build/mth-resumed.weights --resume build/mth-trained.weights
 make mth-seven-check
 ```
 
@@ -62,6 +63,13 @@ as hex floating-point text for reproducible inspection. The CLI also
 emits one `NANLM_MTH7_STEP` row per step with each **actual raw guest**
 credit, combined credit, gate acceptance and `bptt_attempted=0`.
 The final `NANLM_MTH7_TRAIN` receipt includes rows and accepted count.
+
+`--resume PREVIOUS.weights` restores all six exact trunk/QKV matrices into
+the same logical VM before any native training step. The zero-credit control
+proves a rejected update leaves the persisted weights byte-identical.
+The CFT/TRAIL/combined gate's accepted Q16.16 learning rate is converted
+into the required IEEE float32 bits **inside the NaN16 guest**, using native
+`CVTIF`/`FDIV` before updating trunk parameters.
 
 The output is a **native MTH trunk weight artifact**, NOT a serialized
 8 MiB global universe or a fully resumed checkpoint. It does not
