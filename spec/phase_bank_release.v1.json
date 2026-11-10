@@ -1,0 +1,46 @@
+{
+  "schema": "nanlm.phase-bank-release/1",
+  "canonical_universe": "HW0::BS0",
+  "release": {
+    "repository": "shemshallah/NaNLMind",
+    "tag": "phase-bank-gutenberg150-d64-v1",
+    "url": "https://github.com/shemshallah/NaNLMind/releases/tag/phase-bank-gutenberg150-d64-v1"
+  },
+  "corpus": "state/gutenberg_150_clean_corpus.txt",
+  "corpus_sha256": "a7914048695432a2e8e43ac7ede42cb43fd174b9b0a93609b9792d43fae70839",
+  "samples": 1650141,
+  "dim": 64,
+  "window": 8,
+  "bank": {
+    "bytes": 844872192,
+    "sha256": "88c951374e08df20b184bc811e16599b26277902c1053abba425fdd5723c06e5"
+  },
+  "parts": [
+    {
+      "name": "gutenberg150_d64.part00",
+      "bytes": 188743680,
+      "sha256": "456aa88b8b2c9fae120ccc4d33ef9bf9429214f28e8b32bbbf9769bda4e91b0d"
+    },
+    {
+      "name": "gutenberg150_d64.part01",
+      "bytes": 188743680,
+      "sha256": "b7dfbb6ea96a6feac9ec707fc0272dc4a688c2d8dd92dbbf0c2d4ef027e524d4"
+    },
+    {
+      "name": "gutenberg150_d64.part02",
+      "bytes": 188743680,
+      "sha256": "719aeb22e328dab165c2bf39e1b9914fe03cedee9183958a608df4c63986bd71"
+    },
+    {
+      "name": "gutenberg150_d64.part03",
+      "bytes": 188743680,
+      "sha256": "0f900f6f40c61c104fb7f2b72398bf19e13aafe8eca380f65c19fe229c1603c6"
+    },
+    {
+      "name": "gutenberg150_d64.part04",
+      "bytes": 89897472,
+      "sha256": "5b2ae218dffc7fb04a7182fd60b2a2067b2b8a80f354d4507511795bf2e9ec9c"
+    }
+  ],
+  "notes": "The bank is stored as ordered release parts below 200 MB; concatenate part00..part04 in name order."
+}
