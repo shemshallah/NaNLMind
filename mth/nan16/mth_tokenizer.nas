@@ -209,62 +209,93 @@ mth_tok_finalize:
   ADDI r5,r5,1
   ST r5,r12,0
 mth_tok_emit_subwords:
-  ; Two-piece word encoding: a prefix piece and a suffix piece, each hashed
-  ; with the subword chunk marker. This keeps the subword stream bounded and
-  ; avoids a per-character loop in the first tokenizer layer.
-  MOVI r12,@mth_tok_wlen
-  LD r6,r12,0
-  MOVI r8,3
-  CMP r6,r8
-  JMP[LE] @mth_tok_prefix_len_done
-  ADD r6,r8,r0
-mth_tok_prefix_len_done:
+  ; Base unit = lowercased character, IDs 0x1000+c.
+  ; Bigram unit = adjacent base pair, with BOS/EOS boundary bases.
+  ; This replaces the old two-piece prefix/suffix hash.
   MOVI r12,@mth_tok_text
-  LD r1,r12,0
+  LD r10,r12,0
   MOVI r12,@mth_tok_start
-  LD r2,r12,0
-  ADD r3,r6,r0
-  MOVI r4,0
-  CALL @mth_tok_hash_sub
-  MOVI r12,@mth_tok_subwords
+  LD r6,r12,0
+  MOVI r12,@mth_tok_wlen
   LD r7,r12,0
-  MOVI r12,@mth_tok_scount
-  LD r6,r12,0
-  ADD r7,r7,r6
-  ST r1,r7,0
-  ADDI r6,r6,1
-  MOVI r12,@mth_tok_scount
-  ST r6,r12,0
-
-  ; suffix piece: last min(3,len) bytes
-  MOVI r12,@mth_tok_wlen
-  LD r6,r12,0
-  MOVI r8,3
-  CMP r6,r8
-  JMP[LE] @mth_tok_suffix_len_done
-  ADD r6,r8,r0
-mth_tok_suffix_len_done:
-  MOVI r12,@mth_tok_start
-  LD r9,r12,0
-  MOVI r12,@mth_tok_wlen
+  MOVI r12,@mth_tok_subwords
   LD r8,r12,0
-  ADD r9,r9,r8
-  SUB r9,r9,r6
-  MOVI r12,@mth_tok_text
-  LD r1,r12,0
-  ADD r2,r9,r0
-  ADD r3,r6,r0
-  MOVI r4,1
-  CALL @mth_tok_hash_sub
-  MOVI r12,@mth_tok_subwords
-  LD r7,r12,0
   MOVI r12,@mth_tok_scount
-  LD r6,r12,0
-  ADD r7,r7,r6
-  ST r1,r7,0
-  ADDI r6,r6,1
+  LD r9,r12,0
+  ; base BOS
+  MOVI r5,0x0100
+  ADD r11,r8,r9
+  ST r5,r11,0
+  ADDI r9,r9,1
+  MOVI r12,@mth_tok_cprev
+  ST r5,r12,0
+  MOVI r12,@mth_tok_j
+  ST r0,r12,0
+mth_tok_bg_loop:
+  MOVI r12,@mth_tok_j
+  LD r5,r12,0
+  CMP r5,r7
+  JMP[GE] @mth_tok_bg_end
+  ADD r11,r10,r6
+  ADD r11,r11,r5
+  LD r11,r11,0
+  ; lowercase
+  MOVI r4,65
+  CMP r11,r4
+  JMP[LT] @mth_tok_bg_lower_done
+  MOVI r4,90
+  CMP r11,r4
+  JMP[GT] @mth_tok_bg_lower_done
+  ADDI r11,r11,32
+mth_tok_bg_lower_done:
+  MOVI r12,@mth_tok_c1
+  ST r11,r12,0
+  ; base character unit = 0x1000 + c
+  MOVI r4,0x1000
+  ADD r4,r4,r11
+  ADD r11,r8,r9
+  ST r4,r11,0
+  ADDI r9,r9,1
+  ; bigram = 0x80000000 | (prev << 8) | c
+  MOVI r4,0x0000
+  MOVHI r4,0x8000
+  MOVI r12,@mth_tok_cprev
+  LD r5,r12,0
+  SHL r5,r5,8
+  ADD r4,r4,r5
+  ADD r4,r4,r11
+  ADD r11,r8,r9
+  ST r4,r11,0
+  ADDI r9,r9,1
+  MOVI r12,@mth_tok_c1
+  LD r11,r12,0
+  MOVI r12,@mth_tok_cprev
+  ST r11,r12,0
+  MOVI r12,@mth_tok_j
+  LD r5,r12,0
+  ADDI r5,r5,1
+  ST r5,r12,0
+  JMP @mth_tok_bg_loop
+mth_tok_bg_end:
+  ; base EOS
+  MOVI r5,0x0101
+  ADD r11,r8,r9
+  ST r5,r11,0
+  ADDI r9,r9,1
+  ; bigram (last, EOS)
+  MOVI r4,0x0000
+  MOVHI r4,0x8000
+  MOVI r12,@mth_tok_cprev
+  LD r5,r12,0
+  SHL r5,r5,8
+  ADD r4,r4,r5
+  MOVI r5,0x0101
+  ADD r4,r4,r5
+  ADD r11,r8,r9
+  ST r4,r11,0
+  ADDI r9,r9,1
   MOVI r12,@mth_tok_scount
-  ST r6,r12,0
+  ST r9,r12,0
 
 mth_tok_final_done:
   MOVI r12,@mth_tok_r10
@@ -439,4 +470,10 @@ mth_tok_prev2:
 mth_tok_prev3:
   .word 0
 mth_tok_word_id:
+  .word 0
+mth_tok_j:
+  .word 0
+mth_tok_c1:
+  .word 0
+mth_tok_cprev:
   .word 0

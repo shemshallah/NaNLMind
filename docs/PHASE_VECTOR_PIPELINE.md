@@ -47,6 +47,9 @@ Field-driver commands:
 | 74 | `mth_tokenize` | raw word/subword/meta tokenization |
 | 75 | `mth_meta_trihead_reset` | clear 85 triad votes / 255 head credits |
 | 76 | `mth_meta_trihead_observe` | hash 3-word context into triad/head tables |
+| 77 | `mth_temporal_reset` | clear past/future/current temporal slots |
+| 78 | `mth_temporal_observe` | fill past/current/future slots per word |
+| 79 | `mth_temporal_project` | merge past/future slots into trihead tables |
 | 72 | `mth_leaf_verify` | reconstruct codebook+residual, L1 accept/reject |
 | 73 | `mth_ckpt_hash` | raw FNV-1a checkpoint payload digest |
 
@@ -322,17 +325,43 @@ phase context_words = 0
 A separate **meta-tokenizer layer** now supplies word-level context:
 
 ```text
-subword tokenizer  2 prefix/suffix pieces per word (raw guest tokenizer)
+subword tokenizer  character base units + adjacent base bigrams
 word token         FNV-1a word ID, lowercased ASCII
 meta context       3 preceding words, zero-padded at document start
 context field      word_id, context_hash, triad (0..84), vote mask
 ```
 
-The three-word context is generated in `mth_tokenizer.nas` and mapped to the
-same 85-triad / 255-head layer by `mth_meta_trihead.nas`. The bridge stores
-triad votes at guest word 0x220000 and head credits at 0x220100. It feeds the
-existing raw `field_vote` and `hot_triheads` paths; no host triad arithmetic is
-used.
+The word is decomposed into **character base units** and **adjacent base
+bigrams** (with BOS/EOS boundary bases), replacing the earlier two-piece hash.
+The meta tokenizer emits the word ID, a three-word context hash, a triad, and a
+vote mask. `mth_meta_trihead.nas` maps the context to the same 85-triad /
+255-head layer. Its tables are at guest word 0x220000 (votes) and 0x220100
+(head credits); the existing raw `field_vote` and `hot_triheads` paths consume
+them.
+
+### Temporally split context slots
+
+`mth_temporal_slots.nas` adds the explicitly split register:
+
+```text
+S+ preceding slot       3 preceding words
+S- anticipatory slot    3 following words
+C  current slot         current word; head 255
+```
+
+For each word it stores:
+
+```text
+0x234000  [preceding_hash, current_word, anticipatory_hash]
+0x230000  S+ triad votes
+0x230100  S+ head credits
+0x231000  S- triad votes
+0x231100  S- head credits
+0x233000  head-255 current slot [word,255,index,0]
+```
+
+`mth_temporal_project` merges S+ and S- into the normal trihead tables, while
+the current word remains in the non-triad head-255 field slot.
 
 ```sh
 ./build/nanlm-universal meta-tokenize \
@@ -342,9 +371,25 @@ used.
 
 This emits `PREFIX.words.bin`, `PREFIX.subwords.bin`, `PREFIX.meta.bin` and a
 JSON summary with accepted triads, hot heads, hot triads, and 43/85 field
-state. On 100 lines of Alice it produced 789 words, 1,578 subwords, 789
-three-word contexts, 85 accepted triads, and a hot field. That field result is
-a structural hook check, not a language-quality score.
+state. On 100 lines of Alice it produced 789 words and 9,153 base/bigram
+subwords.
+
+For the full temporally split register:
+
+```sh
+./build/nanlm-universal temporal-tokenize \
+  state/gutenberg_150_train.txt 1000 4096 \
+  state/temporal_tokens
+```
+
+This writes `.words.bin`, `.subwords.bin`, `.meta.bin`, `.slots.bin` and JSON.
+The slots file contains `[preceding_hash, current_word, anticipatory_hash]`
+triples. The JSON reports `preceding_context_words=3`,
+`anticipatory_context_words=3`, `current_slot_head=255`, and the 43/85 field
+state.
+
+The field result is a structural hook check, not a language-quality score;
+with enough distinct contexts the 85 triads can saturate.
 
 The legacy `context-train` path uses 4-byte exact contexts with a 3-byte
 fallback; that remains separate from the new word-level meta tokenizer. Without an eval corpus, the training corpus is split into a held-out suffix.

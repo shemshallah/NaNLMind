@@ -439,6 +439,18 @@ public:
                                     std::size_t& contexts);
     bool read_meta_trihead(std::vector<std::int32_t>& votes,
                            std::vector<std::int32_t>& credits);
+    bool temporal_slots_reset();
+    bool temporal_slots_observe_batch(const std::vector<std::uint32_t>& words,
+                                      std::size_t& contexts);
+    bool temporal_slots_project();
+    bool read_temporal_slots(std::size_t count,
+                             std::vector<std::int32_t>& past_votes,
+                             std::vector<std::int32_t>& past_credits,
+                             std::vector<std::int32_t>& future_votes,
+                             std::vector<std::int32_t>& future_credits,
+                             std::vector<std::uint32_t>& current_words,
+                             std::array<std::int32_t, 4>& head255,
+                             std::vector<std::int32_t>& slots);
     bool phase_rotate(const std::vector<std::int32_t>& in, std::uint32_t turn,
                       std::vector<std::int32_t>& out);
     bool pq_encode(const std::vector<std::int32_t>& query,

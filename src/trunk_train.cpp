@@ -1929,6 +1929,149 @@ int meta_tokenize_cli(int argc, char** argv) {
     return 0;
 }
 
+
+int temporal_tokenize_cli(int argc, char** argv) {
+    if (argc < 3) {
+        std::cerr << "usage: nanlm-universal temporal-tokenize CORPUS [MAX_LINES]"
+                     " [MAX_WORDS] [PREFIX]\n";
+        return 2;
+    }
+    const std::string corpus_path = argv[2];
+    std::size_t max_lines = 0, max_words = 4096;
+    std::string output_prefix = "state/temporal_tokens";
+    try {
+        if (argc > 3) max_lines = static_cast<std::size_t>(std::stoull(argv[3]));
+        if (argc > 4) max_words = static_cast<std::size_t>(std::stoull(argv[4]));
+        if (argc > 5) output_prefix = argv[5];
+    } catch (...) {
+        std::cerr << "invalid numeric argument\n";
+        return 2;
+    }
+    if (max_words == 0 || max_words > 4096) {
+        std::cerr << "max_words 1..4096 required\n";
+        return 2;
+    }
+    std::ifstream in(corpus_path, std::ios::binary);
+    if (!in) { std::cerr << "cannot open corpus\n"; return 3; }
+    const std::string data((std::istreambuf_iterator<char>(in)),
+                           std::istreambuf_iterator<char>());
+    RawFieldVM vm("build/field_driver.nan");
+    if (!vm.ready()) {
+        std::cerr << "raw field VM unavailable: " << vm.error() << "\n";
+        return 7;
+    }
+    if (!vm.phase_table_init() || !vm.temporal_slots_reset()) {
+        std::cerr << "temporal init failed: " << vm.error() << "\n";
+        return 7;
+    }
+    std::ofstream words_out(output_prefix + ".words.bin", std::ios::binary);
+    std::ofstream subwords_out(output_prefix + ".subwords.bin", std::ios::binary);
+    std::ofstream meta_out(output_prefix + ".meta.bin", std::ios::binary);
+    std::ofstream slots_out(output_prefix + ".slots.bin", std::ios::binary);
+    if (!words_out || !subwords_out || !meta_out || !slots_out) {
+        std::cerr << "cannot open temporal token artifacts\n";
+        return 3;
+    }
+    std::size_t total_words = 0, total_subwords = 0, total_contexts = 0;
+    std::size_t lines_seen = 0;
+    std::array<std::int32_t, 4> head255{};
+    std::size_t begin = 0;
+    while (begin < data.size()) {
+        const auto end = data.find('\n', begin);
+        const std::size_t line_end = end == std::string::npos ? data.size() : end;
+        if (max_lines && lines_seen >= max_lines) break;
+        std::string line = data.substr(begin, line_end - begin);
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        begin = end == std::string::npos ? data.size() : end + 1;
+        ++lines_seen;
+        if (line.empty()) continue;
+        std::vector<std::uint32_t> words, subwords, meta;
+        std::size_t word_count = 0, subword_count = 0;
+        if (!vm.tokenize(line, max_words, words, subwords, meta,
+                         word_count, subword_count)) {
+            std::cerr << "temporal tokenize failed: " << vm.error() << "\n";
+            return 7;
+        }
+        if (word_count == 0) continue;
+        std::size_t contexts = 0;
+        if (!vm.temporal_slots_observe_batch(words, contexts)) {
+            std::cerr << "temporal observe failed: " << vm.error() << "\n";
+            return 7;
+        }
+        std::vector<std::int32_t> pv, pc, fv, fc, slots;
+        std::vector<std::uint32_t> current;
+        if (!vm.read_temporal_slots(word_count, pv, pc, fv, fc,
+                                    current, head255, slots)) {
+            std::cerr << "temporal read failed: " << vm.error() << "\n";
+            return 7;
+        }
+        words_out.write(reinterpret_cast<const char*>(words.data()),
+                        static_cast<std::streamsize>(words.size() * sizeof(words[0])));
+        subwords_out.write(reinterpret_cast<const char*>(subwords.data()),
+                           static_cast<std::streamsize>(subwords.size() * sizeof(subwords[0])));
+        meta_out.write(reinterpret_cast<const char*>(meta.data()),
+                       static_cast<std::streamsize>(meta.size() * sizeof(meta[0])));
+        slots_out.write(reinterpret_cast<const char*>(slots.data()),
+                        static_cast<std::streamsize>(slots.size() * sizeof(slots[0])));
+        total_words += word_count;
+        total_subwords += subword_count;
+        total_contexts += contexts;
+    }
+    if (!vm.temporal_slots_project()) {
+        std::cerr << "temporal project failed: " << vm.error() << "\n";
+        return 7;
+    }
+    std::vector<std::int32_t> votes, credits;
+    if (!vm.read_meta_trihead(votes, credits)) {
+        std::cerr << "temporal projected read failed: " << vm.error() << "\n";
+        return 7;
+    }
+    std::array<std::uint8_t, kTriadCount> masks{};
+    for (std::size_t i = 0; i < masks.size(); ++i)
+        masks[i] = static_cast<std::uint8_t>(votes[i] & 7);
+    std::uint16_t accepted = 0;
+    bool field_accepted = false;
+    if (!vm.field_vote(masks, accepted, field_accepted)) {
+        std::cerr << "temporal field vote failed: " << vm.error() << "\n";
+        return 7;
+    }
+    std::array<std::int32_t, kTriadMemberCount> head_credits{};
+    std::copy(credits.begin(), credits.end(), head_credits.begin());
+    HotTriheadResult hot;
+    if (!vm.hot_triheads(head_credits, 0, hot)) {
+        std::cerr << "temporal hot trihead failed: " << vm.error() << "\n";
+        return 7;
+    }
+    auto manifest = std::ofstream(output_prefix + ".json");
+    if (manifest) {
+        manifest << "{\n  \"schema\": \"nanlm.temporal-tokenizer/1\",\n"
+                 << "  \"preceding_context_words\": 3,\n"
+                 << "  \"anticipatory_context_words\": 3,\n"
+                 << "  \"current_slot_head\": 255,\n"
+                 << "  \"phase_window_bytes\": 8,\n"
+                 << "  \"lines\": " << lines_seen << ",\n"
+                 << "  \"words\": " << total_words << ",\n"
+                 << "  \"subwords\": " << total_subwords << ",\n"
+                 << "  \"temporal_contexts\": " << total_contexts << ",\n"
+                 << "  \"current_word\": " << head255[0] << ",\n"
+                 << "  \"current_slot\": " << head255[1] << ",\n"
+                 << "  \"accepted_triads\": " << accepted << ",\n"
+                 << "  \"field_hot\": " << (field_accepted ? "true" : "false") << ",\n"
+                 << "  \"hot_heads\": " << hot.hot_heads << ",\n"
+                 << "  \"hot_triads\": " << hot.hot_triads << "\n}\n";
+    }
+    std::cout << "temporal_tokenize lines=" << lines_seen
+              << " words=" << total_words
+              << " subwords=" << total_subwords
+              << " contexts=" << total_contexts
+              << " current_word=" << head255[0]
+              << " current_head=" << head255[1]
+              << " accepted_triads=" << accepted
+              << " field_hot=" << (field_accepted ? "true" : "false")
+              << " hot_heads=" << hot.hot_heads
+              << " hot_triads=" << hot.hot_triads
+              << " output=" << output_prefix << "\n";
+    return 0;
+}
+
 } // namespace nanlm
-
-

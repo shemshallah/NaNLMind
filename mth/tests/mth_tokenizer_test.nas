@@ -43,7 +43,7 @@ main:
   MOVI r12,2
   CMP r1,r12
   JMP[NE] @mth_tok_test_fail
-  MOVI r12,4
+  MOVI r12,26
   CMP r2,r12
   JMP[NE] @mth_tok_test_fail
   ; meta triad field must be a valid 0..84 triad

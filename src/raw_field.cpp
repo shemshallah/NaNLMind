@@ -1616,7 +1616,7 @@ bool RawFieldVM::tokenize(const std::string& text, std::size_t max_words,
     if (!run_command()) return false;
     word_count = read_word(kResultBase + 0);
     subword_count = read_word(kResultBase + 1);
-    if (word_count > max_words || subword_count > max_words * 2)
+    if (word_count > max_words || subword_count > max_words * 8)
         return fail("tokenizer returned invalid counts");
     words.resize(word_count);
     for (std::size_t i = 0; i < words.size(); ++i)
@@ -1661,6 +1661,66 @@ bool RawFieldVM::read_meta_trihead(std::vector<std::int32_t>& votes,
     for (std::size_t i = 0; i < credits.size(); ++i)
         credits[i] = static_cast<std::int32_t>(
             read_word(0x220100u + static_cast<std::uint32_t>(i)));
+    return true;
+}
+
+bool RawFieldVM::temporal_slots_reset() {
+    if (!write_word(kCommandBase, 77)) return fail("cannot write temporal reset");
+    return run_command();
+}
+
+bool RawFieldVM::temporal_slots_observe_batch(
+    const std::vector<std::uint32_t>& words, std::size_t& contexts) {
+    if (words.empty() || words.size() > 4096)
+        return fail("temporal observe bounds invalid");
+    for (std::size_t i = 0; i < words.size(); ++i)
+        if (!write_word(0x20000u + static_cast<std::uint32_t>(i), words[i]))
+            return fail("cannot write temporal words");
+    if (!write_word(kProposalBase + 0,
+                    static_cast<std::uint32_t>(words.size())) ||
+        !write_word(kCommandBase, 78))
+        return fail("cannot write temporal observe");
+    if (!run_command()) return false;
+    contexts = read_word(kResultBase + 0);
+    return contexts == words.size();
+}
+
+bool RawFieldVM::temporal_slots_project() {
+    if (!write_word(kCommandBase, 79)) return fail("cannot write temporal project");
+    return run_command();
+}
+
+bool RawFieldVM::read_temporal_slots(
+    std::size_t count, std::vector<std::int32_t>& past_votes,
+    std::vector<std::int32_t>& past_credits,
+    std::vector<std::int32_t>& future_votes,
+    std::vector<std::int32_t>& future_credits,
+    std::vector<std::uint32_t>& current_words,
+    std::array<std::int32_t, 4>& head255,
+    std::vector<std::int32_t>& slots) {
+    if (count == 0 || count > 4096) return fail("temporal read bounds");
+    past_votes.resize(85); past_credits.resize(255);
+    future_votes.resize(85); future_credits.resize(255);
+    current_words.resize(count); slots.resize(count * 3);
+    for (std::size_t i = 0; i < 85; ++i) {
+        past_votes[i] = static_cast<std::int32_t>(read_word(0x230000u + i));
+        future_votes[i] = static_cast<std::int32_t>(read_word(0x231000u + i));
+    }
+    for (std::size_t i = 0; i < 255; ++i) {
+        past_credits[i] = static_cast<std::int32_t>(read_word(0x230100u + i));
+        future_credits[i] = static_cast<std::int32_t>(read_word(0x231100u + i));
+    }
+    for (std::size_t i = 0; i < count; ++i) {
+        current_words[i] = read_word(0x232000u + static_cast<std::uint32_t>(i));
+        slots[i * 3 + 0] = static_cast<std::int32_t>(read_word(
+            0x234000u + static_cast<std::uint32_t>(i * 3)));
+        slots[i * 3 + 1] = static_cast<std::int32_t>(read_word(
+            0x234001u + static_cast<std::uint32_t>(i * 3)));
+        slots[i * 3 + 2] = static_cast<std::int32_t>(read_word(
+            0x234002u + static_cast<std::uint32_t>(i * 3)));
+    }
+    for (std::size_t i = 0; i < 4; ++i)
+        head255[i] = static_cast<std::int32_t>(read_word(0x233000u + i));
     return true;
 }
 

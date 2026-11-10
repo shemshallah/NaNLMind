@@ -86,6 +86,8 @@ FIXTURES = (
             "MTH TOKENIZER PASS"),
     Fixture("meta_trihead", "mth/tests/mth_meta_trihead_test.nas", 1_000_000,
             "MTH META TRIHEAD PASS"),
+    Fixture("temporal_slots", "mth/tests/mth_temporal_slots_test.nas", 1_000_000,
+            "MTH TEMPORAL SLOTS PASS"),
 )
 
 

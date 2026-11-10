@@ -724,7 +724,7 @@ int main() {
         CHECK(vm.tokenize("Hello, world!", 16, words, subwords, meta,
                           word_count, subword_count));
         CHECK_EQ(word_count, 2u);
-        CHECK_EQ(subword_count, 4u);
+        CHECK_EQ(subword_count, 26u);
         CHECK_EQ(words.size(), 2u);
         CHECK_EQ(meta.size(), 8u);
         CHECK(vm.meta_trihead_reset());
@@ -738,6 +738,31 @@ int main() {
         std::size_t nonzero_votes = 0;
         for (std::int32_t vote : meta_votes) nonzero_votes += vote != 0;
         CHECK(nonzero_votes >= 1);
+
+        // Temporally split slots: past, current field head 255, future.
+        std::vector<std::uint32_t> t_words, t_subwords, t_meta;
+        std::size_t tw = 0, ts = 0;
+        CHECK(vm.tokenize("one two three four", 16, t_words, t_subwords,
+                          t_meta, tw, ts));
+        CHECK_EQ(tw, 4u);
+        CHECK(vm.temporal_slots_reset());
+        std::size_t t_contexts = 0;
+        CHECK(vm.temporal_slots_observe_batch(t_words, t_contexts));
+        CHECK_EQ(t_contexts, 4u);
+        std::vector<std::int32_t> pv, pc, fv, fc, slots;
+        std::vector<std::uint32_t> current_words;
+        std::array<std::int32_t, 4> head255{};
+        CHECK(vm.read_temporal_slots(tw, pv, pc, fv, fc, current_words,
+                                     head255, slots));
+        CHECK_EQ(head255[1], 255);
+        CHECK_EQ(head255[0], static_cast<std::int32_t>(t_words.back()));
+        CHECK_EQ(slots.size(), tw * 3);
+        CHECK(vm.temporal_slots_project());
+        std::vector<std::int32_t> projected_votes, projected_credits;
+        CHECK(vm.read_meta_trihead(projected_votes, projected_credits));
+        std::size_t projected_nonzero = 0;
+        for (std::int32_t vote : projected_votes) projected_nonzero += vote != 0;
+        CHECK(projected_nonzero >= 1);
     }
 
     // C(256,2) vector-code observer: raw pair indexing and accumulation.
