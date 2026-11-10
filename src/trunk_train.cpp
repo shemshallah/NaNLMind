@@ -1187,6 +1187,7 @@ int phase_train_cli(int argc, char** argv) {
         for (std::size_t i = 0; i < window; ++i)
             bytes[i] = static_cast<std::uint8_t>(line[start + i]);
         windows.push_back(std::move(bytes));
+        if (max_lines && windows.size() >= max_lines) break;
     }
     if (windows.size() < 4) {
         std::cerr << "phase-train needs at least four windows\n";
@@ -1229,7 +1230,7 @@ int phase_train_cli(int argc, char** argv) {
                                  encoded.begin() + (i + 1) * pipeline_dim);
     }
 
-    const std::size_t codewords = std::min<std::size_t>(train_count, 32);
+    const std::size_t codewords = std::min<std::size_t>(train_count, 160);
     const std::size_t init_count = std::min<std::size_t>(train_count, 256);
     std::vector<std::int32_t> train_bank;
     train_bank.reserve(init_count * pipeline_dim);
@@ -1331,7 +1332,11 @@ int phase_train_cli(int argc, char** argv) {
             ? static_cast<double>(probe_score_sum) /
                   static_cast<double>(probe_hits)
             : 0.0;
-        if (eval_count > 0 && eval_mean < best_eval_l1) {
+        const bool better_eval = eval_mean < best_eval_l1 - 1e-9;
+        const bool tie_better_field =
+            std::abs(eval_mean - best_eval_l1) <= 1e-9 &&
+            hot.hot_triads > best_hot_triads;
+        if (eval_count > 0 && (better_eval || tie_better_field)) {
             best_eval_l1 = eval_mean;
             best_step = step;
             best_codebook = codebook;

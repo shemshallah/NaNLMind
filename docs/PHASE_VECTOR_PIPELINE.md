@@ -252,8 +252,8 @@ pipeline still needs:
 - multiple power iterations and spectral normalization;
 - codebook-region matrix observer;
 - remote leaf paging/verification;
-- trihead/hotspot integration into the training loop;
-- book-disjoint reconstruction metrics.
+- book-disjoint reconstruction metrics rather than a contiguous held-out suffix;
+- persistent corpus-wide codebook/matrix checkpoints across runs.
 
 ## 10. Production-width streaming ingest
 
@@ -283,7 +283,25 @@ For the chunked training/metric loop over the same encoded windows, use:
 
 `phase-train` trains the codebook in the guest, warm-updates it in 64-window
 chunks with `mth_pq_update`, and emits JSONL train/eval L1, matrix probe,
-hot-head/triad and 43/85 field metrics.
+hot-head/triad and 43/85 field metrics. The corpus is split contiguously into
+training and held-out suffix windows. The selected checkpoint is the lowest
+held-out L1, with the 43/85 field state as a tie-break.
+
+Measured on 1,000 lines of Alice:
+
+```text
+step 1  eval L1 578,215  probe hit 36.4%  hot triads 21  field false
+step 9  eval L1 551,580  probe hit 99.5%  hot triads 52  field true
+```
+
+The best selected checkpoint is `best_step=9`, not the final step. Metrics are
+written to `PREFIX.metrics.jsonl` and `PREFIX.metrics.json`; the codebook and
+matrix files are the selected best checkpoint.
+
+```sh
+make phase-train-check
+# PHASE_TRAIN PASS ...
+```
 
 ### NaNROUTER runner
 
