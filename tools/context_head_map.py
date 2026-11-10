@@ -7,6 +7,8 @@ head 255, and maps the 16 high groups onto the 85 triads (five triads per
 high group; the last five triads are reserved for field/control use).
 
 This is a mapping/validation artifact. It does not change model arithmetic.
+The same map is implemented in the raw guest by
+mth/nan16/mth_context_class.nas (driver command 30).
 """
 from __future__ import annotations
 

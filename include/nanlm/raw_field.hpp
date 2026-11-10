@@ -80,6 +80,54 @@ struct HotTriheadResult {
     std::array<std::uint8_t, kTriadMemberCount> members{};
 };
 
+// Context-memory 16x16 class hierarchy linked to the canonical 256-head,
+// 85-triad, 43/85 field topology. The high/low class scores live in the same
+// context table used by readout_context(); the guest kernel computes argmax,
+// class head = high*16 + low, triad = head/3, member = head%3, and the
+// 2-of-3 triad / 43-of-85 field vote. The host only writes inputs and reads
+// results.
+enum class ContextCreditKind : std::uint8_t {
+    None = 0,
+    Cft = 1,
+    Trail = 2,
+};
+
+struct ContextClassInput {
+    std::uint32_t high_table = 0x100000; // guest word address
+    std::uint32_t low_table = 0;         // 0 => high_table + 16*buckets
+    std::size_t buckets = 1;
+    std::uint32_t bucket = 0;
+    bool direct = false;                 // use direct_high/direct_low instead
+    std::uint8_t direct_high = 0;
+    std::uint8_t direct_low = 0;
+    std::int32_t head_threshold = 0;
+};
+
+struct ContextCreditInput {
+    ContextCreditKind kind = ContextCreditKind::None;
+    // CFT: e_ab, e_bc, e_ca, error, rate (Q16.16).
+    std::array<std::int32_t, 5> cft{};
+    // TRAIL: the eleven mth_trail_credit.nas arguments (Q16.16).
+    std::array<std::int32_t, 11> trail{};
+};
+
+struct ContextClassResult {
+    std::uint8_t high = 0;
+    std::uint8_t low = 0;
+    std::uint8_t head = 0;
+    std::uint16_t triad = 0xFFFFu;   // 0xFFFF for field head 255
+    std::uint16_t member = 0xFFFFu;  // 0xFFFF for field head 255
+    bool field_head = false;
+    std::uint16_t accepted_triads = 0;
+    bool field_accepted = false;
+    bool triad_accepted = false;
+    std::int32_t head_credit_before = 0;
+    std::int32_t head_credit_after = 0;
+    std::int32_t credit_delta = 0;
+    bool credit_applied = false;
+    std::array<std::uint8_t, kTriadCount> votes{};
+};
+
 class RawFieldVM {
 public:
     explicit RawFieldVM(const std::string& driver_image);
@@ -170,6 +218,30 @@ public:
     bool hot_triheads(Universe& universe,
                       const std::array<std::int32_t, kTriadMemberCount>& credits,
                       std::int32_t threshold, HotTriheadResult& out);
+    // Context-table/class -> canonical head/triad/field link. The guest reads
+    // the high and conditional-low scores (or direct predictions), computes
+    // class head = high*16+low, triad = head/3, then turns the 255 head
+    // credits into 85 2-of-3 triad votes and the 43/85 field decision.
+    bool context_class_map(
+        const ContextClassInput& input,
+        const std::array<std::int32_t, kTriadMemberCount>& credits,
+        ContextClassResult& out);
+    // Same mapping with a native CFT or TRAIL credit applied to the selected
+    // class head before the triad/field vote. All credit and vote arithmetic
+    // remains in the guest.
+    bool context_class_credit(
+        const ContextClassInput& input,
+        const ContextCreditInput& credit,
+        const std::array<std::int32_t, kTriadMemberCount>& credits,
+        ContextClassResult& out);
+    // Chart bridge: run the context class link from the chart's head credits,
+    // then copy the guest's 85 triad votes, field count and updated selected
+    // head credit into the chart. The chart must still hold the canonical
+    // 3t+s triad partition; adaptive remaps are not overwritten.
+    bool context_class_apply(Universe& universe,
+                             const ContextClassInput& input,
+                             const ContextCreditInput& credit,
+                             ContextClassResult& out);
     // Raw two-token identity QKV/softmax/tanh feature feed.
     bool micro_feature(const std::array<float, kRawFeatureDim>& x0,
                        const std::array<float, kRawFeatureDim>& x1,

@@ -81,9 +81,15 @@ field threshold = 43/85
 ```
 
 This is the canonical class/head map for connecting the context memory to the
-existing triad/field bank. The next gate is to make the memory rows physically
-live in the sparse head adapters and use CFT/TRAIL credit on the selected
-high/low entries.
+existing triad/field bank. The raw NaN16 kernel
+`mth/nan16/mth_context_class.nas` (driver command 30) now implements it in the
+guest: it reads the high and conditional-low scores, computes
+`head = high*16 + low` and `triad = head/3`, optionally applies a native CFT or
+TRAIL credit to the selected head, and votes the 255 head credits through
+2-of-3 triad support to the 43/85 field gate. `RawFieldVM::context_class_map`,
+`context_class_credit` and `context_class_apply` are the C++ bridge. The next
+gate is to make the memory rows physically live in the sparse head adapters
+rather than only the context bucket table.
 
 ### 3. Train the trunk, not just the readout
 

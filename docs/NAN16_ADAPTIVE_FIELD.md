@@ -43,6 +43,7 @@ adaptive-field mathematics:
 | `mth_trunk_credit_wide.nas` | runtime-width Wout/W1/W2 local-credit update |
 | `mth_credit_gate.nas` | CFT/TRAIL credit gate for local updates |
 | `mth_credit_field.nas` | 255 head credits -> 2/3 triad votes -> 43/85 field |
+| `mth_context_class.nas` | context 16x16 high/low classes -> canonical head/triad + CFT/TRAIL credit -> 43/85 field |
 | `mth_credit_combine.nas` | weighted 7-credit combination (command 25) |
 | `mth_credit_bundle.nas` | seven credits derived from raw local state (command 29) |
 | `mth_flux_credit.nas` | temporal-link flux/divergence credit |
@@ -101,6 +102,54 @@ chart only after the raw result passes.
 
 Raw fixture: `mth/tests/mth_hot_trihead_test.nas` (three non-contiguous hot
 heads -> one hot triad; 129 hot heads -> 43 hot triads and field gate).
+
+## Context class -> canonical field ABI
+
+`mth_context_class.nas` is the physical link from the 16x16 context-memory
+class hierarchy to the canonical topology. The guest either reads the high and
+conditional-low scores straight from the context table (same layout as
+`mth_context_hier.nas`) or accepts direct high/low predictions, then computes:
+
+```text
+class head = high * 16 + low          (0..254)
+class triad = class head / 3          (0..84)
+class member = class head % 3         (0..2)
+field head = 255                      (no triad, no credit)
+```
+
+It then applies an optional native CFT or TRAIL delta to the selected head
+credit and turns the 255 head credits into 85 fixed-partition 2-of-3 triad
+votes. The field accepts only at 43/85. All argmax, mapping, credit, vote and
+threshold arithmetic runs in the guest; the host only supplies the table,
+credit inputs and reads back the result.
+
+Driver command 30 (`mth/drivers/field_driver.nas`) uses:
+
+```text
+0x4001 high table base word address
+0x4002 bucket count B
+0x4003 bucket
+0x4004 low table base (0 => high + 16*B)
+0x4005 mode 0 = table, 1 = direct predictions
+0x4006/0x4007 direct high/low class
+0x4008 credit mode 0 none, 1 CFT, 2 TRAIL
+0x4009 signed head-credit threshold
+0x400A..0x400E CFT args (e_ab,e_bc,e_ca,error,rate)
+0x7300..0x730A TRAIL args
+0x7000 255 signed head credits
+0x4010 results: high, low, head, triad, member, accepted triads,
+       field flag, selected triad vote, credit before/after, applied, delta,
+       field-head flag
+0x7100 85 output triad votes
+```
+
+`RawFieldVM::context_class_map` runs the mapping and field vote,
+`context_class_credit` adds the CFT/TRAIL delta, and `context_class_apply`
+copies the guest's votes, field count and updated selected-head credit into a
+chart that still holds the canonical `3t+s` triad partition. The raw fixture
+`mth/tests/mth_context_class_test.nas` pins high=8/low=5 -> head 133/triad 44,
+then shows 42/85 rejected and a native CFT credit making triad 44 the 43rd
+accepted triad.
 
 ## Micro-feature ABI
 

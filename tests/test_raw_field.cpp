@@ -9,6 +9,10 @@
 #include <iterator>
 
 #include <array>
+#include <cstring>
+#include <filesystem>
+#include <fstream>
+#include <vector>
 
 using namespace nanlm;
 
@@ -149,6 +153,131 @@ int main() {
     CHECK_EQ(hot_universe.triad_of()[17], 0u);
     CHECK_EQ(hot_universe.triad_of()[99], 0u);
     CHECK_EQ(hot_universe.triad_slot()[99], 2u);
+
+    // Context 16x16 class table -> canonical 255-head/85-triad/43 field
+    // link. The committed guest fixture is
+    // mth/tests/mth_context_class_test.nas; this drives the same command 30
+    // through the C++ bridge.
+    constexpr std::size_t context_buckets = 4;
+    constexpr std::uint32_t context_bucket = 1;
+    {
+        const auto path = std::filesystem::temp_directory_path() /
+                          "nanlm_context_class_scores.bin";
+        std::ofstream scores(path, std::ios::binary);
+        CHECK(static_cast<bool>(scores));
+        std::vector<std::uint32_t> words(272 * context_buckets, 0);
+        auto put_score = [&](std::size_t index, float value) {
+            std::uint32_t bits = 0;
+            std::memcpy(&bits, &value, sizeof(bits));
+            words[index] = bits;
+        };
+        const std::size_t low_base = 16 * context_buckets;
+        put_score(8 * context_buckets + context_bucket, 1.0f);
+        put_score(low_base + 8 * 16 * context_buckets +
+                  5 * context_buckets + context_bucket, 1.0f);
+        for (const std::uint32_t word : words) {
+            const std::array<char, 4> raw = {
+                static_cast<char>(word & 0xFFu),
+                static_cast<char>((word >> 8) & 0xFFu),
+                static_cast<char>((word >> 16) & 0xFFu),
+                static_cast<char>((word >> 24) & 0xFFu)};
+            scores.write(raw.data(), raw.size());
+        }
+        scores.close();
+        CHECK(vm.load_context_readout(path.string(), context_buckets));
+        std::error_code ignored;
+        std::filesystem::remove(path, ignored);
+    }
+
+    std::array<std::int32_t, kTriadMemberCount> class_credits{};
+    for (std::size_t i = 0; i < 126; ++i) class_credits[i] = 0x2000;
+    class_credits[132] = 0x2000;
+    ContextClassInput class_input;
+    class_input.buckets = context_buckets;
+    class_input.bucket = context_bucket;
+    class_input.head_threshold = 0x1000;
+
+    ContextClassResult class_result;
+    CHECK(vm.context_class_map(class_input, class_credits, class_result));
+    CHECK_EQ(class_result.high, 8u);
+    CHECK_EQ(class_result.low, 5u);
+    CHECK_EQ(class_result.head, 133u);
+    CHECK_EQ(class_result.triad, 44u);
+    CHECK_EQ(class_result.member, 1u);
+    CHECK(!class_result.field_head);
+    CHECK_EQ(class_result.accepted_triads, 42u);
+    CHECK(!class_result.field_accepted);
+    CHECK(!class_result.triad_accepted);
+    CHECK_EQ(class_result.votes[0], 1u);
+    CHECK_EQ(class_result.votes[44], 0u);
+
+    // Native CFT credit crosses the head threshold and makes triad 44 the
+    // 43rd accepted triad; 42/85 stays rejected above.
+    ContextCreditInput class_credit;
+    class_credit.kind = ContextCreditKind::Cft;
+    class_credit.cft = {0, 0, 0, 0x10000, 0x6000};
+    ContextClassResult credited;
+    CHECK(vm.context_class_credit(class_input, class_credit, class_credits,
+                                  credited));
+    CHECK_EQ(credited.credit_delta, 0x2000);
+    CHECK_EQ(credited.head_credit_before, 0);
+    CHECK_EQ(credited.head_credit_after, 0x2000);
+    CHECK(credited.credit_applied);
+    CHECK_EQ(credited.accepted_triads, 43u);
+    CHECK(credited.field_accepted);
+    CHECK(credited.triad_accepted);
+    CHECK_EQ(credited.votes[44], 1u);
+
+    // The TRAIL branch uses the same native kernel ABI. This is the fixed
+    // vector from mth/tests/mth_credit_pipeline_test.nas: credit = -0x6DC.
+    ContextCreditInput trail_credit;
+    trail_credit.kind = ContextCreditKind::Trail;
+    trail_credit.trail = {0x8000, 0x6666, 0x4CCC, 0x3333, 0x1999,
+                          0x1999, 0x3333, 0x0CCC, 0x051E, 0xE666, 0xCCCC};
+    ContextClassResult trailed;
+    CHECK(vm.context_class_credit(class_input, trail_credit, class_credits,
+                                  trailed));
+    CHECK_EQ(trailed.credit_delta, -0x6DC);
+    CHECK_EQ(trailed.head_credit_before, 0);
+    CHECK_EQ(trailed.head_credit_after, -0x6DC);
+    CHECK(trailed.credit_applied);
+    CHECK_EQ(trailed.accepted_triads, 42u);
+    CHECK(!trailed.field_accepted);
+
+    // Chart bridge copies the guest votes, field count and selected head
+    // credit into the canonical chart.
+    Universe class_universe;
+    for (std::size_t i = 0; i < 126; ++i) {
+        class_universe.head_credit()[i] = 0x2000;
+    }
+    class_universe.head_credit()[132] = 0x2000;
+    ContextClassResult applied;
+    CHECK(vm.context_class_apply(class_universe, class_input, class_credit,
+                                 applied));
+    CHECK_EQ(class_universe.head_credit()[133], 0x2000);
+    CHECK_EQ(class_universe.triad_field_count(), 43u);
+    CHECK_EQ(class_universe.triad_votes()[0], 1u);
+    CHECK_EQ(class_universe.triad_votes()[44], 1u);
+
+    // Direct-prediction mode uses the same guest mapping law, including the
+    // reserved field head 255.
+    ContextClassInput direct_input;
+    direct_input.direct = true;
+    direct_input.direct_high = 15;
+    direct_input.direct_low = 14;
+    direct_input.head_threshold = 0x1000;
+    ContextClassResult direct_result;
+    CHECK(vm.context_class_map(direct_input, class_credits, direct_result));
+    CHECK_EQ(direct_result.head, 254u);
+    CHECK_EQ(direct_result.triad, 84u);
+    CHECK_EQ(direct_result.member, 2u);
+    CHECK(!direct_result.field_head);
+    direct_input.direct_low = 15;
+    CHECK(vm.context_class_map(direct_input, class_credits, direct_result));
+    CHECK_EQ(direct_result.head, 255u);
+    CHECK_EQ(direct_result.triad, 0xFFFFu);
+    CHECK_EQ(direct_result.member, 0xFFFFu);
+    CHECK(direct_result.field_head);
 
     // Raw two-token QKV/softmax/tanh feature feed into the native sparse
     // head/field bank.  Identity QKV is the P1 bridge point; learned matrices

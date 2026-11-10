@@ -27,8 +27,9 @@
 ; Credit combine: 7 credits at 0x7000, 7 coefficients at 0x7100, result 0x4010
 ; Credit bundle: state at 0x8000, credits at 0x7200; command 29
 ; Combined gated credit: target/best/base/threshold 0x4001..4, credits 0x7000, coeffs 0x7100
-; Batched context: count/targets/buckets/lrs/B at 0x4001..0x4005, command 26
-;   results at 0x4010: correct, loss sum bits, processed, reserved
+; Context class link (command 30): table/mode at 0x4001..0x4007, credit mode
+;   at 0x4008, threshold at 0x4009, CFT args 0x400A..0x400E, TRAIL args
+;   0x7300..0x730A, 255 credits at 0x7000; results 0x4010, votes 0x7100.
 ;
 ; The driver contains no host math. It is assembled by nmk.awk and executed
 ; by the canonical NaN0S VM. The guest starts at word 0.
@@ -57,7 +58,7 @@ JMP @field_driver_entry
 .include "../nan16/mth_softmax16.nas"
 .include "../nan16/mth_softmax16_table.nas"
 .include "../nan16/mth_context_hier.nas"
-.include "../nan16/mth_context_batch.nas"
+.include "../nan16/mth_context_class.nas"
 .include "../nan16/mth_readout_hier.nas"
 .include "../nan16/mth_trunk_credit.nas"
 .include "../nan16/mth_qkv_credit.nas"
@@ -172,22 +173,7 @@ field_driver_main:
   JMP[EQ] @field_driver_credit_bundle
   MOVI r3,30
   CMP r2,r3
-  JMP[EQ] @field_driver_context_hash
-  MOVI r3,35
-  CMP r2,r3
-  JMP[EQ] @field_driver_holo
-  MOVI r3,36
-  CMP r2,r3
-  JMP[EQ] @field_driver_ring
-  MOVI r3,37
-  CMP r2,r3
-  JMP[EQ] @field_driver_leaf
-  MOVI r3,38
-  CMP r2,r3
-  JMP[EQ] @field_driver_tca
-  MOVI r3,39
-  CMP r2,r3
-  JMP[EQ] @field_driver_flux
+  JMP[EQ] @field_driver_context_class
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -655,85 +641,101 @@ field_driver_credit_bundle:
   ST r1,r10,0
   JMP @field_driver_return
 
-; Native Q16.16 -> float32 bit-pattern conversion for trunk ABI.
-; CVTIF casts the signed Q16 integer to float32; FDIV scales by 65536.0.
-; No host math, no new opcode handler. Clobbers r2 only.
-mth_credit_rate_float:
-  CVTIF r1,r1
-  MOVI r2,0
-  MOVHI r2,0x4780
-  FDIV r1,r1,r2
-  RET
-
-field_driver_holo:
-  MOVI r10,0x4001
-  LD r1,r10,0
-  LD r2,r10,1
-  LD r3,r10,2
-  CALL @mth_holo_credit
-  MOVI r10,0x4010
-  ST r1,r10,0
-  ST r2,r10,1
-  JMP @field_driver_return
-field_driver_ring:
-  MOVI r1,0x6000
-  MOVI r10,0x4001
-  LD r2,r10,0
-  CALL @mth_ring_credit
-  MOVI r10,0x4010
-  ST r1,r10,0
-  JMP @field_driver_return
-field_driver_leaf:
-  MOVI r10,0x4001
-  LD r1,r10,0
-  LD r2,r10,1
-  LD r3,r10,2
-  CALL @mth_leaf_credit
-  MOVI r10,0x4010
-  ST r1,r10,0
-  ST r2,r10,1
-  JMP @field_driver_return
-field_driver_tca:
-  MOVI r10,0x4001
-  LD r1,r10,0
-  LD r2,r10,1
-  LD r3,r10,2
-  CALL @mth_tca_credit
-  MOVI r10,0x4010
-  ST r1,r10,0
-  ST r2,r10,1
-  JMP @field_driver_return
-field_driver_flux:
+field_driver_context_class:
+  ; high table / buckets / bucket / low table / mode / direct high/low
   MOVI r10,0x4001
   LD r1,r10,0
   LD r2,r10,1
   LD r3,r10,2
   LD r4,r10,3
-  CALL @mth_flux_credit
+  LD r5,r10,4
+  LD r6,r10,5
+  LD r7,r10,6
+  CALL @mth_context_pick
   MOVI r10,0x4010
-  ST r1,r10,0
-  ST r2,r10,1
-  ST r3,r10,2
-  JMP @field_driver_return
+  ST r5,r10,0             ; high class
+  ST r6,r10,1             ; low class
+  ST r1,r10,2             ; class head
+  ST r2,r10,3             ; triad
+  ST r3,r10,4             ; member
+  ST r4,r10,12            ; field-head flag
+  MOVI r12,@mth_driver_ctx_head
+  ST r1,r12,0
 
-field_driver_context_encode:
-  CALL @mth_context_encode
-  MOVI r10,0x4010
-  ST r1,r10,0
-  JMP @field_driver_return
+  MOVI r10,0x4008
+  LD r6,r10,0             ; credit mode 0 none, 1 CFT, 2 TRAIL
+  MOVI r12,@mth_driver_ctx_mode
+  ST r6,r12,0
+  CMP r6,r0
+  JMP[EQ] @field_driver_ctx_no_credit
+  MOVI r12,1
+  CMP r6,r12
+  JMP[EQ] @field_driver_ctx_cft
+  MOVI r12,2
+  CMP r6,r12
+  JMP[EQ] @field_driver_ctx_trail
+  JMP @field_driver_ctx_no_credit
 
-field_driver_role_step:
-  CALL @mth_role_step
-  MOVI r10,0x4010
-  ST r1,r10,0
-  ST r2,r10,1
-  JMP @field_driver_return
+field_driver_ctx_cft:
+  MOVI r10,0x400A
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r4,r10,3
+  LD r5,r10,4
+  CALL @mth_cft_credit
+  ADD r11,r4,r0
+  JMP @field_driver_ctx_credit_ready
 
-field_driver_sense_step:
-  CALL @mth_sense_step
+field_driver_ctx_trail:
+  MOVI r10,0x7300
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r4,r10,3
+  LD r5,r10,4
+  LD r6,r10,5
+  LD r7,r10,6
+  LD r8,r10,7
+  LD r9,r10,8
+  LD r10,r10,9
+  MOVI r12,0x7300
+  LD r11,r12,10
+  CALL @mth_trail_credit
+  ADD r11,r3,r0
+  JMP @field_driver_ctx_credit_ready
+
+field_driver_ctx_no_credit:
+  MOVI r11,0
+
+field_driver_ctx_credit_ready:
+  MOVI r12,@mth_driver_ctx_delta
+  ST r11,r12,0
+  MOVI r1,0x7000
+  MOVI r10,0x4009
+  LD r2,r10,0
+  MOVI r3,0x7100
+  MOVI r12,@mth_driver_ctx_head
+  LD r4,r12,0
+  ADD r5,r11,r0
+  CALL @mth_context_field
   MOVI r10,0x4010
-  ST r1,r10,0
-  ST r2,r10,1
+  ST r1,r10,5             ; accepted triads
+  ST r2,r10,6             ; field accepted
+  ST r3,r10,7             ; selected triad vote
+  ST r4,r10,8             ; selected head credit before
+  ST r5,r10,9             ; selected head credit after
+  MOVI r12,@mth_driver_ctx_mode
+  LD r11,r12,0
+  CMP r11,r0
+  MOVI r11,0
+  JMP[EQ] @field_driver_ctx_applied_done
+  MOVI r11,1
+field_driver_ctx_applied_done:
+  ST r11,r10,10           ; credit mode applied
+  MOVI r12,@mth_driver_ctx_delta
+  LD r11,r12,0
+  ST r11,r10,11           ; guest credit delta
   JMP @field_driver_return
 
 field_driver_return:
@@ -742,4 +744,10 @@ field_driver_return:
   RET
 
 field_driver_link:
+  .word 0
+mth_driver_ctx_head:
+  .word 0
+mth_driver_ctx_mode:
+  .word 0
+mth_driver_ctx_delta:
   .word 0
