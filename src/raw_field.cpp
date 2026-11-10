@@ -19,6 +19,8 @@ constexpr std::uint32_t kHotMapping = 0x8000;
 constexpr std::uint32_t kMicroX0 = 0x7000;
 constexpr std::uint32_t kMicroX1 = 0x7100;
 constexpr std::uint32_t kMicroOut = 0x7200;
+constexpr std::uint32_t kContextCreditArgs = 0x7300;
+constexpr std::uint32_t kContextVotes = 0x7100;
 constexpr std::uint32_t kMaxSteps = 200'000'000;
 
 void bump_triad_credit(std::int16_t& value, int delta) {
@@ -285,6 +287,142 @@ bool RawFieldVM::hot_triheads(
                           t < out.hot_triads ? 1 : -1);
     }
     out.mapped = true;
+    return true;
+}
+
+bool RawFieldVM::context_class_map(
+    const ContextClassInput& input,
+    const std::array<std::int32_t, kTriadMemberCount>& credits,
+    ContextClassResult& out) {
+    return context_class_credit(input, ContextCreditInput{}, credits, out);
+}
+
+bool RawFieldVM::context_class_credit(
+    const ContextClassInput& input,
+    const ContextCreditInput& credit,
+    const std::array<std::int32_t, kTriadMemberCount>& credits,
+    ContextClassResult& out) {
+    if (input.buckets == 0 || input.buckets > 16384) {
+        return fail("context class bucket count outside 1..16384");
+    }
+    if (!input.direct && input.bucket >= input.buckets) {
+        return fail("context class bucket is outside the table");
+    }
+    if (input.direct &&
+        (input.direct_high > 15 || input.direct_low > 15)) {
+        return fail("context class direct nibble outside 0..15");
+    }
+    if (credit.kind != ContextCreditKind::None &&
+        credit.kind != ContextCreditKind::Cft &&
+        credit.kind != ContextCreditKind::Trail) {
+        return fail("unknown context credit kind");
+    }
+    for (std::size_t i = 0; i < credits.size(); ++i) {
+        if (!write_word(kHotCredits + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(credits[i]))) {
+            return fail("cannot write context class head credits");
+        }
+    }
+    if (!write_word(kProposalBase + 0, input.high_table) ||
+        !write_word(kProposalBase + 1,
+                    static_cast<std::uint32_t>(input.buckets)) ||
+        !write_word(kProposalBase + 2, input.bucket) ||
+        !write_word(kProposalBase + 3, input.low_table) ||
+        !write_word(kProposalBase + 4, input.direct ? 1u : 0u) ||
+        !write_word(kProposalBase + 5, input.direct_high) ||
+        !write_word(kProposalBase + 6, input.direct_low) ||
+        !write_word(kProposalBase + 7,
+                    static_cast<std::uint32_t>(credit.kind)) ||
+        !write_word(kProposalBase + 8,
+                    static_cast<std::uint32_t>(input.head_threshold))) {
+        return fail("cannot write context class mapping command");
+    }
+    for (std::size_t i = 0; i < credit.cft.size(); ++i) {
+        if (!write_word(kProposalBase + 9 + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(credit.cft[i]))) {
+            return fail("cannot write context CFT arguments");
+        }
+    }
+    if (credit.kind == ContextCreditKind::Trail) {
+        for (std::size_t i = 0; i < credit.trail.size(); ++i) {
+            if (!write_word(kContextCreditArgs + static_cast<std::uint32_t>(i),
+                            static_cast<std::uint32_t>(credit.trail[i]))) {
+                return fail("cannot write context TRAIL arguments");
+            }
+        }
+    }
+    if (!write_word(kCommandBase, 30)) {
+        return fail("cannot write context class command");
+    }
+    if (!run_command()) return false;
+
+    out.high = static_cast<std::uint8_t>(read_word(kResultBase + 0) & 15u);
+    out.low = static_cast<std::uint8_t>(read_word(kResultBase + 1) & 15u);
+    out.head = static_cast<std::uint8_t>(read_word(kResultBase + 2) & 255u);
+    const std::uint32_t triad = read_word(kResultBase + 3);
+    const std::uint32_t member = read_word(kResultBase + 4);
+    out.field_head = (read_word(kResultBase + 12) & 1u) != 0;
+    if (out.field_head) {
+        if (out.head != kFieldHead || triad != 0xFFFFu || member != 0xFFFFu) {
+            return fail("context class field head result is inconsistent");
+        }
+        out.triad = 0xFFFFu;
+        out.member = 0xFFFFu;
+    } else {
+        if (out.head >= kFieldHead || triad >= kTriadCount ||
+            member >= kTriadSize) {
+            return fail("context class result is outside the triad topology");
+        }
+        out.triad = static_cast<std::uint16_t>(triad);
+        out.member = static_cast<std::uint16_t>(member);
+    }
+    const std::uint32_t accepted = read_word(kResultBase + 5);
+    if (accepted > kTriadCount) {
+        return fail("context class accepted-triad count exceeds 85");
+    }
+    out.accepted_triads = static_cast<std::uint16_t>(accepted);
+    out.field_accepted = (read_word(kResultBase + 6) & 1u) != 0;
+    out.triad_accepted = (read_word(kResultBase + 7) & 1u) != 0;
+    out.head_credit_before =
+        static_cast<std::int32_t>(read_word(kResultBase + 8));
+    out.head_credit_after =
+        static_cast<std::int32_t>(read_word(kResultBase + 9));
+    out.credit_applied = (read_word(kResultBase + 10) & 1u) != 0;
+    out.credit_delta = static_cast<std::int32_t>(read_word(kResultBase + 11));
+    for (std::size_t i = 0; i < out.votes.size(); ++i) {
+        out.votes[i] = static_cast<std::uint8_t>(
+            read_word(kContextVotes + static_cast<std::uint32_t>(i)) & 1u);
+    }
+    return true;
+}
+
+bool RawFieldVM::context_class_apply(
+    Universe& universe,
+    const ContextClassInput& input,
+    const ContextCreditInput& credit,
+    ContextClassResult& out) {
+    for (std::size_t t = 0; t < kTriadCount; ++t) {
+        for (std::size_t s = 0; s < kTriadSize; ++s) {
+            if (universe.triad_members()[t * kTriadSize + s] !=
+                static_cast<std::uint8_t>(t * kTriadSize + s)) {
+                return fail("context class field link requires the canonical triad mapping");
+            }
+        }
+    }
+    std::array<std::int32_t, kTriadMemberCount> credits{};
+    for (std::size_t i = 0; i < credits.size(); ++i) {
+        credits[i] = universe.head_credit()[i];
+    }
+    if (!context_class_credit(input, credit, credits, out)) return false;
+    if (out.head < kTriadMemberCount) {
+        const int next = std::max<int>(
+            -32768, std::min<int>(32767, out.head_credit_after));
+        universe.head_credit()[out.head] = static_cast<std::int16_t>(next);
+    }
+    for (std::size_t t = 0; t < kTriadCount; ++t) {
+        universe.triad_votes()[t] = out.votes[t];
+    }
+    universe.triad_field_count() = out.accepted_triads;
     return true;
 }
 
