@@ -44,10 +44,21 @@ Native context memory, 11,456 buckets, 4-byte context, exact/backoff route,
 | held-out loss | `1.91564` |
 | checkpoint | `state/hw5_gutenberg21.ctx` |
 
-## 150-book run
+## 150-book result
 
-The current universe is trained from scratch (the table is reset, not loaded
-from the 2-book or 21-book checkpoint) with the raw guest backoff route:
+The 150-book table was trained from scratch (table reset, no 2-book/21-book
+checkpoint) with the raw guest exact/backoff route:
+
+| metric | value |
+|---|---:|
+| train samples | 1,357,268 |
+| held-out samples | 339,317 |
+| training-window accuracy | `54.1966%` |
+| held-out accuracy | **`53.191%`** |
+| held-out loss | `2.06797` |
+| training time | `457.8 s` |
+| eval time | `117.1 s` |
+| checkpoint | `state/transfer/hw5_gutenberg150_guest.ctx` |
 
 ```sh
 # executed in the isolated raw-backoff worktree
@@ -56,9 +67,11 @@ context-train state/gutenberg_150_corpus.txt \
   save=state/transfer/hw5_gutenberg150_guest.ctx
 ```
 
-The final held-out score will be recorded here when the run completes. The
-150-book corpus and its C(256,2) object are already built and registered; the
-checkpoint path is in the HW5 training route.
+The 21-book 5-epoch run reached `54.6394%`; the 150-book 1-epoch run reached
+`53.191%`. The comparison is not epoch-matched: expansion did not collapse the
+score, but it also did not improve it in one epoch. A 150-book multi-epoch run
+is the next measurement. The checkpoint path is now the HW5 training-route
+target.
 
 ## Non-claims
 
