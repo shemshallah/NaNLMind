@@ -89,3 +89,19 @@ the topology remains one `HW0::BS0` universe.
 
 The main tree currently has `c81d1b9` integrated. The remaining agent commits
 are in isolated worktrees and are not claimed as main-tree parity.
+
+## Merge status
+
+The six raw workstream commits were merged into `main` through the
+`integration/raw-symbiotic` branch:
+
+- `88861a8` guest backoff
+- `8836d7f` guest batch
+- `92c2f60` field/head map
+- `78f4e9b` copy/induction
+- `0dec07f` joint readout + score artifact
+- `c81d1b9` hash content is present through the cherry-picked main commit
+
+The integration build and the backoff-compatible `test_raw_field` pass. The
+individual worktrees remain as provenance/evidence; they are no longer
+independent model owners. The canonical universe stays `HW0::BS0`.
