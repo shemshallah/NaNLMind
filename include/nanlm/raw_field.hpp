@@ -262,6 +262,16 @@ public:
                          bool& correct, float& loss,
                          std::uint8_t& predicted_high,
                          std::uint8_t& predicted_low);
+    // Guest-side FNV-1a selection: the host passes raw context bytes packed
+    // little-endian (first hashed byte in bits 0..7) plus the byte count.
+    // The guest computes the bucket and runs the context hierarchical readout.
+    bool readout_context_hashed(std::uint8_t target, float learning_rate,
+                                std::uint32_t packed_context,
+                                std::uint8_t context_bytes,
+                                std::size_t buckets, bool& correct,
+                                float& loss, std::uint8_t& predicted_high,
+                                std::uint8_t& predicted_low,
+                                std::uint32_t& bucket);
     void reset_readout();
     bool set_readout_row(std::uint8_t row,
                          const std::array<float, kRawFeatureDim>& values);

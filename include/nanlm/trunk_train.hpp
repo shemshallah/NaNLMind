@@ -3,4 +3,5 @@ namespace nanlm {
 int trunk_train_cli(int argc, char** argv);
 int hier_train_cli(int argc, char** argv);
 int context_train_cli(int argc, char** argv);
+int context_hash_check_cli(int argc, char** argv);
 }

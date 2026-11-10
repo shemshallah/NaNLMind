@@ -783,6 +783,38 @@ bool RawFieldVM::readout_context(std::uint8_t target, float learning_rate,
     return true;
 }
 
+bool RawFieldVM::readout_context_hashed(
+    std::uint8_t target, float learning_rate, std::uint32_t packed_context,
+    std::uint8_t context_bytes, std::size_t buckets, bool& correct,
+    float& loss, std::uint8_t& predicted_high, std::uint8_t& predicted_low,
+    std::uint32_t& bucket) {
+    if (buckets == 0 || buckets > 16384 || context_bytes == 0 ||
+        context_bytes > 4) {
+        return fail("invalid hashed-context readout input");
+    }
+    std::uint32_t lr_bits = 0;
+    std::memcpy(&lr_bits, &learning_rate, sizeof(lr_bits));
+    if (!write_word(kProposalBase + 0, target) ||
+        !write_word(kProposalBase + 1, lr_bits) ||
+        !write_word(kProposalBase + 2, packed_context) ||
+        !write_word(kProposalBase + 3, context_bytes) ||
+        !write_word(kProposalBase + 4, static_cast<std::uint32_t>(buckets)) ||
+        !write_word(kCommandBase, 30)) {
+        return fail("cannot write hashed-context readout command");
+    }
+    if (!run_command()) return false;
+    correct = (read_word(kResultBase + 0) & 1u) != 0;
+    const std::uint32_t ls = read_word(kResultBase + 1);
+    std::memcpy(&loss, &ls, sizeof(ls));
+    predicted_high = static_cast<std::uint8_t>(read_word(kResultBase + 2) & 15u);
+    predicted_low = static_cast<std::uint8_t>(read_word(kResultBase + 3) & 15u);
+    bucket = read_word(kResultBase + 4);
+    if (bucket >= buckets) {
+        return fail("raw context hash returned an out-of-range bucket");
+    }
+    return true;
+}
+
 void RawFieldVM::reset_readout() {
     for (std::uint32_t i = 0; i < 255u * 8u; ++i) {
         (void)write_word(0xB000u + i, 0);

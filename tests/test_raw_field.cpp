@@ -538,5 +538,78 @@ int main() {
     CHECK(feature_field.forward(q16, feature_result));
     CHECK_EQ(feature_result.count, SparseField::kActive);
 
+    // Guest-side FNV-1a context bucket: compare against the host reference
+    // across raw byte widths and bucket counts.
+    const std::array<std::array<std::uint8_t, 4>, 8> context_samples = {{
+        {{0x00, 0x00, 0x00, 0x00}},
+        {{0x41, 0x42, 0x43, 0x44}},
+        {{'t', 'h', 'e', ' '}},
+        {{0xFF, 0x00, 0x7F, 0x80}},
+        {{'c', 'o', 'n', 't'}},
+        {{0x01, 0x23, 0x45, 0x67}},
+        {{'z', 'z', 'z', 'z'}},
+        {{0xDE, 0xAD, 0xBE, 0xEF}},
+    }};
+    const auto host_bucket = [](const std::array<std::uint8_t, 4>& bytes,
+                                std::size_t width, std::uint32_t buckets) {
+        std::uint32_t hash = 2166136261u;
+        for (std::size_t j = 0; j < width; ++j) {
+            hash = (hash ^ bytes[j]) * 16777619u;
+        }
+        return hash % buckets;
+    };
+    const auto pack_bytes = [](const std::array<std::uint8_t, 4>& bytes,
+                               std::size_t width) {
+        std::uint32_t packed = 0;
+        for (std::size_t j = 0; j < width; ++j) {
+            packed |= static_cast<std::uint32_t>(bytes[j]) << (8 * j);
+        }
+        return packed;
+    };
+    const std::uint32_t hash_buckets = 257;
+    CHECK(vm.reset_context_readout(hash_buckets));
+    for (std::size_t width = 1; width <= 4; ++width) {
+        for (const auto& bytes : context_samples) {
+            for (const std::uint32_t buckets : {1u, 2u, 7u, 64u, 257u}) {
+                bool hash_correct = false;
+                float hash_loss = 0.0f;
+                std::uint8_t hash_high = 0, hash_low = 0;
+                std::uint32_t bucket = 0;
+                CHECK(vm.readout_context_hashed(
+                    0x35, 0.0f, pack_bytes(bytes, width),
+                    static_cast<std::uint8_t>(width), buckets, hash_correct,
+                    hash_loss, hash_high, hash_low, bucket));
+                CHECK_EQ(bucket, host_bucket(bytes, width, buckets));
+            }
+        }
+    }
+
+    // Small deterministic training smoke through the guest-hashed readout.
+    const std::uint32_t smoke_buckets = 64;
+    CHECK(vm.reset_context_readout(smoke_buckets));
+    const std::array<std::uint8_t, 4> smoke_bytes = {'a', 'b', 'c', 'd'};
+    const std::uint32_t smoke_packed = pack_bytes(smoke_bytes, 3);
+    bool smoke_correct = false;
+    float smoke_loss = 0.0f;
+    std::uint8_t smoke_high = 0, smoke_low = 0;
+    std::uint32_t smoke_bucket_before = 0, smoke_bucket_after = 0;
+    CHECK(vm.readout_context_hashed(0x35, 0.0f, smoke_packed, 3,
+                                    smoke_buckets, smoke_correct, smoke_loss,
+                                    smoke_high, smoke_low,
+                                    smoke_bucket_before));
+    CHECK(!smoke_correct);
+    const float first_loss = smoke_loss;
+    for (int step = 0; step < 24; ++step) {
+        CHECK(vm.readout_context_hashed(0x35, 1.0f, smoke_packed, 3,
+                                        smoke_buckets, smoke_correct,
+                                        smoke_loss, smoke_high, smoke_low,
+                                        smoke_bucket_after));
+    }
+    CHECK(smoke_correct);
+    CHECK(smoke_loss < first_loss);
+    CHECK_EQ(smoke_bucket_after,
+             host_bucket(smoke_bytes, 3, smoke_buckets));
+    CHECK_EQ(smoke_bucket_after, smoke_bucket_before);
+
     return test_done("raw NaN16 field VM bridge");
 }
