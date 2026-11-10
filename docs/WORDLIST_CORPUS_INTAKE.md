@@ -73,6 +73,33 @@ For held-out evaluation use a separate corpus as the last argument:
   state/phase_wordlists state/gutenberg_150_heldout.txt
 ```
 
+## Measured google-10000-english run
+
+```text
+source      google-10000-english.txt
+words       10,000
+split       9,000 train / 1,000 held-out
+codewords   160
+best step   20
+eval L1     530,015
+probe hit   100%
+leaf verify 100%
+hot heads   160
+hot triads  53
+field       true
+```
+
+The first 10,000-word list can be fetched and extracted with the same pattern as
+the full bundle. For a single release:
+
+```sh
+gh release download wordlist-google-10000-english -R shemshallah/NaNROUTER \
+  --dir /storage/emulated/0/Download/NaNROUTER-wordlists/google-10000-english
+```
+
+The phase-training command used the held-out file as the final argument; both
+`eval=PATH` and a bare `PATH` are accepted.
+
 ## Metrics and checkpoints
 
 `phase-train` writes:

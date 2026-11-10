@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import fnmatch
 import gzip
 import hashlib
 import io
@@ -26,13 +27,22 @@ SKIP_NAMES = {
 }
 
 
-def source_files(root: Path) -> Iterator[Path]:
+def source_files(root: Path, includes: list[str],
+                  excludes: list[str]) -> Iterator[Path]:
     for path in sorted(root.rglob("*")):
         if not path.is_file():
             continue
+        relative = str(path.relative_to(root))
         if any(part.startswith(".") for part in path.relative_to(root).parts):
             continue
         if path.name.lower() in SKIP_NAMES:
+            continue
+        if includes and not any(fnmatch.fnmatch(relative, pattern) or
+                                fnmatch.fnmatch(path.name, pattern)
+                                for pattern in includes):
+            continue
+        if any(fnmatch.fnmatch(relative, pattern) or
+               fnmatch.fnmatch(path.name, pattern) for pattern in excludes):
             continue
         yield path
 
@@ -145,6 +155,10 @@ def main() -> int:
                         help="keep first occurrence only (may use memory)")
     parser.add_argument("--allow-empty", action="store_true",
                         help="write an empty corpus instead of failing")
+    parser.add_argument("--include", action="append", default=[],
+                        help="glob to include (repeatable; matching file name or relative path)")
+    parser.add_argument("--exclude", action="append", default=[],
+                        help="glob to exclude (repeatable)")
     args = parser.parse_args()
     if not args.root.is_dir():
         print(f"wordlist root is not a directory: {args.root}", file=sys.stderr)
@@ -160,7 +174,7 @@ def main() -> int:
     files = 0
     sources: list[dict[str, object]] = []
     with args.out.open("w", encoding="utf-8", newline="\n") as out:
-        for path in source_files(args.root):
+        for path in source_files(args.root, args.include, args.exclude):
             count = 0
             try:
                 for raw_word in file_words(path, args.lower):
