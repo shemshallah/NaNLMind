@@ -317,7 +317,7 @@ window              8 bytes
 bank bytes          844,872,192 (806 MiB)
 bank sha256         88c951374e08df20b184bc811e16599b26277902c1053abba425fdd5723c06e5
 release             https://github.com/shemshallah/NaNLMind/releases/tag/phase-bank-gutenberg150-d64-v1
-release assets      gutenberg150_d64.part00..part04, gutenberg150_d64.parts.json
+release assets      gutenberg150_d64.part00..part01, gutenberg150_d64.chunk02..chunk13, gutenberg150_d64.parts.json
 manifest            gutenberg150_d64.manifest.json
 ```
 
@@ -325,9 +325,9 @@ The 16 shard counts are balanced: 100,717, 101,850, 103,445, 105,393,
 102,407, 106,305, 103,866, 110,838, 101,970, 102,053, 97,963, 103,970,
 100,131, 101,891, 101,521, 105,821.
 
-The local Download copy was removed. The bank is stored as ordered release
-parts, each below 200 MB; `parts.json` records the original digest, byte count
-and per-part hashes for reconstruction.
+The local Download copy was removed. The bank is stored as ordered release parts: two 180 MiB parts and twelve
+40 MiB chunks, all below 200 MB. `parts.json` records the original digest,
+byte count and per-part hashes for reconstruction.
 
 The D=128 runner mode is available for a stronger bank; it doubles the payload
 to roughly 1.6 GiB. The current 806 MiB bank fits the external-storage budget.
