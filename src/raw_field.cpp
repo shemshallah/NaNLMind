@@ -1598,6 +1598,72 @@ bool RawFieldVM::raw_hash(const std::vector<std::int32_t>& payload,
     return true;
 }
 
+bool RawFieldVM::tokenize(const std::string& text, std::size_t max_words,
+                          std::vector<std::uint32_t>& words,
+                          std::vector<std::uint32_t>& subwords,
+                          std::vector<std::uint32_t>& meta,
+                          std::size_t& word_count, std::size_t& subword_count) {
+    if (text.empty() || text.size() > 0xFF00 || max_words == 0 ||
+        max_words > 4096) return fail("tokenizer bounds invalid");
+    for (std::size_t i = 0; i < text.size(); ++i)
+        if (!write_word(0x10000u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint8_t>(text[i])))
+            return fail("cannot write tokenizer text");
+    if (!write_word(kProposalBase + 0, static_cast<std::uint32_t>(text.size())) ||
+        !write_word(kProposalBase + 1, static_cast<std::uint32_t>(max_words)) ||
+        !write_word(kCommandBase, 74))
+        return fail("cannot write tokenizer command");
+    if (!run_command()) return false;
+    word_count = read_word(kResultBase + 0);
+    subword_count = read_word(kResultBase + 1);
+    if (word_count > max_words || subword_count > max_words * 2)
+        return fail("tokenizer returned invalid counts");
+    words.resize(word_count);
+    for (std::size_t i = 0; i < words.size(); ++i)
+        words[i] = read_word(0x20000u + static_cast<std::uint32_t>(i));
+    subwords.resize(subword_count);
+    for (std::size_t i = 0; i < subwords.size(); ++i)
+        subwords[i] = read_word(0x30000u + static_cast<std::uint32_t>(i));
+    meta.resize(word_count * 4);
+    for (std::size_t i = 0; i < meta.size(); ++i)
+        meta[i] = read_word(0x40000u + static_cast<std::uint32_t>(i));
+    return true;
+}
+
+bool RawFieldVM::meta_trihead_reset() {
+    if (!write_word(kCommandBase, 75)) return fail("cannot write meta reset");
+    return run_command();
+}
+
+bool RawFieldVM::meta_trihead_observe_batch(
+    const std::vector<std::uint32_t>& words, std::size_t& contexts) {
+    if (words.empty() || words.size() > 4096)
+        return fail("meta observe bounds invalid");
+    for (std::size_t i = 0; i < words.size(); ++i)
+        if (!write_word(0x20000u + static_cast<std::uint32_t>(i), words[i]))
+            return fail("cannot write meta words");
+    if (!write_word(kProposalBase + 0,
+                    static_cast<std::uint32_t>(words.size())) ||
+        !write_word(kCommandBase, 76))
+        return fail("cannot write meta observe command");
+    if (!run_command()) return false;
+    contexts = read_word(kResultBase + 0);
+    return contexts == words.size();
+}
+
+bool RawFieldVM::read_meta_trihead(std::vector<std::int32_t>& votes,
+                                   std::vector<std::int32_t>& credits) {
+    votes.resize(85);
+    credits.resize(255);
+    for (std::size_t i = 0; i < votes.size(); ++i)
+        votes[i] = static_cast<std::int32_t>(
+            read_word(0x220000u + static_cast<std::uint32_t>(i)));
+    for (std::size_t i = 0; i < credits.size(); ++i)
+        credits[i] = static_cast<std::int32_t>(
+            read_word(0x220100u + static_cast<std::uint32_t>(i)));
+    return true;
+}
+
 bool RawFieldVM::phase_table_init() {
     if (!write_word(kCommandBase, 64)) return fail("cannot write phase table init");
     if (!run_command()) return false;

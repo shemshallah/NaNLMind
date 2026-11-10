@@ -717,6 +717,29 @@ int main() {
         CHECK(digest_a != digest_b);
     }
 
+    // Raw tokenizer and 3-word meta-context -> trihead bridge.
+    {
+        std::vector<std::uint32_t> words, subwords, meta;
+        std::size_t word_count = 0, subword_count = 0;
+        CHECK(vm.tokenize("Hello, world!", 16, words, subwords, meta,
+                          word_count, subword_count));
+        CHECK_EQ(word_count, 2u);
+        CHECK_EQ(subword_count, 4u);
+        CHECK_EQ(words.size(), 2u);
+        CHECK_EQ(meta.size(), 8u);
+        CHECK(vm.meta_trihead_reset());
+        std::size_t contexts = 0;
+        CHECK(vm.meta_trihead_observe_batch(words, contexts));
+        CHECK_EQ(contexts, 2u);
+        std::vector<std::int32_t> meta_votes, meta_credits;
+        CHECK(vm.read_meta_trihead(meta_votes, meta_credits));
+        CHECK_EQ(meta_votes.size(), 85u);
+        CHECK_EQ(meta_credits.size(), 255u);
+        std::size_t nonzero_votes = 0;
+        for (std::int32_t vote : meta_votes) nonzero_votes += vote != 0;
+        CHECK(nonzero_votes >= 1);
+    }
+
     // C(256,2) vector-code observer: raw pair indexing and accumulation.
     CHECK(vm.vector_matrix_reset());
     std::uint32_t matrix_index = 999;

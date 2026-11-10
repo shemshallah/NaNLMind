@@ -82,6 +82,10 @@ FIXTURES = (
             "MTH LEAF HASH PASS"),
     Fixture("pq_train", "mth/tests/mth_pq_train_test.nas", 1_000_000,
             "MTH PQ TRAIN PASS"),
+    Fixture("tokenizer", "mth/tests/mth_tokenizer_test.nas", 1_000_000,
+            "MTH TOKENIZER PASS"),
+    Fixture("meta_trihead", "mth/tests/mth_meta_trihead_test.nas", 1_000_000,
+            "MTH META TRIHEAD PASS"),
 )
 
 

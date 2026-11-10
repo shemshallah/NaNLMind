@@ -429,6 +429,16 @@ public:
                             std::size_t window, std::size_t dim,
                             std::vector<std::int32_t>& out);
     bool phase_table_init();
+    bool tokenize(const std::string& text, std::size_t max_words,
+                  std::vector<std::uint32_t>& words,
+                  std::vector<std::uint32_t>& subwords,
+                  std::vector<std::uint32_t>& meta,
+                  std::size_t& word_count, std::size_t& subword_count);
+    bool meta_trihead_reset();
+    bool meta_trihead_observe_batch(const std::vector<std::uint32_t>& words,
+                                    std::size_t& contexts);
+    bool read_meta_trihead(std::vector<std::int32_t>& votes,
+                           std::vector<std::int32_t>& credits);
     bool phase_rotate(const std::vector<std::int32_t>& in, std::uint32_t turn,
                       std::vector<std::int32_t>& out);
     bool pq_encode(const std::vector<std::int32_t>& query,

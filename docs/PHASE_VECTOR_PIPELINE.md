@@ -42,6 +42,11 @@ Field-driver commands:
 | 69 | `mth_pq_train` | raw centroid training, up to 8 iterations |
 | 70 | `mth_pq_residual` | sample - codebook[code] residual payload |
 | 71 | `mth_pq_update` | warm-codebook update without reinitialization |
+| 72 | `mth_leaf_verify` | codebook + residual reconstruction check |
+| 73 | `mth_ckpt_hash` | guest checkpoint payload digest |
+| 74 | `mth_tokenize` | raw word/subword/meta tokenization |
+| 75 | `mth_meta_trihead_reset` | clear 85 triad votes / 255 head credits |
+| 76 | `mth_meta_trihead_observe` | hash 3-word context into triad/head tables |
 | 72 | `mth_leaf_verify` | reconstruct codebook+residual, L1 accept/reject |
 | 73 | `mth_ckpt_hash` | raw FNV-1a checkpoint payload digest |
 
@@ -306,19 +311,43 @@ and writes a `NANPQ2` codebook plus JSON manifest. The codebook artifact is
 
 ### Context length
 
-The phase path uses **8 bytes per window**, taken from the end of each corpus
-line. It is not word-tokenized and does not use cross-window context. Thus the
-current answer is:
+The phase-vector path still uses **8 bytes per window**, taken from the end of
+each corpus line. The phase bank and its codebook are unchanged:
 
 ```text
-context = 8 bytes
-context_words = 0 (no word tokenizer; roughly 1-2 English words in length)
+phase window = 8 bytes
+phase context_words = 0
 ```
 
+A separate **meta-tokenizer layer** now supplies word-level context:
+
+```text
+subword tokenizer  2 prefix/suffix pieces per word (raw guest tokenizer)
+word token         FNV-1a word ID, lowercased ASCII
+meta context       3 preceding words, zero-padded at document start
+context field      word_id, context_hash, triad (0..84), vote mask
+```
+
+The three-word context is generated in `mth_tokenizer.nas` and mapped to the
+same 85-triad / 255-head layer by `mth_meta_trihead.nas`. The bridge stores
+triad votes at guest word 0x220000 and head credits at 0x220100. It feeds the
+existing raw `field_vote` and `hot_triheads` paths; no host triad arithmetic is
+used.
+
+```sh
+./build/nanlm-universal meta-tokenize \
+  state/gutenberg_150_train.txt 1000 4096 \
+  state/meta_tokens
+```
+
+This emits `PREFIX.words.bin`, `PREFIX.subwords.bin`, `PREFIX.meta.bin` and a
+JSON summary with accepted triads, hot heads, hot triads, and 43/85 field
+state. On 100 lines of Alice it produced 789 words, 1,578 subwords, 789
+three-word contexts, 85 accepted triads, and a hot field. That field result is
+a structural hook check, not a language-quality score.
+
 The legacy `context-train` path uses 4-byte exact contexts with a 3-byte
-fallback, also byte-level rather than word-level. Longer word context requires
-a tokenized sequence builder; the current codebook does not silently pretend
-that 8 bytes is a word window. Without an eval corpus, the training corpus is split into a held-out suffix.
+fallback; that remains separate from the new word-level meta tokenizer. Without an eval corpus, the training corpus is split into a held-out suffix.
 For real book-disjoint metrics, pass the held-out corpus as the final argument:
 
 ```sh

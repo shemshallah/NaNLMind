@@ -74,6 +74,8 @@ JMP @field_driver_entry
 .include "../nan16/mth_pq_residual.nas"
 .include "../nan16/mth_leaf_verify.nas"
 .include "../nan16/mth_ckpt_hash.nas"
+.include "../nan16/mth_tokenizer.nas"
+.include "../nan16/mth_meta_trihead.nas"
 .include "../nan16/mth_context_backoff.nas"
 .include "../nan16/mth_context_encode.nas"
 .include "../nan16/mth_role_step.nas"
@@ -274,6 +276,15 @@ field_driver_main:
   MOVI r3,73
   CMP r2,r3
   JMP[EQ] @field_driver_ckpt_hash
+  MOVI r3,74
+  CMP r2,r3
+  JMP[EQ] @field_driver_tokenize
+  MOVI r3,75
+  CMP r2,r3
+  JMP[EQ] @field_driver_meta_reset
+  MOVI r3,76
+  CMP r2,r3
+  JMP[EQ] @field_driver_meta_observe
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -1084,6 +1095,40 @@ field_driver_ckpt_hash:
   LD r1,r10,0
   LD r2,r10,1
   CALL @mth_ckpt_hash
+  MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_tokenize:
+  MOVI r10,0x4001
+  LD r2,r10,0
+  LD r6,r10,1
+  MOVI r1,0x0000
+  MOVHI r1,0x0001
+  MOVI r3,0x0000
+  MOVHI r3,0x0002
+  MOVI r4,0x0000
+  MOVHI r4,0x0003
+  MOVI r5,0x0000
+  MOVHI r5,0x0004
+  CALL @mth_tokenize
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  JMP @field_driver_return
+
+field_driver_meta_reset:
+  CALL @mth_meta_trihead_reset
+  MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_meta_observe:
+  MOVI r10,0x4001
+  LD r2,r10,0
+  MOVI r1,0x0000
+  MOVHI r1,0x0002
+  CALL @mth_meta_trihead_observe_batch
   MOVI r10,0x4010
   ST r1,r10,0
   JMP @field_driver_return
