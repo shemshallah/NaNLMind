@@ -95,6 +95,8 @@ mth_rt_next:
   ADDI r5,r5,1
   JMP @mth_rt_find
 mth_rt_find_done:
+  MOVI r12,@mth_rt_best_score
+  ST r9,r12,0
   MOVI r12,@mth_rt_target_score
   LD r7,r12,0
   FCMP r7,r9
@@ -141,7 +143,8 @@ mth_rt_correct:
 mth_rt_out:
   MOVI r12,@mth_rt_target_score
   LD r2,r12,0
-  ADD r3,r9,r0
+  MOVI r12,@mth_rt_best_score
+  LD r3,r12,0
   ; one-margin hinge loss = max(0, best_wrong - target_score + 1.0)
   MOVI r4,0
   MOVHI r4,0x3F80
@@ -170,6 +173,8 @@ mth_rt_target_byte:
 mth_rt_lr:
   .word 0
 mth_rt_target_score:
+  .word 0
+mth_rt_best_score:
   .word 0
 mth_rt_loss:
   .word 0

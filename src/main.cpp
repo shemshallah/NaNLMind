@@ -19,6 +19,7 @@
 #include "nanlm/universe.hpp"
 #include "nanlm/hypermatrix.hpp"
 #include "nanlm/raw_field.hpp"
+#include "nanlm/trunk_train.hpp"
 
 #include <cctype>
 #include <cstdio>
@@ -1266,6 +1267,7 @@ int cmd_unification() {
 void usage() {
     std::cout << "nanlm-universal <command>\n\n"
               << "  field-selftest run the raw NaN16 field command driver\n"
+              << "  trunk-train CORPUS [MAX_LINES] raw trunk readout training over gloss bytes\n"
               << "  unification canonical build/topology contract for NaNROUTER and HERMES\n"
               << "  verify      exhaustive invariants and self-tests\n"
               << "  genesis     materialize and describe the genesis register file\n"
@@ -1304,6 +1306,7 @@ int main(int argc, char** argv) {
     }
     const std::string cmd = argv[1];
     if (cmd == "field-selftest") return cmd_field_selftest();
+    if (cmd == "trunk-train") return nanlm::trunk_train_cli(argc, argv);
     if (cmd == "unification") return cmd_unification();
     if (cmd == "verify") return cmd_verify();
     if (cmd == "genesis") return cmd_genesis();
