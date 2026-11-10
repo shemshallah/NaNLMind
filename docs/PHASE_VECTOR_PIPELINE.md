@@ -283,7 +283,40 @@ For the chunked training/metric loop over the same encoded windows, use:
 
 `phase-train` trains the codebook in the guest, warm-updates it in 64-window
 chunks with `mth_pq_update`, and emits JSONL train/eval L1, matrix probe,
-hot-head/triad and 43/85 field metrics. The corpus is split contiguously into
+hot-head/triad and 43/85 field metrics.
+
+### 8-subvector production codebook
+
+`phase-codebook` trains the production 8-subvector codebook from evenly spaced
+corpus windows:
+
+```sh
+./build/nanlm-universal phase-codebook \
+  state/gutenberg_150_clean_corpus.txt 0 8 64 256 4096 \
+  state/gutenberg150_d64.codebook8x256
+```
+
+It splits the 128-value pipeline vector into 8 subvectors of 16 Q16 values,
+trains 256 codewords per subvector with raw `mth_pq_train`/`mth_pq_update`,
+and writes a `NANPQ2` codebook plus JSON manifest. The codebook artifact is
+129 KiB and is uploaded as the release asset
+`gutenberg150_d64.codebook8x256.bin`.
+
+### Context length
+
+The phase path uses **8 bytes per window**, taken from the end of each corpus
+line. It is not word-tokenized and does not use cross-window context. Thus the
+current answer is:
+
+```text
+context = 8 bytes
+context_words = 0 (no word tokenizer; roughly 1-2 English words in length)
+```
+
+The legacy `context-train` path uses 4-byte exact contexts with a 3-byte
+fallback, also byte-level rather than word-level. Longer word context requires
+a tokenized sequence builder; the current codebook does not silently pretend
+that 8 bytes is a word window. The corpus is split contiguously into
 training and held-out suffix windows. The selected checkpoint is the lowest
 held-out L1, with the 43/85 field state as a tie-break.
 

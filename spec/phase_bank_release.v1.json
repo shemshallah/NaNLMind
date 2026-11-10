@@ -99,8 +99,9 @@
     "subdim": 16,
     "codewords": 256,
     "context_bytes": 8,
-    "context_words": null,
+    "context_words": 0,
     "training_windows": 4096,
-    "release_asset": true
+    "release_asset": true,
+    "context_description": "last 8 bytes per line; no word tokenization"
   }
 }

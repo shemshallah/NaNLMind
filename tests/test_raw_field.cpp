@@ -695,6 +695,26 @@ int main() {
         CHECK_EQ(residuals[1], 7);
         CHECK_EQ(residuals[2], 0);
         CHECK_EQ(residuals[3], 0);
+        bool leaf_ok = false;
+        std::int32_t leaf_error = -1;
+        CHECK(vm.leaf_verify(residual_samples, trained_codebook, residuals, 0,
+                             2, 0, leaf_ok, leaf_error));
+        CHECK(leaf_ok);
+        CHECK_EQ(leaf_error, 0);
+        const std::vector<std::int32_t> bad_residual = {0, 0};
+        CHECK(vm.leaf_verify(residual_samples, trained_codebook, bad_residual,
+                             1, 2, 0, leaf_ok, leaf_error));
+        CHECK(!leaf_ok);
+        CHECK_EQ(leaf_error, 188);
+        const std::vector<std::int32_t> hash_payload = {1, 2, 3, 4};
+        std::uint32_t digest_a = 0, digest_b = 0;
+        CHECK(vm.raw_hash(hash_payload, digest_a));
+        CHECK(vm.raw_hash(hash_payload, digest_b));
+        CHECK_EQ(digest_a, digest_b);
+        auto changed_hash = hash_payload;
+        changed_hash[0] ^= 1;
+        CHECK(vm.raw_hash(changed_hash, digest_b));
+        CHECK(digest_a != digest_b);
     }
 
     // C(256,2) vector-code observer: raw pair indexing and accumulation.

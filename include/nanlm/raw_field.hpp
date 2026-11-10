@@ -446,6 +446,14 @@ public:
                       std::size_t count, std::size_t dim,
                       const std::vector<std::int32_t>& codebook,
                       std::vector<std::int32_t>& residuals);
+    bool leaf_verify(const std::vector<std::int32_t>& expected,
+                     const std::vector<std::int32_t>& codebook,
+                     const std::vector<std::int32_t>& residual,
+                     std::uint32_t code, std::size_t dim,
+                     std::uint32_t tolerance, bool& accepted,
+                     std::int32_t& error);
+    bool raw_hash(const std::vector<std::int32_t>& payload,
+                  std::uint32_t& digest);
     bool spectral_iter(const std::array<std::int32_t, 64>& adjacency,
                        const std::array<std::int32_t, 8>& in,
                        std::array<std::int32_t, 8>& out);

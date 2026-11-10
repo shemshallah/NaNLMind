@@ -1272,6 +1272,7 @@ void usage() {
               << "  context-train CORPUS [MAX_LINES] context-indexed 16x16 class-memory training\n"
               << "  phase-ingest CORPUS [MAX_LINES] [WINDOW] [DIM] [MAX_WINDOWS] raw trig phase vector ingest\n"
               << "  phase-train CORPUS [MAX_LINES] [WINDOW] [DIM] [MAX_WINDOWS] [PREFIX] chunked raw phase/PQ/matrix training with held-out metrics\n"
+              << "  phase-codebook CORPUS [MAX_LINES] [WINDOW] [DIM] [CODEWORDS] [MAX_WINDOWS] [PREFIX] raw 8-subvector codebook\n"
               << "  context-hash-check CORPUS [MAX_LINES] guest FNV bucket check + training smoke\n"
               << "  unification canonical build/topology contract for NaNROUTER and HERMES\n"
               << "  verify      exhaustive invariants and self-tests\n"
@@ -1316,6 +1317,7 @@ int main(int argc, char** argv) {
     if (cmd == "context-train") return nanlm::context_train_cli(argc, argv);
     if (cmd == "phase-ingest") return nanlm::phase_ingest_cli(argc, argv);
     if (cmd == "phase-train") return nanlm::phase_train_cli(argc, argv);
+    if (cmd == "phase-codebook") return nanlm::phase_codebook_cli(argc, argv);
     if (cmd == "context-hash-check") return nanlm::context_hash_check_cli(argc, argv);
     if (cmd == "unification") return cmd_unification();
     if (cmd == "verify") return cmd_verify();

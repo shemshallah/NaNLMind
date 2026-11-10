@@ -72,6 +72,8 @@ JMP @field_driver_entry
 .include "../nan16/mth_vector_matrix.nas"
 .include "../nan16/mth_pq_train.nas"
 .include "../nan16/mth_pq_residual.nas"
+.include "../nan16/mth_leaf_verify.nas"
+.include "../nan16/mth_ckpt_hash.nas"
 .include "../nan16/mth_context_backoff.nas"
 .include "../nan16/mth_context_encode.nas"
 .include "../nan16/mth_role_step.nas"
@@ -266,6 +268,12 @@ field_driver_main:
   MOVI r3,71
   CMP r2,r3
   JMP[EQ] @field_driver_pq_update
+  MOVI r3,72
+  CMP r2,r3
+  JMP[EQ] @field_driver_leaf_verify
+  MOVI r3,73
+  CMP r2,r3
+  JMP[EQ] @field_driver_ckpt_hash
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -1051,6 +1059,31 @@ field_driver_pq_residual:
   MOVI r6,0x0000
   MOVHI r6,0x0009
   CALL @mth_pq_residual
+  MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_leaf_verify:
+  MOVI r1,0x7000
+  MOVI r2,0x0000
+  MOVHI r2,0x0001
+  MOVI r3,0x0000
+  MOVHI r3,0x0003
+  MOVI r10,0x4001
+  LD r4,r10,0
+  LD r5,r10,1
+  LD r6,r10,2
+  CALL @mth_leaf_verify
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  JMP @field_driver_return
+
+field_driver_ckpt_hash:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  CALL @mth_ckpt_hash
   MOVI r10,0x4010
   ST r1,r10,0
   JMP @field_driver_return

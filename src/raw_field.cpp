@@ -1549,6 +1549,55 @@ bool RawFieldVM::pq_residuals(const std::vector<std::int32_t>& samples,
     return true;
 }
 
+
+bool RawFieldVM::leaf_verify(const std::vector<std::int32_t>& expected,
+                              const std::vector<std::int32_t>& codebook,
+                              const std::vector<std::int32_t>& residual,
+                              std::uint32_t code, std::size_t dim,
+                              std::uint32_t tolerance, bool& accepted,
+                              std::int32_t& error) {
+    if (dim == 0 || dim > 128 || expected.size() < dim ||
+        residual.size() < dim || codebook.size() < (code + 1) * dim)
+        return fail("leaf verify bounds invalid");
+    for (std::size_t i = 0; i < dim; ++i) {
+        if (!write_word(0x7000u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(expected[i])) ||
+            !write_word(0x30000u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(residual[i])))
+            return fail("cannot write leaf verify vectors");
+    }
+    for (std::size_t i = 0; i < codebook.size(); ++i)
+        if (!write_word(0x10000u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(codebook[i])))
+            return fail("cannot write leaf verify codebook");
+    if (!write_word(kProposalBase + 0, code) ||
+        !write_word(kProposalBase + 1, static_cast<std::uint32_t>(dim)) ||
+        !write_word(kProposalBase + 2, tolerance) ||
+        !write_word(kCommandBase, 72)) return fail("cannot write leaf verify command");
+    if (!run_command()) return false;
+    accepted = (read_word(kResultBase + 0) & 1u) != 0;
+    error = static_cast<std::int32_t>(read_word(kResultBase + 1));
+    return true;
+}
+
+
+bool RawFieldVM::raw_hash(const std::vector<std::int32_t>& payload,
+                          std::uint32_t& digest) {
+    if (payload.empty() || payload.size() > 65535)
+        return fail("checkpoint hash payload outside 1..65535 words");
+    for (std::size_t i = 0; i < payload.size(); ++i)
+        if (!write_word(0x350000u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(payload[i])))
+            return fail("cannot write checkpoint hash payload");
+    if (!write_word(kProposalBase + 0, 0x350000u) ||
+        !write_word(kProposalBase + 1, static_cast<std::uint32_t>(payload.size())) ||
+        !write_word(kCommandBase, 73))
+        return fail("cannot write checkpoint hash command");
+    if (!run_command()) return false;
+    digest = read_word(kResultBase);
+    return true;
+}
+
 bool RawFieldVM::phase_table_init() {
     if (!write_word(kCommandBase, 64)) return fail("cannot write phase table init");
     if (!run_command()) return false;

@@ -1142,18 +1142,24 @@ int phase_ingest_cli(int argc, char** argv) {
 int phase_train_cli(int argc, char** argv) {
     if (argc < 3) {
         std::cerr << "usage: nanlm-universal phase-train CORPUS [MAX_LINES]"
-                     " [WINDOW] [DIM] [MAX_WINDOWS] [OUTPUT_PREFIX]\n";
+                     " [WINDOW] [DIM] [MAX_WINDOWS] [OUTPUT_PREFIX] [eval=PATH]\n";
         return 2;
     }
     const std::string corpus_path = argv[2];
     std::size_t max_lines = 0, window = 8, dim = 64, max_windows = 0;
     std::string output_prefix = "state/phase_train";
+    std::string eval_path;
     try {
         if (argc > 3) max_lines = static_cast<std::size_t>(std::stoull(argv[3]));
         if (argc > 4) window = static_cast<std::size_t>(std::stoull(argv[4]));
         if (argc > 5) dim = static_cast<std::size_t>(std::stoull(argv[5]));
         if (argc > 6) max_windows = static_cast<std::size_t>(std::stoull(argv[6]));
         if (argc > 7) output_prefix = argv[7];
+        if (argc > 8) {
+            const std::string eval_arg = argv[8];
+            if (eval_arg.rfind("eval=", 0) == 0)
+                eval_path = eval_arg.substr(5);
+        }
     } catch (...) {
         std::cerr << "invalid numeric argument\n";
         return 2;
@@ -1189,14 +1195,54 @@ int phase_train_cli(int argc, char** argv) {
         windows.push_back(std::move(bytes));
         if (max_lines && windows.size() >= max_lines) break;
     }
-    if (windows.size() < 4) {
+    if (windows.size() < 4 && eval_path.empty()) {
         std::cerr << "phase-train needs at least four windows\n";
         return 3;
     }
-    const std::size_t eval_count = std::max<std::size_t>(1, windows.size() / 5);
-    const std::size_t train_count = windows.size() - eval_count;
-    if (train_count < 2) {
-        std::cerr << "phase-train train split too small\n";
+    std::vector<std::vector<std::uint8_t>> eval_windows;
+    std::size_t eval_count = 0;
+    std::size_t train_count = 0;
+    if (!eval_path.empty()) {
+        std::ifstream eval_in(eval_path, std::ios::binary);
+        if (!eval_in) {
+            std::cerr << "cannot open eval corpus\n";
+            return 3;
+        }
+        const std::string eval_data((std::istreambuf_iterator<char>(eval_in)),
+                                    std::istreambuf_iterator<char>());
+        std::size_t eval_begin = 0;
+        while (eval_begin <= eval_data.size()) {
+            const auto end = eval_data.find('\n', eval_begin);
+            std::string_view line;
+            if (end == std::string::npos) {
+                if (eval_begin >= eval_data.size()) break;
+                line = std::string_view(eval_data.data() + eval_begin,
+                                        eval_data.size() - eval_begin);
+                eval_begin = eval_data.size() + 1;
+            } else {
+                line = std::string_view(eval_data.data() + eval_begin,
+                                        end - eval_begin);
+                eval_begin = end + 1;
+            }
+            while (!line.empty() && line.back() == '\r')
+                line.remove_suffix(1);
+            if (line.size() < window) continue;
+            if (max_windows && eval_windows.size() >= max_windows) break;
+            std::vector<std::uint8_t> bytes(window);
+            const std::size_t start = line.size() - window;
+            for (std::size_t i = 0; i < window; ++i)
+                bytes[i] = static_cast<std::uint8_t>(line[start + i]);
+            eval_windows.push_back(std::move(bytes));
+            if (max_lines && eval_windows.size() >= max_lines) break;
+        }
+        train_count = windows.size();
+        eval_count = eval_windows.size();
+    } else {
+        eval_count = std::max<std::size_t>(1, windows.size() / 5);
+        train_count = windows.size() - eval_count;
+    }
+    if (train_count < 2 || eval_count < 1) {
+        std::cerr << "phase-train train/eval split too small\n";
         return 3;
     }
 
@@ -1210,27 +1256,43 @@ int phase_train_cli(int argc, char** argv) {
         return 7;
     }
     const std::size_t pipeline_dim = std::min<std::size_t>(dim * 2, 128);
-    std::vector<std::vector<std::int32_t>> vectors;
-    vectors.reserve(windows.size());
-    constexpr std::size_t kEncodeBatch = 1024;
-    for (std::size_t start = 0; start < windows.size(); start += kEncodeBatch) {
-        const std::size_t count = std::min(kEncodeBatch, windows.size() - start);
-        std::vector<std::uint8_t> bytes;
-        bytes.reserve(count * window);
-        for (std::size_t i = 0; i < count; ++i)
-            bytes.insert(bytes.end(), windows[start + i].begin(),
-                         windows[start + i].end());
-        std::vector<std::int32_t> encoded;
-        if (!vm.phase_encode_batch(bytes.data(), count, window, dim, encoded)) {
-            std::cerr << "phase-train encode failed: " << vm.error() << "\n";
-            return 7;
+    const auto encode_windows = [&](const std::vector<std::vector<std::uint8_t>>& source,
+                                    std::vector<std::vector<std::int32_t>>& dest) {
+        dest.clear();
+        dest.reserve(source.size());
+        constexpr std::size_t kEncodeBatch = 1024;
+        for (std::size_t start = 0; start < source.size();
+             start += kEncodeBatch) {
+            const std::size_t count =
+                std::min(kEncodeBatch, source.size() - start);
+            std::vector<std::uint8_t> bytes;
+            bytes.reserve(count * window);
+            for (std::size_t i = 0; i < count; ++i)
+                bytes.insert(bytes.end(), source[start + i].begin(),
+                             source[start + i].end());
+            std::vector<std::int32_t> encoded;
+            if (!vm.phase_encode_batch(bytes.data(), count, window, dim,
+                                       encoded)) {
+                std::cerr << "phase-train encode failed: " << vm.error() << "\n";
+                return false;
+            }
+            for (std::size_t i = 0; i < count; ++i)
+                dest.emplace_back(encoded.begin() + i * pipeline_dim,
+                                  encoded.begin() + (i + 1) * pipeline_dim);
         }
-        for (std::size_t i = 0; i < count; ++i)
-            vectors.emplace_back(encoded.begin() + i * pipeline_dim,
-                                 encoded.begin() + (i + 1) * pipeline_dim);
+        return true;
+    };
+    std::vector<std::vector<std::int32_t>> vectors;
+    std::vector<std::vector<std::int32_t>> eval_vectors;
+    if (!encode_windows(windows, vectors)) return 7;
+    if (!eval_path.empty()) {
+        if (!encode_windows(eval_windows, eval_vectors)) return 7;
+    } else {
+        eval_vectors.assign(vectors.begin() + train_count, vectors.end());
+        vectors.resize(train_count);
     }
 
-    const std::size_t codewords = std::min<std::size_t>(train_count, 160);
+    const std::size_t codewords = std::min<std::size_t>(train_count, 32);
     const std::size_t init_count = std::min<std::size_t>(train_count, 256);
     std::vector<std::int32_t> train_bank;
     train_bank.reserve(init_count * pipeline_dim);
@@ -1278,15 +1340,22 @@ int phase_train_cli(int argc, char** argv) {
         std::size_t probe_count = 0;
         std::uint32_t prev_eval_code = 0;
         bool have_prev_eval = false;
-        for (std::size_t i = train_count; i < vectors.size(); ++i) {
+        std::vector<std::int32_t> eval_bank;
+        std::vector<std::uint32_t> eval_codes;
+        eval_bank.reserve(eval_vectors.size() * pipeline_dim);
+        eval_codes.reserve(eval_vectors.size());
+        for (const auto& eval_sample : eval_vectors) {
             std::uint32_t code = 0;
             std::int32_t distance = 0;
-            if (!vm.pq_encode(vectors[i], codebook, codewords, pipeline_dim,
+            if (!vm.pq_encode(eval_sample, codebook, codewords, pipeline_dim,
                               code, distance)) {
                 std::cerr << "phase-train eval encode failed: " << vm.error() << "\n";
                 return false;
             }
             eval_distance += static_cast<std::uint64_t>(distance);
+            eval_bank.insert(eval_bank.end(), eval_sample.begin(),
+                             eval_sample.end());
+            eval_codes.push_back(code);
             if (have_prev_eval && prev_eval_code != code) {
                 std::int32_t best_head = -1;
                 std::int32_t best_score = 0;
@@ -1305,6 +1374,38 @@ int phase_train_cli(int argc, char** argv) {
             prev_eval_code = code;
             have_prev_eval = true;
         }
+        std::vector<std::int32_t> eval_residuals;
+        if (!vm.pq_residuals(eval_bank, eval_codes, eval_vectors.size(),
+                             pipeline_dim, codebook, eval_residuals)) {
+            std::cerr << "phase-train eval residual failed: " << vm.error() << "\n";
+            return false;
+        }
+        std::size_t leaf_verified = 0;
+        std::uint64_t leaf_error_sum = 0;
+        for (std::size_t i = 0; i < eval_vectors.size(); ++i) {
+            std::vector<std::int32_t> residual(
+                eval_residuals.begin() + i * pipeline_dim,
+                eval_residuals.begin() + (i + 1) * pipeline_dim);
+            bool accepted = false;
+            std::int32_t error = 0;
+            if (!vm.leaf_verify(eval_vectors[i], codebook, residual,
+                                eval_codes[i], pipeline_dim, 0, accepted,
+                                error)) {
+                std::cerr << "phase-train leaf verify failed: " << vm.error() << "\n";
+                return false;
+            }
+            if (accepted) ++leaf_verified;
+            leaf_error_sum += static_cast<std::uint64_t>(error);
+        }
+        const double leaf_rate = eval_vectors.empty()
+            ? 0.0
+            : static_cast<double>(leaf_verified) /
+                  static_cast<double>(eval_vectors.size());
+        const double leaf_mean_error = eval_vectors.empty()
+            ? 0.0
+            : static_cast<double>(leaf_error_sum) /
+                  static_cast<double>(eval_vectors.size());
+
         std::vector<std::int32_t> matrix_cells;
         if (!vm.read_vector_matrix(matrix_cells)) return false;
         std::size_t matrix_nonzero = 0;
@@ -1353,6 +1454,8 @@ int phase_train_cli(int argc, char** argv) {
                 << ", \"eval_mean_l1_q16\": " << eval_mean
                 << ", \"probe_hit_rate\": " << hit_rate
                 << ", \"probe_mean_score_q16\": " << score_mean
+                << ", \"leaf_verify_rate\": " << leaf_rate
+                << ", \"leaf_mean_error_q16\": " << leaf_mean_error
                 << ", \"matrix_nonzero\": " << matrix_nonzero
                 << ", \"hot_heads\": " << hot.hot_heads
                 << ", \"hot_triads\": " << hot.hot_triads
@@ -1365,6 +1468,7 @@ int phase_train_cli(int argc, char** argv) {
                   << " train_l1=" << train_mean
                   << " eval_l1=" << eval_mean
                   << " probe_hit=" << hit_rate
+                  << " leaf_verify=" << leaf_rate
                   << " field_hot=" << (hot.field_hot ? "true" : "false")
                   << (final ? " final=1\n" : "\n");
         return true;
@@ -1455,4 +1559,185 @@ int phase_train_cli(int argc, char** argv) {
     return 0;
 }
 
+
+int phase_codebook_cli(int argc, char** argv) {
+    if (argc < 3) {
+        std::cerr << "usage: nanlm-universal phase-codebook CORPUS [MAX_LINES]"
+                     " [WINDOW] [DIM] [CODEWORDS] [MAX_WINDOWS] [OUTPUT_PREFIX]\n";
+        return 2;
+    }
+    const std::string corpus_path = argv[2];
+    std::size_t max_lines = 0, window = 8, dim = 64, codewords = 256;
+    std::size_t max_windows = 4096;
+    std::string output_prefix = "state/phase_codebook";
+    try {
+        if (argc > 3) max_lines = static_cast<std::size_t>(std::stoull(argv[3]));
+        if (argc > 4) window = static_cast<std::size_t>(std::stoull(argv[4]));
+        if (argc > 5) dim = static_cast<std::size_t>(std::stoull(argv[5]));
+        if (argc > 6) codewords = static_cast<std::size_t>(std::stoull(argv[6]));
+        if (argc > 7) max_windows = static_cast<std::size_t>(std::stoull(argv[7]));
+        if (argc > 8) output_prefix = argv[8];
+    } catch (...) {
+        std::cerr << "invalid numeric argument\n";
+        return 2;
+    }
+    if (window == 0 || window > 8 || dim == 0 || dim > 128 ||
+        codewords == 0 || codewords > 256 || max_windows < 64) {
+        std::cerr << "window 1..8, dim 1..128, codewords 1..256,"
+                     " max_windows >=64 required\n";
+        return 2;
+    }
+    const std::size_t pipeline_dim = std::min<std::size_t>(dim * 2, 128);
+    constexpr std::size_t kSubvectors = 8;
+    if (pipeline_dim % kSubvectors != 0) {
+        std::cerr << "pipeline dimension must divide into 8 subvectors\n";
+        return 2;
+    }
+    const std::size_t subdim = pipeline_dim / kSubvectors;
+    std::ifstream in(corpus_path, std::ios::binary);
+    if (!in) { std::cerr << "cannot open corpus\n"; return 3; }
+    const std::string data((std::istreambuf_iterator<char>(in)),
+                           std::istreambuf_iterator<char>());
+    std::vector<std::array<std::uint8_t, 8>> windows;
+    windows.reserve(std::min<std::size_t>(max_windows, 4096));
+    std::size_t begin = 0;
+    while (begin <= data.size()) {
+        const auto end = data.find('\n', begin);
+        std::string_view line;
+        if (end == std::string::npos) {
+            if (begin >= data.size()) break;
+            line = std::string_view(data.data() + begin, data.size() - begin);
+            begin = data.size() + 1;
+        } else {
+            line = std::string_view(data.data() + begin, end - begin);
+            begin = end + 1;
+        }
+        while (!line.empty() && line.back() == '\r') line.remove_suffix(1);
+        if (line.size() < window) continue;
+        std::array<std::uint8_t, 8> bytes{};
+        const std::size_t start = line.size() - window;
+        for (std::size_t i = 0; i < window; ++i)
+            bytes[i] = static_cast<std::uint8_t>(line[start + i]);
+        windows.push_back(bytes);
+        if (max_lines && windows.size() >= max_lines) break;
+    }
+    if (windows.size() > max_windows) {
+        std::vector<std::array<std::uint8_t, 8>> sampled;
+        sampled.reserve(max_windows);
+        for (std::size_t i = 0; i < max_windows; ++i) {
+            const std::size_t index =
+                max_windows == 1 ? 0 :
+                (i * (windows.size() - 1)) / (max_windows - 1);
+            sampled.push_back(windows[index]);
+        }
+        windows.swap(sampled);
+    }
+    if (windows.size() < 64) {
+        std::cerr << "phase-codebook needs at least 64 windows\n";
+        return 3;
+    }
+    RawFieldVM vm("build/field_driver.nan");
+    if (!vm.ready()) {
+        std::cerr << "raw field VM unavailable: " << vm.error() << "\n";
+        return 7;
+    }
+    if (!vm.phase_table_init()) {
+        std::cerr << "phase table init failed: " << vm.error() << "\n";
+        return 7;
+    }
+    std::vector<std::vector<std::int32_t>> vectors;
+    vectors.reserve(windows.size());
+    constexpr std::size_t kEncodeBatch = 1024;
+    for (std::size_t start = 0; start < windows.size(); start += kEncodeBatch) {
+        const std::size_t count = std::min(kEncodeBatch, windows.size() - start);
+        std::vector<std::uint8_t> bytes;
+        bytes.reserve(count * window);
+        for (std::size_t i = 0; i < count; ++i)
+            bytes.insert(bytes.end(), windows[start + i].begin(),
+                         windows[start + i].end());
+        std::vector<std::int32_t> encoded;
+        if (!vm.phase_encode_batch(bytes.data(), count, window, dim, encoded)) {
+            std::cerr << "phase-codebook encode failed: " << vm.error() << "\n";
+            return 7;
+        }
+        for (std::size_t i = 0; i < count; ++i)
+            vectors.emplace_back(encoded.begin() + i * pipeline_dim,
+                                 encoded.begin() + (i + 1) * pipeline_dim);
+    }
+
+    std::vector<std::int32_t> all_codebooks;
+    all_codebooks.reserve(kSubvectors * codewords * subdim);
+    std::size_t trained = 0;
+    for (std::size_t sub = 0; sub < kSubvectors; ++sub) {
+        std::vector<std::int32_t> codebook;
+        for (std::size_t start = 0; start < vectors.size(); start += kEncodeBatch) {
+            const std::size_t count = std::min(kEncodeBatch, vectors.size() - start);
+            std::vector<std::int32_t> bank;
+            bank.reserve(count * subdim);
+            for (std::size_t i = 0; i < count; ++i)
+                bank.insert(bank.end(),
+                            vectors[start + i].begin() + sub * subdim,
+                            vectors[start + i].begin() + (sub + 1) * subdim);
+            if (codebook.empty()) {
+                if (!vm.pq_train(bank, count, subdim, codewords, 1, codebook)) {
+                    std::cerr << "phase-codebook train failed: " << vm.error() << "\n";
+                    return 7;
+                }
+            } else if (!vm.pq_update(bank, count, subdim, codewords, 1,
+                                     codebook)) {
+                std::cerr << "phase-codebook update failed: " << vm.error() << "\n";
+                return 7;
+            }
+        }
+        all_codebooks.insert(all_codebooks.end(), codebook.begin(), codebook.end());
+        trained += codebook.size();
+    }
+    const auto put32 = [](std::ofstream& out, std::uint32_t value) {
+        const std::uint8_t bytes[4] = {
+            static_cast<std::uint8_t>(value),
+            static_cast<std::uint8_t>(value >> 8),
+            static_cast<std::uint8_t>(value >> 16),
+            static_cast<std::uint8_t>(value >> 24)};
+        out.write(reinterpret_cast<const char*>(bytes), sizeof(bytes));
+    };
+    std::ofstream book(output_prefix + ".codebook.bin", std::ios::binary);
+    if (!book) { std::cerr << "cannot open phase codebook output\n"; return 3; }
+    const char magic[8] = {'N', 'A', 'N', 'P', 'Q', '2', '\0', '\0'};
+    book.write(magic, sizeof(magic));
+    put32(book, 1);
+    put32(book, static_cast<std::uint32_t>(pipeline_dim));
+    put32(book, static_cast<std::uint32_t>(kSubvectors));
+    put32(book, static_cast<std::uint32_t>(subdim));
+    put32(book, static_cast<std::uint32_t>(codewords));
+    put32(book, static_cast<std::uint32_t>(window));
+    put32(book, static_cast<std::uint32_t>(vectors.size()));
+    put32(book, 0);
+    for (std::int32_t value : all_codebooks)
+        put32(book, static_cast<std::uint32_t>(value));
+    auto manifest = std::ofstream(output_prefix + ".json");
+    if (manifest) {
+        manifest << "{\n  \"schema\": \"nanlm.phase-codebook/1\",\n"
+                 << "  \"context_bytes\": " << window << ",\n"
+                 << "  \"context_words\": 0,\n"
+                 << "  \"context_description\": \"last N bytes per line; no word tokenization\",\n"
+                 << "  \"dim\": " << dim << ",\n"
+                 << "  \"pipeline_dim\": " << pipeline_dim << ",\n"
+                 << "  \"subvectors\": " << kSubvectors << ",\n"
+                 << "  \"subdim\": " << subdim << ",\n"
+                 << "  \"codewords\": " << codewords << ",\n"
+                 << "  \"training_windows\": " << vectors.size() << ",\n"
+                 << "  \"codebook_words\": " << trained << ",\n"
+                 << "  \"output\": \"" << output_prefix << ".codebook.bin\"\n}\n";
+    }
+    std::cout << "phase_codebook windows=" << vectors.size()
+              << " context_bytes=" << window
+              << " dim=" << dim << " pipeline_dim=" << pipeline_dim
+              << " subvectors=" << kSubvectors << " subdim=" << subdim
+              << " codewords=" << codewords
+              << " words=" << trained << " output=" << output_prefix
+              << ".codebook.bin\n";
+    return 0;
+}
+
 } // namespace nanlm
+
