@@ -1,0 +1,29 @@
+name: MTH seven-credit guest execution and native bridge
+on:
+  push:
+    branches: ['feature/mth-seven-credit-nanlm-train-20261109']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mth-seven-credit-native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build guest native field bridge and tests
+        run: |
+          set -euo pipefail
+          make -j2 build/test_raw_field
+          ./build/test_raw_field
+      - name: Checkout canonical NaN0S toolchain for exact guest fixtures
+        uses: actions/checkout@v4
+        with:
+          repository: shemshallah/NaN0S
+          ref: main
+          path: nan0s
+      - name: Assemble guest tests and run seven method fixtures
+        run: |
+          set -euo pipefail
+          make -s -C nan0s/aarch64/android nan_cli
+          NAN0S_ROOT="$PWD/nan0s" NAN16_REQUIRE=1 python3 tools/run_nan16_fixtures.py --only cft_credit --only trail_credit --only credit_suite --only credit_pipeline
