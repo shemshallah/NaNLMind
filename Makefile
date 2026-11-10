@@ -186,3 +186,17 @@ sparse-shared-test:
 # RSS protocol-envelope tests only; graph/spectral mathematics remains native NaN16 MTH.
 rss-contract-test:
 	python3 tests/test_relational_spectral_contract.py
+
+
+# Seven NaN16 mathematical credit kernels remain in the raw guest.
+# This host only stages method inputs and persists the resulting native weights.
+$(BUILD)/nanlm-train: tools/nanlm_mth_train.cpp $(LIB) $(NAN0S_LIB) $(FIELD_DRIVER) | $(BUILD)
+	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
+
+.PHONY: mth-seven-check
+mth-seven-check: $(BUILD)/nanlm-train $(BUILD)/test_raw_field
+	./$(BUILD)/test_raw_field
+	./$(BUILD)/nanlm-train tests/fixtures/mth-seven-positive.n16mth --out $(BUILD)/mth-seven-positive.weights
+	./$(BUILD)/nanlm-train tests/fixtures/mth-seven-rejected.n16mth --out $(BUILD)/mth-seven-rejected.weights
+	grep -q '^N16MTHWEIGHTS/1' $(BUILD)/mth-seven-positive.weights
+	grep -q '^N16MTHWEIGHTS/1' $(BUILD)/mth-seven-rejected.weights
