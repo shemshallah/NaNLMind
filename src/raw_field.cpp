@@ -1841,9 +1841,9 @@ bool RawFieldVM::field_perturb(
     credits.resize(255);
     votes.resize(85);
     for (std::size_t i = 0; i < 255; ++i)
-        credits[i] = static_cast<std::int32_t>(read_word(0x260000u + i));
+        credits[i] = static_cast<std::int32_t>(read_word(0x2E0000u + i));
     for (std::size_t i = 0; i < 85; ++i)
-        votes[i] = static_cast<std::int32_t>(read_word(0x260100u + i));
+        votes[i] = static_cast<std::int32_t>(read_word(0x2E0100u + i));
     field_value = static_cast<std::int32_t>(read_word(kResultBase));
     return true;
 }

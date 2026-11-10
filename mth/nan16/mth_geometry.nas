@@ -15,7 +15,7 @@
 ;      r6=orientation sign (first two coordinate deltas).
 ;
 ; mth_geom_field_perturb:
-;   r1=vector, r2=D -> credits[255] at 0x260000, triad votes[85] at 0x260100.
+;   r1=vector, r2=D -> credits[255] at 0x2E0000, triad votes[85] at 0x2E0100.
 ;   Returns the head-255/current component.
 
 mth_geom_hyperbolic:
