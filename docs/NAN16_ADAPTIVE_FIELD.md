@@ -33,6 +33,7 @@ adaptive-field mathematics:
 | `mth_trunk_causal.nas` | raw learned QKV/MLP causal feature block, 1..256 tokens |
 | `mth_trunk_wide.nas` | runtime-width learned QKV/MLP causal block, up to 1024 tokens |
 | `mth_trunk_credit.nas` | raw local credit update for Wout/W1/W2 |
+| `mth_qkv_credit.nas` | raw softmax/QKV local-credit update for Wq/Wk/Wv |
 | `mth/drivers/field_driver.nas` | guest command dispatcher for proposal, field vote, coherence, remap, CFT, TRAIL and hot triheads |
 | `include/nanlm/raw_field.hpp` | host orchestration: writes command words, runs the VM, reads results |
 
@@ -162,8 +163,26 @@ W1[j][i]   += lr g[j] h[i]
 ```
 
 Command 14 applies this update. It is a true local error-corrective gradient for
-the output and MLP layers; Q/K/V updates and full raw BPTT are still open.
-The wide path currently uses host-initialized QKV/MLP.
+the output and MLP layers.
+
+Command 15 (`mth_qkv_credit.nas`) extends the same local credit through the
+causal softmax:
+
+```text
+dc[k]      = sum_i h_err[i] Wout[i][k]
+dalpha[s]  = dot(dc, v_s)
+dz[s]      = alpha[s] (dalpha[s] - sum_t alpha[t] dalpha[t])
+dq         = sum_s dz[s] k_s
+dk_s       = dz[s] q
+dv_s       = alpha[s] dc
+Wq += lr dq x_last^T
+Wk += lr sum_s dk_s x_s^T
+Wv += lr sum_s dv_s x_s^T
+```
+
+It uses the alpha/q/k/v state cached by the last fixed 8-wide forward. QKV
+local credit is therefore raw and functional for the fixed trunk. Full
+multi-layer BPTT and QKV credit for the wide path are still open.
 
 ## Learnable credit, not host gradients
 

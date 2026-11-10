@@ -265,6 +265,19 @@ int main() {
 
     // Raw local credit update for Wout/W1/W2 after a readout step.
     CHECK(vm.trunk_credit(1, 0, 0.05f));
+    // QKV credit uses the last fixed-trunk forward.  T=8 makes the softmax
+    // gradient non-trivial for Wq/Wk as well as Wv.
+    CHECK(vm.causal_trunk(causal_tokens, weights, causal_feature));
+    const float before_qkv_credit = causal_feature[0];
+    std::array<float, kRawFeatureDim> target_row{};
+    std::array<float, kRawFeatureDim> wrong_row{};
+    target_row[0] = 1.0f;
+    wrong_row[0] = -1.0f;
+    CHECK(vm.set_readout_row(1, target_row));
+    CHECK(vm.set_readout_row(0, wrong_row));
+    CHECK(vm.qkv_credit(1, 0, 0.5f));
+    CHECK(vm.causal_trunk_cached(causal_tokens, causal_feature));
+    CHECK(std::fabs(causal_feature[0] - before_qkv_credit) > 1e-7f);
 
     // Native readout training over the raw trunk feature.
     vm.reset_readout();
@@ -321,6 +334,17 @@ int main() {
     CHECK(vm.causal_trunk_wide(wide_tokens, 1024, wide, wide_out));
     CHECK_EQ(wide_out.size(), wide.dim);
     CHECK(std::isfinite(wide_out[0]));
+
+    // Readout-only path: the same update without recomputing the trunk.
+    vm.reset_readout();
+    std::array<float, kRawFeatureDim> cached_feature{};
+    CHECK(vm.causal_trunk(one_token, weights, cached_feature));
+    CHECK(vm.readout_only(cached_feature, 1, 0.5f, correct,
+                          target_score, best_wrong, loss));
+    CHECK(!correct);
+    CHECK(vm.readout_only(cached_feature, 1, 0.0f, correct,
+                          target_score, best_wrong, loss));
+    CHECK(correct);
 
     Universe feature_universe;
     SparseField feature_field(feature_universe);

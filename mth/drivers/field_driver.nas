@@ -21,6 +21,7 @@
 ;   weights 0x60000, output 0x200000, result D at 0x4010
 ; Trunk local credit: target/best at 0x4001/0x4002, lr at 0x4003
 ;   result r1=1 at 0x4010
+; QKV local credit: same target/best/lr, command 15, uses last forward
 ;
 ; The driver contains no host math. It is assembled by nmk.awk and executed
 ; by the canonical NaN0S VM. The guest starts at word 0.
@@ -43,7 +44,10 @@ JMP @field_driver_entry
 .include "../nan16/mth_trunk_causal.nas"
 .include "../nan16/mth_trunk_wide.nas"
 .include "../nan16/mth_readout_train.nas"
+.include "../nan16/mth_readout_only.nas"
+.include "../nan16/mth_readout_sample.nas"
 .include "../nan16/mth_trunk_credit.nas"
+.include "../nan16/mth_qkv_credit.nas"
 
 field_driver_entry:
   MOVI r13,1
@@ -97,6 +101,15 @@ field_driver_main:
   MOVI r3,14
   CMP r2,r3
   JMP[EQ] @field_driver_trunk_credit
+  MOVI r3,15
+  CMP r2,r3
+  JMP[EQ] @field_driver_qkv_credit
+  MOVI r3,16
+  CMP r2,r3
+  JMP[EQ] @field_driver_readout_only
+  MOVI r3,17
+  CMP r2,r3
+  JMP[EQ] @field_driver_readout_sample
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -248,6 +261,30 @@ field_driver_readout_train:
   ST r4,r10,3
   JMP @field_driver_return
 
+field_driver_readout_only:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  CALL @mth_readout_only
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  ST r4,r10,3
+  JMP @field_driver_return
+
+field_driver_readout_sample:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  CALL @mth_readout_sample
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  ST r4,r10,3
+  JMP @field_driver_return
+
 field_driver_field_commit:
   MOVI r10,0x4001
   LD r2,r10,0
@@ -275,6 +312,16 @@ field_driver_trunk_credit:
   LD r2,r10,1
   LD r3,r10,2
   CALL @mth_trunk_credit
+  MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_qkv_credit:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  CALL @mth_qkv_credit
   MOVI r10,0x4010
   ST r1,r10,0
   JMP @field_driver_return

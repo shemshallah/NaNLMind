@@ -158,6 +158,9 @@ mth_tc_ctx_s:
   MOVI r10,@mth_tc_sum
   LD r8,r10,0
   FDIV r7,r7,r8             ; softmax weight
+  MOVI r10,0x8B00
+  ADD r10,r10,r6
+  ST r7,r10,0               ; store alpha[s] for QKV credit
   MOVI r8,0                 ; d
 mth_tc_ctx_d:
   MOVI r9,8

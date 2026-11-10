@@ -117,9 +117,18 @@ public:
     bool write_trunk_inputs(
         const std::vector<std::array<float, kRawFeatureDim>>& tokens,
         const TrunkWeights& weights);
+    bool write_trunk_weights(const TrunkWeights& weights);
+    bool trunk_feature(
+        const std::vector<std::array<float, kRawFeatureDim>>& tokens,
+        std::array<float, kRawFeatureDim>& out);
     bool causal_trunk(const std::vector<std::array<float, kRawFeatureDim>>& tokens,
                       const TrunkWeights& weights,
                       std::array<float, kRawFeatureDim>& out);
+    // Forward using the trunk weights already resident in the guest.  This is
+    // the training-loop path: local credit updates are not overwritten.
+    bool causal_trunk_cached(
+        const std::vector<std::array<float, kRawFeatureDim>>& tokens,
+        std::array<float, kRawFeatureDim>& out);
     // Same block with runtime width D<=128, hidden H<=512 and T<=1024.
     bool causal_trunk_wide(const std::vector<float>& tokens, std::size_t count,
                            const WideTrunkWeights& weights,
@@ -127,12 +136,26 @@ public:
     // Raw local credit update for the fixed 8-wide output/MLP layers.
     bool trunk_credit(std::uint8_t target, std::uint8_t best_wrong,
                       float learning_rate);
+    // Raw QKV local-credit update using the last fixed-trunk forward's alpha,
+    // q/k/v and output/MLP activation state.
+    bool qkv_credit(std::uint8_t target, std::uint8_t best_wrong,
+                    float learning_rate);
     bool readout_train(
         const std::vector<std::array<float, kRawFeatureDim>>& tokens,
         const TrunkWeights& weights, std::uint8_t target, float learning_rate,
         bool& correct, float& target_score, float& best_wrong_score,
         float& loss);
+    bool readout_only(const std::array<float, kRawFeatureDim>& feature,
+                      std::uint8_t target, float learning_rate,
+                      bool& correct, float& target_score,
+                      float& best_wrong_score, float& loss);
+    bool readout_sample(const std::array<float, kRawFeatureDim>& feature,
+                        std::uint8_t target, float learning_rate,
+                        bool& correct, float& target_score,
+                        float& best_wrong_score, float& loss);
     void reset_readout();
+    bool set_readout_row(std::uint8_t row,
+                         const std::array<float, kRawFeatureDim>& values);
     bool remap(const std::array<std::uint16_t, 6>& masks,
                std::uint32_t a, std::uint32_t b, bool target,
                bool& improved, std::int32_t& before, std::int32_t& after);

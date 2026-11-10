@@ -174,8 +174,11 @@ matrices and returns D features; the test exercises D=16 with T=1 exact math
 and T=1024. The readout trainer is already raw. A local credit step for Wout/W1/W2 is
 implemented in `mth_trunk_credit.nas` (command 14). A proper autograd reference
 for QKV/Wout/W1/W2/readout is in `experiments/native_trunk_backprop.py`; it is
-gradient-checked and is the upper bound, not the native path. Q/K/V raw updates
-and full raw BPTT remain open.
+gradient-checked and is the upper bound, not the native path. A raw attention/QKV local-credit step now exists in
+`mth_qkv_credit.nas` (command 15): it backpropagates the local output error
+through the causal softmax to Wq/Wk/Wv using the cached alpha/q/k/v state.
+This is fixed 8-wide trunk credit; full multi-layer raw BPTT and wide-path QKV
+updates remain open.
 
 This is the native **head/field** half of the sparse trunk. The shared P1
 QKV/MLP trunk kernel and its feature feed are still the next native step; the
