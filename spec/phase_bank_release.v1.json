@@ -87,5 +87,6 @@
       "sha256": "3cae05e56f4111ea7ee204d987184784ddff8cc6a289834fdbea88722c4e8a5c"
     }
   ],
-  "notes": "The bank is stored as ordered release parts: part00..part01 (180 MiB) and chunk02..chunk13 (40 MiB); concatenate in the order listed."
+  "notes": "The bank is stored as ordered release parts: part00..part01 (180 MiB) and chunk02..chunk13 (40 MiB); concatenate in the order listed.",
+  "status": "uploaded; all part sizes and sha256 digests verified against GitHub release assets"
 }
