@@ -479,7 +479,8 @@ field_driver_cft_credit:
   CALL @mth_credit_gate
   CMP r1,r0
   JMP[EQ] @field_driver_credit_rejected
-  ADD r6,r1,r0          ; gated learning rate
+  CALL @mth_credit_rate_float
+  ADD r6,r1,r0          ; gated float32 learning-rate bits
   MOVI r10,0x4001
   LD r1,r10,0
   LD r2,r10,1
@@ -520,6 +521,7 @@ field_driver_trail_credit:
   CALL @mth_credit_gate
   CMP r1,r0
   JMP[EQ] @field_driver_credit_rejected
+  CALL @mth_credit_rate_float
   ADD r6,r1,r0
   MOVI r10,0x4001
   LD r1,r10,0
@@ -563,6 +565,7 @@ field_driver_combined_credit:
   CALL @mth_credit_gate
   CMP r1,r0
   JMP[EQ] @field_driver_credit_rejected
+  CALL @mth_credit_rate_float
   ADD r6,r1,r0
   MOVI r10,0x4001
   LD r1,r10,0
@@ -587,6 +590,7 @@ field_driver_combined_all:
   CALL @mth_credit_gate
   CMP r1,r0
   JMP[EQ] @field_driver_credit_rejected
+  CALL @mth_credit_rate_float
   ADD r6,r1,r0
   MOVI r10,0x4001
   LD r1,r10,0
@@ -611,6 +615,7 @@ field_driver_combined_wide:
   CALL @mth_credit_gate
   CMP r1,r0
   JMP[EQ] @field_driver_credit_rejected
+  CALL @mth_credit_rate_float
   ADD r6,r1,r0
   MOVI r10,0x4001
   LD r1,r10,0
@@ -700,14 +705,10 @@ field_driver_combined_credit_all:
   CALL @mth_credit_gate
   CMP r1,r0
   JMP[EQ] @field_driver_credit_rejected
+  CALL @mth_credit_rate_float
   MOVI r10,0x4003
   ST r1,r10,0
-  MOVI r10,0x4001
-  LD r1,r10,0
-  LD r2,r10,1
-  MOVI r10,0x4003
-  LD r3,r10,0
-  CALL @mth_trunk_credit
+  ; mth_qkv_credit already invokes mth_trunk_credit exactly once.
   MOVI r10,0x4001
   LD r1,r10,0
   LD r2,r10,1
@@ -732,6 +733,7 @@ field_driver_combined_credit_wide:
   CALL @mth_credit_gate
   CMP r1,r0
   JMP[EQ] @field_driver_credit_rejected
+  CALL @mth_credit_rate_float
   MOVI r10,0x4003
   ST r1,r10,0
   MOVI r10,0x4001
@@ -750,6 +752,16 @@ field_driver_combined_credit_wide:
   MOVI r1,1
   ST r1,r10,0
   JMP @field_driver_return
+
+; Native conversion Q16.16 -> float32 bit-pattern for causal trunk ABI.
+; CVTIF casts the signed Q16 integer to float32; FDIV scales by 65536.0.
+; No host math, no new opcode handler. Clobbers r2 only.
+mth_credit_rate_float:
+  CVTIF r1,r1
+  MOVI r2,0
+  MOVHI r2,0x4780
+  FDIV r1,r1,r2
+  RET
 
 field_driver_return:
   MOVI r10,@field_driver_link
