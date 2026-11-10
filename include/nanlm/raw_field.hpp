@@ -80,52 +80,20 @@ struct HotTriheadResult {
     std::array<std::uint8_t, kTriadMemberCount> members{};
 };
 
-// Context-memory 16x16 class hierarchy linked to the canonical 256-head,
-// 85-triad, 43/85 field topology. The high/low class scores live in the same
-// context table used by readout_context(); the guest kernel computes argmax,
-// class head = high*16 + low, triad = head/3, member = head%3, and the
-// 2-of-3 triad / 43-of-85 field vote. The host only writes inputs and reads
-// results.
-enum class ContextCreditKind : std::uint8_t {
-    None = 0,
-    Cft = 1,
-    Trail = 2,
+struct ContextBackoffSelection {
+    std::uint32_t exact_count = 0;
+    std::uint32_t fallback = 0;
+    std::uint32_t threshold = 0;
+    std::uint32_t unique = 0;
 };
 
-struct ContextClassInput {
-    std::uint32_t high_table = 0x100000; // guest word address
-    std::uint32_t low_table = 0;         // 0 => high_table + 16*buckets
-    std::size_t buckets = 1;
+struct ContextBackoffStep {
+    bool correct = false;
+    float loss = 0.0f;
+    std::uint8_t predicted_high = 0;
+    std::uint8_t predicted_low = 0;
+    bool exact = false;
     std::uint32_t bucket = 0;
-    bool direct = false;                 // use direct_high/direct_low instead
-    std::uint8_t direct_high = 0;
-    std::uint8_t direct_low = 0;
-    std::int32_t head_threshold = 0;
-};
-
-struct ContextCreditInput {
-    ContextCreditKind kind = ContextCreditKind::None;
-    // CFT: e_ab, e_bc, e_ca, error, rate (Q16.16).
-    std::array<std::int32_t, 5> cft{};
-    // TRAIL: the eleven mth_trail_credit.nas arguments (Q16.16).
-    std::array<std::int32_t, 11> trail{};
-};
-
-struct ContextClassResult {
-    std::uint8_t high = 0;
-    std::uint8_t low = 0;
-    std::uint8_t head = 0;
-    std::uint16_t triad = 0xFFFFu;   // 0xFFFF for field head 255
-    std::uint16_t member = 0xFFFFu;  // 0xFFFF for field head 255
-    bool field_head = false;
-    std::uint16_t accepted_triads = 0;
-    bool field_accepted = false;
-    bool triad_accepted = false;
-    std::int32_t head_credit_before = 0;
-    std::int32_t head_credit_after = 0;
-    std::int32_t credit_delta = 0;
-    bool credit_applied = false;
-    std::array<std::uint8_t, kTriadCount> votes{};
 };
 
 class RawFieldVM {
@@ -373,16 +341,15 @@ public:
                          bool& correct, float& loss,
                          std::uint8_t& predicted_high,
                          std::uint8_t& predicted_low);
-    bool readout_context_joint(std::uint8_t target, float learning_rate,
-                               std::uint32_t bucket, std::size_t buckets,
-                               bool& correct, float& loss,
-                               std::uint8_t& predicted_high,
-                               std::uint8_t& predicted_low);
-    bool set_context_high(std::size_t bucket, std::size_t high_class,
-                          float value, std::size_t buckets);
-    bool set_context_low(std::size_t bucket, std::size_t high_class,
-                         std::size_t low_class, float value,
-                         std::size_t buckets);
+    // Multi-order raw route: the guest owns the exact k=4 hash table, its
+    // frequency selection, and the k=3 fallback hash.
+    bool reset_context_backoff();
+    bool context_backoff_build(std::uint32_t key, bool* inserted = nullptr);
+    bool context_backoff_select(std::size_t buckets, std::size_t exact_limit,
+                                ContextBackoffSelection& out);
+    bool readout_context_backoff(std::uint8_t target, float learning_rate,
+                                 std::uint32_t key, std::size_t buckets,
+                                 ContextBackoffStep& out);
     void reset_readout();
     bool set_readout_row(std::uint8_t row,
                          const std::array<float, kRawFeatureDim>& values);

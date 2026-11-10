@@ -60,7 +60,7 @@ JMP @field_driver_entry
 .include "../nan16/mth_softmax16.nas"
 .include "../nan16/mth_softmax16_table.nas"
 .include "../nan16/mth_context_hier.nas"
-.include "../nan16/mth_context_copy.nas"
+.include "../nan16/mth_context_backoff.nas"
 .include "../nan16/mth_readout_hier.nas"
 .include "../nan16/mth_trunk_credit.nas"
 .include "../nan16/mth_qkv_credit.nas"
@@ -163,7 +163,7 @@ field_driver_main:
   JMP[EQ] @field_driver_readout_context
   MOVI r3,30
   CMP r2,r3
-  JMP[EQ] @field_driver_readout_context_joint
+  JMP[EQ] @field_driver_context_backoff
   MOVI r3,27
   CMP r2,r3
   JMP[EQ] @field_driver_combined_all
@@ -390,18 +390,61 @@ field_driver_readout_context:
   ST r4,r10,3
   JMP @field_driver_return
 
-field_driver_readout_context_joint:
+; Multi-order context backoff, one command with setup and runtime modes.
+;   0x4001 = mode: 1 build, 2 select, 3 step
+;   mode 1: 0x4002 = packed k=4 key
+;   mode 2: 0x4002 = buckets, 0x4003 = exact slot limit
+;   mode 3: 0x4002 = target, 0x4003 = lr bits, 0x4004 = key,
+;           0x4005 = buckets
+field_driver_context_backoff:
   MOVI r10,0x4001
   LD r1,r10,0
-  LD r2,r10,1
-  LD r3,r10,2
-  LD r4,r10,3
-  CALL @mth_context_hier_joint
+  MOVI r3,1
+  CMP r1,r3
+  JMP[EQ] @field_driver_ctxb_build
+  MOVI r3,2
+  CMP r1,r3
+  JMP[EQ] @field_driver_ctxb_select
+  MOVI r3,3
+  CMP r1,r3
+  JMP[EQ] @field_driver_ctxb_step
+  JMP @field_driver_return
+
+field_driver_ctxb_build:
+  MOVI r10,0x4002
+  LD r1,r10,0
+  CALL @mth_ctxb_build
+  MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_ctxb_select:
+  MOVI r10,0x4002
+  LD r1,r10,0
+  MOVI r10,0x4003
+  LD r2,r10,0
+  CALL @mth_ctxb_select
   MOVI r10,0x4010
   ST r1,r10,0
   ST r2,r10,1
   ST r3,r10,2
   ST r4,r10,3
+  JMP @field_driver_return
+
+field_driver_ctxb_step:
+  MOVI r10,0x4002
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r4,r10,3
+  CALL @mth_context_backoff
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  ST r4,r10,3
+  ST r5,r10,4
+  ST r6,r10,5
   JMP @field_driver_return
 
 field_driver_field_commit:
