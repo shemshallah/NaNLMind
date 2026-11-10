@@ -890,10 +890,9 @@ int phase_ingest_cli(int argc, char** argv) {
     if (!flush_batch()) return 7;
 
     // Derive the raw PQ, sparse k-NN and spectral layers from the encoded
-    // phase vectors. This is deliberately a small first-stage pipeline: the
-    // codebook is the first codewords of this ingest window, and the sparse
-    // bank is the first 256 windows. All quantization and graph arithmetic is
-    // guest-side.
+    // phase vectors. This is a first-stage pipeline: the codebook is trained
+    // in-guest from the first pipeline window, and the sparse bank is the first
+    // 256 windows. All quantization and graph arithmetic remains guest-side.
     std::size_t pq_codewords = 0;
     std::size_t knn_bank = 0;
     std::size_t pipeline_dim = 0;
