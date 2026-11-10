@@ -128,7 +128,8 @@ void run_step(RawFieldVM& vm,
     std::array<std::int32_t, 5> cft{};
     std::array<std::int32_t, 11> trail{};
     std::array<std::uint16_t, 3> holo{};
-    std::array<std::int32_t, 3> leaf{};
+    std::uint32_t leaf_row = 0, leaf_mask = 0;
+    std::int32_t leaf_counter = 0;
     std::array<std::int32_t, 3> tca{};
     std::array<std::int32_t, 4> flux{};
     std::array<std::int32_t, 7> coeff{};
@@ -137,7 +138,9 @@ void run_step(RawFieldVM& vm,
     for (auto& v : holo) v = turn(t[k++]);
     const auto shift = unsigned_value(t[k++]);
     if (shift >= N) throw std::invalid_argument("ring shift outside 255 heads");
-    for (auto& v : leaf) v = q(t[k++]);
+    leaf_row = unsigned_value(t[k++]);
+    leaf_mask = unsigned_value(t[k++]);
+    leaf_counter = q(t[k++]);
     for (auto& v : tca) v = q(t[k++]);
     for (auto& v : flux) v = q(t[k++]);
     for (auto& v : coeff) v = q(t[k++]);
@@ -162,8 +165,7 @@ void run_step(RawFieldVM& vm,
                      trail[9], trail[10], trail_out), vm, "TRAIL NaN16");
     require(vm.holo(holo, holo_out), vm, "HOLO NaN16");
     require(vm.ring(ring_phases, shift, ring_out), vm, "RING NaN16");
-    require(vm.leaf(static_cast<std::uint32_t>(leaf[0]),
-                    static_cast<std::uint32_t>(leaf[1]), leaf[2], leaf_out),
+    require(vm.leaf(leaf_row, leaf_mask, leaf_counter, leaf_out),
             vm, "LEAF NaN16");
     require(vm.tca(tca[0], tca[1], tca[2], tca_out), vm, "TCA NaN16");
     require(vm.flux(flux[0], flux[1], flux[2], flux[3], flux_out),
