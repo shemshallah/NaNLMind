@@ -148,6 +148,12 @@ field_driver_main:
   MOVI r3,25
   CMP r2,r3
   JMP[EQ] @field_driver_readout_context
+  MOVI r3,27
+  CMP r2,r3
+  JMP[EQ] @field_driver_combined_all
+  MOVI r3,28
+  CMP r2,r3
+  JMP[EQ] @field_driver_combined_wide
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -531,6 +537,59 @@ field_driver_combined_credit:
   LD r2,r10,1
   ADD r3,r6,r0
   CALL @mth_trunk_credit
+  MOVI r10,0x4010
+  MOVI r1,1
+  ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_combined_all:
+  MOVI r1,0x7000
+  MOVI r2,0x7100
+  CALL @mth_credit_combine
+  ADD r6,r1,r0
+  MOVI r10,0x4003
+  LD r2,r10,0
+  MOVI r10,0x4004
+  LD r3,r10,0
+  ADD r1,r6,r0
+  CALL @mth_credit_gate
+  CMP r1,r0
+  JMP[EQ] @field_driver_credit_rejected
+  ADD r6,r1,r0
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  ADD r3,r6,r0
+  CALL @mth_qkv_credit
+  MOVI r10,0x4010
+  MOVI r1,1
+  ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_combined_wide:
+  MOVI r1,0x7000
+  MOVI r2,0x7100
+  CALL @mth_credit_combine
+  ADD r6,r1,r0
+  MOVI r10,0x4003
+  LD r2,r10,0
+  MOVI r10,0x4004
+  LD r3,r10,0
+  ADD r1,r6,r0
+  CALL @mth_credit_gate
+  CMP r1,r0
+  JMP[EQ] @field_driver_credit_rejected
+  ADD r6,r1,r0
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  ADD r3,r6,r0
+  CALL @mth_qkv_credit_wide
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  ADD r3,r6,r0
+  CALL @mth_trunk_credit_wide
   MOVI r10,0x4010
   MOVI r1,1
   ST r1,r10,0

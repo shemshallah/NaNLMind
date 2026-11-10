@@ -936,6 +936,147 @@ bool RawFieldVM::combined_trunk_credit(
     return true;
 }
 
+
+bool RawFieldVM::combined_trunk_credit_all(
+    std::uint8_t target, std::uint8_t best_wrong,
+    std::int32_t base_lr_q16, std::int32_t threshold_q16,
+    const std::array<std::int32_t, 7>& credits,
+    const std::array<std::int32_t, 7>& coefficients, bool& applied) {
+    for (std::size_t i = 0; i < 7; ++i) {
+        if (!write_word(0x7000u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(credits[i])) ||
+            !write_word(0x7100u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(coefficients[i]))) {
+            return fail("cannot write combined-all args");
+        }
+    }
+    if (!write_word(kProposalBase + 0, target) ||
+        !write_word(kProposalBase + 1, best_wrong) ||
+        !write_word(kProposalBase + 2, static_cast<std::uint32_t>(base_lr_q16)) ||
+        !write_word(kProposalBase + 3, static_cast<std::uint32_t>(threshold_q16)) ||
+        !write_word(kCommandBase, 27)) {
+        return fail("cannot write combined-all command");
+    }
+    if (!run_command()) return false;
+    applied = (read_word(kResultBase) & 1u) != 0;
+    return true;
+}
+
+bool RawFieldVM::write_wide_weights(const WideTrunkWeights& weights) {
+    const std::size_t d = weights.dim;
+    const std::size_t h = weights.hidden;
+    if (d == 0 || d > 128 || h == 0 || h > 512) return false;
+    const std::uint32_t bases[6] = {
+        0x60000u,
+        0x60000u + static_cast<std::uint32_t>(d * d),
+        0x60000u + static_cast<std::uint32_t>(2 * d * d),
+        0x60000u + static_cast<std::uint32_t>(3 * d * d),
+        0x60000u + static_cast<std::uint32_t>(4 * d * d),
+        0x60000u + static_cast<std::uint32_t>(4 * d * d + h * d)};
+    const std::vector<float>* blocks[6] = {
+        &weights.wq, &weights.wk, &weights.wv,
+        &weights.wout, &weights.w1, &weights.w2};
+    for (std::size_t b = 0; b < 6; ++b) {
+        for (std::size_t i = 0; i < blocks[b]->size(); ++i) {
+            std::uint32_t bits = 0;
+            std::memcpy(&bits, &(*blocks[b])[i], sizeof(bits));
+            if (!write_word(bases[b] + static_cast<std::uint32_t>(i), bits)) {
+                return fail("cannot write wide weights");
+            }
+        }
+    }
+    return true;
+}
+
+bool RawFieldVM::combined_trunk_credit_wide(
+    std::uint8_t target, std::uint8_t best_wrong,
+    std::int32_t base_lr_q16, std::int32_t threshold_q16,
+    const std::array<std::int32_t, 7>& credits,
+    const std::array<std::int32_t, 7>& coefficients, bool& applied) {
+    for (std::size_t i = 0; i < 7; ++i) {
+        if (!write_word(0x7000u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(credits[i])) ||
+            !write_word(0x7100u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(coefficients[i]))) {
+            return fail("cannot write combined-wide args");
+        }
+    }
+    if (!write_word(kProposalBase + 0, target) ||
+        !write_word(kProposalBase + 1, best_wrong) ||
+        !write_word(kProposalBase + 2, static_cast<std::uint32_t>(base_lr_q16)) ||
+        !write_word(kProposalBase + 3, static_cast<std::uint32_t>(threshold_q16)) ||
+        !write_word(kCommandBase, 28)) {
+        return fail("cannot write combined-wide command");
+    }
+    if (!run_command()) return false;
+    applied = (read_word(kResultBase) & 1u) != 0;
+    return true;
+}
+
+bool RawFieldVM::commit_combined_credit(
+    std::uint8_t target, std::uint8_t best_wrong,
+    std::int32_t base_lr_q16, std::int32_t threshold_q16,
+    const std::array<std::int32_t, 7>& credits,
+    const std::array<std::int32_t, 7>& coefficients,
+    const std::array<std::int32_t, kTriadMemberCount>& head_credits,
+    std::int32_t head_threshold_q16,
+    bool& field_accepted, bool& committed) {
+    TrunkWeights snapshot{};
+    if (!read_trunk_weights(snapshot)) return fail("cannot snapshot trunk");
+    std::array<std::uint8_t, kTriadCount> votes{};
+    std::uint16_t accepted = 0;
+    if (!credit_field_vote(head_credits, head_threshold_q16, votes,
+                           accepted, field_accepted)) return false;
+    committed = false;
+    if (!field_accepted) return true;
+    bool applied = false;
+    if (!combined_trunk_credit_all(target, best_wrong, base_lr_q16,
+                                   threshold_q16, credits, coefficients,
+                                   applied)) {
+        (void)write_trunk_weights(snapshot);
+        return false;
+    }
+    if (!applied) {
+        (void)write_trunk_weights(snapshot);
+        return true;
+    }
+    committed = true;
+    return true;
+}
+
+
+bool RawFieldVM::commit_combined_credit_wide(
+    std::size_t dim, std::size_t hidden,
+    std::uint8_t target, std::uint8_t best_wrong,
+    std::int32_t base_lr_q16, std::int32_t threshold_q16,
+    const std::array<std::int32_t, 7>& credits,
+    const std::array<std::int32_t, 7>& coefficients,
+    const std::array<std::int32_t, kTriadMemberCount>& head_credits,
+    std::int32_t head_threshold_q16,
+    bool& field_accepted, bool& committed) {
+    WideTrunkWeights snapshot{};
+    if (!read_wide_weights(dim, hidden, snapshot)) return fail("cannot snapshot wide trunk");
+    std::array<std::uint8_t, kTriadCount> votes{};
+    std::uint16_t accepted = 0;
+    if (!credit_field_vote(head_credits, head_threshold_q16, votes,
+                           accepted, field_accepted)) return false;
+    committed = false;
+    if (!field_accepted) return true;
+    bool applied = false;
+    if (!combined_trunk_credit_wide(target, best_wrong, base_lr_q16,
+                                    threshold_q16, credits, coefficients,
+                                    applied)) {
+        (void)write_wide_weights(snapshot);
+        return false;
+    }
+    if (!applied) {
+        (void)write_wide_weights(snapshot);
+        return true;
+    }
+    committed = true;
+    return true;
+}
+
 bool RawFieldVM::cft_trunk_credit(std::uint8_t target, std::uint8_t best_wrong,
                                   std::int32_t base_lr_q16,
                                   std::int32_t threshold_q16,

@@ -150,6 +150,34 @@ public:
         std::int32_t base_lr_q16, std::int32_t threshold_q16,
         const std::array<std::int32_t, 7>& credits,
         const std::array<std::int32_t, 7>& coefficients, bool& applied);
+    bool combined_trunk_credit_all(
+        std::uint8_t target, std::uint8_t best_wrong,
+        std::int32_t base_lr_q16, std::int32_t threshold_q16,
+        const std::array<std::int32_t, 7>& credits,
+        const std::array<std::int32_t, 7>& coefficients, bool& applied);
+    bool write_wide_weights(const WideTrunkWeights& weights);
+    bool combined_trunk_credit_wide(
+        std::uint8_t target, std::uint8_t best_wrong,
+        std::int32_t base_lr_q16, std::int32_t threshold_q16,
+        const std::array<std::int32_t, 7>& credits,
+        const std::array<std::int32_t, 7>& coefficients, bool& applied);
+    bool commit_combined_credit(
+        std::uint8_t target, std::uint8_t best_wrong,
+        std::int32_t base_lr_q16, std::int32_t threshold_q16,
+        const std::array<std::int32_t, 7>& credits,
+        const std::array<std::int32_t, 7>& coefficients,
+        const std::array<std::int32_t, kTriadMemberCount>& head_credits,
+        std::int32_t head_threshold_q16,
+        bool& field_accepted, bool& committed);
+    bool commit_combined_credit_wide(
+        std::size_t dim, std::size_t hidden,
+        std::uint8_t target, std::uint8_t best_wrong,
+        std::int32_t base_lr_q16, std::int32_t threshold_q16,
+        const std::array<std::int32_t, 7>& credits,
+        const std::array<std::int32_t, 7>& coefficients,
+        const std::array<std::int32_t, kTriadMemberCount>& head_credits,
+        std::int32_t head_threshold_q16,
+        bool& field_accepted, bool& committed);
     bool cft_trunk_credit(std::uint8_t target, std::uint8_t best_wrong,
                           std::int32_t base_lr_q16, std::int32_t threshold_q16,
                           std::int32_t e_ab, std::int32_t e_bc,

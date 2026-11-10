@@ -235,10 +235,26 @@ the first integrated pair; HOLO/RING/LEAF/TCA/FLUX are now available as raw
 inputs to the same gate/field commit path.
 
 Command 26 (`mth_credit_combine` → `mth_credit_gate` → `mth_trunk_credit`)
-now takes the seven combined credits and gates the local update. The C++ bridge
-is `RawFieldVM::combined_trunk_credit`. Tests verify a positive combined credit
-applies and a zero credit is rejected. Coefficient learning/ablation remains
-open.
+takes the seven combined credits and gates a local update. Command 27 applies
+the same combined gate to the **fixed all-trunk** update
+(Wout/W1/W2 + Wq/Wk/Wv), and command 28 applies it to the **wide all-trunk**
+update. The C++ bridges are `combined_trunk_credit_all`,
+`combined_trunk_credit_wide`, `commit_combined_credit` and
+`commit_combined_credit_wide`.
+
+The staged commit path is now:
+
+```text
+snapshot weights
+→ raw 255-head credit field vote (2/3, 43/85)
+→ combine seven credits
+→ credit gate
+→ fixed/wide all-trunk update
+→ keep on commit, restore snapshot on reject/failure
+```
+
+Tests cover accepted and rejected field votes for both fixed and wide trunks.
+Coefficient learning/ablation remains open.
 
 ## Learnable credit, not host gradients
 
