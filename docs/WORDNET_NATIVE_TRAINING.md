@@ -1,12 +1,12 @@
 # WordNet 3.1 native trunk/readout training
 
-Status: **native training run and matched Python reference**, not a language
+Status: **native training runs and matched references**, not a language
 quality claim. The native model is the raw NaN16 causal trunk forward
-(`mth_trunk_causal.nas`) plus the raw readout trainer
-(`mth_readout_train.nas`). The trunk weights are initialized identity and are
-not updated in this run; the 255-way readout is trained by a local
-error-corrective rule. The 100-epoch result supersedes the earlier 3-epoch
-instrumentation.
+(`mth_trunk_causal.nas`) plus a raw readout trainer. The trunk weights are
+initialized identity and are not updated in this run; the 255-way readout is
+trained by a local error-corrective rule. The full-softmax readout is the
+current learning path; the earlier 8-negative sampled path is a speed
+diagnostic, not a quality result.
 
 ## Corpus
 
@@ -34,13 +34,24 @@ python3 tools/wordnet_corpus.py \
   --manifest state/wordnet_corpus.json
 
 # 100 epochs over the whole corpus, reporting every 10,000 steps.
-# Default "sampled" mode is the fast training path: 8 rotated negatives per
-# step plus a full 255-class step every 16th sample.
+# Default "softmax" mode trains every class row and is the learning path.
+./build/nanlm-universal trunk-train state/wordnet_corpus.txt 0 100 10000 softmax
+
+# Fast sampled diagnostic: 8 rotated negatives per step plus a full
+# 255-class step every 16th sample. This mode does not learn a full ranking.
 ./build/nanlm-universal trunk-train state/wordnet_corpus.txt 0 100 10000 sampled
 
 # Exact 255-class local update at every sample (slower, matches the original
 # one-epoch reference arithmetic).
 ./build/nanlm-universal trunk-train state/wordnet_corpus.txt 0 100 10000 full
+
+# Full-softmax readout: trains all 255 rows, shuffled, with optional LR decay.
+# This is the learning path; one full corpus epoch takes about 93 s.
+./build/nanlm-universal trunk-train state/wordnet_corpus.txt 0 3 10000 softmax shuffle 0.1 1 1.0
+
+# Positional nibble feature bank + conditional 16x16 hierarchical softmax.
+# This is the current feature-learning path; one epoch is about 206 s.
+./build/nanlm-universal hier-train state/wordnet_corpus.txt 0 3 10000 0.1 1.0 1
 
 # Matched Python reference over the same samples and mode.
 python3 experiments/native_trunk_reference.py state/wordnet_corpus.txt \
@@ -62,6 +73,11 @@ readout          = 255 x 8 float32 rows, one class per non-255 byte
 score[b]         = dot(readout[b], h)
 loss             = max(0, best_wrong - target + 1.0)  (one-margin hinge)
 update           = target row += lr*h; best-wrong row -= lr*h
+
+# learning path: full softmax over all 255 classes
+p                = softmax(readout @ h)
+loss_ce          = -log(p[target])
+update           = every row -= lr * (p - onehot[target]) * h
 ```
 
 The readout update is a local error-corrective step, not a BPTT tape. The
@@ -97,6 +113,73 @@ The sampled loss is a training diagnostic, not the exact full-corpus hinge
 loss. Only the `trunk_full_eval` line (and the Python `full_eval` object) is
 the full 255-class evaluation. Sampled training is an optimization tradeoff;
 the exact `full` mode remains available for arithmetic/reference checks.
+
+### Measured 100-epoch speed run
+
+The optimized full-corpus run completed in **461.45 s** of epoch training,
+plus **31.55 s** to cache the frozen trunk features and **43.74 s** for the
+final full 255-class evaluation (about 8.95 minutes total):
+
+| metric | value |
+|---|---:|
+| sampled training loss | `0.41211` |
+| sampled window accuracy | `80.8495%` |
+| full 255-class loss | `2.05955` |
+| full 255-class accuracy | `12.8791%` |
+
+The window accuracy is not the model's final full-class accuracy. The sampled
+objective trains the target row against eight rotating negatives; it does not
+enforce the full 255-class ranking. The exact full update after one epoch,
+measured for comparison, had window accuracy `30.2042%` but final full
+255-class accuracy `8.17597%` (loss `1.27729`). The sampled run reaches a
+better final full-class accuracy than that one-epoch exact control, but the
+final full-class result is still weak.
+
+This is a speed/measurement result, not evidence that the sampled objective
+is a good replacement for full-class training.
+
+### What actually learns
+
+The max-wrong hinge update is the problem, not the raw VM by itself. A full
+255-class softmax step over the same cached feature, with shuffled samples,
+reaches **19.8341%** full 255-class accuracy after one epoch
+(`19.9167%` training-window accuracy, loss `2.7115`); the exact one-epoch
+hinge control reached `8.17597%`, and the 100-epoch sampled hinge run reached
+`12.8791%`. At fixed learning rate `0.1`, three softmax epochs evaluated at
+`19.8341%`, `21.2151%`, and `18.4719%`: the best checkpoint is epoch 2, and
+the fixed-rate third epoch drifts. Learning-rate decay and best-checkpoint
+selection are required before a long run.
+
+The softmax trainer is `mth/nan16/mth_readout_softmax.nas`; it computes all
+255 logits, exponentiates/normalizes them, and applies a gradient step to
+every row. The Python probe in `experiments/wordnet_learning_probe.py`
+independently reaches about `20.9%` with the same feature, so the softmax
+path is learning a real signal, not just fitting eight negative samples.
+
+### Feature/architecture probes
+
+The eight-lane `byte & 7` token feature is the main learning ceiling. Host
+probes with a linear softmax and the same 255-class task:
+
+| feature | dim | full-class accuracy after 2 epochs |
+|---|---:|---:|
+| current trunk feature | 8 | about `20.9%` |
+| last-byte nibbles | 32 | `24.2%` |
+| last 2 bytes, nibble pairs | 64 | `30.1%` |
+| last 8 bytes, 8-lane hashes | 64 | `31.6%` |
+| last 4 bytes, nibble pairs | 128 | `34.5%` |
+| last byte one-hot | 256 | `28.9%` |
+
+The useful linkage is **positional token features plus factored classes**,
+not just a wider dense readout. A conditional 16x16 nibble model
+(`P(high nibble | feature) * P(low nibble | high, feature)`) reaches
+`34.15%` on the same probe while evaluating only two 16-class heads per
+sample instead of all 255 classes. The native hierarchical trainer is
+`hier-train` with raw `mth_readout_hier.nas`; its first full-corpus run at
+learning rate `0.5` reached `28.21%` full-class accuracy, and learning rate
+`0.1` reached **`33.2641%`** after one epoch (training-window `40.4346%`).
+That is close to the Python conditional probe at `34.15%` and well above the
+current 8-lane softmax path at `21.2%` best-checkpoint accuracy.
 
 ## Pipeline status
 

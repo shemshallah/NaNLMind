@@ -57,12 +57,34 @@ def _sampled_step(weights, x, target, lr, salt):
     return ok, loss
 
 
+def _softmax_step(weights, x, target, lr):
+    logits = (weights @ x).astype(np.float32)
+    logits -= logits.max()
+    p = np.exp(logits).astype(np.float32)
+    p /= p.sum()
+    target_p = float(p[target])
+    loss = float(-np.log(max(target_p, 1e-30)))
+    ok = int(np.argmax(p)) == target
+    grad = p.copy()
+    grad[target] -= 1.0
+    weights -= (lr * np.outer(grad, x)).astype(np.float32)
+    return ok, loss
+
+
 def train(corpus: Path, max_lines: int = 0, epochs: int = 3,
           report_every: int = 10000, mode: str = "sampled") -> dict:
     lines = corpus.read_bytes().splitlines()
     if max_lines:
         lines = lines[:max_lines]
     usable = [line for line in lines if len(line) >= 9 and line[8] < 255]
+    features = []
+    targets = []
+    for line in usable:
+        tokens = np.zeros((8, 8), dtype=np.float32)
+        for j in range(8):
+            tokens[j, line[j] & 7] = 1.0
+        features.append(feature(tokens))
+        targets.append(int(line[8]))
     weights = np.zeros((255, 8), dtype=np.float32)
     global_step = 0
     steps = []
@@ -72,13 +94,12 @@ def train(corpus: Path, max_lines: int = 0, epochs: int = 3,
         loss_sum = 0.0
         report_total = report_correct = 0
         report_loss = 0.0
-        for sample, line in enumerate(usable):
-            target = int(line[8])
-            tokens = np.zeros((8, 8), dtype=np.float32)
-            for j in range(8):
-                tokens[j, line[j] & 7] = 1.0
-            x = feature(tokens)
-            if mode == "full" or (sample + epoch * 7) % 16 == 0:
+        for sample in range(len(usable)):
+            target = targets[sample]
+            x = features[sample]
+            if mode == "softmax":
+                ok, loss = _softmax_step(weights, x, target, np.float32(0.1))
+            elif mode == "full" or (sample + epoch * 7) % 16 == 0:
                 ok, loss = _full_step(weights, x, target, np.float32(0.05))
             else:
                 ok, loss = _sampled_step(weights, x, target, np.float32(0.05),
@@ -112,12 +133,9 @@ def train(corpus: Path, max_lines: int = 0, epochs: int = 3,
     # Full 255-class evaluation after training.
     eval_total = eval_correct = 0
     eval_loss = 0.0
-    for line in usable:
-        target = int(line[8])
-        tokens = np.zeros((8, 8), dtype=np.float32)
-        for j in range(8):
-            tokens[j, line[j] & 7] = 1.0
-        x = feature(tokens)
+    for sample in range(len(usable)):
+        target = targets[sample]
+        x = features[sample]
         scores = (weights @ x).astype(np.float32)
         target_score = float(scores[target])
         masked = scores.copy()
@@ -146,7 +164,7 @@ def main() -> int:
     ap.add_argument("--max-lines", type=int, default=0)
     ap.add_argument("--epochs", type=int, default=3)
     ap.add_argument("--report-every", type=int, default=10000)
-    ap.add_argument("--mode", choices=("sampled", "full"), default="sampled")
+    ap.add_argument("--mode", choices=("sampled", "full", "softmax"), default="sampled")
     args = ap.parse_args()
     print(json.dumps(train(args.corpus, args.max_lines, args.epochs,
                            args.report_every, args.mode), indent=2, sort_keys=True))
