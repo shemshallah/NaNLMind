@@ -98,6 +98,22 @@ public:
                std::int32_t e_minus, std::int32_t grad_plus,
                std::int32_t grad_minus, std::int32_t gamma,
                std::int32_t lambda, std::array<std::int32_t, 3>& out);
+    // Methods 35..39 invoke the original MTH .nas kernels on the NaN0S VM.
+    // Fixed-point values are Q16.16 except 16-bit-turn phases and raw masks.
+    bool holo(const std::array<std::uint16_t, 3>& phases,
+              std::array<std::int32_t, 2>& out);
+    bool ring(const std::array<std::uint16_t, kTriadMemberCount>& phases,
+              std::uint32_t shift, std::int32_t& correlation);
+    bool leaf(std::uint32_t row_bits, std::uint32_t leaf_mask,
+              std::int32_t counter_q16,
+              std::array<std::int32_t, 2>& out);
+    bool tca(std::int32_t local_log_probability,
+             std::int32_t peer_a_log_probability,
+             std::int32_t peer_b_log_probability,
+             std::int32_t& advantage);
+    bool flux(std::int32_t phase_u_q16, std::int32_t phase_v_q16,
+              std::int32_t weight_q16, std::int32_t source_q16,
+              std::array<std::int32_t, 3>& out);
     bool field_commit(const std::array<std::int32_t, kTriadCount>& credits,
                       std::int32_t threshold,
                       std::array<std::uint8_t, kTriadCount>& votes,
