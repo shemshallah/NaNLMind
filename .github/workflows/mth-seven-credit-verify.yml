@@ -14,8 +14,15 @@ jobs:
       - name: Build guest native field bridge and tests
         run: |
           set -euo pipefail
-          make -j2 build/test_raw_field
+          make -j2 build/test_raw_field build/nanlm-train
           ./build/test_raw_field
+          ./build/nanlm-train tests/fixtures/mth-seven-positive.n16mth --out build/mth-positive.weights | tee build/mth-positive.log
+          ./build/nanlm-train tests/fixtures/mth-seven-rejected.n16mth --out build/mth-rejected.weights | tee build/mth-rejected.log
+          grep -q 'NANLM_MTH7_TRAIN .*rows=1 accepted=1' build/mth-positive.log
+          grep -q 'NANLM_MTH7_TRAIN .*rows=1 accepted=0' build/mth-rejected.log
+          test -s build/mth-positive.weights
+          test -s build/mth-rejected.weights
+          ! cmp -s build/mth-positive.weights build/mth-rejected.weights
       - name: Checkout canonical NaN0S toolchain for exact guest fixtures
         uses: actions/checkout@v4
         with:
