@@ -8,7 +8,7 @@
 ;   r2 = byte length
 ;   r3 = word output (32-bit word IDs)
 ;   r4 = subword output (32-bit subword IDs)
-;   r5 = meta output (four words per word: word_id, context_id, triad, vote)
+;   r5 = meta output (six words per word: word_id, context_id, triad, vote, start, length)
 ;   r6 = maximum words
 ; Returns:
 ;   r1 = word count, r2 = subword count
@@ -172,7 +172,7 @@ mth_tok_finalize:
   ; meta record
   MOVI r12,@mth_tok_meta
   LD r8,r12,0
-  MOVI r12,4
+  MOVI r12,6
   MUL r9,r5,r12
   ADD r8,r8,r9
   ST r7,r8,0
@@ -191,6 +191,12 @@ mth_tok_finalize:
   ST r7,r8,2
   MOVI r7,7
   ST r7,r8,3
+  MOVI r12,@mth_tok_start
+  LD r7,r12,0
+  ST r7,r8,4
+  MOVI r12,@mth_tok_wlen
+  LD r7,r12,0
+  ST r7,r8,5
   ; advance previous IDs: prev3=old prev2; prev2=old prev1; prev1=current
   MOVI r12,@mth_tok_prev2
   LD r2,r12,0

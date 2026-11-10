@@ -263,34 +263,103 @@ mth_g_tri_zero:
   MOVI r4,0
   MOVI r5,0
 mth_g_tri_orientation:
-  ; orientation from the first two coordinate deltas
   MOVI r12,@mth_g_ptr
   LD r9,r12,0
   MOVI r12,@mth_g_dim
   LD r8,r12,0
-  LD r10,r9,0
-  ADD r11,r9,r8
+  ADDI r8,r8,-1
+  MOVI r10,0
+  MOVI r12,@mth_g_osum
+  ST r0,r12,0
+mth_g_orient_d:
+  CMP r10,r8
+  JMP[GE] @mth_g_orient_done_sum
+  MOVI r12,@mth_g_dim
+  LD r6,r12,0
+  ; v0d / v0d+1
+  ADD r11,r9,r10
+  LD r7,r11,0
+  MOVI r12,@mth_g_a
+  ST r7,r12,0
+  ADDI r11,r11,1
+  LD r7,r11,0
+  MOVI r12,@mth_g_b
+  ST r7,r12,0
+  ; v1d / v1d+1
+  ADD r11,r9,r6
+  ADD r11,r11,r10
   LD r11,r11,0
-  SUB r11,r11,r10
-  ADD r10,r9,r8
-  ADD r10,r10,r8
-  LD r10,r10,0
-  MOVI r7,1
-  ADD r13,r9,r7
-  LD r13,r13,0
-  ADD r12,r9,r8
+  ADDI r11,r11,0
+  ; reload v1d+1 separately
+  ADD r12,r9,r6
+  ADD r12,r12,r10
+  LD r12,r12,0          ; v1d
+  ; store v1d in data
+  MOVI r7,@mth_g_c
+  ST r12,r7,0
+  MOVI r7,@mth_g_dim
+  LD r7,r7,0
+  ADD r12,r9,r7
+  ADD r12,r12,r10
   ADDI r12,r12,1
-  LD r12,r12,0
-  SUB r12,r12,r13
-  MUL r11,r11,r12
-  MOVI r7,1
+  LD r12,r12,0          ; v1d+1
+  ; v2d / v2d+1
+  MOVI r7,@mth_g_dim
+  LD r7,r7,0
   ADD r13,r9,r7
+  ADD r13,r13,r7
+  ADD r13,r13,r10
+  LD r13,r13,0          ; v2d
+  ADDI r13,r13,1
+  ; reload v2d+1
+  MOVI r7,@mth_g_dim
+  LD r7,r7,0
+  ADD r14,r9,r7
+  ADD r14,r14,r7
+  ADD r14,r14,r10
+  ADDI r14,r14,1
+  LD r14,r14,0          ; v2d+1
+  ; term = (v1d-a)*(v2d1-b) - (v1d1-b)*(v2d-a)
+  MOVI r7,@mth_g_a
+  LD r15,r7,0
+  SUB r11,r11,r15       ; v1d - a (r11 currently v1d? loaded then overwritten)
+  ; r11 may be v1d from above; ensure
+  MOVI r7,@mth_g_dim
+  LD r7,r7,0
+  ADD r11,r9,r7
+  ADD r11,r11,r10
+  LD r11,r11,0
+  MOVI r7,@mth_g_a
+  LD r15,r7,0
+  SUB r11,r11,r15
+  MOVI r7,@mth_g_b
+  LD r15,r7,0
+  SUB r14,r14,r15
+  MUL r11,r11,r14
+  ; term2
+  MOVI r7,@mth_g_b
+  LD r15,r7,0
+  SUB r12,r12,r15
+  MOVI r7,@mth_g_dim
+  LD r7,r7,0
+  ADD r13,r9,r7
+  ADD r13,r13,r7
+  ADD r13,r13,r10
   LD r13,r13,0
-  ADD r12,r9,r8
-  LD r12,r12,0
-  SUB r12,r12,r10
-  MUL r10,r13,r12
-  SUB r11,r11,r10
+  MOVI r7,@mth_g_a
+  LD r15,r7,0
+  SUB r13,r13,r15
+  MUL r12,r12,r13
+  SUB r11,r11,r12
+  MOVI r7,@mth_g_osum
+  LD r12,r7,0
+  ADD r12,r12,r11
+  ST r12,r7,0
+  ADDI r10,r10,1
+  JMP @mth_g_orient_d
+mth_g_orient_done_sum:
+  MOVI r7,@mth_g_osum
+  LD r11,r7,0
   MOVI r6,0
   CMP r11,r0
   JMP[EQ] @mth_g_tri_orient_done
@@ -407,6 +476,26 @@ mth_g_dim:
 mth_g_n:
   .word 0
 mth_g_iside:
+  .word 0
+mth_g_v0x:
+  .word 0
+mth_g_v0y:
+  .word 0
+mth_g_v1x:
+  .word 0
+mth_g_v1y:
+  .word 0
+mth_g_v2x:
+  .word 0
+mth_g_v2y:
+  .word 0
+mth_g_a:
+  .word 0
+mth_g_b:
+  .word 0
+mth_g_c:
+  .word 0
+mth_g_osum:
   .word 0
 mth_g_side:
   .word 0

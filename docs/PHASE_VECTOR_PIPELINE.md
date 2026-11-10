@@ -697,6 +697,38 @@ bounded proxy (minimum side), not a full floating Heron area; this keeps all
 arithmetic in Q16. The stream JSON carries the measured path and triangle
 values.
 
+### Semantic word triangles
+
+The raw tokenizer meta record now carries six fields:
+
+```text
+[word_id, three_word_context, triad, vote_mask, word_start, word_length]
+```
+
+`stream-train` extracts those spans, phase-encodes each word into a 256-component
+vector, and builds consecutive word triples. Each triple is sent to the raw
+triangle kernel. The JSON `word_geometry` block reports:
+
+```text
+word vectors
+number of consecutive-word triangles
+triangle area sum
+triangle tightness sum
+positive/negative orientation counts
+example side lengths
+word-path length, closure, turn and curvature
+word field perturbation
+field hot heads/triads
+```
+
+This is the semantic triangle basis for `(who, action, whom)` propositions:
+the three corners are word vectors, the sides are their distances, tightness
+measures how equilateral the relation is, and orientation gives the triangle's
+handedness. It is no longer only a triangle over arbitrary sampled vectors.
+
+The triangle shape is currently raw Q16 geometry; relation plausibility must
+still be fitted from raw sentence triangles rather than asserted by a template.
+
 The existing released phase bank is the earlier D64/128-component bank. The
 new 256-component codebook is released separately under the same release tag.
 

@@ -726,7 +726,7 @@ int main() {
         CHECK_EQ(word_count, 2u);
         CHECK_EQ(subword_count, 26u);
         CHECK_EQ(words.size(), 2u);
-        CHECK_EQ(meta.size(), 8u);
+        CHECK_EQ(meta.size(), 12u);
         CHECK(vm.meta_trihead_reset());
         std::size_t contexts = 0;
         CHECK(vm.meta_trihead_observe_batch(words, contexts));

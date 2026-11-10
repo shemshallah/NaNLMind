@@ -1705,7 +1705,7 @@ bool RawFieldVM::tokenize(const std::string& text, std::size_t max_words,
     subwords.resize(subword_count);
     for (std::size_t i = 0; i < subwords.size(); ++i)
         subwords[i] = read_word(0x30000u + static_cast<std::uint32_t>(i));
-    meta.resize(word_count * 4);
+    meta.resize(word_count * 6);
     for (std::size_t i = 0; i < meta.size(); ++i)
         meta[i] = read_word(0x40000u + static_cast<std::uint32_t>(i));
     return true;

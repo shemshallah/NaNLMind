@@ -2277,6 +2277,16 @@ int stream_train_cli(int argc, char** argv) {
     std::size_t lines = 0, bytes_seen = 0, words_total = 0, subwords_total = 0;
     std::size_t contexts_total = 0;
     std::array<std::int32_t, 4> head255{};
+    std::size_t word_vector_count = 0, word_triangle_count = 0;
+    std::int64_t word_tri_area_sum = 0, word_tri_tight_sum = 0;
+    std::size_t word_tri_positive = 0, word_tri_negative = 0;
+    std::int32_t word_path_length = 0, word_path_closure = 0;
+    std::int32_t word_path_turn = 0, word_path_curvature = 0;
+    std::int32_t word_field_value = 0;
+    std::size_t word_field_hot_heads = 0, word_field_hot_triads = 0;
+    bool word_field_hot = false;
+    std::array<std::int32_t, 3> word_tri_sides{};
+    std::int32_t word_tri_area = 0, word_tri_tight = 0;
     std::string line;
     while (std::getline(in, line)) {
         if (!line.empty() && line.back() == '\r') line.pop_back();
@@ -2338,6 +2348,83 @@ int stream_train_cli(int argc, char** argv) {
         words_total += word_count;
         subwords_total += subword_count;
         contexts_total += contexts;
+
+        // Explicit word-level triangle/path basis: tokenizer spans -> phase
+        // vectors -> raw triangle/path geometry.
+        std::vector<std::vector<std::int32_t>> word_vectors;
+        const std::size_t word_geom_limit =
+            std::min<std::size_t>(word_count, 32);
+        for (std::size_t wi = 0; wi < word_geom_limit; ++wi) {
+            const std::size_t mbase = wi * 6;
+            if (mbase + 5 >= meta.size()) break;
+            const std::size_t wstart = meta[mbase + 4];
+            const std::size_t wlen = meta[mbase + 5];
+            if (wlen == 0 || wstart + wlen > line.size()) continue;
+            std::array<std::uint8_t, 8> window{};
+            const std::size_t take = std::min<std::size_t>(8, wlen);
+            for (std::size_t k = 0; k < take; ++k)
+                window[8 - take + k] = static_cast<std::uint8_t>(
+                    line[wstart + wlen - take + k]);
+            std::vector<std::int32_t> vector;
+            std::uint32_t shard = 0;
+            if (!vm.phase_encode_wide(window.data(), 8, 128, vector, shard)) {
+                std::cerr << "word phase encode failed: " << vm.error() << "\n";
+                return 7;
+            }
+            word_vectors.push_back(std::move(vector));
+        }
+        word_vector_count += word_vectors.size();
+        if (word_vectors.size() >= 2) {
+            std::vector<std::int32_t> wbank;
+            wbank.reserve(word_vectors.size() * 256);
+            for (const auto& v : word_vectors)
+                wbank.insert(wbank.end(), v.begin(), v.end());
+            if (!vm.path_geometry(wbank, word_vectors.size(), 256,
+                                  word_path_length, word_path_closure,
+                                  word_path_turn, word_path_curvature)) {
+                std::cerr << "word path geometry failed: " << vm.error() << "\n";
+                return 7;
+            }
+            std::vector<std::int32_t> last = word_vectors.back();
+            std::vector<std::int32_t> fcredits, fvotes;
+            if (!vm.field_perturb(last, 256, fcredits, fvotes,
+                                  word_field_value)) {
+                std::cerr << "word field perturb failed: " << vm.error() << "\n";
+                return 7;
+            }
+            std::array<std::int32_t, kTriadMemberCount> wc{};
+            std::copy(fcredits.begin(), fcredits.end(), wc.begin());
+            HotTriheadResult word_hot;
+            if (!vm.hot_triheads(wc, 0, word_hot)) {
+                std::cerr << "word field trihead failed: " << vm.error() << "\n";
+                return 7;
+            }
+            word_field_hot_heads = word_hot.hot_heads;
+            word_field_hot_triads = word_hot.hot_triads;
+            word_field_hot = word_hot.field_hot;
+        }
+        for (std::size_t ti = 0; ti + 2 < word_vectors.size(); ++ti) {
+            std::vector<std::int32_t> tri;
+            tri.insert(tri.end(), word_vectors[ti].begin(), word_vectors[ti].end());
+            tri.insert(tri.end(), word_vectors[ti + 1].begin(), word_vectors[ti + 1].end());
+            tri.insert(tri.end(), word_vectors[ti + 2].begin(), word_vectors[ti + 2].end());
+            std::array<std::int32_t, 3> sides{};
+            std::int32_t area = 0, tight = 0, orient = 0;
+            if (!vm.triangle_geometry(tri, 256, sides, area, tight, orient)) {
+                std::cerr << "word triangle failed: " << vm.error() << "\n";
+                return 7;
+            }
+            ++word_triangle_count;
+            word_tri_area_sum += area;
+            word_tri_tight_sum += tight;
+            if (orient > 0) ++word_tri_positive;
+            if (orient < 0) ++word_tri_negative;
+            if (word_triangle_count == 1) {
+                word_tri_sides = sides;
+                word_tri_area = area;
+                word_tri_tight = tight;
+            }
+        }
         if (sample_bank.size() < kSampleLimit * 256 && line.size() >= 8) {
             std::array<std::uint8_t, 8> window{};
             const std::size_t start = line.size() - 8;
@@ -2492,6 +2579,25 @@ int stream_train_cli(int argc, char** argv) {
                  << (geometry_hot_valid ? geometry_hot.hot_triads : 0)
                  << ", \"geometry_field_hot\": "
                  << (geometry_hot_valid && geometry_hot.field_hot ? "true" : "false")
+                 << "},\n"
+                 << "  \"word_geometry\": {\"vectors\": " << word_vector_count
+                 << ", \"triangles\": " << word_triangle_count
+                 << ", \"triangle_area_sum\": " << word_tri_area_sum
+                 << ", \"triangle_tightness_sum\": " << word_tri_tight_sum
+                 << ", \"triangle_positive\": " << word_tri_positive
+                 << ", \"triangle_negative\": " << word_tri_negative
+                 << ", \"example_area\": " << word_tri_area
+                 << ", \"example_tightness\": " << word_tri_tight
+                 << ", \"example_sides\": [" << word_tri_sides[0]
+                 << "," << word_tri_sides[1] << "," << word_tri_sides[2] << "]"
+                 << ", \"path_length\": " << word_path_length
+                 << ", \"path_closure\": " << word_path_closure
+                 << ", \"path_turn\": " << word_path_turn
+                 << ", \"path_curvature\": " << word_path_curvature
+                 << ", \"field_perturbation\": " << word_field_value
+                 << ", \"field_hot_heads\": " << word_field_hot_heads
+                 << ", \"field_hot_triads\": " << word_field_hot_triads
+                 << ", \"field_hot\": " << (word_field_hot ? "true" : "false")
                  << "},\n"
                  << "  \"accepted_triads\": " << accepted << ",\n"
                  << "  \"field_hot\": " << (field_accepted ? "true" : "false") << "\n}\n";
