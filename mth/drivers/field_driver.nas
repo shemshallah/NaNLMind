@@ -15,6 +15,9 @@
 ;   mapping at 0x8000: 85 triads x 3 heads
 ; Micro feature: x0 at 0x7000, x1 at 0x7100, output at 0x7200
 ;   result at 0x4010: feature count (8)
+; Geometric credit: command 13, 255 x 9 TRAIL rows at 0xD000;
+;   dual-rail eligibility at 0xE600/0xE700, Q16 weights at 0xE800,
+;   85 triad votes at 0xF000, 43/85 generation-checked field gate.
 ; Causal trunk: T at 0x4001, tokens at 0x7000, weights at 0x9000,
 ;   output feature at 0xA000, result count at 0x4010
 ;
@@ -33,6 +36,7 @@ JMP @field_driver_entry
 .include "../nan16/mth_q16_mul.nas"
 .include "../nan16/mth_cft_credit.nas"
 .include "../nan16/mth_trail_credit.nas"
+.include "../nan16/mth_geometric_trail_field.nas"
 .include "../nan16/mth_field_commit.nas"
 .include "../nan16/mth_hot_trihead.nas"
 .include "../nan16/mth_micro_feature.nas"
@@ -85,6 +89,9 @@ field_driver_main:
   MOVI r3,12
   CMP r2,r3
   JMP[EQ] @field_driver_readout_train
+  MOVI r3,13
+  CMP r2,r3
+  JMP[EQ] @field_driver_geometric_credit
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -244,6 +251,10 @@ field_driver_field_commit:
   MOVI r10,0x4010
   ST r1,r10,0
   ST r2,r10,1
+  JMP @field_driver_return
+
+field_driver_geometric_credit:
+  CALL @mth_geometric_trail_field
   JMP @field_driver_return
 
 field_driver_return:

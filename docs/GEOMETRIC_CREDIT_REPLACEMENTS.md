@@ -121,3 +121,24 @@ P1 (full d=8 QKV/MLP block) can proceed in parallel because the block only
 needs the existing op set. P2 is replaced by TRAIL/CFT/HOLO/RING/LEAF credit,
 not a global BPTT tape. No mechanism is claimed to be equivalent to BPTT; the
 matched controls decide.
+
+## NaN16 TRAIL field-batch kernel (experimental implementation)
+
+`mth/nan16/mth_geometric_trail_field.nas` now stages one fully native,
+255-head, two-rail TRAIL credit block, groups heads into **85 unique triads**,
+requires **2/3 matching-sign votes** per triad and **43/85** eligible
+triads before committing the eligible head-local Q16.16 coefficients and
+eligibility traces. The caller supplies expected/current generation;
+stale generations and below-quorum proposals leave all coefficient and
+persistent eligibility registers unchanged. The kernel is available as
+command 13 of the existing raw NaN16 field driver. All TD, Q16.16
+multiplication, sign votes and gating occur inside the guest, not the host.
+
+The source uses an explicit 255×9 input grid at `0xD000`, local two-rail
+trace and coefficient banks at `0xE600/0xE700/0xE800`, and staged credit
+and 85-triad vote arrays in guest scratch. This is a first **joint
+calculation/gate** without any activation tape. Its fixture checks a
+stale-generation rejection, the precise 43/85 majority with a 2/3
+sign-consensus subgroup, and a 42/85 rejection. It does **not** yet claim
+production persisted-chart integration, full event-ledger replay, or an
+improvement on held-out language tasks. Those are subsequent gates.
