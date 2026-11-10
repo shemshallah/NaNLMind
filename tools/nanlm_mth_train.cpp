@@ -4,6 +4,9 @@
 // mathematics runs inside the original NaN16 .nas kernels.
 #include "nanlm/raw_field.hpp"
 #include <array>
+#include <cerrno>
+#include <cmath>
+#include <cstdlib>
 #include <cctype>
 #include <cstdint>
 #include <cstring>
@@ -64,6 +67,46 @@ TrunkWeights initial_weights() {
         w.w1[i * 8 + i] = 1.0f;
         w.w2[i * 16 + i] = 1.0f;
     }
+    return w;
+}
+TrunkWeights load_weights(const std::string& path) {
+    std::ifstream file(path);
+    if (!file) throw std::runtime_error("cannot open previous native weights");
+    std::string header;
+    if (!std::getline(file, header) || header != "N16MTHWEIGHTS/1")
+        throw std::invalid_argument("invalid native MTH weight checkpoint header");
+    TrunkWeights w{};
+    const auto read_block = [&file](const char* name, auto& values) {
+        std::string line;
+        if (!std::getline(file, line))
+            throw std::runtime_error(std::string("missing native checkpoint block ") + name);
+        std::istringstream stream(line);
+        std::string tag;
+        if (!(stream >> tag) || tag != name)
+            throw std::invalid_argument(std::string("native checkpoint block mismatch ") + name);
+        for (float& v : values) {
+            std::string token;
+            if (!(stream >> token)) throw std::invalid_argument("truncated native checkpoint");
+            errno = 0;
+            char* end = nullptr;
+            const float number = std::strtof(token.c_str(), &end);
+            if (errno || end != token.c_str() + token.size() ||
+                !std::isfinite(number) || std::fabs(number) > 1e4f)
+                throw std::invalid_argument("nonfinite or excessive checkpoint weight");
+            v = number;
+        }
+        std::string tail;
+        if (stream >> tail) throw std::invalid_argument("extra checkpoint weight columns");
+    };
+    read_block("WQ", w.wq);
+    read_block("WK", w.wk);
+    read_block("WV", w.wv);
+    read_block("WOUT", w.wout);
+    read_block("W1", w.w1);
+    read_block("W2", w.w2);
+    std::string extra;
+    if (std::getline(file, extra))
+        throw std::invalid_argument("checkpoint has unexpected trailing data");
     return w;
 }
 std::vector<std::array<float, nanlm::kRawFeatureDim>>
@@ -194,13 +237,16 @@ void run_step(RawFieldVM& vm,
 
 int main(int argc, char** argv) {
     try {
-        if (argc != 4 || std::string(argv[2]) != "--out")
+        if ((argc != 4 && argc != 6) || std::string(argv[2]) != "--out" ||
+            (argc == 6 && std::string(argv[4]) != "--resume"))
             throw std::invalid_argument(
                 "usage: build/nanlm-train INPUT.n16mth --out OUTPUT.weights "
-                "(raw NaN16 seven-method credit source)");
+                "[--resume PREVIOUS.weights]");
         RawFieldVM vm("build/field_driver.nan");
         require(vm.ready(), vm, "load MTH native driver");
-        require(vm.write_trunk_weights(initial_weights()), vm, "initialize native trunk");
+        const TrunkWeights original = argc == 6 ?
+            load_weights(argv[5]) : initial_weights();
+        require(vm.write_trunk_weights(original), vm, "initialize native trunk");
         vm.reset_readout();
 
         std::ifstream file(argv[1]);
