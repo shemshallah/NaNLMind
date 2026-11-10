@@ -379,10 +379,22 @@ int main() {
 
     // CFT-gated local credit: positive residual passes the gate; negative
     // residual is rejected before any local update.
+    TrunkWeights cft_before_weights{};
+    CHECK(vm.read_trunk_weights(cft_before_weights));
     bool cft_applied = false;
     CHECK(vm.cft_trunk_credit(1, 0, 32768, 0, 65536, 65536, 65536,
                               65536, 32768, cft_applied));
     CHECK(cft_applied);
+    TrunkWeights cft_after_weights{};
+    CHECK(vm.read_trunk_weights(cft_after_weights));
+    bool cft_real_update = false;
+    for (std::size_t i = 0; i < cft_after_weights.wout.size(); ++i) {
+        CHECK(std::isfinite(cft_after_weights.wout[i]));
+        if (std::fabs(cft_after_weights.wout[i] -
+                      cft_before_weights.wout[i]) > 1e-7f)
+            cft_real_update = true;
+    }
+    CHECK(cft_real_update); // fails if Q16 rate was passed as float bits
     CHECK(vm.cft_trunk_credit(1, 0, 32768, 0, -65536, -65536, -65536,
                               65536, 32768, cft_applied));
     CHECK(!cft_applied);
