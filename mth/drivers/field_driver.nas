@@ -62,6 +62,11 @@ JMP @field_driver_entry
 .include "../nan16/mth_credit_gate.nas"
 .include "../nan16/mth_credit_field.nas"
 .include "../nan16/mth_credit_combine.nas"
+.include "../nan16/mth_holo_credit.nas"
+.include "../nan16/mth_ring_credit.nas"
+.include "../nan16/mth_leaf_credit.nas"
+.include "../nan16/mth_tca_credit.nas"
+.include "../nan16/mth_flux_credit.nas"
 
 field_driver_entry:
   MOVI r13,1
@@ -154,6 +159,33 @@ field_driver_main:
   MOVI r3,28
   CMP r2,r3
   JMP[EQ] @field_driver_combined_wide
+  MOVI r3,31
+  CMP r2,r3
+  JMP[EQ] @field_driver_credit_combine
+  MOVI r3,32
+  CMP r2,r3
+  JMP[EQ] @field_driver_combined_credit
+  MOVI r3,33
+  CMP r2,r3
+  JMP[EQ] @field_driver_combined_credit_all
+  MOVI r3,34
+  CMP r2,r3
+  JMP[EQ] @field_driver_combined_credit_wide
+  MOVI r3,35
+  CMP r2,r3
+  JMP[EQ] @field_driver_holo
+  MOVI r3,36
+  CMP r2,r3
+  JMP[EQ] @field_driver_ring
+  MOVI r3,37
+  CMP r2,r3
+  JMP[EQ] @field_driver_leaf
+  MOVI r3,38
+  CMP r2,r3
+  JMP[EQ] @field_driver_tca
+  MOVI r3,39
+  CMP r2,r3
+  JMP[EQ] @field_driver_flux
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -590,6 +622,130 @@ field_driver_combined_wide:
   LD r2,r10,1
   ADD r3,r6,r0
   CALL @mth_trunk_credit_wide
+  MOVI r10,0x4010
+  MOVI r1,1
+  ST r1,r10,0
+  JMP @field_driver_return
+
+
+; Commands 31..39 execute only raw NaN16 kernels. Inputs are caller-owned
+; Q16.16/turn data; result words live at 0x4010 onwards. No host arithmetic.
+field_driver_holo:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  CALL @mth_holo_credit
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  JMP @field_driver_return
+
+field_driver_ring:
+  MOVI r1,0x6000
+  MOVI r10,0x4001
+  LD r2,r10,0
+  CALL @mth_ring_credit
+  MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_leaf:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  CALL @mth_leaf_credit
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  JMP @field_driver_return
+
+field_driver_tca:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  CALL @mth_tca_credit
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  JMP @field_driver_return
+
+field_driver_flux:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r4,r10,3
+  CALL @mth_flux_credit
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  JMP @field_driver_return
+
+; Commit to both local readout and QKV only through the existing guest
+; arithmetic; the caller must stage/snapshot/validate the root for rollback.
+field_driver_combined_credit_all:
+  MOVI r1,0x7000
+  MOVI r2,0x7100
+  CALL @mth_credit_combine
+  ADD r6,r1,r0
+  MOVI r10,0x4003
+  LD r2,r10,0
+  MOVI r10,0x4004
+  LD r3,r10,0
+  ADD r1,r6,r0
+  CALL @mth_credit_gate
+  CMP r1,r0
+  JMP[EQ] @field_driver_credit_rejected
+  MOVI r10,0x4003
+  ST r1,r10,0
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  MOVI r10,0x4003
+  LD r3,r10,0
+  CALL @mth_trunk_credit
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  MOVI r10,0x4003
+  LD r3,r10,0
+  CALL @mth_qkv_credit
+  MOVI r10,0x4010
+  MOVI r1,1
+  ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_combined_credit_wide:
+  MOVI r1,0x7000
+  MOVI r2,0x7100
+  CALL @mth_credit_combine
+  ADD r6,r1,r0
+  MOVI r10,0x4003
+  LD r2,r10,0
+  MOVI r10,0x4004
+  LD r3,r10,0
+  ADD r1,r6,r0
+  CALL @mth_credit_gate
+  CMP r1,r0
+  JMP[EQ] @field_driver_credit_rejected
+  MOVI r10,0x4003
+  ST r1,r10,0
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  MOVI r10,0x4003
+  LD r3,r10,0
+  CALL @mth_trunk_credit_wide
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  MOVI r10,0x4003
+  LD r3,r10,0
+  CALL @mth_qkv_credit_wide
   MOVI r10,0x4010
   MOVI r1,1
   ST r1,r10,0
