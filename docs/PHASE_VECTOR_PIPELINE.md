@@ -59,6 +59,7 @@ Field-driver commands:
 | 86 | `mth_geom_field_perturb` | vector -> 255 credits, 85 votes, head255 |
 | 72 | `mth_leaf_verify` | reconstruct codebook+residual, L1 accept/reject |
 | 73 | `mth_ckpt_hash` | raw FNV-1a checkpoint payload digest |
+| 87 | `mth_dual_gate` | fast head / slow head / medium field / slow coherence gate |
 
 `RawFieldVM` exposes `phase_encode_wide`, `phase_encode_batch`,
 `phase_rotate`, `pq_encode`, `spectral_iter`, `sparse_knn`,
@@ -500,6 +501,32 @@ codebook_rollbacks=18
 The useful next architectural step is to freeze the selected global codebook
 and continue training a residual/adapter and directed matrix while the global
 centroid set stays stable.
+
+### Two-head self-modification
+
+The Boolean self-modification path now has a two-head, three-timescale gate:
+
+```text
+fast head   : triad proposal
+medium gate : 43/85 field acceptance
+slow head   : global coherence threshold
+```
+
+`mth_dual_gate` (command 87) commits only when the fast triad accepts, the
+second/slow head accepts, the field accepts, and coherence clears the slow
+threshold. The fast head proposes; the slow head owns the durable mask change.
+The gate also returns fast, slow and medium credit deltas.
+
+`RawFieldVM::propose_dual` wires this into the chart bridge:
+
+- fast and slow head masks are evaluated through raw `mth_triad_vote`;
+- `mth_field_vote` is the medium gate;
+- `mth_field_coherence` is the slow gate;
+- the slow head is modified only after the raw gate commits.
+
+`tests/test_dual_head.cpp` verifies that a field rejection preserves the slow
+head mask, and that a fully accepted proposal changes only the slow head.
+`mth/tests/mth_dual_gate_test.nas` exercises the raw gate directly.
 
 ### Persistent checkpoints
 

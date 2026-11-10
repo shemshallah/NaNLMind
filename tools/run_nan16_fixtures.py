@@ -80,6 +80,8 @@ FIXTURES = (
             "MTH VECTOR MATRIX PASS"),
     Fixture("leaf_hash", "mth/tests/mth_leaf_hash_test.nas", 200_000,
             "MTH LEAF HASH PASS"),
+    Fixture("dual_gate", "mth/tests/mth_dual_gate_test.nas", 200_000,
+            "MTH DUAL GATE PASS"),
     Fixture("pq_train", "mth/tests/mth_pq_train_test.nas", 1_000_000,
             "MTH PQ TRAIN PASS"),
     Fixture("tokenizer", "mth/tests/mth_tokenizer_test.nas", 1_000_000,
