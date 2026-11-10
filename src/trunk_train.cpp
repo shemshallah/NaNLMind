@@ -2258,7 +2258,8 @@ int stream_train_cli(int argc, char** argv) {
         std::cerr << "raw field VM unavailable: " << vm.error() << "\n";
         return 7;
     }
-    if (!vm.phase_table_init() || !vm.ngram_reset() || !vm.temporal_slots_reset()) {
+    if (!vm.phase_table_init() || !vm.ngram_reset() ||
+        !vm.temporal_slots_reset() || !vm.triangle_model_reset()) {
         std::cerr << "stream init failed: " << vm.error() << "\n";
         return 7;
     }
@@ -2287,6 +2288,7 @@ int stream_train_cli(int argc, char** argv) {
     bool word_field_hot = false;
     std::array<std::int32_t, 3> word_tri_sides{};
     std::int32_t word_tri_area = 0, word_tri_tight = 0;
+    std::vector<std::array<std::int32_t, 7>> word_triangle_records;
     std::string line;
     while (std::getline(in, line)) {
         if (!line.empty() && line.back() == '\r') line.pop_back();
@@ -2414,6 +2416,19 @@ int stream_train_cli(int argc, char** argv) {
                 std::cerr << "word triangle failed: " << vm.error() << "\n";
                 return 7;
             }
+            std::int32_t model_count = 0;
+            if (!vm.triangle_model_observe(sides, area, tight, orient,
+                                           model_count)) {
+                std::cerr << "word triangle observe failed: " << vm.error() << "\n";
+                return 7;
+            }
+            std::int32_t shape_score = 0;
+            if (!vm.triangle_model_score(sides, area, tight, shape_score)) {
+                std::cerr << "word triangle score failed: " << vm.error() << "\n";
+                return 7;
+            }
+            word_triangle_records.push_back({sides[0], sides[1], sides[2],
+                                             area, tight, orient, shape_score});
             ++word_triangle_count;
             word_tri_area_sum += area;
             word_tri_tight_sum += tight;
@@ -2471,6 +2486,29 @@ int stream_train_cli(int argc, char** argv) {
                        static_cast<std::streamsize>(
                            codebook.size() * sizeof(codebook[0])));
             codebook_words = codebook.size();
+        }
+    }
+    std::array<std::int32_t, 3> triangle_shape{};
+    std::array<std::int32_t, 2> triangle_orient_counts{};
+    std::int32_t triangle_shape_score = 0;
+    if (word_triangle_count > 0) {
+        if (!vm.read_triangle_model(triangle_shape, triangle_orient_counts)) {
+            std::cerr << "triangle model read failed: " << vm.error() << "\n";
+            return 7;
+        }
+        if (!vm.triangle_model_score(word_tri_sides, word_tri_area,
+                                     word_tri_tight, triangle_shape_score)) {
+            std::cerr << "triangle model score failed: " << vm.error() << "\n";
+            return 7;
+        }
+    }
+    if (!word_triangle_records.empty()) {
+        std::ofstream tri_out(output_prefix + ".triangles.bin", std::ios::binary);
+        if (tri_out) {
+            for (const auto& record : word_triangle_records)
+                tri_out.write(reinterpret_cast<const char*>(record.data()),
+                              static_cast<std::streamsize>(record.size() *
+                                                           sizeof(record[0])));
         }
     }
     const std::size_t geometry_samples = sample_bank.size() / 256;
@@ -2598,6 +2636,19 @@ int stream_train_cli(int argc, char** argv) {
                  << ", \"field_hot_heads\": " << word_field_hot_heads
                  << ", \"field_hot_triads\": " << word_field_hot_triads
                  << ", \"field_hot\": " << (word_field_hot ? "true" : "false")
+                 << ", \"shape_count\": " << triangle_shape[2]
+                 << ", \"shape_tightness_sum\": " << triangle_shape[0]
+                 << ", \"shape_area_sum\": " << triangle_shape[1]
+                 << ", \"shape_positive\": " << triangle_orient_counts[0]
+                 << ", \"shape_negative\": " << triangle_orient_counts[1]
+                 << ", \"example_score\": " << triangle_shape_score
+                 << ", \"triangle_records\": " << word_triangle_records.size()
+                 << ", \"first_triangle_score\": "
+                 << (word_triangle_records.empty() ? 0 :
+                     word_triangle_records.front()[6])
+                 << ", \"last_triangle_score\": "
+                 << (word_triangle_records.empty() ? 0 :
+                     word_triangle_records.back()[6])
                  << "},\n"
                  << "  \"accepted_triads\": " << accepted << ",\n"
                  << "  \"field_hot\": " << (field_accepted ? "true" : "false") << "\n}\n";

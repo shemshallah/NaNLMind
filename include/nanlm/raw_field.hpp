@@ -493,6 +493,15 @@ public:
                        std::size_t dim, std::vector<std::int32_t>& credits,
                        std::vector<std::int32_t>& votes,
                        std::int32_t& field_value);
+    bool triangle_model_reset();
+    bool triangle_model_observe(const std::array<std::int32_t, 3>& sides,
+                                std::int32_t area, std::int32_t tightness,
+                                std::int32_t orientation, std::int32_t& count);
+    bool triangle_model_score(const std::array<std::int32_t, 3>& sides,
+                              std::int32_t area, std::int32_t tightness,
+                              std::int32_t& score);
+    bool read_triangle_model(std::array<std::int32_t, 3>& shape_stats,
+                             std::array<std::int32_t, 2>& orientation_counts);
     bool phase_rotate(const std::vector<std::int32_t>& in, std::uint32_t turn,
                       std::vector<std::int32_t>& out);
     bool pq_encode(const std::vector<std::int32_t>& query,

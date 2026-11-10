@@ -1927,6 +1927,52 @@ bool RawFieldVM::field_perturb(
     return true;
 }
 
+bool RawFieldVM::triangle_model_reset() {
+    if (!write_word(kCommandBase, 90)) return fail("cannot write triangle model reset");
+    return run_command();
+}
+
+bool RawFieldVM::triangle_model_observe(
+    const std::array<std::int32_t, 3>& sides, std::int32_t area,
+    std::int32_t tightness, std::int32_t orientation, std::int32_t& count) {
+    if (!write_word(kProposalBase + 0, static_cast<std::uint32_t>(sides[0])) ||
+        !write_word(kProposalBase + 1, static_cast<std::uint32_t>(sides[1])) ||
+        !write_word(kProposalBase + 2, static_cast<std::uint32_t>(sides[2])) ||
+        !write_word(kProposalBase + 3, static_cast<std::uint32_t>(area)) ||
+        !write_word(kProposalBase + 4, static_cast<std::uint32_t>(tightness)) ||
+        !write_word(kProposalBase + 5, static_cast<std::uint32_t>(orientation)) ||
+        !write_word(kCommandBase, 91)) return fail("cannot write triangle observe");
+    if (!run_command()) return false;
+    count = static_cast<std::int32_t>(read_word(kResultBase));
+    return true;
+}
+
+bool RawFieldVM::triangle_model_score(
+    const std::array<std::int32_t, 3>& sides, std::int32_t area,
+    std::int32_t tightness, std::int32_t& score) {
+    if (!write_word(kProposalBase + 0, static_cast<std::uint32_t>(sides[0])) ||
+        !write_word(kProposalBase + 1, static_cast<std::uint32_t>(sides[1])) ||
+        !write_word(kProposalBase + 2, static_cast<std::uint32_t>(sides[2])) ||
+        !write_word(kProposalBase + 3, static_cast<std::uint32_t>(area)) ||
+        !write_word(kProposalBase + 4, static_cast<std::uint32_t>(tightness)) ||
+        !write_word(kCommandBase, 92)) return fail("cannot write triangle score");
+    if (!run_command()) return false;
+    score = static_cast<std::int32_t>(read_word(kResultBase));
+    return true;
+}
+
+bool RawFieldVM::read_triangle_model(
+    std::array<std::int32_t, 3>& shape_stats,
+    std::array<std::int32_t, 2>& orientation_counts) {
+    for (std::size_t i = 0; i < 3; ++i)
+        shape_stats[i] = static_cast<std::int32_t>(
+            read_word(0x2E0200u + static_cast<std::uint32_t>(i)));
+    for (std::size_t i = 0; i < 2; ++i)
+        orientation_counts[i] = static_cast<std::int32_t>(
+            read_word(0x2E0203u + static_cast<std::uint32_t>(i)));
+    return true;
+}
+
 bool RawFieldVM::phase_table_init() {
     if (!write_word(kCommandBase, 64)) return fail("cannot write phase table init");
     if (!run_command()) return false;

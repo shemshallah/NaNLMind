@@ -79,6 +79,7 @@ JMP @field_driver_entry
 .include "../nan16/mth_temporal_slots.nas"
 .include "../nan16/mth_ngram_train.nas"
 .include "../nan16/mth_geometry.nas"
+.include "../nan16/mth_triangle_model.nas"
 .include "../nan16/mth_dual_gate.nas"
 .include "../nan16/mth_context_backoff.nas"
 .include "../nan16/mth_context_encode.nas"
@@ -322,6 +323,15 @@ field_driver_main:
   MOVI r3,87
   CMP r2,r3
   JMP[EQ] @field_driver_dual_gate
+  MOVI r3,90
+  CMP r2,r3
+  JMP[EQ] @field_driver_triangle_model_reset
+  MOVI r3,91
+  CMP r2,r3
+  JMP[EQ] @field_driver_triangle_model_observe
+  MOVI r3,92
+  CMP r2,r3
+  JMP[EQ] @field_driver_triangle_model_score
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -1284,6 +1294,37 @@ field_driver_dual_gate:
   ST r3,r10,2
   ST r4,r10,3
   ST r5,r10,4
+  JMP @field_driver_return
+
+field_driver_triangle_model_reset:
+  CALL @mth_tri_model_reset
+  MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_triangle_model_observe:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r4,r10,3
+  LD r5,r10,4
+  LD r6,r10,5
+  CALL @mth_tri_model_observe
+  MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_triangle_model_score:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r4,r10,3
+  LD r5,r10,4
+  CALL @mth_tri_model_score
+  MOVI r10,0x4010
+  ST r1,r10,0
   JMP @field_driver_return
 
 field_driver_context_encode:
