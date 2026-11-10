@@ -43,6 +43,15 @@ def main() -> int:
     if abs(float(summary["best_eval_mean_l1_q16"]) - best) > 1e-6:
         print("phase-train best held-out metric mismatch", file=sys.stderr)
         return 1
+    checkpoint_path = Path(str(prefix) + ".ckpt")
+    if not checkpoint_path.exists():
+        print("phase-train checkpoint missing", file=sys.stderr)
+        return 1
+    checkpoint = checkpoint_path.read_bytes()
+    expected_checkpoint = 24 + int(summary["codebook_words"]) * 4 + 32640 * 4
+    if len(checkpoint) != expected_checkpoint or checkpoint[:8] != b"NANCKPT1":
+        print("phase-train checkpoint malformed", file=sys.stderr)
+        return 1
     print(
         "PHASE_TRAIN PASS "
         f"steps={len(rows)} train_windows={summary.get('train_windows')} "
@@ -51,7 +60,8 @@ def main() -> int:
         f"best_step={summary.get('best_step')} "
         f"best_eval_l1={summary.get('best_eval_mean_l1_q16')} "
         f"best_hot_triads={summary.get('best_hot_triads')} "
-        f"best_field_hot={summary.get('best_field_hot')}"
+        f"best_field_hot={summary.get('best_field_hot')} "
+        f"resumed={summary.get('resumed')}"
     )
     return 0
 

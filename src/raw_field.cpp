@@ -1687,6 +1687,16 @@ bool RawFieldVM::vector_matrix_credits(std::vector<std::int32_t>& credits) {
     return true;
 }
 
+
+bool RawFieldVM::load_vector_matrix(const std::vector<std::int32_t>& cells) {
+    if (cells.size() != 32640) return fail("vector matrix needs 32640 cells");
+    for (std::size_t i = 0; i < cells.size(); ++i)
+        if (!write_word(0x300000u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(cells[i])))
+            return fail("cannot load vector matrix");
+    return true;
+}
+
 bool RawFieldVM::reset_context_readout(std::size_t buckets) {
     if (buckets == 0 || buckets > 16384) {
         return fail("context bucket count outside 1..16384");

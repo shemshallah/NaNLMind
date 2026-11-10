@@ -1271,7 +1271,7 @@ void usage() {
               << "  hier-train CORPUS [MAX_LINES] positional 16x16 hierarchical readout training\n"
               << "  context-train CORPUS [MAX_LINES] context-indexed 16x16 class-memory training\n"
               << "  phase-ingest CORPUS [MAX_LINES] [WINDOW] [DIM] [MAX_WINDOWS] raw trig phase vector ingest\n"
-              << "  phase-train CORPUS [MAX_LINES] [WINDOW] [DIM] [MAX_WINDOWS] [PREFIX] chunked raw phase/PQ/matrix training with held-out metrics\n"
+              << "  phase-train CORPUS [MAX_LINES] [WINDOW] [DIM] [MAX_WINDOWS] [PREFIX] [EVAL_CORPUS] chunked raw phase/PQ/matrix training with held-out or book-disjoint metrics\n"
               << "  phase-codebook CORPUS [MAX_LINES] [WINDOW] [DIM] [CODEWORDS] [MAX_WINDOWS] [PREFIX] raw 8-subvector codebook\n"
               << "  context-hash-check CORPUS [MAX_LINES] guest FNV bucket check + training smoke\n"
               << "  unification canonical build/topology contract for NaNROUTER and HERMES\n"

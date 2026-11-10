@@ -469,6 +469,7 @@ public:
     bool vector_matrix_probe(std::uint8_t a, std::int32_t threshold,
                              std::int32_t& best_head, std::int32_t& score);
     bool read_vector_matrix(std::vector<std::int32_t>& cells);
+    bool load_vector_matrix(const std::vector<std::int32_t>& cells);
     bool vector_matrix_credits(std::vector<std::int32_t>& credits);
     bool reset_context_readout(std::size_t buckets);
     bool load_context_readout(const std::string& path, std::size_t buckets);

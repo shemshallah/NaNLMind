@@ -1292,7 +1292,7 @@ int phase_train_cli(int argc, char** argv) {
         vectors.resize(train_count);
     }
 
-    const std::size_t codewords = std::min<std::size_t>(train_count, 32);
+    const std::size_t codewords = std::min<std::size_t>(train_count, 160);
     const std::size_t init_count = std::min<std::size_t>(train_count, 256);
     std::vector<std::int32_t> train_bank;
     train_bank.reserve(init_count * pipeline_dim);
@@ -1300,14 +1300,51 @@ int phase_train_cli(int argc, char** argv) {
         train_bank.insert(train_bank.end(), vectors[i].begin(),
                           vectors[i].end());
     std::vector<std::int32_t> codebook;
-    if (!vm.pq_train(train_bank, init_count, pipeline_dim, codewords, 1,
-                     codebook)) {
-        std::cerr << "phase-train codebook init failed: " << vm.error() << "\n";
-        return 7;
+    bool resumed = false;
+    {
+        std::ifstream checkpoint(output_prefix + ".ckpt", std::ios::binary);
+        if (checkpoint) {
+            char magic[8] = {};
+            std::uint32_t codebook_words = 0, matrix_words = 0;
+            std::uint32_t codebook_digest = 0, matrix_digest = 0;
+            checkpoint.read(magic, sizeof(magic));
+            checkpoint.read(reinterpret_cast<char*>(&codebook_words), 4);
+            checkpoint.read(reinterpret_cast<char*>(&matrix_words), 4);
+            checkpoint.read(reinterpret_cast<char*>(&codebook_digest), 4);
+            checkpoint.read(reinterpret_cast<char*>(&matrix_digest), 4);
+            if (checkpoint && std::string(magic, 8) == "NANCKPT1" &&
+                codebook_words == codewords * pipeline_dim &&
+                matrix_words == 32640) {
+                std::vector<std::int32_t> saved_codebook(codebook_words);
+                std::vector<std::int32_t> saved_matrix(matrix_words);
+                checkpoint.read(reinterpret_cast<char*>(saved_codebook.data()),
+                                static_cast<std::streamsize>(
+                                    saved_codebook.size() * sizeof(saved_codebook[0])));
+                checkpoint.read(reinterpret_cast<char*>(saved_matrix.data()),
+                                static_cast<std::streamsize>(
+                                    saved_matrix.size() * sizeof(saved_matrix[0])));
+                std::uint32_t check_codebook = 0, check_matrix = 0;
+                if (checkpoint && vm.raw_hash(saved_codebook, check_codebook) &&
+                    vm.raw_hash(saved_matrix, check_matrix) &&
+                    check_codebook == codebook_digest &&
+                    check_matrix == matrix_digest &&
+                    vm.load_vector_matrix(saved_matrix)) {
+                    codebook = std::move(saved_codebook);
+                    resumed = true;
+                }
+            }
+        }
     }
-    if (!vm.vector_matrix_reset()) {
-        std::cerr << "phase-train matrix reset failed: " << vm.error() << "\n";
-        return 7;
+    if (!resumed) {
+        if (!vm.pq_train(train_bank, init_count, pipeline_dim, codewords, 1,
+                         codebook)) {
+            std::cerr << "phase-train codebook init failed: " << vm.error() << "\n";
+            return 7;
+        }
+        if (!vm.vector_matrix_reset()) {
+            std::cerr << "phase-train matrix reset failed: " << vm.error() << "\n";
+            return 7;
+        }
     }
 
     std::error_code mkdir_error;
@@ -1531,6 +1568,32 @@ int phase_train_cli(int argc, char** argv) {
                              matrix_cells.size() * sizeof(matrix_cells[0])));
         }
     }
+    if (!selected_codebook.empty() && !best_matrix.empty()) {
+        std::uint32_t codebook_digest = 0, matrix_digest = 0;
+        if (vm.raw_hash(selected_codebook, codebook_digest) &&
+            vm.raw_hash(best_matrix, matrix_digest)) {
+            std::ofstream checkpoint(output_prefix + ".ckpt", std::ios::binary);
+            if (checkpoint) {
+                checkpoint.write("NANCKPT1", 8);
+                const std::uint32_t codebook_words =
+                    static_cast<std::uint32_t>(selected_codebook.size());
+                const std::uint32_t matrix_words =
+                    static_cast<std::uint32_t>(best_matrix.size());
+                checkpoint.write(reinterpret_cast<const char*>(&codebook_words), 4);
+                checkpoint.write(reinterpret_cast<const char*>(&matrix_words), 4);
+                checkpoint.write(reinterpret_cast<const char*>(&codebook_digest), 4);
+                checkpoint.write(reinterpret_cast<const char*>(&matrix_digest), 4);
+                checkpoint.write(
+                    reinterpret_cast<const char*>(selected_codebook.data()),
+                    static_cast<std::streamsize>(
+                        selected_codebook.size() * sizeof(selected_codebook[0])));
+                checkpoint.write(
+                    reinterpret_cast<const char*>(best_matrix.data()),
+                    static_cast<std::streamsize>(
+                        best_matrix.size() * sizeof(best_matrix[0])));
+            }
+        }
+    }
     {
         std::ofstream summary(output_prefix + ".metrics.json");
         if (summary) {
@@ -1538,6 +1601,9 @@ int phase_train_cli(int argc, char** argv) {
                     << "  \"train_windows\": " << processed << ",\n"
                     << "  \"eval_windows\": " << eval_count << ",\n"
                     << "  \"codewords\": " << codewords << ",\n"
+                    << "  \"codebook_words\": " << selected_codebook.size() << ",\n"
+                    << "  \"matrix_words\": " << best_matrix.size() << ",\n"
+                    << "  \"resumed\": " << (resumed ? "true" : "false") << ",\n"
                     << "  \"best_step\": " << best_step << ",\n"
                     << "  \"best_eval_mean_l1_q16\": " << best_eval_l1 << ",\n"
                     << "  \"best_hot_heads\": " << best_hot_heads << ",\n"
@@ -1555,6 +1621,7 @@ int phase_train_cli(int argc, char** argv) {
               << " best_hot_heads=" << best_hot_heads
               << " best_hot_triads=" << best_hot_triads
               << " best_field_hot=" << (best_field ? "true" : "false")
+              << " resumed=" << (resumed ? "true" : "false")
               << " output=" << output_prefix << "\n";
     return 0;
 }

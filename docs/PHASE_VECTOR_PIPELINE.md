@@ -42,6 +42,8 @@ Field-driver commands:
 | 69 | `mth_pq_train` | raw centroid training, up to 8 iterations |
 | 70 | `mth_pq_residual` | sample - codebook[code] residual payload |
 | 71 | `mth_pq_update` | warm-codebook update without reinitialization |
+| 72 | `mth_leaf_verify` | reconstruct codebook+residual, L1 accept/reject |
+| 73 | `mth_ckpt_hash` | raw FNV-1a checkpoint payload digest |
 
 `RawFieldVM` exposes `phase_encode_wide`, `phase_encode_batch`,
 `phase_rotate`, `pq_encode`, `spectral_iter`, `sparse_knn`,
@@ -251,9 +253,9 @@ pipeline still needs:
 - trained 8-subvector PQ with residual storage, not a per-ingest local codebook;
 - multiple power iterations and spectral normalization;
 - codebook-region matrix observer;
-- remote leaf paging/verification;
-- book-disjoint reconstruction metrics rather than a contiguous held-out suffix;
-- persistent corpus-wide codebook/matrix checkpoints across runs.
+- remote leaf paging (reconstruction verification is now live);
+- larger book-disjoint reconstruction runs beyond the 200-line smoke corpus;
+- persistent corpus-wide checkpoint sharing across distinct corpus runs (checkpoint resume is now live).
 
 ## 10. Production-width streaming ingest
 
@@ -316,25 +318,58 @@ context_words = 0 (no word tokenizer; roughly 1-2 English words in length)
 The legacy `context-train` path uses 4-byte exact contexts with a 3-byte
 fallback, also byte-level rather than word-level. Longer word context requires
 a tokenized sequence builder; the current codebook does not silently pretend
-that 8 bytes is a word window. The corpus is split contiguously into
-training and held-out suffix windows. The selected checkpoint is the lowest
-held-out L1, with the 43/85 field state as a tie-break.
-
-Measured on 1,000 lines of Alice:
-
-```text
-step 1  eval L1 578,215  probe hit 36.4%  hot triads 21  field false
-step 9  eval L1 551,580  probe hit 99.5%  hot triads 52  field true
-```
-
-The best selected checkpoint is `best_step=9`, not the final step. Metrics are
-written to `PREFIX.metrics.jsonl` and `PREFIX.metrics.json`; the codebook and
-matrix files are the selected best checkpoint.
+that 8 bytes is a word window. Without an eval corpus, the training corpus is split into a held-out suffix.
+For real book-disjoint metrics, pass the held-out corpus as the final argument:
 
 ```sh
-make phase-train-check
+./build/nanlm-universal phase-train \
+  state/gutenberg_150_train.txt 200 8 32 200 \
+  state/phase_train_book state/gutenberg_150_heldout.txt
+```
+
+Measured on the first 200 lines of the book-disjoint train/held-out files:
+
+```text
+eval L1 562,105   probe hit 100%   leaf verify 100%
+hot heads 135     hot triads 45    43/85 field true
+```
+
+The selected checkpoint is the lowest held-out L1, with the 43/85 field state
+as a tie-break. Metrics are written to `PREFIX.metrics.jsonl` and
+`PREFIX.metrics.json`; the codebook and matrix files are the selected best
+checkpoint.
+
+### Persistent checkpoints
+
+`phase-train` writes `PREFIX.ckpt` with:
+
+```text
+magic NANCKPT1
+codebook word count
+matrix word count
+raw FNV-1a codebook digest
+raw FNV-1a matrix digest
+codebook payload
+C(256,2) matrix payload
+```
+
+The digest is computed by `mth_ckpt_hash` in the guest. On the next run, the
+checkpoint is loaded only if dimensions and both raw digests match; otherwise
+training starts fresh. `resumed=true` is recorded in the summary.
+
+```sh
+make phase-train-check       # held-out suffix + resume verification
+make phase-train-book-check  # book-disjoint held-out corpus
 # PHASE_TRAIN PASS ...
 ```
+
+### Remote leaf verification
+
+`mth_leaf_verify` reconstructs `codebook[code] + residual`, computes the L1
+error against the expected phase vector, and accepts only when the error is
+within the Q16 tolerance. `phase-train` runs it for every held-out vector and
+records `leaf_verify_rate` and `leaf_mean_error_q16`; the book-disjoint run
+above verifies 100% of held-out leaves at zero reconstruction error.
 
 ### NaNROUTER runner
 
