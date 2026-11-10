@@ -57,6 +57,9 @@ Field-driver commands:
 | 84 | `mth_geom_path` | length, closure, turn, curvature |
 | 85 | `mth_geom_triangle` | three-vector sides/area proxy/tightness/orientation |
 | 86 | `mth_geom_field_perturb` | vector -> 255 credits, 85 votes, head255 |
+| 90 | `mth_tri_model_reset` | clear semantic triangle shape stats |
+| 91 | `mth_tri_model_observe` | train tightness/area/orientation stats |
+| 92 | `mth_tri_model_score` | score a triangle against learned shape |
 | 72 | `mth_leaf_verify` | reconstruct codebook+residual, L1 accept/reject |
 | 73 | `mth_ckpt_hash` | raw FNV-1a checkpoint payload digest |
 | 87 | `mth_dual_gate` | fast head / slow head / medium field / slow coherence gate |
@@ -726,8 +729,33 @@ the three corners are word vectors, the sides are their distances, tightness
 measures how equilateral the relation is, and orientation gives the triangle's
 handedness. It is no longer only a triangle over arbitrary sampled vectors.
 
-The triangle shape is currently raw Q16 geometry; relation plausibility must
-still be fitted from raw sentence triangles rather than asserted by a template.
+`mth_triangle_model.nas` then fits a raw shape distribution from the observed
+sentence triangles: tightness sum, area sum, count, positive orientation and
+negative orientation. `mth_tri_model_score` scores a new triangle against the
+learned mean tightness/area. The stream writes every triangle to
+`PREFIX.triangles.bin` as:
+
+```text
+[side0, side1, side2, area_proxy, tightness, orientation, shape_score]
+```
+
+A two-line smoke test produced:
+
+```text
+DOG CHASES CAT
+  sides        3127, 3197, 1902
+  tightness    38989
+  score        65536
+
+RIVER DRINKS LIBRARY
+  sides        2690, 4501, 4429
+  tightness    39167
+  score        135
+```
+
+The raw model currently learns only positive sentence triangles; it is a
+shape prior, not a supervised truth classifier. A contrastive negative corpus
+is the next training step.
 
 The existing released phase bank is the earlier D64/128-component bank. The
 new 256-component codebook is released separately under the same release tag.
