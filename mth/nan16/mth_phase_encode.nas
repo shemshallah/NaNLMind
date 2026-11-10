@@ -286,7 +286,7 @@ mth_pb_loop:
   LD r2,r12,0
   ADD r3,r9,r0
   ADD r4,r11,r0
-  CALL @mth_phase_encode_wide
+  CALL @mth_phase_encode_wide_table
   MOVI r12,@mth_pb_i
   LD r5,r12,0
   ADDI r5,r5,1
@@ -312,4 +312,157 @@ mth_pb_d:
 mth_pb_out:
   .word 0
 mth_pb_i:
+  .word 0
+
+; One-time raw phase lookup table. 256 bins, Q16 cos/sin pairs at 0x3000.
+mth_phase_table_init:
+  MOVI r12,@mth_pt_link
+  ST r15,r12,0
+  MOVI r12,@mth_pt_i
+  ST r0,r12,0
+mth_pt_loop:
+  MOVI r12,@mth_pt_i
+  LD r5,r12,0
+  MOVI r6,256
+  CMP r5,r6
+  JMP[GE] @mth_pt_done
+  MOVI r7,256
+  MUL r1,r5,r7
+  MOVI r10,0x3000
+  MOVI r11,2
+  MUL r11,r5,r11
+  ADD r11,r10,r11
+  CALL @mth_q16_sin_cos
+  ST r1,r11,0
+  ADDI r11,r11,1
+  ST r2,r11,0
+  MOVI r12,@mth_pt_i
+  LD r5,r12,0
+  ADDI r5,r5,1
+  ST r5,r12,0
+  JMP @mth_pt_loop
+mth_pt_done:
+  MOVI r12,@mth_pt_link
+  LD r15,r12,0
+  RET
+
+mth_pt_link:
+  .word 0
+mth_pt_i:
+  .word 0
+
+; Wide phase encoder using the precomputed 256-bin Q16 table.
+; ABI: r1=bytes, r2=count, r3=D, r4=out complex[D]. Returns shard 0..15.
+mth_phase_encode_wide_table:
+  MOVI r12,@mth_ptt_link
+  ST r15,r12,0
+  MOVI r12,@mth_ptt_in
+  ST r1,r12,0
+  MOVI r12,@mth_ptt_count
+  ST r2,r12,0
+  MOVI r12,@mth_ptt_d
+  ST r3,r12,0
+  MOVI r12,@mth_ptt_out
+  ST r4,r12,0
+  MOVI r5,0
+mth_ptt_clear:
+  MOVI r12,@mth_ptt_d
+  LD r6,r12,0
+  MOVI r7,2
+  MUL r6,r6,r7
+  CMP r5,r6
+  JMP[GE] @mth_ptt_clear_done
+  ADD r6,r4,r5
+  ST r0,r6,0
+  ADDI r5,r5,1
+  JMP @mth_ptt_clear
+mth_ptt_clear_done:
+  MOVI r12,@mth_ptt_i
+  ST r0,r12,0
+mth_ptt_loop:
+  MOVI r12,@mth_ptt_i
+  LD r5,r12,0
+  MOVI r12,@mth_ptt_count
+  LD r6,r12,0
+  CMP r5,r6
+  JMP[GE] @mth_ptt_done
+  MOVI r12,@mth_ptt_in
+  LD r6,r12,0
+  ADD r6,r6,r5
+  LD r4,r6,0
+  ; phase bin = ((byte*257 + i*8192) & 0xffff) >> 8
+  MOVI r7,257
+  MUL r6,r4,r7
+  MOVI r7,8192
+  MUL r7,r5,r7
+  ADD r6,r6,r7
+  SHL r6,r6,16
+  SHR r6,r6,16
+  SHR r6,r6,8
+  ; table at 0x3000: cos, sin
+  MOVI r7,0x3000
+  MOVI r8,2
+  MUL r8,r6,r8
+  ADD r7,r7,r8
+  LD r9,r7,0
+  ADDI r7,r7,1
+  LD r10,r7,0
+  ; lane = (byte + i) % D
+  MOVI r12,@mth_ptt_d
+  LD r6,r12,0
+  ADD r11,r4,r5
+  MODU r11,r11,r6
+  ; output[lane]
+  MOVI r12,@mth_ptt_out
+  LD r6,r12,0
+  MOVI r7,2
+  MUL r7,r11,r7
+  ADD r8,r6,r7
+  LD r7,r8,0
+  ADD r7,r7,r9
+  ST r7,r8,0
+  ADDI r8,r8,1
+  LD r7,r8,0
+  ADD r7,r7,r10
+  ST r7,r8,0
+  MOVI r12,@mth_ptt_i
+  LD r5,r12,0
+  ADDI r5,r5,1
+  ST r5,r12,0
+  JMP @mth_ptt_loop
+mth_ptt_done:
+  MOVI r12,@mth_ptt_out
+  LD r8,r12,0
+  MOVI r5,0
+  MOVI r1,0
+  MOVI r12,@mth_ptt_d
+  LD r6,r12,0
+mth_ptt_shard:
+  CMP r5,r6
+  JMP[GE] @mth_ptt_shard_done
+  MOVI r7,2
+  MUL r7,r5,r7
+  ADD r7,r8,r7
+  LD r7,r7,0
+  ADD r1,r1,r7
+  ADDI r5,r5,1
+  JMP @mth_ptt_shard
+mth_ptt_shard_done:
+  MOVI r6,16
+  MODU r1,r1,r6
+  MOVI r12,@mth_ptt_link
+  LD r15,r12,0
+  RET
+
+mth_ptt_link:
+  .word 0
+mth_ptt_in:
+  .word 0
+mth_ptt_count:
+  .word 0
+mth_ptt_d:
+  .word 0
+mth_ptt_out:
+  .word 0
+mth_ptt_i:
   .word 0

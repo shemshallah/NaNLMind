@@ -668,5 +668,31 @@ int main() {
     CHECK_EQ(knn_indices[0], 0u);
     CHECK(knn_scores[0] >= 65535);
 
+    // C(256,2) vector-code observer: raw pair indexing and accumulation.
+    CHECK(vm.vector_matrix_reset());
+    std::uint32_t matrix_index = 999;
+    std::int32_t matrix_value = 0;
+    CHECK(vm.vector_matrix_accumulate(0, 1, 65536, matrix_index, matrix_value));
+    CHECK_EQ(matrix_index, 0u);
+    CHECK_EQ(matrix_value, 65536);
+    CHECK(vm.vector_matrix_accumulate(1, 0, 65536, matrix_index, matrix_value));
+    CHECK_EQ(matrix_index, 0u);
+    CHECK_EQ(matrix_value, 131072);
+    CHECK(vm.vector_matrix_accumulate(4, 4, 65536, matrix_index, matrix_value));
+    CHECK_EQ(matrix_index, 32640u);
+    CHECK_EQ(matrix_value, 0);
+    CHECK(vm.vector_matrix_accumulate(254, 255, 32768, matrix_index,
+                                      matrix_value));
+    CHECK_EQ(matrix_index, 32639u);
+    CHECK_EQ(matrix_value, 32768);
+    std::int32_t probe_head = -1, probe_score = -1;
+    CHECK(vm.vector_matrix_probe(0, 1, probe_head, probe_score));
+    CHECK_EQ(probe_head, 1);
+    CHECK_EQ(probe_score, 131072);
+    std::vector<std::int32_t> matrix_cells;
+    CHECK(vm.read_vector_matrix(matrix_cells));
+    CHECK_EQ(matrix_cells.size(), 32640u);
+    CHECK_EQ(matrix_cells[0], 131072);
+    CHECK_EQ(matrix_cells[32639], 32768);
     return test_done("raw NaN16 field VM bridge");
 }

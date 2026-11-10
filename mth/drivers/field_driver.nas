@@ -69,6 +69,7 @@ JMP @field_driver_entry
 .include "../nan16/mth_phase_encode.nas"
 .include "../nan16/mth_phase_pq.nas"
 .include "../nan16/mth_sparse_knn.nas"
+.include "../nan16/mth_vector_matrix.nas"
 .include "../nan16/mth_context_backoff.nas"
 .include "../nan16/mth_context_encode.nas"
 .include "../nan16/mth_role_step.nas"
@@ -239,6 +240,18 @@ field_driver_main:
   MOVI r3,63
   CMP r2,r3
   JMP[EQ] @field_driver_phase_encode_batch
+  MOVI r3,64
+  CMP r2,r3
+  JMP[EQ] @field_driver_phase_table_init
+  MOVI r3,65
+  CMP r2,r3
+  JMP[EQ] @field_driver_vector_matrix_reset
+  MOVI r3,66
+  CMP r2,r3
+  JMP[EQ] @field_driver_vector_matrix_accum
+  MOVI r3,67
+  CMP r2,r3
+  JMP[EQ] @field_driver_vector_matrix_probe
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -942,6 +955,35 @@ field_driver_phase_encode_batch:
   CALL @mth_phase_encode_batch
   MOVI r10,0x4010
   ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_phase_table_init:
+  CALL @mth_phase_table_init
+  JMP @field_driver_return
+
+field_driver_vector_matrix_reset:
+  CALL @mth_vm_reset
+  MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
+field_driver_vector_matrix_accum:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  CALL @mth_vm_accum
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  JMP @field_driver_return
+field_driver_vector_matrix_probe:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  CALL @mth_vm_probe
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
   JMP @field_driver_return
 
 field_driver_context_encode:

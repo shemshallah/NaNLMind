@@ -1340,7 +1340,7 @@ bool RawFieldVM::phase_encode_wide(const std::uint8_t* bytes,
                                    std::vector<std::int32_t>& out,
                                    std::uint32_t& shard) {
     if (!bytes || count == 0 || count > 64 || dim == 0 || dim > 128) {
-        return fail("phase encode requires bytes 1..64 and dim 1..64");
+        return fail("phase encode requires bytes 1..64 and dim 1..128");
     }
     for (std::size_t i = 0; i < count; ++i) {
         if (!write_word(0x7000u + static_cast<std::uint32_t>(i), bytes[i])) {
@@ -1366,8 +1366,8 @@ bool RawFieldVM::phase_encode_wide(const std::uint8_t* bytes,
 bool RawFieldVM::phase_rotate(const std::vector<std::int32_t>& in,
                               std::uint32_t turn,
                               std::vector<std::int32_t>& out) {
-    if (in.size() < 2 || in.size() % 2 != 0 || in.size() / 2 > 64)
-        return fail("phase rotate lanes must be 1..64");
+    if (in.size() < 2 || in.size() % 2 != 0 || in.size() / 2 > 128)
+        return fail("phase rotate lanes must be 1..128");
     for (std::size_t i = 0; i < in.size(); ++i)
         if (!write_word(0x7000u + static_cast<std::uint32_t>(i),
                         static_cast<std::uint32_t>(in[i])))
@@ -1386,7 +1386,7 @@ bool RawFieldVM::pq_encode(const std::vector<std::int32_t>& query,
                            const std::vector<std::int32_t>& codebook,
                            std::size_t codewords, std::size_t dim,
                            std::uint32_t& code, std::int32_t& distance) {
-    if (codewords == 0 || codewords > 256 || dim == 0 || dim > 64 ||
+    if (codewords == 0 || codewords > 256 || dim == 0 || dim > 128 ||
         query.size() < dim || codebook.size() < codewords * dim)
         return fail("pq encode bounds invalid");
     for (std::size_t i = 0; i < dim; ++i)
@@ -1430,7 +1430,7 @@ bool RawFieldVM::sparse_knn(const std::vector<std::int32_t>& query,
                             std::size_t count, std::size_t dim, std::size_t k,
                             std::vector<std::uint32_t>& indices,
                             std::vector<std::int32_t>& scores) {
-    if (count == 0 || count > 4096 || dim == 0 || dim > 64 || k == 0 || k > 4 ||
+    if (count == 0 || count > 4096 || dim == 0 || dim > 128 || k == 0 || k > 4 ||
         query.size() < dim || bank.size() < count * dim)
         return fail("sparse kNN bounds invalid");
     for (std::size_t i = 0; i < dim; ++i)
@@ -1455,14 +1455,22 @@ bool RawFieldVM::sparse_knn(const std::vector<std::int32_t>& query,
     return true;
 }
 
+bool RawFieldVM::phase_table_init() {
+    if (!write_word(kCommandBase, 64)) return fail("cannot write phase table init");
+    if (!run_command()) return false;
+    phase_table_ready_ = true;
+    return true;
+}
+
 bool RawFieldVM::phase_encode_batch(const std::uint8_t* bytes,
                                     std::size_t windows, std::size_t window,
                                     std::size_t dim,
                                     std::vector<std::int32_t>& out) {
     if (!bytes || windows == 0 || windows > 1024 || window == 0 ||
-        window > 64 || dim == 0 || dim > 64) {
-        return fail("phase batch requires 1..1024 windows, W<=64, D<=64");
+        window > 8 || dim == 0 || dim > 128) {
+        return fail("phase batch requires 1..1024 windows, W<=8, D<=128");
     }
+    if (!phase_table_ready_ && !phase_table_init()) return false;
     for (std::size_t i = 0; i < windows * window; ++i) {
         if (!write_word(0x60000u + static_cast<std::uint32_t>(i), bytes[i])) {
             return fail("cannot write phase batch input");
@@ -1480,6 +1488,47 @@ bool RawFieldVM::phase_encode_batch(const std::uint8_t* bytes,
         out[i] = static_cast<std::int32_t>(
             read_word(0x70000u + static_cast<std::uint32_t>(i)));
     }
+    return true;
+}
+
+
+bool RawFieldVM::vector_matrix_reset() {
+    if (!write_word(kCommandBase, 65)) return fail("cannot write vector matrix reset");
+    return run_command();
+}
+
+bool RawFieldVM::vector_matrix_accumulate(std::uint8_t a, std::uint8_t b,
+                                          std::int32_t delta,
+                                          std::uint32_t& index,
+                                          std::int32_t& value) {
+    if (!write_word(kProposalBase + 0, a) ||
+        !write_word(kProposalBase + 1, b) ||
+        !write_word(kProposalBase + 2, static_cast<std::uint32_t>(delta)) ||
+        !write_word(kCommandBase, 66))
+        return fail("cannot write vector matrix accumulate");
+    if (!run_command()) return false;
+    index = read_word(kResultBase + 0);
+    value = static_cast<std::int32_t>(read_word(kResultBase + 1));
+    return true;
+}
+
+bool RawFieldVM::vector_matrix_probe(std::uint8_t a, std::int32_t threshold,
+                                     std::int32_t& best_head,
+                                     std::int32_t& score) {
+    if (!write_word(kProposalBase + 0, a) ||
+        !write_word(kProposalBase + 1, static_cast<std::uint32_t>(threshold)) ||
+        !write_word(kCommandBase, 67))
+        return fail("cannot write vector matrix probe");
+    if (!run_command()) return false;
+    best_head = static_cast<std::int32_t>(read_word(kResultBase + 0));
+    score = static_cast<std::int32_t>(read_word(kResultBase + 1));
+    return true;
+}
+
+bool RawFieldVM::read_vector_matrix(std::vector<std::int32_t>& cells) {
+    cells.resize(32640);
+    for (std::size_t i = 0; i < cells.size(); ++i)
+        cells[i] = static_cast<std::int32_t>(read_word(0x300000u + static_cast<std::uint32_t>(i)));
     return true;
 }
 

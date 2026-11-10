@@ -428,6 +428,7 @@ public:
     bool phase_encode_batch(const std::uint8_t* bytes, std::size_t windows,
                             std::size_t window, std::size_t dim,
                             std::vector<std::int32_t>& out);
+    bool phase_table_init();
     bool phase_rotate(const std::vector<std::int32_t>& in, std::uint32_t turn,
                       std::vector<std::int32_t>& out);
     bool pq_encode(const std::vector<std::int32_t>& query,
@@ -442,6 +443,13 @@ public:
                     std::size_t dim, std::size_t k,
                     std::vector<std::uint32_t>& indices,
                     std::vector<std::int32_t>& scores);
+    bool vector_matrix_reset();
+    bool vector_matrix_accumulate(std::uint8_t a, std::uint8_t b,
+                                  std::int32_t delta, std::uint32_t& index,
+                                  std::int32_t& value);
+    bool vector_matrix_probe(std::uint8_t a, std::int32_t threshold,
+                             std::int32_t& best_head, std::int32_t& score);
+    bool read_vector_matrix(std::vector<std::int32_t>& cells);
     bool reset_context_readout(std::size_t buckets);
     bool load_context_readout(const std::string& path, std::size_t buckets);
     bool save_context_readout(const std::string& path, std::size_t buckets);
@@ -501,6 +509,7 @@ private:
     bool fail(const std::string& message);
 
     nan_vm* vm_ = nullptr;
+    bool phase_table_ready_ = false;
     std::string error_;
 };
 

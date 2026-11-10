@@ -190,7 +190,7 @@ raw-contextual-test: $(BUILD)/test_raw_contextual
 	./$(BUILD)/test_raw_contextual
 
 phase-ingest-check: $(CLI)
-	./$(CLI) phase-ingest data/alice_excerpt.txt 8 8 16 4
+	./$(CLI) phase-ingest data/alice_excerpt.txt 8 8 64 4
 	python3 tools/check_phase_ingest.py
 
 clean:

@@ -240,26 +240,89 @@ pipeline still needs:
 - trihead/hotspot integration into the training loop;
 - book-disjoint reconstruction metrics.
 
-## 10. Streaming corpus ingest status
+## 10. Production-width streaming ingest
 
-`phase-ingest` now drives the raw phase encoder from a corpus stream:
+The production phase path is 64 or 128 complex lanes. `phase-ingest` batches
+1,024 windows per guest command and uses a raw 256-bin Q16 trig lookup table
+built once by `mth_phase_table_init`; the lookup table removes the CORDIC call
+from every byte window. PQ, rotation, spectral iteration and sparse k-NN accept
+D=64..128.
 
 ```sh
-./build/nanlm-universal phase-ingest state/gutenberg_150_train.txt \
-  10000 8 16 1000
+# all paths outside the repository, selected explicitly
+./build/nanlm-universal phase-ingest \
+  state/gutenberg_150_clean_corpus.txt 0 8 64 0 \
+  /storage/emulated/0/Download/NaNLMind/phase_bank/gutenberg150_d64
 ```
 
-This reads windows, batches 1,024 windows into one guest command, calls the
-raw phase encoder, and writes `state/phase_vectors.bin` plus a shard manifest.
-A 1,000-window smoke run took about 1.4 s and produced a balanced 16-shard
-histogram.
+The command writes the vector bank, code, kNN and spectral artifacts under the
+output prefix. The external `state` directory is only used by older callers;
+the production runner selects the external path.
 
-The full 150-book vector bank is roughly:
+### NaNROUTER runner
+
+`NaNROUTER/runner_riddle/phase_bank_runner.py` schedules the raw guest command
+and keeps the large bank outside both repositories:
+
+```sh
+python3 -m runner_riddle.phase_bank_runner \
+  --nanlmind /data/data/com.termux/files/home/NaNLMind \
+  --corpus state/gutenberg_150_clean_corpus.txt \
+  --out-dir /storage/emulated/0/Download/NaNLMind/phase_bank \
+  --name gutenberg150_d64 --dim 64 --window 8
+```
+
+The runner refuses repository output unless `--allow-repo` is explicit. It
+does not calculate any vector, trig, PQ, spectral or kNN value; it only
+schedules the guest, computes host storage digests, and writes the manifest.
+
+### Completed 150-book bank
 
 ```text
-1.78M windows x 16 complex lanes x 4 bytes = ~228 MB
+corpus              state/gutenberg_150_clean_corpus.txt
+samples             1,650,141
+lanes               64 complex
+window              8 bytes
+bank bytes          844,872,192 (806 MiB)
+bank sha256         88c951374e08df20b184bc811e16599b26277902c1053abba425fdd5723c06e5
+external path       /storage/emulated/0/Download/NaNLMind/phase_bank/gutenberg150_d64.bin
+manifest            gutenberg150_d64.manifest.json
 ```
 
-The batch path is implemented, but the full vector bank is not committed to
-Git; it is state/remote payload. The next step is to add the codebook-region
-PQ code and pair-code matrix observer to this same batch command.
+The 16 shard counts are balanced: 100,717, 101,850, 103,445, 105,393,
+102,407, 106,305, 103,866, 110,838, 101,970, 102,053, 97,963, 103,970,
+100,131, 101,891, 101,521, 105,821.
+
+The D=128 runner mode is available for a stronger bank; it doubles the payload
+to roughly 1.6 GiB. The current 806 MiB bank fits the external-storage budget.
+
+## 11. Raw vector-code observer
+
+`mth_vector_matrix.nas` implements the C(256,2) vector-code object in the guest:
+
+```text
+pair(a,b) index = a*255 - a*(a-1)/2 + (b-a-1)
+matrix base     = 0x300000
+cells           = 32,640 signed Q16 accumulators
+sentinel        = 32,640 (same head, not a pair)
+```
+
+`mth_vm_accum` updates a pair after sorting the heads; `mth_vm_probe` scans a
+row and returns the best third head above a threshold. This is a candidate
+index tensor, not vector storage and not the old byte-pair HW5 object. The host
+bridge exposes reset, accumulate, probe and read operations, and
+`build/test_raw_field` verifies pair indexing, commutativity, the sentinel,
+and probe completion.
+
+## 12. Remaining production gates
+
+- Trained 8-subvector PQ codebook with residual payloads, rather than the
+  current first-window codebook.
+- Repeated normalized spectral iterations and a semantic graph above the
+  codebook.
+- Remote leaf pages and reconstruct-and-verify through triheads and the 43/85
+  field.
+- Feed the vector-code matrix and spectral coordinates into hot triheads and
+  the remote-fetch budget.
+- Book-disjoint phase/PQ/matrix evaluation; the phase bank itself is not yet a
+  language-quality result.

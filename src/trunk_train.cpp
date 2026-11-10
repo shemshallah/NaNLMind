@@ -835,6 +835,10 @@ int phase_ingest_cli(int argc, char** argv) {
     }
     std::error_code mkdir_error;
     std::filesystem::create_directories("state", mkdir_error);
+    if (!vm.phase_table_init()) {
+        std::cerr << "phase table init failed: " << vm.error() << "\n";
+        return 7;
+    }
     std::ofstream out(output_prefix + ".bin", std::ios::binary);
     if (!out) { std::cerr << "cannot open phase vector output\n"; return 3; }
     std::array<std::size_t, 16> shard_counts{};
@@ -893,9 +897,13 @@ int phase_ingest_cli(int argc, char** argv) {
     std::size_t pq_codewords = 0;
     std::size_t knn_bank = 0;
     std::size_t pipeline_dim = 0;
+    std::size_t matrix_updates = 0;
+    std::vector<std::int32_t> matrix_cells;
+    std::int32_t probe_head = -1;
+    std::int32_t probe_score = 0;
     if (!samples.empty()) {
         pipeline_dim = std::min<std::size_t>(dim * 2, 64);
-        pq_codewords = std::min<std::size_t>(samples.size(), 16);
+        pq_codewords = std::min<std::size_t>(samples.size(), 256);
         std::vector<std::int32_t> codebook;
         codebook.reserve(pq_codewords * pipeline_dim);
         for (std::size_t i = 0; i < pq_codewords; ++i)
@@ -919,7 +927,7 @@ int phase_ingest_cli(int argc, char** argv) {
             pq_distances.push_back(distance);
         }
         {
-            std::ofstream codes("state/phase_codes.bin", std::ios::binary);
+            std::ofstream codes(output_prefix + ".codes.bin", std::ios::binary);
             if (!codes) {
                 std::cerr << "cannot open phase codes output\n";
                 return 3;
@@ -932,13 +940,55 @@ int phase_ingest_cli(int argc, char** argv) {
             }
         }
 
+        // The C(256,2) observer is updated only in the guest. Consecutive
+        // vector codes become a pair with one Q16 support increment.
+        if (!vm.vector_matrix_reset()) {
+            std::cerr << "vector matrix reset failed: " << vm.error() << "\n";
+            return 7;
+        }
+        for (std::size_t i = 1; i < pq_codes.size(); ++i) {
+            const std::uint8_t a = static_cast<std::uint8_t>(pq_codes[i - 1]);
+            const std::uint8_t b = static_cast<std::uint8_t>(pq_codes[i]);
+            if (a == b) continue;
+            std::uint32_t pair = 0;
+            std::int32_t value = 0;
+            if (!vm.vector_matrix_accumulate(a, b, 65536, pair, value)) {
+                std::cerr << "vector matrix update failed: " << vm.error() << "\n";
+                return 7;
+            }
+            ++matrix_updates;
+        }
+        if (!vm.read_vector_matrix(matrix_cells)) {
+            std::cerr << "vector matrix read failed: " << vm.error() << "\n";
+            return 7;
+        }
+        {
+            std::ofstream matrix("state/vector_code_matrix.bin",
+                                 std::ios::binary);
+            if (!matrix) {
+                std::cerr << "cannot open vector matrix output\n";
+                return 3;
+            }
+            matrix.write(reinterpret_cast<const char*>(matrix_cells.data()),
+                         static_cast<std::streamsize>(
+                             matrix_cells.size() * sizeof(matrix_cells[0])));
+        }
+        if (!pq_codes.empty()) {
+            if (!vm.vector_matrix_probe(
+                    static_cast<std::uint8_t>(pq_codes.front()), 1,
+                    probe_head, probe_score)) {
+                std::cerr << "vector matrix probe failed: " << vm.error() << "\n";
+                return 7;
+            }
+        }
+
         knn_bank = std::min<std::size_t>(samples.size(), 256);
         std::vector<std::int32_t> bank;
         bank.reserve(knn_bank * pipeline_dim);
         for (std::size_t i = 0; i < knn_bank; ++i)
             bank.insert(bank.end(), samples[i].begin(),
                         samples[i].begin() + pipeline_dim);
-        std::ofstream neighbors("state/phase_knn.bin", std::ios::binary);
+        std::ofstream neighbors(output_prefix + ".knn.bin", std::ios::binary);
         if (!neighbors) {
             std::cerr << "cannot open phase kNN output\n";
             return 3;
@@ -973,7 +1023,7 @@ int phase_ingest_cli(int argc, char** argv) {
             return 7;
         }
         {
-            std::ofstream spectral("state/phase_spectral.bin",
+            std::ofstream spectral(output_prefix + ".spectral.bin",
                                    std::ios::binary);
             if (!spectral) {
                 std::cerr << "cannot open phase spectral output\n";
@@ -993,7 +1043,11 @@ int phase_ingest_cli(int argc, char** argv) {
                  << "  \"pipeline\": {\"samples\": " << samples.size()
                  << ", \"pq_codewords\": " << pq_codewords
                  << ", \"knn_bank\": " << knn_bank
-                 << ", \"dim\": " << pipeline_dim << "},\n"
+                 << ", \"dim\": " << pipeline_dim
+                 << ", \"matrix_updates\": " << matrix_updates
+                 << ", \"matrix_cells\": " << matrix_cells.size()
+                 << ", \"probe_head\": " << probe_head
+                 << ", \"probe_score\": " << probe_score << "},\n"
                  << "  \"shards\": [";
         for (std::size_t i = 0; i < shard_counts.size(); ++i) {
             if (i) manifest << ",";

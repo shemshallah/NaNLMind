@@ -37,19 +37,28 @@ def main() -> int:
     pipeline = manifest.get("pipeline", {})
     pipeline_samples = int(pipeline.get("samples", 0))
     pipeline_dim = int(pipeline.get("dim", 0))
-    codes = (root / "phase_codes.bin").read_bytes()
+    codes_path = root / "phase_vectors.codes.bin"
+    if not codes_path.exists():
+        codes_path = root / "phase_codes.bin"
+    codes = codes_path.read_bytes()
     if len(codes) != pipeline_samples * 8:
         print("phase codes size mismatch", file=sys.stderr)
         return 1
-    knn = (root / "phase_knn.bin").read_bytes()
+    knn_path = root / "phase_vectors.knn.bin"
+    if not knn_path.exists():
+        knn_path = root / "phase_knn.bin"
+    knn = knn_path.read_bytes()
     if len(knn) != pipeline_samples * 8:
         print("phase kNN size mismatch", file=sys.stderr)
         return 1
-    spectral = (root / "phase_spectral.bin").read_bytes()
+    spectral_path = root / "phase_vectors.spectral.bin"
+    if not spectral_path.exists():
+        spectral_path = root / "phase_spectral.bin"
+    spectral = spectral_path.read_bytes()
     if len(spectral) != 8 * 4:
         print("phase spectral size mismatch", file=sys.stderr)
         return 1
-    if pipeline_dim <= 0 or pipeline_dim > 64:
+    if pipeline_dim <= 0 or pipeline_dim > 128:
         print("invalid phase pipeline dimension", file=sys.stderr)
         return 1
 

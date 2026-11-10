@@ -53,6 +53,37 @@ mth_phase_test_main:
   MOVI r12,15
   CMP r1,r12
   JMP[GT] @mth_phase_fail_shard
+
+  ; lookup-table encoder, D=16
+  CALL @mth_phase_table_init
+  MOVI r1,0x7000
+  MOVI r2,3
+  MOVI r3,16
+  MOVI r4,0x5300
+  CALL @mth_phase_encode_wide_table
+  MOVI r10,0x5300
+  LD r11,r10,0
+  MOVI r12,60000
+  CMP r11,r12
+  JMP[LT] @mth_phase_fail_cos
+  MOVI r12,15
+  CMP r1,r12
+  JMP[GT] @mth_phase_fail_shard
+
+  ; production-width lookup encoder, D=128
+  MOVI r1,0x7000
+  MOVI r2,3
+  MOVI r3,128
+  MOVI r4,0x5500
+  CALL @mth_phase_encode_wide_table
+  MOVI r10,0x5500
+  LD r11,r10,0
+  MOVI r12,60000
+  CMP r11,r12
+  JMP[LT] @mth_phase_fail_cos
+  MOVI r12,15
+  CMP r1,r12
+  JMP[GT] @mth_phase_fail_shard
   MOVI r1,@mth_phase_pass
   CALL @mth_phase_puts
   HALT
