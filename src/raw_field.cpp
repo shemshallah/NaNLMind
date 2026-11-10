@@ -1339,7 +1339,7 @@ bool RawFieldVM::phase_encode_wide(const std::uint8_t* bytes,
                                    std::size_t count, std::size_t dim,
                                    std::vector<std::int32_t>& out,
                                    std::uint32_t& shard) {
-    if (!bytes || count == 0 || count > 64 || dim == 0 || dim > 64) {
+    if (!bytes || count == 0 || count > 64 || dim == 0 || dim > 128) {
         return fail("phase encode requires bytes 1..64 and dim 1..64");
     }
     for (std::size_t i = 0; i < count; ++i) {
@@ -1460,8 +1460,8 @@ bool RawFieldVM::phase_encode_batch(const std::uint8_t* bytes,
                                     std::size_t dim,
                                     std::vector<std::int32_t>& out) {
     if (!bytes || windows == 0 || windows > 1024 || window == 0 ||
-        window > 8 || dim == 0 || dim > 64) {
-        return fail("phase batch requires 1..1024 windows, W<=8, D<=64");
+        window > 64 || dim == 0 || dim > 64) {
+        return fail("phase batch requires 1..1024 windows, W<=64, D<=64");
     }
     for (std::size_t i = 0; i < windows * window; ++i) {
         if (!write_word(0x60000u + static_cast<std::uint32_t>(i), bytes[i])) {

@@ -87,10 +87,19 @@ mth_pp_init_done:
   MOVI r3,0x6500
   CALL @mth_spectral_iter
   MOVI r10,0x6500
-  LD r11,r10,0
-  MOVI r12,0
-  CMP r11,r12
-  JMP[EQ] @mth_pp_fail
+  MOVI r2,0
+  MOVI r3,8
+  MOVI r5,8192
+mth_pp_spectral_check:
+  CMP r2,r3
+  JMP[GE] @mth_pp_spectral_ok
+  ADD r4,r10,r2
+  LD r11,r4,0
+  CMP r11,r5
+  JMP[NE] @mth_pp_fail
+  ADDI r2,r2,1
+  JMP @mth_pp_spectral_check
+mth_pp_spectral_ok:
 
   ; rotate by zero preserves lane 0 complex
   MOVI r1,0x6600

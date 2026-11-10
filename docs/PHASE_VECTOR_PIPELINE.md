@@ -1,8 +1,9 @@
 # Phase-vector streaming architecture
 
-Status: **raw NaN16 kernel prototype + architecture plan**. The kernels in this
-document execute in the guest; host code only transports byte windows, codebooks,
-and query banks.
+Status: **raw NaN16 kernels with field-driver ABI and ingest integration**.
+The kernels execute in the guest and are dispatched through
+`mth/drivers/field_driver.nas`; host code only transports byte windows,
+codebooks, query banks, and output files.
 
 ## 1. The encoding stack
 
@@ -23,6 +24,21 @@ These are separate mathematical objects. A vector is not a leaf, a leaf is not
 a matrix row, and a matrix row is not the reconstruction.
 
 ## 2. Implemented raw kernels
+
+Field-driver commands:
+
+| command | kernel | ABI summary |
+|---|---|---|
+| 58 | `mth_phase_rotate` | complex in 0x7000, out 0x7200, turn/lanes 0x4001/2 |
+| 59 | `mth_pq_encode` | query 0x7000, codebook 0x10000, C/D 0x4001/2 |
+| 60 | `mth_phase_encode_wide` | bytes 0x7000, count/D 0x4001/2, complex out 0x5200 |
+| 61 | `mth_spectral_iter` | A[8][8] 0x7000, x[8] 0x7040, out 0x7080 |
+| 62 | `mth_sparse_knn` | query 0x7000, bank 0x10000, N/D/k 0x4001..3 |
+| 63 | `mth_phase_encode_batch` | windows 0x60000, W/D 0x4002/3, complex out 0x70000 |
+
+`RawFieldVM` exposes `phase_encode_wide`, `phase_encode_batch`,
+`phase_rotate`, `pq_encode`, `spectral_iter`, and `sparse_knn`. The C++
+methods marshal Q16 words only; the guest performs all arithmetic.
 
 ### Trig phase encoder
 
@@ -181,15 +197,43 @@ python3 tools/run_nan16_fixtures.py --only phase_pq
 
 Both pass. They cover phase bundling, PQ nearest code, one spectral iteration,
 zero-angle rotation and sparse top-1 k-NN (the k-NN fixture uses k=1; the kernel
-supports k=1..4).
+supports k=1..4). The spectral fixture now verifies all eight identity outputs,
+not just a nonzero result.
+
+`build/test_raw_field` also exercises the complete Q16 pipeline from C++:
+wide encode, batch encode, rotation, PQ, spectral iteration, and sparse k-NN.
+The corpus path is checked end to end by:
+
+```sh
+make phase-ingest-check
+# PHASE_INGEST PASS ...
+```
+
+### Corpus ingest
+
+```sh
+./build/nanlm-universal phase-ingest CORPUS [MAX_LINES] [WINDOW] [DIM] [MAX_WINDOWS]
+```
+
+The host stages byte windows and writes:
+
+- `state/phase_vectors.bin` — complex Q16 phase vectors;
+- `state/phase_codes.bin` — PQ code and L1 residual distance;
+- `state/phase_knn.bin` — nearest-neighbor index and dot score;
+- `state/phase_spectral.bin` — one spectral coordinate vector;
+- `state/phase_vectors.json` — counts, dimensions, shard histogram, and
+  pipeline summary.
+
+The ingest pipeline uses a local codebook taken from the first 16 encoded
+windows and a sparse bank from the first 256. This is a functional first-stage
+pipeline, not a trained corpus codebook.
 
 ## 9. Honest boundary
 
 This is a kernel prototype, not a trained corpus encoder. The production
 pipeline still needs:
 
-- D=64/128 phase vectors, not 8;
-- 8-subvector PQ and residual storage;
+- trained 8-subvector PQ with residual storage, not a per-ingest local codebook;
 - multiple power iterations and spectral normalization;
 - codebook-region matrix observer;
 - remote leaf paging/verification;

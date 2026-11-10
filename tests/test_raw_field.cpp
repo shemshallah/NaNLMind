@@ -614,5 +614,59 @@ int main() {
         s24_prev = p;
     }
 
+    // Phase-vector layer pipeline: trig encode, rotation, PQ, spectral
+    // iteration and sparse k-NN all execute in the raw guest.
+    const std::array<std::uint8_t, 6> phase_batch_bytes = {1, 2, 3, 4, 5, 6};
+    std::vector<std::int32_t> phase_batch;
+    CHECK(vm.phase_encode_batch(phase_batch_bytes.data(), 2, 3, 4, phase_batch));
+    CHECK_EQ(phase_batch.size(), 16u);
+    bool phase_batch_nonzero = false;
+    for (std::int32_t value : phase_batch) phase_batch_nonzero |= value != 0;
+    CHECK(phase_batch_nonzero);
+    const std::array<std::uint8_t, 4> phase_bytes = {1, 2, 3, 4};
+    std::vector<std::int32_t> phase_vector;
+    std::uint32_t phase_shard = 0;
+    CHECK(vm.phase_encode_wide(phase_bytes.data(), phase_bytes.size(), 4,
+                               phase_vector, phase_shard));
+    CHECK_EQ(phase_vector.size(), 8u);
+    CHECK(phase_shard < 16u);
+    bool phase_nonzero = false;
+    for (std::int32_t value : phase_vector) phase_nonzero |= value != 0;
+    CHECK(phase_nonzero);
+
+    std::vector<std::int32_t> rotated;
+    CHECK(vm.phase_rotate(phase_vector, 0, rotated));
+    CHECK_EQ(rotated.size(), phase_vector.size());
+    for (std::size_t i = 0; i < rotated.size(); ++i)
+        CHECK(std::abs(rotated[i] - phase_vector[i]) <= 1024);
+
+    const std::vector<std::int32_t> pq_query = {65536, 0};
+    const std::vector<std::int32_t> pq_book = {65536, 0, 0, 65536};
+    std::uint32_t pq_code = 99;
+    std::int32_t pq_distance = -1;
+    CHECK(vm.pq_encode(pq_query, pq_book, 2, 2, pq_code, pq_distance));
+    CHECK_EQ(pq_code, 0u);
+    CHECK(std::abs(pq_distance) <= 1);
+
+    std::array<std::int32_t, 64> spectrum_adjacency{};
+    std::array<std::int32_t, 8> spectrum_in{}, spectrum_out{};
+    for (std::size_t i = 0; i < 8; ++i) {
+        spectrum_adjacency[i * 8 + i] = 65536;
+        spectrum_in[i] = static_cast<std::int32_t>((i + 1) * 4096);
+    }
+    CHECK(vm.spectral_iter(spectrum_adjacency, spectrum_in, spectrum_out));
+    for (std::size_t i = 0; i < 8; ++i)
+        CHECK(std::abs(spectrum_out[i] - spectrum_in[i]) <= 2);
+
+    const std::vector<std::int32_t> knn_query = {65536, 0};
+    const std::vector<std::int32_t> knn_bank = {65536, 0, 0, 65536};
+    std::vector<std::uint32_t> knn_indices;
+    std::vector<std::int32_t> knn_scores;
+    CHECK(vm.sparse_knn(knn_query, knn_bank, 2, 2, 1, knn_indices,
+                        knn_scores));
+    CHECK_EQ(knn_indices.size(), 1u);
+    CHECK_EQ(knn_indices[0], 0u);
+    CHECK(knn_scores[0] >= 65535);
+
     return test_done("raw NaN16 field VM bridge");
 }

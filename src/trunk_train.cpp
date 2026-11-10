@@ -794,19 +794,21 @@ int context_hash_check_cli(int, char**) {
 int phase_ingest_cli(int argc, char** argv) {
     if (argc < 3) {
         std::cerr << "usage: nanlm-universal phase-ingest CORPUS [MAX_LINES] [WINDOW]"
-                     " [DIM] [MAX_WINDOWS]\n";
+                     " [DIM] [MAX_WINDOWS] [OUTPUT_PREFIX]\n";
         return 2;
     }
     const std::string corpus_path = argv[2];
-    std::size_t max_lines = 0, window = 8, dim = 16, max_windows = 0;
+    std::size_t max_lines = 0, window = 8, dim = 64, max_windows = 0;
+    std::string output_prefix = "state/phase_vectors";
     try {
         if (argc > 3) max_lines = static_cast<std::size_t>(std::stoull(argv[3]));
         if (argc > 4) window = static_cast<std::size_t>(std::stoull(argv[4]));
         if (argc > 5) dim = static_cast<std::size_t>(std::stoull(argv[5]));
         if (argc > 6) max_windows = static_cast<std::size_t>(std::stoull(argv[6]));
+        if (argc > 7) output_prefix = argv[7];
     } catch (...) { std::cerr << "invalid numeric argument\n"; return 2; }
-    if (window == 0 || window > 64 || dim == 0 || dim > 64) {
-        std::cerr << "window 1..64 and dim 1..64 required\n";
+    if (window == 0 || window > 8 || dim == 0 || dim > 128) {
+        std::cerr << "window 1..8 and dim 1..128 required\n";
         return 2;
     }
     std::ifstream in(corpus_path, std::ios::binary);
@@ -833,10 +835,12 @@ int phase_ingest_cli(int argc, char** argv) {
     }
     std::error_code mkdir_error;
     std::filesystem::create_directories("state", mkdir_error);
-    std::ofstream out("state/phase_vectors.bin", std::ios::binary);
+    std::ofstream out(output_prefix + ".bin", std::ios::binary);
     if (!out) { std::cerr << "cannot open phase vector output\n"; return 3; }
     std::array<std::size_t, 16> shard_counts{};
     std::size_t encoded = 0;
+    constexpr std::size_t kPipelineSamples = 1024;
+    std::vector<std::vector<std::int32_t>> samples;
     std::vector<std::uint8_t> batch_bytes;
     std::size_t batch_windows = 0;
     constexpr std::size_t kBatchWindows = 1024;
@@ -851,12 +855,17 @@ int phase_ingest_cli(int argc, char** argv) {
         out.write(reinterpret_cast<const char*>(vectors.data()),
                   static_cast<std::streamsize>(
                       vectors.size() * sizeof(std::int32_t)));
+        const std::size_t stride = dim * 2;
         for (std::size_t w = 0; w < batch_windows; ++w) {
             std::int64_t sum = 0;
             for (std::size_t d = 0; d < dim; ++d) {
-                sum += vectors[w * dim * 2 + d * 2];
+                sum += vectors[w * stride + d * 2];
             }
             ++shard_counts[static_cast<std::size_t>(sum) & 15u];
+            if (samples.size() < kPipelineSamples) {
+                samples.emplace_back(vectors.begin() + w * stride,
+                                     vectors.begin() + (w + 1) * stride);
+            }
         }
         encoded += batch_windows;
         batch_bytes.clear();
@@ -875,12 +884,116 @@ int phase_ingest_cli(int argc, char** argv) {
         if (batch_windows == kBatchWindows && !flush_batch()) return 7;
     }
     if (!flush_batch()) return 7;
-    auto manifest = std::ofstream("state/phase_vectors.json");
+
+    // Derive the raw PQ, sparse k-NN and spectral layers from the encoded
+    // phase vectors. This is deliberately a small first-stage pipeline: the
+    // codebook is the first codewords of this ingest window, and the sparse
+    // bank is the first 256 windows. All quantization and graph arithmetic is
+    // guest-side.
+    std::size_t pq_codewords = 0;
+    std::size_t knn_bank = 0;
+    std::size_t pipeline_dim = 0;
+    if (!samples.empty()) {
+        pipeline_dim = std::min<std::size_t>(dim * 2, 64);
+        pq_codewords = std::min<std::size_t>(samples.size(), 16);
+        std::vector<std::int32_t> codebook;
+        codebook.reserve(pq_codewords * pipeline_dim);
+        for (std::size_t i = 0; i < pq_codewords; ++i)
+            codebook.insert(codebook.end(), samples[i].begin(),
+                            samples[i].begin() + pipeline_dim);
+        std::vector<std::uint32_t> pq_codes;
+        std::vector<std::int32_t> pq_distances;
+        pq_codes.reserve(samples.size());
+        pq_distances.reserve(samples.size());
+        for (const auto& sample : samples) {
+            std::vector<std::int32_t> query(sample.begin(),
+                                             sample.begin() + pipeline_dim);
+            std::uint32_t code = 0;
+            std::int32_t distance = 0;
+            if (!vm.pq_encode(query, codebook, pq_codewords, pipeline_dim,
+                              code, distance)) {
+                std::cerr << "phase PQ failed: " << vm.error() << "\n";
+                return 7;
+            }
+            pq_codes.push_back(code);
+            pq_distances.push_back(distance);
+        }
+        {
+            std::ofstream codes("state/phase_codes.bin", std::ios::binary);
+            if (!codes) {
+                std::cerr << "cannot open phase codes output\n";
+                return 3;
+            }
+            for (std::size_t i = 0; i < pq_codes.size(); ++i) {
+                codes.write(reinterpret_cast<const char*>(&pq_codes[i]),
+                            sizeof(pq_codes[i]));
+                codes.write(reinterpret_cast<const char*>(&pq_distances[i]),
+                            sizeof(pq_distances[i]));
+            }
+        }
+
+        knn_bank = std::min<std::size_t>(samples.size(), 256);
+        std::vector<std::int32_t> bank;
+        bank.reserve(knn_bank * pipeline_dim);
+        for (std::size_t i = 0; i < knn_bank; ++i)
+            bank.insert(bank.end(), samples[i].begin(),
+                        samples[i].begin() + pipeline_dim);
+        std::ofstream neighbors("state/phase_knn.bin", std::ios::binary);
+        if (!neighbors) {
+            std::cerr << "cannot open phase kNN output\n";
+            return 3;
+        }
+        for (const auto& sample : samples) {
+            std::vector<std::int32_t> query(sample.begin(),
+                                             sample.begin() + pipeline_dim);
+            std::vector<std::uint32_t> indices;
+            std::vector<std::int32_t> scores;
+            if (!vm.sparse_knn(query, bank, knn_bank, pipeline_dim, 1,
+                               indices, scores)) {
+                std::cerr << "phase kNN failed: " << vm.error() << "\n";
+                return 7;
+            }
+            neighbors.write(reinterpret_cast<const char*>(indices.data()),
+                            sizeof(indices[0]));
+            neighbors.write(reinterpret_cast<const char*>(scores.data()),
+                            sizeof(scores[0]));
+        }
+
+        std::array<std::int32_t, 64> adjacency{};
+        for (std::size_t i = 0; i + 1 < std::min<std::size_t>(pq_codes.size(), 8);
+             ++i) {
+            const std::size_t a = pq_codes[i] & 7u;
+            const std::size_t b = pq_codes[i + 1] & 7u;
+            adjacency[a * 8 + b] = 65536;
+        }
+        std::array<std::int32_t, 8> spectral_in{}, spectral_out{};
+        for (auto& value : spectral_in) value = 65536;
+        if (!vm.spectral_iter(adjacency, spectral_in, spectral_out)) {
+            std::cerr << "phase spectral iteration failed: " << vm.error() << "\n";
+            return 7;
+        }
+        {
+            std::ofstream spectral("state/phase_spectral.bin",
+                                   std::ios::binary);
+            if (!spectral) {
+                std::cerr << "cannot open phase spectral output\n";
+                return 3;
+            }
+            spectral.write(reinterpret_cast<const char*>(spectral_out.data()),
+                           sizeof(spectral_out));
+        }
+    }
+
+    auto manifest = std::ofstream(output_prefix + ".json");
     if (manifest) {
         manifest << "{\n  \"schema\": \"nanlm.phase-vectors/1\",\n"
                  << "  \"samples\": " << encoded << ",\n"
                  << "  \"dim\": " << dim << ",\n"
                  << "  \"window\": " << window << ",\n"
+                 << "  \"pipeline\": {\"samples\": " << samples.size()
+                 << ", \"pq_codewords\": " << pq_codewords
+                 << ", \"knn_bank\": " << knn_bank
+                 << ", \"dim\": " << pipeline_dim << "},\n"
                  << "  \"shards\": [";
         for (std::size_t i = 0; i < shard_counts.size(); ++i) {
             if (i) manifest << ",";
@@ -889,7 +1002,7 @@ int phase_ingest_cli(int argc, char** argv) {
         manifest << "]\n}\n";
     }
     std::cout << "phase_ingest samples=" << encoded << " dim=" << dim
-              << " window=" << window << " output=state/phase_vectors.bin\n";
+              << " window=" << window << " output=" << output_prefix << ".bin\n";
     return 0;
 }
 

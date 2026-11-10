@@ -32,6 +32,12 @@
 ; Combined gated credit: target/best/base/threshold 0x4001..4, credits 0x7000, coeffs 0x7100
 ; Context copy/induction: target/lr/context key/B/E/C/weight at 0x4001..7
 ;   result at 0x4010: correct, memory CE, combined class
+; Phase layers: command 58 rotate, 59 PQ, 60 wide trig encode,
+;   61 spectral iteration, 62 sparse k-NN, 63 batched wide trig encode.
+;   Encoder input bytes 0x7000, complex output 0x5200 (command 60) or
+;   0x70000 (batch 63); PQ query 0x7000, codebook 0x10000, result 0x4010;
+;   spectral A 0x7000, x 0x7040, out 0x7080; k-NN query 0x7000,
+;   bank 0x10000, neighbor indices 0x7200 and scores 0x7240.
 ;
 ; The driver contains no host math. It is assembled by nmk.awk and executed
 ; by the canonical NaN0S VM. The guest starts at word 0.
