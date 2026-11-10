@@ -48,6 +48,7 @@ JMP @field_driver_entry
 .include "../nan16/mth_readout_sample.nas"
 .include "../nan16/mth_trunk_credit.nas"
 .include "../nan16/mth_qkv_credit.nas"
+.include "../nan16/mth_qkv_credit_wide.nas"
 
 field_driver_entry:
   MOVI r13,1
@@ -110,6 +111,9 @@ field_driver_main:
   MOVI r3,17
   CMP r2,r3
   JMP[EQ] @field_driver_readout_sample
+  MOVI r3,18
+  CMP r2,r3
+  JMP[EQ] @field_driver_qkv_credit_wide
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -323,6 +327,16 @@ field_driver_qkv_credit:
   LD r2,r10,1
   LD r3,r10,2
   CALL @mth_qkv_credit
+  MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_qkv_credit_wide:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  CALL @mth_qkv_credit_wide
   MOVI r10,0x4010
   ST r1,r10,0
   JMP @field_driver_return

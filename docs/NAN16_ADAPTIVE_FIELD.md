@@ -28,12 +28,15 @@ adaptive-field mathematics:
 | `mth_micro_block.nas` | raw two-token QKV/softmax/tanh micro-transformer forward |
 | `mth_field_commit.nas` | CFT credits -> 85 triad votes -> 43/85 field commit |
 | `mth_readout_train.nas` | raw trunk feature -> local readout error update |
+| `mth_readout_only.nas` | cached trunk feature -> exact 255-class local readout update |
+| `mth_readout_sample.nas` | cached feature -> 8 rotating-negative readout update |
 | `mth_hot_trihead.nas` | raw 255-head hot scan, 3-hot-head triad grouping and 85x3 auto-mapping |
 | `mth_micro_feature.nas` | raw two-token QKV/softmax/tanh feature feed for the sparse field |
 | `mth_trunk_causal.nas` | raw learned QKV/MLP causal feature block, 1..256 tokens |
 | `mth_trunk_wide.nas` | runtime-width learned QKV/MLP causal block, up to 1024 tokens |
 | `mth_trunk_credit.nas` | raw local credit update for Wout/W1/W2 |
-| `mth_qkv_credit.nas` | raw softmax/QKV local-credit update for Wq/Wk/Wv |
+| `mth_qkv_credit.nas` | raw softmax/QKV local-credit update for Wq/Wk/Wv (fixed 8) |
+| `mth_qkv_credit_wide.nas` | runtime-width QKV local-credit update, up to 1024 tokens |
 | `mth/drivers/field_driver.nas` | guest command dispatcher for proposal, field vote, coherence, remap, CFT, TRAIL and hot triheads |
 | `include/nanlm/raw_field.hpp` | host orchestration: writes command words, runs the VM, reads results |
 
@@ -181,8 +184,15 @@ Wv += lr sum_s dv_s x_s^T
 ```
 
 It uses the alpha/q/k/v state cached by the last fixed 8-wide forward. QKV
-local credit is therefore raw and functional for the fixed trunk. Full
-multi-layer BPTT and QKV credit for the wide path are still open.
+local credit is therefore raw and functional for the fixed trunk.
+
+`mth_qkv_credit_wide.nas` (command 18) is the runtime-width version. It reads
+the wide forward's cached alpha at `0x58000`, values at `0x30000`, and the
+dynamic weight pointers; it updates Wq/Wk/Wv for D<=128, H<=512 and T<=1024.
+The readout rows are loaded at `0x180000`. The test exercises D=16, T=1024:
+forward, local QKV credit, cached forward, and a changed output.
+
+Full multi-layer BPTT and wide Wout/W1/W2 credit are still open.
 
 ## Learnable credit, not host gradients
 
@@ -229,6 +239,8 @@ skip. The default fixtures cover:
 - a two-token QKV/softmax/tanh micro-block forward primitive;
 - CFT-credit -> triad -> 43/85 field commit;
 - native readout training on the raw causal-trunk feature;
+- cached-feature exact and sampled readout updates for the full-corpus speed
+  path;
 - a composed CFT -> TRAIL -> 43/85 field-commit pipeline fixture;
 - the field-command driver and the `RawFieldVM` chart bridge;
 - `field-selftest` and `test_raw_field` on the vendored canonical VM.

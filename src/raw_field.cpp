@@ -699,6 +699,68 @@ bool RawFieldVM::qkv_credit(std::uint8_t target, std::uint8_t best_wrong,
     return true;
 }
 
+
+bool RawFieldVM::causal_trunk_wide_cached(const std::vector<float>& tokens,
+                                          std::size_t count, std::size_t dim,
+                                          std::vector<float>& out) {
+    if (count == 0 || count > 1024 || dim == 0 || dim > 128 ||
+        tokens.size() != count * dim) {
+        return fail("wide cached trunk dimensions are invalid");
+    }
+    for (std::size_t i = 0; i < tokens.size(); ++i) {
+        std::uint32_t bits = 0;
+        std::memcpy(&bits, &tokens[i], sizeof(bits));
+        if (!write_word(0x10000u + static_cast<std::uint32_t>(i), bits)) {
+            return fail("cannot write cached wide tokens");
+        }
+    }
+    if (!write_word(kProposalBase + 0, static_cast<std::uint32_t>(count)) ||
+        !write_word(kProposalBase + 1, static_cast<std::uint32_t>(dim)) ||
+        !write_word(kProposalBase + 2, static_cast<std::uint32_t>(4 * dim)) ||
+        !write_word(kCommandBase, 13)) {
+        return fail("cannot write cached wide command");
+    }
+    if (!run_command()) return false;
+    if (read_word(kResultBase) != dim) {
+        return fail("cached wide trunk returned the wrong feature count");
+    }
+    out.assign(dim, 0.0f);
+    for (std::size_t i = 0; i < dim; ++i) {
+        const std::uint32_t bits = read_word(0x200000u + static_cast<std::uint32_t>(i));
+        std::memcpy(&out[i], &bits, sizeof(bits));
+    }
+    return true;
+}
+
+bool RawFieldVM::set_wide_readout_row(std::uint8_t row, const float* values,
+                                      std::size_t dim) {
+    if (row >= 255 || dim == 0 || dim > 128) return fail("wide readout row invalid");
+    for (std::size_t i = 0; i < dim; ++i) {
+        std::uint32_t bits = 0;
+        std::memcpy(&bits, &values[i], sizeof(bits));
+        if (!write_word(0x180000u + static_cast<std::uint32_t>(row * dim + i),
+                        bits)) return fail("cannot write wide readout row");
+    }
+    return true;
+}
+
+bool RawFieldVM::qkv_credit_wide(std::uint8_t target, std::uint8_t best_wrong,
+                                 float learning_rate) {
+    std::uint32_t lr_bits = 0;
+    std::memcpy(&lr_bits, &learning_rate, sizeof(lr_bits));
+    if (!write_word(kProposalBase + 0, target) ||
+        !write_word(kProposalBase + 1, best_wrong) ||
+        !write_word(kProposalBase + 2, lr_bits) ||
+        !write_word(kCommandBase, 18)) {
+        return fail("cannot write wide QKV-credit command");
+    }
+    if (!run_command()) return false;
+    if ((read_word(kResultBase) & 1u) == 0) {
+        return fail("raw wide QKV credit did not complete");
+    }
+    return true;
+}
+
 bool RawFieldVM::remap(const std::array<std::uint16_t, 6>& masks,
                        std::uint32_t a, std::uint32_t b, bool target,
                        bool& improved, std::int32_t& before,

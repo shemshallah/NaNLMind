@@ -133,6 +133,13 @@ public:
     bool causal_trunk_wide(const std::vector<float>& tokens, std::size_t count,
                            const WideTrunkWeights& weights,
                            std::vector<float>& out);
+    bool causal_trunk_wide_cached(const std::vector<float>& tokens,
+                                  std::size_t count, std::size_t dim,
+                                  std::vector<float>& out);
+    bool set_wide_readout_row(std::uint8_t row, const float* values,
+                              std::size_t dim);
+    bool qkv_credit_wide(std::uint8_t target, std::uint8_t best_wrong,
+                         float learning_rate);
     // Raw local credit update for the fixed 8-wide output/MLP layers.
     bool trunk_credit(std::uint8_t target, std::uint8_t best_wrong,
                       float learning_rate);

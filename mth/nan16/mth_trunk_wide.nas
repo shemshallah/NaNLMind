@@ -217,6 +217,10 @@ mth_wd_ctx_s:
   MOVI r12,@mth_wd_sum
   LD r8,r12,0
   FDIV r7,r7,r8
+  MOVI r10,0x8000
+  MOVHI r10,0x0005
+  ADD r10,r10,r6
+  ST r7,r10,0
   MOVI r12,@mth_wd_D
   LD r9,r12,0
   MOVI r8,0

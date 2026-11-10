@@ -353,6 +353,17 @@ int main() {
     CHECK_EQ(wide_out.size(), wide.dim);
     CHECK(std::isfinite(wide_out[0]));
 
+    std::vector<float> wide_target(wide.dim, 0.0f);
+    std::vector<float> wide_wrong(wide.dim, 0.0f);
+    wide_target[0] = 1.0f;
+    wide_wrong[0] = -1.0f;
+    CHECK(vm.set_wide_readout_row(1, wide_target.data(), wide.dim));
+    CHECK(vm.set_wide_readout_row(0, wide_wrong.data(), wide.dim));
+    const float wide_before_credit = wide_out[0];
+    CHECK(vm.qkv_credit_wide(1, 0, 0.5f));
+    CHECK(vm.causal_trunk_wide_cached(wide_tokens, 1024, wide.dim, wide_out));
+    CHECK(std::fabs(wide_out[0] - wide_before_credit) > 1e-7f);
+
     // Readout-only path: the same update without recomputing the trunk.
     vm.reset_readout();
     std::array<float, kRawFeatureDim> cached_feature{};
