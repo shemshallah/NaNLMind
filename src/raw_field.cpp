@@ -891,6 +891,90 @@ bool RawFieldVM::trunk_credit_wide(std::uint8_t target,
 
 
 
+
+bool RawFieldVM::holo(const std::array<std::uint16_t, 3>& phases,
+                      std::array<std::int32_t, 2>& out) {
+    for (std::size_t i = 0; i < phases.size(); ++i) {
+        if (!write_word(kProposalBase + static_cast<std::uint32_t>(i),
+                        phases[i]))
+            return fail("cannot write HOLO turn phases");
+    }
+    if (!write_word(kCommandBase, 35)) return fail("cannot write HOLO command");
+    if (!run_command()) return false;
+    for (std::size_t i = 0; i < out.size(); ++i)
+        out[i] = static_cast<std::int32_t>(read_word(kResultBase + i));
+    return true;
+}
+
+bool RawFieldVM::ring(
+    const std::array<std::uint16_t, kTriadMemberCount>& phases,
+    std::uint32_t shift, std::int32_t& correlation) {
+    if (shift >= kTriadMemberCount) return fail("RING shift outside 255-head ring");
+    for (std::size_t i = 0; i < phases.size(); ++i) {
+        if (!write_word(kCoherencePhases + static_cast<std::uint32_t>(i),
+                        phases[i]))
+            return fail("cannot write RING phase bank");
+    }
+    if (!write_word(kProposalBase, shift) ||
+        !write_word(kCommandBase, 36))
+        return fail("cannot write RING command");
+    if (!run_command()) return false;
+    correlation = static_cast<std::int32_t>(read_word(kResultBase));
+    return true;
+}
+
+bool RawFieldVM::leaf(std::uint32_t row_bits, std::uint32_t leaf_mask,
+                      std::int32_t counter_q16,
+                      std::array<std::int32_t, 2>& out) {
+    if (!write_word(kProposalBase, row_bits) ||
+        !write_word(kProposalBase + 1, leaf_mask) ||
+        !write_word(kProposalBase + 2,
+                    static_cast<std::uint32_t>(counter_q16)) ||
+        !write_word(kCommandBase, 37))
+        return fail("cannot write LEAF command");
+    if (!run_command()) return false;
+    out[0] = static_cast<std::int32_t>(read_word(kResultBase));
+    out[1] = static_cast<std::int32_t>(read_word(kResultBase + 1));
+    return true;
+}
+
+bool RawFieldVM::tca(std::int32_t local_log_probability,
+                     std::int32_t peer_a_log_probability,
+                     std::int32_t peer_b_log_probability,
+                     std::int32_t& advantage) {
+    if (!write_word(kProposalBase,
+                    static_cast<std::uint32_t>(local_log_probability)) ||
+        !write_word(kProposalBase + 1,
+                    static_cast<std::uint32_t>(peer_a_log_probability)) ||
+        !write_word(kProposalBase + 2,
+                    static_cast<std::uint32_t>(peer_b_log_probability)) ||
+        !write_word(kCommandBase, 38))
+        return fail("cannot write TCA command");
+    if (!run_command()) return false;
+    advantage = static_cast<std::int32_t>(read_word(kResultBase));
+    return true;
+}
+
+bool RawFieldVM::flux(std::int32_t phase_u_q16,
+                      std::int32_t phase_v_q16,
+                      std::int32_t weight_q16, std::int32_t source_q16,
+                      std::array<std::int32_t, 3>& out) {
+    if (!write_word(kProposalBase,
+                    static_cast<std::uint32_t>(phase_u_q16)) ||
+        !write_word(kProposalBase + 1,
+                    static_cast<std::uint32_t>(phase_v_q16)) ||
+        !write_word(kProposalBase + 2,
+                    static_cast<std::uint32_t>(weight_q16)) ||
+        !write_word(kProposalBase + 3,
+                    static_cast<std::uint32_t>(source_q16)) ||
+        !write_word(kCommandBase, 39))
+        return fail("cannot write FLUX command");
+    if (!run_command()) return false;
+    for (std::size_t i = 0; i < out.size(); ++i)
+        out[i] = static_cast<std::int32_t>(read_word(kResultBase + i));
+    return true;
+}
+
 bool RawFieldVM::combine_credits(const std::array<std::int32_t, 7>& credits,
                                  const std::array<std::int32_t, 7>& coefficients,
                                  std::int32_t& combined) {
@@ -902,7 +986,7 @@ bool RawFieldVM::combine_credits(const std::array<std::int32_t, 7>& credits,
             return fail("cannot write credit-combine args");
         }
     }
-    if (!write_word(kCommandBase, 25)) {
+    if (!write_word(kCommandBase, 31)) {
         return fail("cannot write credit-combine command");
     }
     if (!run_command()) return false;
@@ -928,7 +1012,7 @@ bool RawFieldVM::combined_trunk_credit(
         !write_word(kProposalBase + 1, best_wrong) ||
         !write_word(kProposalBase + 2, static_cast<std::uint32_t>(base_lr_q16)) ||
         !write_word(kProposalBase + 3, static_cast<std::uint32_t>(threshold_q16)) ||
-        !write_word(kCommandBase, 26)) {
+        !write_word(kCommandBase, 32)) {
         return fail("cannot write combined-credit command");
     }
     if (!run_command()) return false;
@@ -954,7 +1038,7 @@ bool RawFieldVM::combined_trunk_credit_all(
         !write_word(kProposalBase + 1, best_wrong) ||
         !write_word(kProposalBase + 2, static_cast<std::uint32_t>(base_lr_q16)) ||
         !write_word(kProposalBase + 3, static_cast<std::uint32_t>(threshold_q16)) ||
-        !write_word(kCommandBase, 27)) {
+        !write_word(kCommandBase, 33)) {
         return fail("cannot write combined-all command");
     }
     if (!run_command()) return false;
@@ -1005,7 +1089,7 @@ bool RawFieldVM::combined_trunk_credit_wide(
         !write_word(kProposalBase + 1, best_wrong) ||
         !write_word(kProposalBase + 2, static_cast<std::uint32_t>(base_lr_q16)) ||
         !write_word(kProposalBase + 3, static_cast<std::uint32_t>(threshold_q16)) ||
-        !write_word(kCommandBase, 28)) {
+        !write_word(kCommandBase, 34)) {
         return fail("cannot write combined-wide command");
     }
     if (!run_command()) return false;
