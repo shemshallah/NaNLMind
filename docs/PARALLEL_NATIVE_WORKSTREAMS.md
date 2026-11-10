@@ -77,3 +77,15 @@ Saved context tables (loadable by `context-train ... load=`):
 
 `HW4` / `HW5` are local parallel job labels. They are not canonical HW nodes;
 the topology remains one `HW0::BS0` universe.
+
+## Agent results
+
+- `nan-hash` commit `c81d1b9`: raw guest FNV-1a bucket selection; tests pass.
+- `nan-backoff` commit `88861a8`: raw guest exact/fallback route; host-vs-guest
+  parity `mismatches=0`; same-corpus `73.7821%`, held-out `66.7362%`.
+- `nan-batch` commit `8836d7f`: guest batch command; 1,500-sample checkpoint
+  bit parity; ~11% pinned train speedup on 20k lines.
+- `nan-field`, `nan-copy`, `nan-eval`: worktree experiments; not merged.
+
+The main tree currently has `c81d1b9` integrated. The remaining agent commits
+are in isolated worktrees and are not claimed as main-tree parity.
