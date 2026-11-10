@@ -274,6 +274,17 @@ The command writes the vector bank, code, kNN and spectral artifacts under the
 output prefix. The external `state` directory is only used by older callers;
 the production runner selects the external path.
 
+For the chunked training/metric loop over the same encoded windows, use:
+
+```sh
+./build/nanlm-universal phase-train state/gutenberg_150_train.txt \
+  0 8 64 0 state/phase_train
+```
+
+`phase-train` trains the codebook in the guest, warm-updates it in 64-window
+chunks with `mth_pq_update`, and emits JSONL train/eval L1, matrix probe,
+hot-head/triad and 43/85 field metrics.
+
 ### NaNROUTER runner
 
 `NaNROUTER/runner_riddle/phase_bank_runner.py` schedules the raw guest command
