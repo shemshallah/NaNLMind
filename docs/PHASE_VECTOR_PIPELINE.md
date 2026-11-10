@@ -753,6 +753,17 @@ RIVER DRINKS LIBRARY
   score        135
 ```
 
+Every word triple is also written to `PREFIX.triangles.bin` as:
+
+```text
+[side0, side1, side2, area_proxy, tightness, orientation, shape_score]
+```
+
+The model is trained by `mth_tri_model_observe` from raw sentence triangles and
+scored by `mth_tri_model_score`. A two-line smoke run produced 6 word vectors and
+2 scored triangles. This is the first raw shape prior; it currently trains on
+positive sentence triangles only.
+
 The raw model currently learns only positive sentence triangles; it is a
 shape prior, not a supervised truth classifier. A contrastive negative corpus
 is the next training step.
