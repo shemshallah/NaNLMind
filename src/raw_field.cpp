@@ -19,7 +19,7 @@ constexpr std::uint32_t kHotMapping = 0x8000;
 constexpr std::uint32_t kMicroX0 = 0x7000;
 constexpr std::uint32_t kMicroX1 = 0x7100;
 constexpr std::uint32_t kMicroOut = 0x7200;
-constexpr std::uint32_t kMaxSteps = 5'000'000;
+constexpr std::uint32_t kMaxSteps = 200'000'000;
 
 void bump_triad_credit(std::int16_t& value, int delta) {
     const int next = static_cast<int>(value) + delta;
@@ -315,10 +315,9 @@ bool RawFieldVM::micro_feature(
 }
 
 
-bool RawFieldVM::causal_trunk(
+bool RawFieldVM::write_trunk_inputs(
     const std::vector<std::array<float, kRawFeatureDim>>& tokens,
-    const TrunkWeights& weights,
-    std::array<float, kRawFeatureDim>& out) {
+    const TrunkWeights& weights) {
     if (tokens.empty() || tokens.size() > kRawTrunkContext) {
         return fail("causal trunk token count outside 1..256");
     }
@@ -355,6 +354,14 @@ bool RawFieldVM::causal_trunk(
             }
         }
     }
+    return true;
+}
+
+bool RawFieldVM::causal_trunk(
+    const std::vector<std::array<float, kRawFeatureDim>>& tokens,
+    const TrunkWeights& weights,
+    std::array<float, kRawFeatureDim>& out) {
+    if (!write_trunk_inputs(tokens, weights)) return false;
     if (!write_word(kProposalBase, static_cast<std::uint32_t>(tokens.size())) ||
         !write_word(kCommandBase, 10)) {
         return fail("cannot write causal-trunk command");
@@ -370,14 +377,14 @@ bool RawFieldVM::causal_trunk(
     return true;
 }
 
+
 bool RawFieldVM::readout_train(
     const std::vector<std::array<float, kRawFeatureDim>>& tokens,
     const TrunkWeights& weights, std::uint8_t target, float learning_rate,
-    bool& correct, float& target_score, float& best_wrong_score) {
-    // Load tokens/weights by running the trunk forward once; the readout
-    // weights at 0xB000 persist across calls.
-    std::array<float, kRawFeatureDim> feature{};
-    if (!causal_trunk(tokens, weights, feature)) return false;
+    bool& correct, float& target_score, float& best_wrong_score,
+    float& loss) {
+    // Load tokens/weights once; the readout weights at 0xB000 persist.
+    if (!write_trunk_inputs(tokens, weights)) return false;
     std::uint32_t lr_bits = 0;
     std::memcpy(&lr_bits, &learning_rate, sizeof(lr_bits));
     if (!write_word(kProposalBase + 0, static_cast<std::uint32_t>(tokens.size())) ||
@@ -390,8 +397,10 @@ bool RawFieldVM::readout_train(
     correct = (read_word(kResultBase + 0) & 1u) != 0;
     const std::uint32_t ts = read_word(kResultBase + 1);
     const std::uint32_t bs = read_word(kResultBase + 2);
+    const std::uint32_t ls = read_word(kResultBase + 3);
     std::memcpy(&target_score, &ts, sizeof(ts));
     std::memcpy(&best_wrong_score, &bs, sizeof(bs));
+    std::memcpy(&loss, &ls, sizeof(ls));
     return true;
 }
 
@@ -423,6 +432,67 @@ bool RawFieldVM::field_commit(
     for (std::size_t i = 0; i < votes.size(); ++i) {
         votes[i] = static_cast<std::uint8_t>(read_word(0x7100 +
                                                       static_cast<std::uint32_t>(i)) & 1u);
+    }
+    return true;
+}
+
+
+bool RawFieldVM::causal_trunk_wide(
+    const std::vector<float>& tokens, std::size_t count,
+    const WideTrunkWeights& weights, std::vector<float>& out) {
+    const std::size_t d = weights.dim;
+    const std::size_t h = weights.hidden;
+    if (count == 0 || count > 1024 || d == 0 || d > 128 || h == 0 || h > 512 ||
+        tokens.size() != count * d ||
+        weights.wq.size() != d * d || weights.wk.size() != d * d ||
+        weights.wv.size() != d * d || weights.wout.size() != d * d ||
+        weights.w1.size() != h * d || weights.w2.size() != d * h) {
+        return fail("wide causal trunk dimensions are invalid");
+    }
+    auto write_float = [&](std::uint32_t index, float value) {
+        std::uint32_t bits = 0;
+        std::memcpy(&bits, &value, sizeof(bits));
+        return write_word(index, bits);
+    };
+    for (std::size_t i = 0; i < tokens.size(); ++i) {
+        if (!write_float(0x10000u + static_cast<std::uint32_t>(i), tokens[i])) {
+            return fail("cannot write wide-trunk tokens");
+        }
+    }
+    const struct {
+        const std::vector<float>* values;
+        std::uint32_t base;
+    } blocks[] = {
+        {&weights.wq, 0x60000u},
+        {&weights.wk, 0x60000u + static_cast<std::uint32_t>(d * d)},
+        {&weights.wv, 0x60000u + static_cast<std::uint32_t>(2 * d * d)},
+        {&weights.wout, 0x60000u + static_cast<std::uint32_t>(3 * d * d)},
+        {&weights.w1, 0x60000u + static_cast<std::uint32_t>(4 * d * d)},
+        {&weights.w2, 0x60000u + static_cast<std::uint32_t>(4 * d * d + h * d)},
+    };
+    for (const auto& block : blocks) {
+        for (std::size_t i = 0; i < block.values->size(); ++i) {
+            if (!write_float(block.base + static_cast<std::uint32_t>(i),
+                             (*block.values)[i])) {
+                return fail("cannot write wide-trunk weights");
+            }
+        }
+    }
+    if (!write_word(kProposalBase + 0, static_cast<std::uint32_t>(count)) ||
+        !write_word(kProposalBase + 1, static_cast<std::uint32_t>(d)) ||
+        !write_word(kProposalBase + 2, static_cast<std::uint32_t>(h)) ||
+        !write_word(kCommandBase, 13)) {
+        return fail("cannot write wide-trunk command");
+    }
+    if (!run_command()) return false;
+    if (read_word(kResultBase) != d) {
+        return fail("raw wide trunk returned the wrong feature count " +
+                    std::to_string(read_word(kResultBase)));
+    }
+    out.assign(d, 0.0f);
+    for (std::size_t i = 0; i < d; ++i) {
+        const std::uint32_t bits = read_word(0x200000u + static_cast<std::uint32_t>(i));
+        std::memcpy(&out[i], &bits, sizeof(bits));
     }
     return true;
 }

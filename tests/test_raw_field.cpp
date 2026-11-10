@@ -266,14 +266,58 @@ int main() {
     // Native readout training over the raw trunk feature.
     vm.reset_readout();
     bool correct = true;
-    float target_score = 0.0f, best_wrong = 0.0f;
+    float target_score = 0.0f, best_wrong = 0.0f, loss = 0.0f;
     CHECK(vm.readout_train(one_token, weights, 1, 0.5f,
-                           correct, target_score, best_wrong));
+                           correct, target_score, best_wrong, loss));
     CHECK(!correct);
+    CHECK(loss >= 0.0f);
     CHECK(vm.readout_train(one_token, weights, 1, 0.0f,
-                           correct, target_score, best_wrong));
+                           correct, target_score, best_wrong, loss));
     CHECK(correct);
     CHECK(target_score > best_wrong);
+
+    // Wide causal trunk: runtime D/H and 1024-token context.  Use a
+    // diagonal core so the expected one-token result is checkable.
+    WideTrunkWeights wide;
+    wide.dim = 16;
+    wide.hidden = 64;
+    wide.wq.assign(wide.dim * wide.dim, 0.0f);
+    wide.wk = wide.wq;
+    wide.wv = wide.wq;
+    wide.wout = wide.wq;
+    for (std::size_t i = 0; i < wide.dim; ++i) {
+        wide.wq[i * wide.dim + i] = 1.0f;
+        wide.wk[i * wide.dim + i] = 1.0f;
+        wide.wv[i * wide.dim + i] = 1.0f;
+        wide.wout[i * wide.dim + i] = 1.0f;
+    }
+    wide.w1.assign(wide.hidden * wide.dim, 0.0f);
+    wide.w2.assign(wide.dim * wide.hidden, 0.0f);
+    for (std::size_t i = 0; i < wide.dim; ++i) {
+        wide.w1[i * wide.dim + i] = 1.0f;
+        wide.w2[i * wide.hidden + i] = 1.0f;
+    }
+    std::vector<float> wide_tokens(wide.dim);
+    for (std::size_t d = 0; d < wide.dim; ++d) {
+        wide_tokens[d] = 0.25f + 0.01f * static_cast<float>(d);
+    }
+    std::vector<float> wide_out;
+    CHECK(vm.causal_trunk_wide(wide_tokens, 1, wide, wide_out));
+    CHECK_EQ(wide_out.size(), wide.dim);
+    const float wide_expected = 2.0f * wide_tokens[0] +
+                                std::tanh(2.0f * wide_tokens[0]);
+    CHECK(std::fabs(wide_out[0] - wide_expected) < 2e-3f);
+
+    wide_tokens.assign(1024 * wide.dim, 0.0f);
+    for (std::size_t tkn = 0; tkn < 1024; ++tkn) {
+        for (std::size_t d = 0; d < wide.dim; ++d) {
+            wide_tokens[tkn * wide.dim + d] =
+                0.1f + 0.001f * static_cast<float>((tkn + d) % 13);
+        }
+    }
+    CHECK(vm.causal_trunk_wide(wide_tokens, 1024, wide, wide_out));
+    CHECK_EQ(wide_out.size(), wide.dim);
+    CHECK(std::isfinite(wide_out[0]));
 
     Universe feature_universe;
     SparseField feature_field(feature_universe);
@@ -288,6 +332,13 @@ int main() {
     CHECK_EQ(feature_result.count, SparseField::kActive);
     for (std::size_t i = 0; i < kRawFeatureDim; ++i) {
         q16[i] = static_cast<std::int32_t>(std::lrintf(causal_feature[i] * 65536.0f));
+    }
+    CHECK(feature_field.forward(q16, feature_result));
+    CHECK_EQ(feature_result.count, SparseField::kActive);
+    CHECK(feature_field.configure(wide.dim, 4, 8));
+    feature_field.seed(0x1234);
+    for (std::size_t i = 0; i < wide.dim; ++i) {
+        q16[i] = static_cast<std::int32_t>(std::lrintf(wide_out[i] * 65536.0f));
     }
     CHECK(feature_field.forward(q16, feature_result));
     CHECK_EQ(feature_result.count, SparseField::kActive);

@@ -142,6 +142,20 @@ mth_rt_out:
   MOVI r12,@mth_rt_target_score
   LD r2,r12,0
   ADD r3,r9,r0
+  ; one-margin hinge loss = max(0, best_wrong - target_score + 1.0)
+  MOVI r4,0
+  MOVHI r4,0x3F80
+  FADD r4,r3,r4
+  FSUB r4,r4,r2
+  MOVI r5,0
+  FCMP r4,r5
+  JMP[LE] @mth_rt_loss_zero
+  JMP @mth_rt_loss_store
+mth_rt_loss_zero:
+  MOVI r4,0
+mth_rt_loss_store:
+  MOVI r12,@mth_rt_loss
+  ST r4,r12,0
   MOVI r13,1
   MOVI r12,@mth_rt_link
   LD r15,r12,0
@@ -156,4 +170,6 @@ mth_rt_target_byte:
 mth_rt_lr:
   .word 0
 mth_rt_target_score:
+  .word 0
+mth_rt_loss:
   .word 0

@@ -31,6 +31,7 @@ adaptive-field mathematics:
 | `mth_hot_trihead.nas` | raw 255-head hot scan, 3-hot-head triad grouping and 85x3 auto-mapping |
 | `mth_micro_feature.nas` | raw two-token QKV/softmax/tanh feature feed for the sparse field |
 | `mth_trunk_causal.nas` | raw learned QKV/MLP causal feature block, 1..256 tokens |
+| `mth_trunk_wide.nas` | runtime-width learned QKV/MLP causal block, up to 1024 tokens |
 | `mth/drivers/field_driver.nas` | guest command dispatcher for proposal, field vote, coherence, remap, CFT, TRAIL and hot triheads |
 | `include/nanlm/raw_field.hpp` | host orchestration: writes command words, runs the VM, reads results |
 
@@ -124,6 +125,24 @@ output = h + W2 tanh(W1 h)
 command 10, and verifies the eight-lane output. The test covers T=1 with an
 exact learned-matrix expectation, non-identity matrices, T=8, T=48 and
 T=256. It does not train the matrices; training/credit is the next gate.
+
+## Wide causal trunk ABI
+
+`mth_trunk_wide.nas` is the runtime-width path:
+
+```text
+r1 T (1..1024), r2 D (1..128), r3 H (1..512)
+0x10000 tokens T*D
+0x30000 values T*D
+0x60000 Wq/Wk/Wv/Wout D*D each; W1 H*D; W2 D*H
+0x200000 output feature[D]
+```
+
+All loops are driven by runtime D/H/T. `RawFieldVM::causal_trunk_wide` writes
+the matrices and tokens, runs command 13, and returns D features. The test
+covers D=16, T=1 exact math, and T=1024. This is 1024-token context, not
+GPT-2-quality depth or training. The existing readout trainer is raw; the
+QKV/MLP matrices are still host-initialized, not backpropagated.
 
 ## Learnable credit, not host gradients
 

@@ -17,6 +17,8 @@
 ;   result at 0x4010: feature count (8)
 ; Causal trunk: T at 0x4001, tokens at 0x7000, weights at 0x9000,
 ;   output feature at 0xA000, result count at 0x4010
+; Wide causal trunk: T/D/H at 0x4001..0x4003, tokens 0x10000,
+;   weights 0x60000, output 0x200000, result D at 0x4010
 ;
 ; The driver contains no host math. It is assembled by nmk.awk and executed
 ; by the canonical NaN0S VM. The guest starts at word 0.
@@ -37,6 +39,7 @@ JMP @field_driver_entry
 .include "../nan16/mth_hot_trihead.nas"
 .include "../nan16/mth_micro_feature.nas"
 .include "../nan16/mth_trunk_causal.nas"
+.include "../nan16/mth_trunk_wide.nas"
 .include "../nan16/mth_readout_train.nas"
 
 field_driver_entry:
@@ -85,6 +88,9 @@ field_driver_main:
   MOVI r3,12
   CMP r2,r3
   JMP[EQ] @field_driver_readout_train
+  MOVI r3,13
+  CMP r2,r3
+  JMP[EQ] @field_driver_trunk_wide
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -233,6 +239,7 @@ field_driver_readout_train:
   ST r1,r10,0
   ST r2,r10,1
   ST r3,r10,2
+  ST r4,r10,3
   JMP @field_driver_return
 
 field_driver_field_commit:
@@ -244,6 +251,16 @@ field_driver_field_commit:
   MOVI r10,0x4010
   ST r1,r10,0
   ST r2,r10,1
+  JMP @field_driver_return
+
+field_driver_trunk_wide:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  CALL @mth_trunk_wide
+  MOVI r10,0x4010
+  ST r1,r10,0
   JMP @field_driver_return
 
 field_driver_return:

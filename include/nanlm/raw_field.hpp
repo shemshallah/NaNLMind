@@ -38,6 +38,17 @@ struct RawProposalResult {
 constexpr std::size_t kRawFeatureDim = 8;
 constexpr std::size_t kRawTrunkContext = 256;
 
+struct WideTrunkWeights {
+    std::size_t dim = 0;
+    std::size_t hidden = 0;
+    std::vector<float> wq;
+    std::vector<float> wk;
+    std::vector<float> wv;
+    std::vector<float> wout;
+    std::vector<float> w1;
+    std::vector<float> w2;
+};
+
 struct TrunkWeights {
     std::array<float, 64> wq{};
     std::array<float, 64> wk{};
@@ -103,13 +114,21 @@ public:
                        std::array<float, kRawFeatureDim>& out);
     // Learned QKV/MLP causal feature block.  Tokens are 8-lane float32
     // vectors; the guest attends causally to the last token.
+    bool write_trunk_inputs(
+        const std::vector<std::array<float, kRawFeatureDim>>& tokens,
+        const TrunkWeights& weights);
     bool causal_trunk(const std::vector<std::array<float, kRawFeatureDim>>& tokens,
                       const TrunkWeights& weights,
                       std::array<float, kRawFeatureDim>& out);
+    // Same block with runtime width D<=128, hidden H<=512 and T<=1024.
+    bool causal_trunk_wide(const std::vector<float>& tokens, std::size_t count,
+                           const WideTrunkWeights& weights,
+                           std::vector<float>& out);
     bool readout_train(
         const std::vector<std::array<float, kRawFeatureDim>>& tokens,
         const TrunkWeights& weights, std::uint8_t target, float learning_rate,
-        bool& correct, float& target_score, float& best_wrong_score);
+        bool& correct, float& target_score, float& best_wrong_score,
+        float& loss);
     void reset_readout();
     bool remap(const std::array<std::uint16_t, 6>& masks,
                std::uint32_t a, std::uint32_t b, bool target,

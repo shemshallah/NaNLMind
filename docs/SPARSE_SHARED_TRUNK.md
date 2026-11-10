@@ -168,6 +168,12 @@ feature that feeds `SparseField`. Tests cover T=1 exact learned-matrix math,
 non-identity weights, T=8, T=48 and T=256. It is still a forward block; weight
 training and credit updates are the next gate.
 
+The wide path `mth_trunk_wide.nas` supports runtime D up to 128, hidden H up
+to 512, and 1024 tokens. `RawFieldVM::causal_trunk_wide` writes host-loaded
+matrices and returns D features; the test exercises D=16 with T=1 exact math
+and T=1024. The readout trainer is already raw; the QKV/MLP matrices remain
+host-initialized until the local matrix-credit step lands.
+
 This is the native **head/field** half of the sparse trunk. The shared P1
 QKV/MLP trunk kernel and its feature feed are still the next native step; the
 current Python reference supplies that feature vector and is not counted as the
