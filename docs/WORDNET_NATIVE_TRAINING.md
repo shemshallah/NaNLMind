@@ -4,9 +4,10 @@ Status: **native training runs and matched references**, not a language
 quality claim. The native model is the raw NaN16 causal trunk forward
 (`mth_trunk_causal.nas`) plus a raw readout trainer. The trunk weights are
 initialized identity and are not updated in this run; the 255-way readout is
-trained by a local error-corrective rule. The full-softmax readout is the
-current learning path; the earlier 8-negative sampled path is a speed
-diagnostic, not a quality result.
+trained by a local error-corrective rule. The full-softmax readout and the
+16x16 conditional readout are earlier feature-learning paths; the current
+best path is the context-indexed 16x16 class memory (`context-train`). The
+8-negative sampled path is a speed diagnostic, not a quality result.
 
 ## Corpus
 
