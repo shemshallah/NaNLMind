@@ -1,0 +1,280 @@
+.org 0
+JMP @mth_pipeline_main
+.include "../nan16/mth_q16_mul.nas"
+.include "../nan16/mth_cft_credit.nas"
+.include "../nan16/mth_trail_credit.nas"
+.include "../nan16/mth_field_commit.nas"
+mth_pipeline_main:
+  MOVI r13,1
+  ; CFT: zero edges, error 1.0, rate 0.6 -> delta 13107.
+  MOVI r1,0
+  MOVI r2,0
+  MOVI r3,0
+  MOVI r4,0
+  MOVHI r4,1
+  MOVI r5,0x9999
+  CALL @mth_cft_credit
+  MOVI r10,0x3333
+  CMP r1,r10
+  JMP[NE] @mth_pipeline_fail
+  CMP r2,r10
+  JMP[NE] @mth_pipeline_fail
+  MOVI r10,0xCCCD
+  MOVHI r10,0xFFFF
+  CMP r3,r10
+  JMP[NE] @mth_pipeline_fail
+
+  ; TRAIL: fixed expected update from the standalone fixture.
+  MOVI r1,0x8000
+  MOVI r2,0x6666
+  MOVI r3,0x4CCC
+  MOVI r4,0x3333
+  MOVI r5,0x1999
+  MOVI r6,0x1999
+  MOVI r7,0x3333
+  MOVI r8,0x0CCC
+  MOVI r9,0x051E
+  MOVI r10,0xE666
+  MOVI r11,0xCCCC
+  CALL @mth_trail_credit
+  MOVI r10,0x1F39
+  CMP r1,r10
+  JMP[NE] @mth_pipeline_fail
+  MOVI r10,0x29FA
+  CMP r2,r10
+  JMP[NE] @mth_pipeline_fail
+  MOVI r10,0xF924
+  MOVHI r10,0xFFFF
+  CMP r3,r10
+  JMP[NE] @mth_pipeline_fail
+
+  ; Field commit: 43 of 85 credits above threshold.
+  MOVI r10,@mth_pipeline_credits
+  MOVI r11,0
+  MOVI r12,0x1000
+mth_pipeline_fill:
+  ST r12,r10,0
+  ADDI r10,r10,1
+  ADDI r11,r11,1
+  MOVI r12,85
+  CMP r11,r12
+  JMP[LT] @mth_pipeline_fill
+  MOVI r10,@mth_pipeline_credits
+  MOVI r11,43
+  MOVI r12,0x2000
+mth_pipeline_seed:
+  ST r12,r10,0
+  ADDI r10,r10,1
+  SUB r11,r11,r13
+  CMP r11,r0
+  JMP[NE] @mth_pipeline_seed
+  MOVI r1,@mth_pipeline_credits
+  MOVI r2,0x1800
+  MOVI r3,@mth_pipeline_votes
+  CALL @mth_field_commit
+  MOVI r10,43
+  CMP r1,r10
+  JMP[NE] @mth_pipeline_fail
+  MOVI r10,1
+  CMP r2,r10
+  JMP[NE] @mth_pipeline_fail
+
+  MOVI r1,@mth_pipeline_pass
+  CALL @mth_puts
+  HALT
+mth_pipeline_fail:
+  MOVI r1,@mth_pipeline_bad
+  CALL @mth_puts
+  HALT
+mth_puts:
+  MOVI r4,255
+mth_puts_word:
+  LD r2,r1,0
+  MOVI r3,4
+mth_puts_byte:
+  BOOL.8 r5,r2,r4
+  CMP r5,r0
+  RET[EQ]
+  PUTC r5
+  SHR r2,r2,8
+  SUB r3,r3,r13
+  JMP[NE] @mth_puts_byte
+  ADD r1,r1,r13
+  JMP @mth_puts_word
+mth_pipeline_pass:
+.str "MTH CREDIT PIPELINE PASS\n"
+mth_pipeline_bad:
+.str "MTH CREDIT PIPELINE FAIL\n"
+mth_pipeline_credits:
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+
+mth_pipeline_votes:
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0
+.word 0

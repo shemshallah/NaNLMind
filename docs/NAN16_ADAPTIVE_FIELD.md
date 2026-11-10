@@ -189,6 +189,7 @@ skip. The default fixtures cover:
 - a two-token QKV/softmax/tanh micro-block forward primitive;
 - CFT-credit -> triad -> 43/85 field commit;
 - native readout training on the raw causal-trunk feature;
+- a composed CFT -> TRAIL -> 43/85 field-commit pipeline fixture;
 - the field-command driver and the `RawFieldVM` chart bridge;
 - `field-selftest` and `test_raw_field` on the vendored canonical VM.
 

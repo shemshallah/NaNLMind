@@ -60,6 +60,8 @@ FIXTURES = (
             "MTH FIELD COMMIT PASS"),
     Fixture("readout_train", "mth/tests/mth_readout_train_test.nas", 1_000_000,
             "MTH READOUT TRAIN PASS"),
+    Fixture("credit_pipeline", "mth/tests/mth_credit_pipeline_test.nas", 200_000,
+            "MTH CREDIT PIPELINE PASS"),
     Fixture("hot_trihead", "mth/tests/mth_hot_trihead_test.nas", 5_000_000,
             "MTH HOT TRIHEAD PASS"),
     Fixture("micro_feature", "mth/tests/mth_micro_feature_test.nas", 200_000,
