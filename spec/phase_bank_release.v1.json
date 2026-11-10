@@ -88,5 +88,19 @@
     }
   ],
   "notes": "The bank is stored as ordered release parts: part00..part01 (180 MiB) and chunk02..chunk13 (40 MiB); concatenate in the order listed.",
-  "status": "uploaded; all part sizes and sha256 digests verified against GitHub release assets"
+  "status": "uploaded; all part sizes and sha256 digests verified against GitHub release assets",
+  "codebook": {
+    "file": "gutenberg150_d64.codebook8x256.bin",
+    "bytes": 131112,
+    "sha256": "b082bd35a92199914c60b4d066b293706d33ebdc7bdebeb4fa9406ecdb7682c9",
+    "schema": "nanlm.phase-codebook/1",
+    "pipeline_dim": 128,
+    "subvectors": 8,
+    "subdim": 16,
+    "codewords": 256,
+    "context_bytes": 8,
+    "context_words": null,
+    "training_windows": 4096,
+    "release_asset": true
+  }
 }
