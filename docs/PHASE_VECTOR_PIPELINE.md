@@ -191,21 +191,6 @@ codebook is not a concept graph; the leaf is not a synset ID.
 The old byte-pair C(256,2) object remains a diagnostic. The new object must be
 tagged `vector-code-hypermatrix` with encoder/codebook digests.
 
-### C(256,2) vector-code observer
-
-`mth_vector_matrix.nas` owns the 32,640 unordered pair cells at guest word
-`0x300000`:
-
-```text
-pair_index(a,b) = a*255 - a*(a-1)/2 + (b-a-1), a < b
-```
-
-The phase ingest path quantizes encoded vectors into up to 256 codes, then
-accumulates consecutive code pairs with Q16 support in the guest. The host
-writes `state/vector_code_matrix.bin` and records the number of updates plus a
-raw probe result in the manifest. This is the first C(256,2) vector-code
-observer; it is separate from the byte-pair corpus matrix.
-
 ## 8. Tests
 
 Raw fixtures:
@@ -232,7 +217,7 @@ make phase-ingest-check
 ### Corpus ingest
 
 ```sh
-./build/nanlm-universal phase-ingest CORPUS [MAX_LINES] [WINDOW] [DIM] [MAX_WINDOWS]
+./build/nanlm-universal phase-ingest CORPUS [MAX_LINES] [WINDOW] [DIM] [MAX_WINDOWS] [OUTPUT_PREFIX]
 ```
 
 The host stages byte windows and writes:
@@ -245,7 +230,7 @@ The host stages byte windows and writes:
 - `state/phase_vectors.json` — counts, dimensions, shard histogram, matrix
   updates, probe head/score, and pipeline summary.
 
-The ingest pipeline uses a local codebook taken from the first 16 encoded
+The ingest pipeline uses a local codebook taken from the first 256 encoded
 windows and a sparse bank from the first 256. This is a functional first-stage
 pipeline, not a trained corpus codebook.
 
