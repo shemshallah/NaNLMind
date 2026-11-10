@@ -1140,78 +1140,63 @@ bool RawFieldVM::readout_context(std::uint8_t target, float learning_rate,
     return true;
 }
 
-bool RawFieldVM::reset_context_copy(
-    const std::vector<std::uint32_t>& exact_contexts,
-    std::size_t buckets, std::size_t aux_buckets) {
-    if (buckets == 0 || buckets > 16384 || aux_buckets == 0 ||
-        aux_buckets > kContextAuxMax) {
-        return fail("context copy table dimensions are invalid");
-    }
-    if (exact_contexts.size() > buckets) {
-        return fail("context copy exact map exceeds bucket count");
-    }
-    for (std::uint32_t i = 0; i < kContextMapWords; ++i) {
-        if (!write_word(kContextMapBase + i, 0)) {
-            return fail("cannot reset context exact-key map");
-        }
-    }
-    for (std::size_t bucket = 0; bucket < exact_contexts.size(); ++bucket) {
-        const std::uint32_t key = exact_contexts[bucket];
-        std::uint32_t slot = context_copy_hash(key) % kContextMapSlots;
-        for (std::uint32_t probe = 0; probe < kContextMapSlots; ++probe) {
-            const std::uint32_t base = kContextMapBase + slot * 3u;
-            if (read_word(base) == 0) {
-                if (!write_word(base, 1) ||
-                    !write_word(base + 1u, key) ||
-                    !write_word(base + 2u, static_cast<std::uint32_t>(bucket))) {
-                    return fail("cannot write context exact-key map");
-                }
-                break;
-            }
-            slot = (slot + 1u) % kContextMapSlots;
-            if (probe + 1u == kContextMapSlots) {
-                return fail("context exact-key map is full");
-            }
-        }
-    }
-    const std::size_t aux_words = 272u * aux_buckets;
-    for (std::size_t i = 0; i < aux_words; ++i) {
-        if (!write_word(kContextCopyBase + static_cast<std::uint32_t>(i), 0)) {
-            return fail("cannot reset context copy table");
-        }
-    }
-    return true;
-}
-
-bool RawFieldVM::readout_context_copy(
-    std::uint8_t target, float learning_rate, std::uint32_t context_key,
-    std::size_t buckets, std::size_t exact_count, std::size_t aux_buckets,
-    float gate_weight, bool& correct, float& loss,
-    std::uint8_t& predicted_class) {
-    if (buckets == 0 || buckets > 16384 || exact_count >= buckets ||
-        aux_buckets == 0 || aux_buckets > kContextAuxMax) {
-        return fail("invalid context copy readout dimensions");
+bool RawFieldVM::readout_context_joint(std::uint8_t target,
+                                       float learning_rate,
+                                       std::uint32_t bucket,
+                                       std::size_t buckets, bool& correct,
+                                       float& loss,
+                                       std::uint8_t& predicted_high,
+                                       std::uint8_t& predicted_low) {
+    if (buckets == 0 || buckets > 16384 || bucket >= buckets) {
+        return fail("invalid context joint-readout bucket");
     }
     std::uint32_t lr_bits = 0;
     std::memcpy(&lr_bits, &learning_rate, sizeof(lr_bits));
-    std::uint32_t weight_bits = 0;
-    std::memcpy(&weight_bits, &gate_weight, sizeof(weight_bits));
     if (!write_word(kProposalBase + 0, target) ||
         !write_word(kProposalBase + 1, lr_bits) ||
-        !write_word(kProposalBase + 2, context_key) ||
+        !write_word(kProposalBase + 2, bucket) ||
         !write_word(kProposalBase + 3, static_cast<std::uint32_t>(buckets)) ||
-        !write_word(kProposalBase + 4, static_cast<std::uint32_t>(exact_count)) ||
-        !write_word(kProposalBase + 5, static_cast<std::uint32_t>(aux_buckets)) ||
-        !write_word(kProposalBase + 6, weight_bits) ||
-        !write_word(kCommandBase, 26)) {
-        return fail("cannot write context copy command");
+        !write_word(kCommandBase, 30)) {
+        return fail("cannot write context joint-readout command");
     }
     if (!run_command()) return false;
     correct = (read_word(kResultBase + 0) & 1u) != 0;
     const std::uint32_t ls = read_word(kResultBase + 1);
     std::memcpy(&loss, &ls, sizeof(ls));
-    predicted_class = static_cast<std::uint8_t>(read_word(kResultBase + 2));
+    predicted_high = static_cast<std::uint8_t>(read_word(kResultBase + 2) & 15u);
+    predicted_low = static_cast<std::uint8_t>(read_word(kResultBase + 3) & 15u);
     return true;
+}
+
+bool RawFieldVM::set_context_high(std::size_t bucket, std::size_t high_class,
+                                  float value, std::size_t buckets) {
+    if (buckets == 0 || buckets > 16384 || bucket >= buckets ||
+        high_class >= 16) {
+        return fail("invalid context high-cell");
+    }
+    std::uint32_t bits = 0;
+    std::memcpy(&bits, &value, sizeof(bits));
+    const std::uint32_t word = 0x100000u +
+        static_cast<std::uint32_t>(high_class * buckets + bucket);
+    return write_word(word, bits) ? true
+                                  : fail("cannot write context high-cell");
+}
+
+bool RawFieldVM::set_context_low(std::size_t bucket, std::size_t high_class,
+                                 std::size_t low_class, float value,
+                                 std::size_t buckets) {
+    if (buckets == 0 || buckets > 16384 || bucket >= buckets ||
+        high_class >= 16 || low_class >= 16) {
+        return fail("invalid context low-cell");
+    }
+    std::uint32_t bits = 0;
+    std::memcpy(&bits, &value, sizeof(bits));
+    const std::uint32_t base = 0x100000u +
+        static_cast<std::uint32_t>(16 * buckets);
+    const std::uint32_t word = base + static_cast<std::uint32_t>(
+        (high_class * 16 + low_class) * buckets + bucket);
+    return write_word(word, bits) ? true
+                                  : fail("cannot write context low-cell");
 }
 
 void RawFieldVM::reset_readout() {

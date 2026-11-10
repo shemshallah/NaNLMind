@@ -170,6 +170,9 @@ mth_s16t_update_done:
   LD r1,r12,0
   MOVI r12,@mth_s16t_loss
   LD r2,r12,0
+  ; r4 = max class probability (1/sum_exp); r4 is float bits.
+  MOVI r12,@mth_s16t_inv
+  LD r4,r12,0
   MOVI r12,@mth_s16t_target
   LD r12,r12,0
   CMP r1,r12

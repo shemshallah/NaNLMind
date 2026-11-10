@@ -373,17 +373,16 @@ public:
                          bool& correct, float& loss,
                          std::uint8_t& predicted_high,
                          std::uint8_t& predicted_low);
-    // Raw context memory + copy/induction table.  The exact-key map is data
-    // transported once; per-sample exact/backoff routing, the suffix hash and
-    // the combined scoring gate all execute in mth_context_copy.nas.
-    bool reset_context_copy(const std::vector<std::uint32_t>& exact_contexts,
-                            std::size_t buckets, std::size_t aux_buckets);
-    bool readout_context_copy(std::uint8_t target, float learning_rate,
-                              std::uint32_t context_key,
-                              std::size_t buckets, std::size_t exact_count,
-                              std::size_t aux_buckets, float gate_weight,
-                              bool& correct, float& loss,
-                              std::uint8_t& predicted_class);
+    bool readout_context_joint(std::uint8_t target, float learning_rate,
+                               std::uint32_t bucket, std::size_t buckets,
+                               bool& correct, float& loss,
+                               std::uint8_t& predicted_high,
+                               std::uint8_t& predicted_low);
+    bool set_context_high(std::size_t bucket, std::size_t high_class,
+                          float value, std::size_t buckets);
+    bool set_context_low(std::size_t bucket, std::size_t high_class,
+                         std::size_t low_class, float value,
+                         std::size_t buckets);
     void reset_readout();
     bool set_readout_row(std::uint8_t row,
                          const std::array<float, kRawFeatureDim>& values);

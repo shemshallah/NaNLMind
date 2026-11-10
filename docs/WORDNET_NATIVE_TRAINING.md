@@ -234,6 +234,18 @@ earlier pure hash setting (8,192 buckets / 3 bytes) reached `57.8644%`
 same-corpus and `55.9874%` held-out; compact context IDs plus backoff is a
 large improvement.
 
+A joint high/low head-pair readout (`backoffjoint`) re-scores the same table
+and reaches **`67.2385%` held-out** versus `66.8894%` greedy on the epoch-3
+checkpoint (+0.3491 pp, loss unchanged at `2.25456`). It evaluates all 16
+conditional low heads and selects
+
+```text
+(h*, l*) = argmax_{h,l} P(h | context) * P(l | h, context)
+```
+
+instead of the greedy high-then-low path. The gain is selection-only and the
+evaluation is about 6.6x slower; see `docs/CONTEXT_MEMORY_JOINT_READOUT.md`.
+
 ```sh
 # Best same-corpus setting.
 ./build/nanlm-universal context-train state/wordnet_corpus.txt \

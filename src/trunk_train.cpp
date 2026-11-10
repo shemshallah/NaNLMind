@@ -629,8 +629,8 @@ int context_train_cli(int argc, char** argv) {
                   << "TRAIN_FRACTION <1 holds out a random evaluation split.\n"
                   << "backoff uses exact high-frequency 4-byte contexts plus a 3-byte fallback.\n"
                   << "backoffcopy routes unseen 3-byte contexts to a copy/unigram table.\n"
-                  << "induction adds a raw 2-byte suffix continuation table; exact/backoff\n"
-                  << "routing and the combined copy gate run in mth_context_copy.nas.\n";
+                  << "backoffjoint uses the same tables but selects the class by joint\n"
+                  << "P(high|ctx)*max_low P(low|high,ctx) over all 16 low heads.\n";
         return 2;
     }
     const std::string corpus_path = argv[2];
@@ -639,7 +639,7 @@ int context_train_cli(int argc, char** argv) {
     float base_lr = 0.5f, train_fraction = 1.0f;
     bool backoff_mode = false;
     bool copy_backoff = false;
-    bool induction_mode = false;
+    bool joint_readout = false;
     std::size_t exact_limit_arg = 10500;
     std::size_t fallback_bytes = 3;
     std::size_t aux_buckets = 1024;
@@ -658,9 +658,9 @@ int context_train_cli(int argc, char** argv) {
         if (argc > 11) {
             const std::string route = argv[11];
             backoff_mode = route == "backoff" || route == "backoffcopy" ||
-                route == "induction";
+                           route == "backoffjoint";
             copy_backoff = route == "backoffcopy";
-            induction_mode = route == "induction";
+            joint_readout = route == "backoffjoint" || route == "joint";
         }
         if (argc > 12) exact_limit_arg = static_cast<std::size_t>(std::stoull(argv[12]));
         for (int i = 13; i < argc; ++i) {
@@ -858,28 +858,22 @@ int context_train_cli(int argc, char** argv) {
     }
     std::cout << "context_tables buckets=" << buckets
               << " train_samples=" << train_indices.size()
-              << " eval_samples=" << eval_indices.size();
-    if (induction_mode) {
-        std::cout << " route=induction exact=" << exact_count
-                  << " aux_buckets=" << aux_buckets
-                  << " weight=" << gate_weight;
-    }
-    std::cout << " reset_seconds="
+              << " eval_samples=" << eval_indices.size()
+              << " joint_readout=" << (joint_readout ? 1 : 0)
+              << " reset_seconds="
               << std::chrono::duration<double>(
                      std::chrono::steady_clock::now() - reset_started).count()
               << "\n";
-    const auto run_context = [&](std::size_t sample, float lr, bool& correct,
-                                 float& loss) -> bool {
-        if (induction_mode) {
-            std::uint8_t predicted = 0;
-            return vm.readout_context_copy(
-                targets[sample], lr, packed_contexts[sample], buckets,
-                exact_count, aux_buckets, gate_weight, correct, loss, predicted);
-        }
-        std::uint8_t ph = 0, pl = 0;
-        return vm.readout_context(targets[sample], lr,
-                                  context_buckets[sample], buckets,
-                                  correct, loss, ph, pl);
+    const auto readout = [&](std::uint8_t target, float learning_rate,
+                             std::uint32_t bucket, bool& correct, float& loss,
+                             std::uint8_t& predicted_high,
+                             std::uint8_t& predicted_low) {
+        return joint_readout
+            ? vm.readout_context_joint(target, learning_rate, bucket, buckets,
+                                       correct, loss, predicted_high,
+                                       predicted_low)
+            : vm.readout_context(target, learning_rate, bucket, buckets,
+                                 correct, loss, predicted_high, predicted_low);
     };
     const auto evaluate = [&](std::size_t epoch, bool final) -> bool {
         const auto started = std::chrono::steady_clock::now();
@@ -888,7 +882,10 @@ int context_train_cli(int argc, char** argv) {
         for (const std::size_t sample : eval_indices) {
             bool correct = false;
             float loss = 0.0f;
-            if (!run_context(sample, 0.0f, correct, loss)) {
+            std::uint8_t ph = 0, pl = 0;
+            if (!readout(targets[sample], 0.0f,
+                         context_buckets[sample],
+                         correct, loss, ph, pl)) {
                 std::cerr << "context eval failed: " << vm.error() << "\n";
                 return false;
             }
@@ -926,7 +923,10 @@ int context_train_cli(int argc, char** argv) {
             const std::size_t sample = order[position];
             bool correct = false;
             float loss = 0.0f;
-            if (!run_context(sample, base_lr, correct, loss)) {
+            std::uint8_t ph = 0, pl = 0;
+            if (!readout(targets[sample], base_lr,
+                         context_buckets[sample],
+                         correct, loss, ph, pl)) {
                 std::cerr << "context step failed: " << vm.error() << "\n";
                 return 7;
             }

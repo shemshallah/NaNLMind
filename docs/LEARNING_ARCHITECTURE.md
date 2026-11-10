@@ -184,6 +184,10 @@ canonical topology remains `HW0::BS0`.
 
 - `context-train ... backoff`: **73.7795% same-corpus** full accuracy after 3
   epochs; native random 80/20 **66.8894% held-out** after 5 epochs.
+- `context-train ... backoffjoint`: re-scores the same table with joint
+  high/low head-pair selection, **67.2385% held-out** versus `66.8894%` greedy
+  on the epoch-3 checkpoint (+0.3491 pp, loss unchanged). See
+  `docs/CONTEXT_MEMORY_JOINT_READOUT.md`.
 - `context-train ... 11456 4 0.1 1`: earlier hash-only `66.4822%`
   same-corpus and `61.3639%` held-out.
 - `context-train ... 8192 3 0.5 1`: earlier `57.8644%` same-corpus and

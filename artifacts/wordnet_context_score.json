@@ -1,0 +1,81 @@
+{
+  "schema": "nanlm.context-memory-score/1",
+  "runtime": "raw NaN16 table math; host orchestrates files and SHA-256",
+  "corpus": {
+    "path": "state/wordnet_corpus.txt",
+    "sha256": "18e6dff10f4af298eab92748999decd893b89c1d7453b398ff17b485f1464716",
+    "bytes": 8991484
+  },
+  "split": {
+    "seed": 99,
+    "train_fraction": 0.8,
+    "train_samples": 93963
+  },
+  "config": {
+    "buckets": 11456,
+    "exact_contexts": 10500,
+    "context_bytes": 4,
+    "lr": 0.1,
+    "epochs": 3,
+    "route": "backoff (exact 4-byte + 3-byte FNV fallback)"
+  },
+  "baseline_greedy": {
+    "tag": "ctx_full_eval",
+    "samples": 23491,
+    "loss": 2.25456,
+    "accuracy_percent": 66.8894,
+    "seconds": 1.26117,
+    "epoch": null
+  },
+  "joint_head_pair": {
+    "tag": "ctx_full_eval",
+    "samples": 23491,
+    "loss": 2.25456,
+    "accuracy_percent": 67.2385,
+    "seconds": 8.35993,
+    "epoch": null
+  },
+  "baseline_history": [
+    {
+      "tag": "ctx_eval",
+      "samples": 23491,
+      "loss": 3.00996,
+      "accuracy_percent": 67.0342,
+      "seconds": 1.40329,
+      "epoch": 1
+    },
+    {
+      "tag": "ctx_eval",
+      "samples": 23491,
+      "loss": 2.51844,
+      "accuracy_percent": 66.932,
+      "seconds": 1.27144,
+      "epoch": 2
+    },
+    {
+      "tag": "ctx_full_eval",
+      "samples": 23491,
+      "loss": 2.25456,
+      "accuracy_percent": 66.8894,
+      "seconds": 1.26117,
+      "epoch": null
+    }
+  ],
+  "joint_eval_history": [
+    {
+      "tag": "ctx_full_eval",
+      "samples": 23491,
+      "loss": 2.25456,
+      "accuracy_percent": 67.2385,
+      "seconds": 8.35993,
+      "epoch": null
+    }
+  ],
+  "checkpoint": {
+    "bytes": 12464128,
+    "sha256": "f61dc83951410c64feb4d40b200f2c0e8ad4cf892f59396c9fe9439bddd6cf1c"
+  },
+  "delta_accuracy_points": 0.34910000000000707,
+  "delta_loss": 0.0,
+  "note": "joint_head_pair re-scores the identical greedy checkpoint; it changes only the inference selection rule, not training."
+}
