@@ -2422,6 +2422,17 @@ int stream_train_cli(int argc, char** argv) {
             return 7;
         }
     }
+    HotTriheadResult geometry_hot;
+    bool geometry_hot_valid = false;
+    if (geometry_samples >= 2 && field_credits.size() == 255) {
+        std::array<std::int32_t, kTriadMemberCount> gc{};
+        std::copy(field_credits.begin(), field_credits.end(), gc.begin());
+        if (!vm.hot_triheads(gc, 0, geometry_hot)) {
+            std::cerr << "stream geometry trihead failed: " << vm.error() << "\n";
+            return 7;
+        }
+        geometry_hot_valid = true;
+    }
     if (!vm.temporal_slots_project()) {
         std::cerr << "stream temporal project failed: " << vm.error() << "\n";
         return 7;
@@ -2474,7 +2485,14 @@ int stream_train_cli(int argc, char** argv) {
                  << ", \"triangle_area\": " << tri_area
                  << ", \"triangle_tightness\": " << tri_tight
                  << ", \"triangle_orientation\": " << tri_orientation
-                 << ", \"field_perturbation\": " << field_value << "},\n"
+                 << ", \"field_perturbation\": " << field_value
+                 << ", \"geometry_hot_heads\": "
+                 << (geometry_hot_valid ? geometry_hot.hot_heads : 0)
+                 << ", \"geometry_hot_triads\": "
+                 << (geometry_hot_valid ? geometry_hot.hot_triads : 0)
+                 << ", \"geometry_field_hot\": "
+                 << (geometry_hot_valid && geometry_hot.field_hot ? "true" : "false")
+                 << "},\n"
                  << "  \"accepted_triads\": " << accepted << ",\n"
                  << "  \"field_hot\": " << (field_accepted ? "true" : "false") << "\n}\n";
     }

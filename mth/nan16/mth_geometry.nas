@@ -310,8 +310,9 @@ mth_geom_field_perturb:
   MOVI r12,@mth_g_dim
   ST r2,r12,0
   MOVI r10,0x0000
-  MOVHI r10,0x0026
+  MOVHI r10,0x002E
   MOVI r5,0
+  MOVI r6,0
 mth_g_field_loop:
   CMP r5,r2
   JMP[GE] @mth_g_field_votes
@@ -324,17 +325,20 @@ mth_g_field_loop:
   JMP[GE] @mth_g_field_abs
   SUB r7,r0,r7
 mth_g_field_abs:
+  ADD r6,r6,r7
   ADD r9,r10,r5
   ST r7,r9,0
 mth_g_field_next:
   ADDI r5,r5,1
   JMP @mth_g_field_loop
 mth_g_field_votes:
+  MOVI r12,@mth_g_energy
+  ST r6,r12,0
   MOVI r12,0x0100
-  MOVHI r12,0x0026
+  MOVHI r12,0x002E
   MOVI r5,0
   MOVI r10,0x0000
-  MOVHI r10,0x0026
+  MOVHI r10,0x002E
 mth_g_vote_loop:
   MOVI r8,85
   CMP r5,r8
@@ -368,16 +372,23 @@ mth_g_vote_put:
   JMP @mth_g_vote_loop
 mth_g_field_return:
   MOVI r1,0
-  MOVI r8,255
+  MOVI r9,255
   MOVI r12,@mth_g_dim
   LD r8,r12,0
-  MOVI r9,255
   CMP r8,r9
-  JMP[LE] @mth_g_field_out
+  JMP[LE] @mth_g_field_mean
   MOVI r12,@mth_g_ptr
   LD r8,r12,0
   ADD r8,r8,r9
   LD r1,r8,0
+  CMP r1,r0
+  JMP[NE] @mth_g_field_out
+mth_g_field_mean:
+  MOVI r12,@mth_g_energy
+  LD r1,r12,0
+  MOVI r12,@mth_g_dim
+  LD r8,r12,0
+  DIV r1,r1,r8
 mth_g_field_out:
   MOVI r12,@mth_g_field_link
   LD r15,r12,0
@@ -398,4 +409,6 @@ mth_g_n:
 mth_g_iside:
   .word 0
 mth_g_side:
+  .word 0
+mth_g_energy:
   .word 0

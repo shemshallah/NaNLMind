@@ -35,6 +35,19 @@ struct RawProposalResult {
     std::uint8_t candidate_rule = 0;
 };
 
+struct DualProposalResult {
+    RawProposalResult fast;
+    RawProposalResult slow;
+    bool field_accepted = false;
+    bool slow_ok = false;
+    bool committed = false;
+    std::uint16_t candidate_mask = 0;
+    std::uint16_t committed_mask = 0;
+    std::int32_t fast_credit = 0;
+    std::int32_t slow_credit = 0;
+    std::int32_t medium_credit = 0;
+};
+
 constexpr std::size_t kRawFeatureDim = 8;
 constexpr std::size_t kRawTrunkContext = 256;
 // One guest command can process at most this many context samples inside the
@@ -156,6 +169,15 @@ public:
     bool propose(Universe& universe, HeadArray& heads, std::uint8_t proposer,
                  std::uint16_t patch, std::uint32_t a, std::uint32_t b,
                  bool target, RawProposalResult& out);
+    bool dual_gate(bool fast_accepted, bool slow_accepted, bool field_accepted,
+                   std::int32_t coherence, std::int32_t threshold,
+                   std::uint16_t current_mask, std::uint16_t patch,
+                   DualProposalResult& out);
+    bool propose_dual(Universe& universe, HeadArray& heads,
+                      std::uint8_t fast_head, std::uint8_t slow_head,
+                      std::uint16_t patch, std::uint32_t a, std::uint32_t b,
+                      bool target, std::int32_t coherence_threshold,
+                      DualProposalResult& out);
     bool field_vote(const std::array<std::uint8_t, kTriadCount>& masks,
                     std::uint16_t& accepted_count, bool& field_accepted);
     bool coherence(const std::array<std::uint16_t, kTriadMemberCount>& phases,

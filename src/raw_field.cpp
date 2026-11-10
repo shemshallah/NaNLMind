@@ -133,6 +133,85 @@ bool RawFieldVM::proposal(std::uint16_t current_mask, std::uint16_t patch,
     return true;
 }
 
+
+bool RawFieldVM::dual_gate(bool fast_accepted, bool slow_accepted,
+                           bool field_accepted, std::int32_t coherence,
+                           std::int32_t threshold,
+                           std::uint16_t current_mask,
+                           std::uint16_t patch, DualProposalResult& out) {
+    if (!write_word(kProposalBase + 0, fast_accepted ? 1u : 0u) ||
+        !write_word(kProposalBase + 1, slow_accepted ? 1u : 0u) ||
+        !write_word(kProposalBase + 2, field_accepted ? 1u : 0u) ||
+        !write_word(kProposalBase + 3, static_cast<std::uint32_t>(coherence)) ||
+        !write_word(kProposalBase + 4, static_cast<std::uint32_t>(threshold)) ||
+        !write_word(kProposalBase + 5, current_mask) ||
+        !write_word(kProposalBase + 6, patch) ||
+        !write_word(kCommandBase, 87)) {
+        return fail("cannot write dual-gate command");
+    }
+    if (!run_command()) return false;
+    out.committed = (read_word(kResultBase + 0) & 1u) != 0;
+    out.committed_mask = static_cast<std::uint16_t>(read_word(kResultBase + 1));
+    out.fast_credit = static_cast<std::int32_t>(read_word(kResultBase + 2));
+    out.slow_credit = static_cast<std::int32_t>(read_word(kResultBase + 3));
+    out.medium_credit = static_cast<std::int32_t>(read_word(kResultBase + 4));
+    return true;
+}
+
+bool RawFieldVM::propose_dual(Universe& universe, HeadArray& heads,
+                              std::uint8_t fast_head, std::uint8_t slow_head,
+                              std::uint16_t patch, std::uint32_t a,
+                              std::uint32_t b, bool target,
+                              std::int32_t coherence_threshold,
+                              DualProposalResult& out) {
+    if (fast_head >= kTriadMemberCount || slow_head >= kTriadMemberCount)
+        return fail("dual proposer is not a triad head");
+    auto members_for = [&](std::uint8_t head, std::array<std::uint16_t, 3>& m) {
+        const std::uint8_t triad = universe.triad_index(head);
+        if (triad >= kTriadCount) return false;
+        const std::size_t base = static_cast<std::size_t>(triad) * kTriadSize;
+        const auto& table = universe.triad_members();
+        m = {heads.at(table[base]).boolean_mask(),
+             heads.at(table[base + 1]).boolean_mask(),
+             heads.at(table[base + 2]).boolean_mask()};
+        return true;
+    };
+    std::array<std::uint16_t, 3> fast_members{}, slow_members{};
+    if (!members_for(fast_head, fast_members) ||
+        !members_for(slow_head, slow_members)) return fail("dual triad missing");
+    HeadView fast_view = heads.at(fast_head);
+    HeadView slow_view = heads.at(slow_head);
+    if (!proposal(fast_view.boolean_mask(), patch, fast_members, a, b, target,
+                  out.fast) ||
+        !proposal(slow_view.boolean_mask(), patch, slow_members, a, b, target,
+                  out.slow)) return false;
+
+    std::uint16_t field_count = 0;
+    if (!field_vote(universe.triad_votes(), field_count, out.field_accepted))
+        return false;
+    std::array<std::uint16_t, kTriadMemberCount> phases{};
+    for (std::size_t t = 0; t < kTriadCount; ++t) {
+        for (std::size_t s = 0; s < kTriadSize; ++s) {
+            const std::uint8_t h = universe.triad_members()[t * kTriadSize + s];
+            phases[t * kTriadSize + s] =
+                static_cast<std::uint16_t>(universe.head(h).phase & 0xFFFFu);
+        }
+    }
+    std::int32_t coherence_q16 = 0;
+    if (!coherence(phases, coherence_q16)) return false;
+    out.slow_ok = coherence_q16 >= coherence_threshold;
+    if (!dual_gate(out.fast.accepted, out.slow.accepted, out.field_accepted,
+                   coherence_q16, coherence_threshold, slow_view.boolean_mask(),
+                   patch, out)) return false;
+    if (out.committed) {
+        if (!slow_view.self_modify_boolean(patch))
+            return fail("dual proposal committed but slow head is not writable");
+    }
+    bump_triad_credit(universe.head_credit()[fast_head], out.fast_credit);
+    bump_triad_credit(universe.head_credit()[slow_head], out.slow_credit);
+    return true;
+}
+
 bool RawFieldVM::propose(Universe& universe, HeadArray& heads,
                          std::uint8_t proposer, std::uint16_t patch,
                          std::uint32_t a, std::uint32_t b, bool target,
