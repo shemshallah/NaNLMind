@@ -72,6 +72,10 @@ FIXTURES = (
             "MTH MICRO FEATURE PASS"),
     Fixture("context24", "mth/tests/mth_context24_test.nas", 200_000,
             "MTH CONTEXT24 PASS"),
+    Fixture("phase_encode", "mth/tests/mth_phase_encode_test.nas", 200_000,
+            "MTH PHASE ENCODE PASS"),
+    Fixture("phase_pq", "mth/tests/mth_phase_pq_test.nas", 200_000,
+            "MTH PHASE PQ SPECTRAL PASS"),
 )
 
 
