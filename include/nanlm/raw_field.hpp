@@ -398,6 +398,9 @@ public:
     // frequency selection, and the k=3 fallback hash.
     bool reset_context_backoff();
     bool context_backoff_build(std::uint32_t key, bool* inserted = nullptr);
+    bool context_backoff_build_batch(const std::uint32_t* keys,
+                                     std::size_t count,
+                                     std::size_t& inserted);
     bool context_backoff_select(std::size_t buckets, std::size_t exact_limit,
                                 ContextBackoffSelection& out);
     bool readout_context_backoff(std::uint8_t target, float learning_rate,

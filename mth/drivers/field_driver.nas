@@ -440,6 +440,12 @@ field_driver_context_backoff:
   MOVI r3,3
   CMP r1,r3
   JMP[EQ] @field_driver_ctxb_step
+  MOVI r3,4
+  CMP r1,r3
+  JMP[EQ] @field_driver_ctxb_build_batch
+  MOVI r3,5
+  CMP r1,r3
+  JMP[EQ] @field_driver_ctxb_reset
   JMP @field_driver_return
 
 field_driver_ctxb_build:
@@ -448,6 +454,24 @@ field_driver_ctxb_build:
   CALL @mth_ctxb_build
   MOVI r10,0x4010
   ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_ctxb_reset:
+  MOVI r12,@mth_ctxb_build_count
+  ST r0,r12,0
+  MOVI r12,@mth_ctxb_full
+  ST r0,r12,0
+  JMP @field_driver_return
+
+field_driver_ctxb_build_batch:
+  MOVI r10,0x4002
+  LD r1,r10,0
+  MOVI r10,0x4003
+  LD r2,r10,0
+  CALL @mth_ctxb_build_batch
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
   JMP @field_driver_return
 
 field_driver_ctxb_select:

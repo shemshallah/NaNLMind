@@ -33,6 +33,10 @@ mth_ctxb_build:
   ST r15,r12,0
   MOVI r12,@mth_ctxb_build_key
   ST r1,r12,0
+  MOVI r12,@mth_ctxb_full
+  LD r5,r12,0
+  CMP r5,r0
+  JMP[NE] @mth_ctxb_build_full
 
   ; linear probe entry pointer = 0x40000 + 3*((key*2654435761)&32767)
   MOVI r4,0x79B1
@@ -80,8 +84,22 @@ mth_ctxb_build_insert:
   MOVI r5,0xFFFF
   MOVHI r5,0xFFFF
   ST r5,r2,2
+  MOVI r12,@mth_ctxb_build_count
+  LD r5,r12,0
+  ADDI r5,r5,1
+  ST r5,r12,0
+  MOVI r6,32768
+  CMP r5,r6
+  JMP[LT] @mth_ctxb_build_inserted
+  MOVI r6,1
+  MOVI r12,@mth_ctxb_full
+  ST r6,r12,0
+mth_ctxb_build_inserted:
   MOVI r1,1
   JMP @mth_ctxb_build_out
+
+mth_ctxb_build_full:
+  MOVI r1,0
 
 mth_ctxb_build_hit:
   LD r5,r2,1
@@ -384,6 +402,10 @@ mth_ctxb_build_link:
   .word 0
 mth_ctxb_build_key:
   .word 0
+mth_ctxb_build_count:
+  .word 0
+mth_ctxb_full:
+  .word 0
 mth_ctxb_select_link:
   .word 0
 mth_ctxb_buckets:
@@ -413,4 +435,58 @@ mth_ctxb_step_buckets:
 mth_ctxb_step_bucket:
   .word 0
 mth_ctxb_step_exact:
+  .word 0
+
+; Batch exact-key insertion for ingestion. r1 = count, r2 = key array pointer.
+; Returns r1 = inserted count, r2 = processed count.
+mth_ctxb_build_batch:
+  MOVI r12,@mth_ctxb_batch_link
+  ST r15,r12,0
+  MOVI r12,@mth_ctxb_batch_count
+  ST r1,r12,0
+  MOVI r12,@mth_ctxb_batch_keys
+  ST r2,r12,0
+  MOVI r12,@mth_ctxb_batch_i
+  ST r0,r12,0
+  MOVI r12,@mth_ctxb_batch_inserted
+  ST r0,r12,0
+mth_ctxb_batch_loop:
+  MOVI r12,@mth_ctxb_batch_i
+  LD r3,r12,0
+  MOVI r12,@mth_ctxb_batch_count
+  LD r4,r12,0
+  CMP r3,r4
+  JMP[GE] @mth_ctxb_batch_done
+  MOVI r12,@mth_ctxb_batch_keys
+  LD r4,r12,0
+  ADD r4,r4,r3
+  LD r1,r4,0
+  CALL @mth_ctxb_build
+  MOVI r12,@mth_ctxb_batch_inserted
+  LD r2,r12,0
+  ADD r2,r2,r1
+  ST r2,r12,0
+  MOVI r12,@mth_ctxb_batch_i
+  LD r3,r12,0
+  ADDI r3,r3,1
+  ST r3,r12,0
+  JMP @mth_ctxb_batch_loop
+mth_ctxb_batch_done:
+  MOVI r12,@mth_ctxb_batch_inserted
+  LD r1,r12,0
+  MOVI r12,@mth_ctxb_batch_count
+  LD r2,r12,0
+  MOVI r12,@mth_ctxb_batch_link
+  LD r15,r12,0
+  RET
+
+mth_ctxb_batch_link:
+  .word 0
+mth_ctxb_batch_count:
+  .word 0
+mth_ctxb_batch_keys:
+  .word 0
+mth_ctxb_batch_i:
+  .word 0
+mth_ctxb_batch_inserted:
   .word 0

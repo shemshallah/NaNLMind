@@ -426,12 +426,13 @@ int hier_train_cli(int argc, char** argv) {
 int context_train_cli(int argc, char** argv) {
     if (argc < 3) {
         std::cerr << "usage: nanlm-universal context-train CORPUS [MAX_LINES] [EPOCHS]"
-                     " [REPORT_EVERY] [BUCKETS] [CONTEXT_BYTES] [LR] [EVAL_EVERY] [TRAIN_FRACTION] [backoff|backoffcopy] [EXACT_BUCKETS] [fallback=N]\n"
+                     " [REPORT_EVERY] [BUCKETS] [CONTEXT_BYTES] [LR] [EVAL_EVERY] [TRAIN_FRACTION] [backoff|backoffcopy|guestbackoff] [EXACT_BUCKETS] [fallback=N] [eval=PATH]\n"
                   << "Trains a raw context-indexed 16x16 class-memory readout.\n"
                   << "TRAIN_FRACTION <1 holds out a random evaluation split.\n"
                   << "backoff uses exact high-frequency 4-byte contexts plus a 3-byte fallback.\n"
                   << "backoffcopy routes unseen 3-byte contexts to a copy/unigram table.\n"
-                  << "guestbackoff builds the exact/compact k=4 table and k=3 fallback route in the raw guest.\n";
+                  << "guestbackoff builds the exact/compact k=4 table and k=3 fallback route in the raw guest.\n"
+                  << "eval=PATH uses a separate held-out corpus instead of a random line split.\n";
         return 2;
     }
     const std::string corpus_path = argv[2];
@@ -445,6 +446,7 @@ int context_train_cli(int argc, char** argv) {
     std::size_t fallback_bytes = 3;
     std::string load_path;
     std::string save_path;
+    std::string eval_path;
     try {
         if (argc > 3) max_lines = static_cast<std::size_t>(std::stoull(argv[3]));
         if (argc > 4) epochs = static_cast<std::size_t>(std::stoull(argv[4]));
@@ -466,6 +468,7 @@ int context_train_cli(int argc, char** argv) {
             const std::string arg = argv[i];
             if (arg.rfind("load=", 0) == 0) load_path = arg.substr(5);
             else if (arg.rfind("save=", 0) == 0) save_path = arg.substr(5);
+            else if (arg.rfind("eval=", 0) == 0) eval_path = arg.substr(5);
             else if (arg.rfind("fallback=", 0) == 0) {
                 fallback_bytes = static_cast<std::size_t>(std::stoull(arg.substr(9)));
             }
@@ -501,11 +504,36 @@ int context_train_cli(int argc, char** argv) {
         begin = end + 1;
         if (max_lines && lines.size() >= max_lines) break;
     }
-    std::vector<std::string_view> usable;
+    const std::size_t train_line_count = lines.size();
+    std::string eval_data;
+    if (!eval_path.empty()) {
+        std::ifstream eval_in(eval_path, std::ios::binary);
+        if (!eval_in) { std::cerr << "cannot open eval corpus\n"; return 3; }
+        eval_data.assign(std::istreambuf_iterator<char>(eval_in),
+                         std::istreambuf_iterator<char>());
+        std::size_t eval_begin = 0;
+        while (eval_begin <= eval_data.size()) {
+            const auto eval_end = eval_data.find('\n', eval_begin);
+            if (eval_end == std::string::npos) {
+                if (eval_begin < eval_data.size()) {
+                    lines.emplace_back(eval_data.data() + eval_begin,
+                                       eval_data.size() - eval_begin);
+                }
+                break;
+            }
+            lines.emplace_back(eval_data.data() + eval_begin,
+                               eval_end - eval_begin);
+            eval_begin = eval_end + 1;
+        }
+    }
+        std::vector<std::string_view> usable;
     usable.reserve(lines.size());
-    for (const auto line : lines) {
+    std::size_t train_usable_count = 0;
+    for (std::size_t line_index = 0; line_index < lines.size(); ++line_index) {
+        const auto line = lines[line_index];
         if (line.size() >= 9 && static_cast<std::uint8_t>(line[8]) < 255) {
             usable.push_back(line);
+            if (line_index < train_line_count) ++train_usable_count;
         }
     }
     std::vector<std::uint32_t> context_buckets;
@@ -521,6 +549,18 @@ int context_train_cli(int argc, char** argv) {
                 (static_cast<std::uint32_t>(static_cast<std::uint8_t>(line[5])) << 16) |
                 (static_cast<std::uint32_t>(static_cast<std::uint8_t>(line[6])) << 8) |
                 static_cast<std::uint32_t>(static_cast<std::uint8_t>(line[7]));
+        }
+    } else if (backoff_mode) {
+        context_buckets.resize(usable.size());
+        for (std::size_t i = 0; i < usable.size(); ++i) {
+            const auto line = usable[i];
+            targets[i] = static_cast<std::uint8_t>(line[8]);
+            std::uint32_t hash = 2166136261u;
+            for (std::size_t j = 0; j < context_bytes; ++j) {
+                const auto byte = static_cast<std::uint8_t>(line[8 - context_bytes + j]);
+                hash = (hash ^ byte) * 16777619u;
+            }
+            context_buckets[i] = hash % static_cast<std::uint32_t>(buckets);
         }
     } else {
         context_buckets.resize(usable.size());
@@ -539,7 +579,14 @@ int context_train_cli(int argc, char** argv) {
     for (std::size_t i = 0; i < all_indices.size(); ++i) all_indices[i] = i;
     std::vector<std::size_t> train_indices;
     std::vector<std::size_t> eval_indices;
-    if (train_fraction >= 1.0f) {
+    if (!eval_path.empty()) {
+        const std::size_t train_count = std::min<std::size_t>(
+            train_usable_count, all_indices.size());
+        train_indices.assign(all_indices.begin(),
+                             all_indices.begin() + static_cast<std::ptrdiff_t>(train_count));
+        eval_indices.assign(all_indices.begin() + static_cast<std::ptrdiff_t>(train_count),
+                            all_indices.end());
+    } else if (train_fraction >= 1.0f) {
         train_indices = all_indices;
         eval_indices = all_indices;
     } else {
@@ -549,85 +596,6 @@ int context_train_cli(int argc, char** argv) {
             train_fraction * static_cast<float>(all_indices.size()));
         train_indices.assign(all_indices.begin(), all_indices.begin() + split);
         eval_indices.assign(all_indices.begin() + split, all_indices.end());
-    }
-    if (backoff_mode && !guest_backoff) {
-        if (buckets < 2) {
-            std::cerr << "backoff requires at least 2 buckets\n";
-            return 2;
-        }
-        const auto context_key = [](std::string_view line) {
-            return (static_cast<std::uint32_t>(static_cast<std::uint8_t>(line[4])) << 24) |
-                   (static_cast<std::uint32_t>(static_cast<std::uint8_t>(line[5])) << 16) |
-                   (static_cast<std::uint32_t>(static_cast<std::uint8_t>(line[6])) << 8) |
-                   static_cast<std::uint32_t>(static_cast<std::uint8_t>(line[7]));
-        };
-        std::unordered_map<std::uint32_t, std::uint32_t> counts;
-        for (const std::size_t sample : train_indices) {
-            ++counts[context_key(usable[sample])];
-        }
-        std::vector<std::pair<std::uint32_t, std::uint32_t>> ranked;
-        ranked.reserve(counts.size());
-        for (const auto& entry : counts) ranked.emplace_back(entry.second, entry.first);
-        std::sort(ranked.begin(), ranked.end(),
-                  [](const auto& a, const auto& b) { return a.first > b.first; });
-        const std::size_t exact_limit = std::min<std::size_t>(exact_limit_arg, buckets - 1);
-        const std::size_t exact_count = std::min(exact_limit, ranked.size());
-        std::unordered_map<std::uint32_t, std::uint32_t> exact;
-        exact.reserve(exact_count * 2);
-        for (std::size_t i = 0; i < exact_count; ++i) {
-            exact.emplace(ranked[i].second, static_cast<std::uint32_t>(i));
-        }
-        const std::size_t fallback = buckets - exact_count;
-        const std::size_t k3_fallback = copy_backoff && fallback > 1
-            ? std::max<std::size_t>(1, (fallback * 3) / 4) : fallback;
-        const std::size_t copy_fallback = fallback - k3_fallback;
-        std::unordered_set<std::uint32_t> k3_seen;
-        if (copy_backoff) {
-            k3_seen.reserve(train_indices.size());
-            for (const std::size_t sample : train_indices) {
-                const auto key =
-                    (static_cast<std::uint32_t>(static_cast<std::uint8_t>(usable[sample][5])) << 16) |
-                    (static_cast<std::uint32_t>(static_cast<std::uint8_t>(usable[sample][6])) << 8) |
-                    static_cast<std::uint32_t>(static_cast<std::uint8_t>(usable[sample][7]));
-                k3_seen.insert(key);
-            }
-        }
-        for (std::size_t sample = 0; sample < usable.size(); ++sample) {
-            const auto key = context_key(usable[sample]);
-            const auto it = exact.find(key);
-            if (it != exact.end()) {
-                context_buckets[sample] = it->second;
-            } else {
-                std::uint32_t hash = 2166136261u;
-                const std::size_t fallback_width = fallback_bytes;
-                for (std::size_t j = 1; j <= fallback_width; ++j) {
-                    const auto byte = static_cast<std::uint8_t>(usable[sample][8 - j]);
-                    hash = (hash ^ byte) * 16777619u;
-                }
-                if (copy_backoff && k3_seen.find(key & 0xFFFFFFu) != k3_seen.end()) {
-                    std::uint32_t k3_hash = 2166136261u;
-                    for (std::size_t j = 1; j <= 3; ++j) {
-                        const auto byte = static_cast<std::uint8_t>(usable[sample][8 - j]);
-                        k3_hash = (k3_hash ^ byte) * 16777619u;
-                    }
-                    context_buckets[sample] = static_cast<std::uint32_t>(exact_count) +
-                        (k3_fallback ? k3_hash % k3_fallback : 0);
-                } else if (copy_backoff && copy_fallback) {
-                    std::uint32_t copy_hash = 2166136261u;
-                    copy_hash = (copy_hash ^ static_cast<std::uint8_t>(usable[sample][7])) * 16777619u;
-                    context_buckets[sample] = static_cast<std::uint32_t>(exact_count + k3_fallback) +
-                        copy_hash % copy_fallback;
-                } else {
-                    context_buckets[sample] = static_cast<std::uint32_t>(exact_count) +
-                        (fallback ? hash % fallback : 0);
-                }
-            }
-        }
-        std::cout << "context_backoff exact=" << exact_count
-                  << " fallback=" << fallback
-                  << " k3_fallback=" << k3_fallback
-                  << " copy_fallback=" << copy_fallback
-                  << " fallback_bytes=" << fallback_bytes << "\n";
     }
     RawFieldVM vm("build/field_driver.nan");
     if (!vm.ready()) {
@@ -650,15 +618,17 @@ int context_train_cli(int argc, char** argv) {
             std::cerr << "cannot reset guest context backoff: " << vm.error() << "\n";
             return 7;
         }
-        std::size_t inserted_keys = 0;
+        std::vector<std::uint32_t> build_keys;
+        build_keys.reserve(train_indices.size());
         for (const std::size_t sample : train_indices) {
-            bool inserted = false;
-            if (!vm.context_backoff_build(context_keys[sample], &inserted)) {
-                std::cerr << "guest context backoff build failed: "
-                          << vm.error() << "\n";
-                return 7;
-            }
-            inserted_keys += inserted ? 1u : 0u;
+            build_keys.push_back(context_keys[sample]);
+        }
+        std::size_t inserted_keys = 0;
+        if (!vm.context_backoff_build_batch(build_keys.data(), build_keys.size(),
+                                            inserted_keys)) {
+            std::cerr << "guest context backoff batch build failed: "
+                      << vm.error() << "\n";
+            return 7;
         }
         ContextBackoffSelection selection;
         if (!vm.context_backoff_select(buckets, exact_limit_arg, selection)) {

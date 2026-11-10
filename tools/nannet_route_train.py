@@ -57,6 +57,7 @@ def route_receipt(route: str, *, execute: bool = False,
         },
         "trainer": spec["trainer"],
         "corpus": str(corpus.relative_to(ROOT)),
+        "eval_corpus": spec.get("eval_corpus", ""),
         "corpus_sha256": digest,
         "checkpoint": spec["checkpoint"],
         "epochs": spec["epochs"],
@@ -70,6 +71,8 @@ def route_receipt(route: str, *, execute: bool = False,
             "load=" + spec["checkpoint"],
             "save=" + spec["checkpoint"],
         ]
+        if spec.get("eval_corpus"):
+            cmd.append("eval=" + spec["eval_corpus"])
         subprocess.run(cmd, cwd=ROOT, check=True)
         receipt["executed"] = True
     receipt["receipt_digest"] = hashlib.sha256(

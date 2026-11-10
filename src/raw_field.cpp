@@ -1197,7 +1197,11 @@ bool RawFieldVM::reset_context_backoff() {
             return fail("cannot reset context backoff histogram");
         }
     }
-    return true;
+    if (!write_word(kProposalBase + 0, 5) ||
+        !write_word(kCommandBase, kContextBackoffCommand)) {
+        return fail("cannot reset context backoff state");
+    }
+    return run_command();
 }
 
 bool RawFieldVM::context_backoff_build(std::uint32_t key,
@@ -1209,6 +1213,32 @@ bool RawFieldVM::context_backoff_build(std::uint32_t key,
     }
     if (!run_command()) return false;
     if (inserted) *inserted = (read_word(kResultBase + 0) & 1u) != 0;
+    return true;
+}
+
+bool RawFieldVM::context_backoff_build_batch(const std::uint32_t* keys,
+                                             std::size_t count,
+                                             std::size_t& inserted) {
+    constexpr std::uint32_t kKeyBuffer = 0x60000;
+    constexpr std::size_t kChunk = 4096;
+    inserted = 0;
+    if (!keys && count) return fail("context backoff keys are null");
+    for (std::size_t base = 0; base < count; base += kChunk) {
+        const std::size_t n = std::min(kChunk, count - base);
+        for (std::size_t i = 0; i < n; ++i) {
+            if (!write_word(kKeyBuffer + static_cast<std::uint32_t>(i), keys[base + i])) {
+                return fail("cannot write context backoff key batch");
+            }
+        }
+        if (!write_word(kProposalBase + 0, 4) ||
+            !write_word(kProposalBase + 1, static_cast<std::uint32_t>(n)) ||
+            !write_word(kProposalBase + 2, kKeyBuffer) ||
+            !write_word(kCommandBase, kContextBackoffCommand)) {
+            return fail("cannot write context backoff batch command");
+        }
+        if (!run_command()) return false;
+        inserted += read_word(kResultBase + 0);
+    }
     return true;
 }
 
