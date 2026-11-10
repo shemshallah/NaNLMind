@@ -76,8 +76,10 @@ FIXTURES = (
             "MTH PHASE ENCODE PASS"),
     Fixture("phase_pq", "mth/tests/mth_phase_pq_test.nas", 200_000,
             "MTH PHASE PQ SPECTRAL PASS"),
-    Fixture("vector_matrix", "mth/tests/mth_vector_matrix_test.nas", 1_000_000,
+    Fixture("vector_matrix", "mth/tests/mth_vector_matrix_test.nas", 8_000_000,
             "MTH VECTOR MATRIX PASS"),
+    Fixture("pq_train", "mth/tests/mth_pq_train_test.nas", 1_000_000,
+            "MTH PQ TRAIN PASS"),
 )
 
 

@@ -668,6 +668,29 @@ int main() {
     CHECK_EQ(knn_indices[0], 0u);
     CHECK(knn_scores[0] >= 65535);
 
+    // Trained codebook: two well-separated samples must stay put after one
+    // raw Lloyd iteration.
+    {
+        const std::vector<std::int32_t> train_samples = {0, 0, 100, 100};
+        std::vector<std::int32_t> trained_codebook;
+        CHECK(vm.pq_train(train_samples, 2, 2, 2, 1, trained_codebook));
+        CHECK_EQ(trained_codebook.size(), 4u);
+        CHECK_EQ(trained_codebook[0], 0);
+        CHECK_EQ(trained_codebook[1], 0);
+        CHECK_EQ(trained_codebook[2], 100);
+        CHECK_EQ(trained_codebook[3], 100);
+        const std::vector<std::int32_t> residual_samples = {5, 7, 100, 100};
+        const std::vector<std::uint32_t> residual_codes = {0, 1};
+        std::vector<std::int32_t> residuals;
+        CHECK(vm.pq_residuals(residual_samples, residual_codes, 2, 2,
+                              trained_codebook, residuals));
+        CHECK_EQ(residuals.size(), 4u);
+        CHECK_EQ(residuals[0], 5);
+        CHECK_EQ(residuals[1], 7);
+        CHECK_EQ(residuals[2], 0);
+        CHECK_EQ(residuals[3], 0);
+    }
+
     // C(256,2) vector-code observer: raw pair indexing and accumulation.
     CHECK(vm.vector_matrix_reset());
     std::uint32_t matrix_index = 999;
@@ -694,5 +717,19 @@ int main() {
     CHECK_EQ(matrix_cells.size(), 32640u);
     CHECK_EQ(matrix_cells[0], 131072);
     CHECK_EQ(matrix_cells[32639], 32768);
+    std::vector<std::int32_t> matrix_credits;
+    CHECK(vm.vector_matrix_credits(matrix_credits));
+    CHECK_EQ(matrix_credits.size(), 255u);
+    CHECK(matrix_credits[0] >= 131072);
+    CHECK(matrix_credits[1] >= 131072);
+    CHECK_EQ(matrix_credits[4], 0);
+    std::array<std::int32_t, kTriadMemberCount> hot_credits{};
+    std::copy(matrix_credits.begin(), matrix_credits.end(),
+              hot_credits.begin());
+    HotTriheadResult matrix_hot;
+    CHECK(vm.hot_triheads(hot_credits, 0, matrix_hot));
+    CHECK_EQ(matrix_hot.hot_heads, 3u);
+    CHECK_EQ(matrix_hot.hot_triads, 1u);
+    CHECK(!matrix_hot.field_hot);
     return test_done("raw NaN16 field VM bridge");
 }

@@ -78,6 +78,29 @@ mth_vm_test_main:
   CMP r1,r12
   JMP[NE] @mth_vm_fail
 
+  ; head credits: 0 and 1 have 131072, head 4 has none
+  MOVI r1,0x7000
+  CALL @mth_vm_credits
+  MOVI r12,255
+  CMP r1,r12
+  JMP[NE] @mth_vm_fail
+  MOVI r10,0x7000
+  LD r11,r10,0
+  MOVI r12,0
+  MOVHI r12,0x0002
+  CMP r11,r12
+  JMP[NE] @mth_vm_fail
+  LD r11,r10,4
+  CMP r11,r0
+  JMP[NE] @mth_vm_fail
+  MOVI r10,0x7000
+  ADDI r10,r10,254
+  LD r11,r10,0
+  MOVI r12,0
+  MOVHI r12,0x0001
+  CMP r11,r12
+  JMP[NE] @mth_vm_fail
+
   MOVI r1,@mth_vm_pass
   CALL @mth_vm_puts
   HALT

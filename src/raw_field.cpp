@@ -1455,6 +1455,72 @@ bool RawFieldVM::sparse_knn(const std::vector<std::int32_t>& query,
     return true;
 }
 
+bool RawFieldVM::pq_train(const std::vector<std::int32_t>& samples,
+                          std::size_t count, std::size_t dim,
+                          std::size_t codewords, std::size_t iterations,
+                          std::vector<std::int32_t>& codebook) {
+    if (count == 0 || count > 1024 || dim == 0 || dim > 128 ||
+        codewords == 0 || codewords > 256 || iterations > 8 ||
+        samples.size() < count * dim) {
+        return fail("pq train bounds invalid");
+    }
+    for (std::size_t i = 0; i < count * dim; ++i) {
+        if (!write_word(0x10000u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(samples[i]))) {
+            return fail("cannot write pq training samples");
+        }
+    }
+    if (!write_word(kProposalBase + 0, 0x10000u) ||
+        !write_word(kProposalBase + 1, static_cast<std::uint32_t>(count)) ||
+        !write_word(kProposalBase + 2, static_cast<std::uint32_t>(dim)) ||
+        !write_word(kProposalBase + 3, static_cast<std::uint32_t>(codewords)) ||
+        !write_word(kProposalBase + 4, static_cast<std::uint32_t>(iterations)) ||
+        !write_word(kProposalBase + 5, 0x50000u) ||
+        !write_word(kCommandBase, 69)) {
+        return fail("cannot write pq training command");
+    }
+    if (!run_command()) return false;
+    codebook.resize(codewords * dim);
+    for (std::size_t i = 0; i < codebook.size(); ++i) {
+        codebook[i] = static_cast<std::int32_t>(
+            read_word(0x50000u + static_cast<std::uint32_t>(i)));
+    }
+    return true;
+}
+
+bool RawFieldVM::pq_residuals(const std::vector<std::int32_t>& samples,
+                              const std::vector<std::uint32_t>& codes,
+                              std::size_t count, std::size_t dim,
+                              const std::vector<std::int32_t>& codebook,
+                              std::vector<std::int32_t>& residuals) {
+    if (count == 0 || count > 1024 || dim == 0 || dim > 128 ||
+        samples.size() < count * dim || codes.size() < count ||
+        codebook.empty()) {
+        return fail("pq residual bounds invalid");
+    }
+    for (std::size_t i = 0; i < count * dim; ++i)
+        if (!write_word(0x10000u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(samples[i])))
+            return fail("cannot write pq residual samples");
+    for (std::size_t i = 0; i < codebook.size(); ++i)
+        if (!write_word(0x50000u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(codebook[i])))
+            return fail("cannot write pq residual codebook");
+    for (std::size_t i = 0; i < count; ++i)
+        if (!write_word(0x80000u + static_cast<std::uint32_t>(i), codes[i]))
+            return fail("cannot write pq residual codes");
+    if (!write_word(kProposalBase + 0, static_cast<std::uint32_t>(count)) ||
+        !write_word(kProposalBase + 1, static_cast<std::uint32_t>(dim)) ||
+        !write_word(kCommandBase, 70))
+        return fail("cannot write pq residual command");
+    if (!run_command()) return false;
+    residuals.resize(count * dim);
+    for (std::size_t i = 0; i < residuals.size(); ++i)
+        residuals[i] = static_cast<std::int32_t>(
+            read_word(0x90000u + static_cast<std::uint32_t>(i)));
+    return true;
+}
+
 bool RawFieldVM::phase_table_init() {
     if (!write_word(kCommandBase, 64)) return fail("cannot write phase table init");
     if (!run_command()) return false;
@@ -1529,6 +1595,18 @@ bool RawFieldVM::read_vector_matrix(std::vector<std::int32_t>& cells) {
     cells.resize(32640);
     for (std::size_t i = 0; i < cells.size(); ++i)
         cells[i] = static_cast<std::int32_t>(read_word(0x300000u + static_cast<std::uint32_t>(i)));
+    return true;
+}
+
+
+bool RawFieldVM::vector_matrix_credits(std::vector<std::int32_t>& credits) {
+    if (!write_word(kCommandBase, 68))
+        return fail("cannot write vector matrix credits");
+    if (!run_command()) return false;
+    credits.resize(255);
+    for (std::size_t i = 0; i < credits.size(); ++i)
+        credits[i] = static_cast<std::int32_t>(
+            read_word(0x7000u + static_cast<std::uint32_t>(i)));
     return true;
 }
 

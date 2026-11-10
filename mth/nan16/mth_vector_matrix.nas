@@ -166,3 +166,83 @@ mth_vm_probe_best_head:
   .word 0
 mth_vm_probe_best_score:
   .word 0
+
+; Build 255 head credits from the vector-code matrix.
+; r1 = output credit vector (255 Q16 words). Matrix base is 0x300000.
+; Each credit is the sum of that head's incident pair supports.
+mth_vm_credits:
+  MOVI r12,@mth_vmc_link
+  ST r15,r12,0
+  MOVI r12,@mth_vmc_out
+  ST r1,r12,0
+  MOVI r12,@mth_vmc_a
+  ST r0,r12,0
+mth_vmc_a_loop:
+  MOVI r12,@mth_vmc_a
+  LD r5,r12,0
+  MOVI r12,255
+  CMP r5,r12
+  JMP[GE] @mth_vmc_done
+  MOVI r12,@mth_vmc_b
+  ST r0,r12,0
+  MOVI r12,@mth_vmc_sum
+  ST r0,r12,0
+mth_vmc_b_loop:
+  MOVI r12,@mth_vmc_b
+  LD r5,r12,0
+  MOVI r12,256
+  CMP r5,r12
+  JMP[GE] @mth_vmc_store
+  MOVI r12,@mth_vmc_a
+  LD r1,r12,0
+  CMP r1,r5
+  JMP[EQ] @mth_vmc_next
+  ADD r2,r5,r0
+  CALL @mth_vm_pair
+  MOVI r12,32640
+  CMP r1,r12
+  JMP[EQ] @mth_vmc_next
+  MOVI r10,0x0000
+  MOVHI r10,0x0030
+  ADD r10,r10,r1
+  LD r6,r10,0
+  MOVI r12,@mth_vmc_sum
+  LD r7,r12,0
+  ADD r7,r7,r6
+  ST r7,r12,0
+mth_vmc_next:
+  MOVI r12,@mth_vmc_b
+  LD r5,r12,0
+  ADDI r5,r5,1
+  ST r5,r12,0
+  JMP @mth_vmc_b_loop
+mth_vmc_store:
+  MOVI r12,@mth_vmc_out
+  LD r6,r12,0
+  MOVI r12,@mth_vmc_a
+  LD r7,r12,0
+  ADD r6,r6,r7
+  MOVI r12,@mth_vmc_sum
+  LD r7,r12,0
+  ST r7,r6,0
+  MOVI r12,@mth_vmc_a
+  LD r7,r12,0
+  ADDI r7,r7,1
+  ST r7,r12,0
+  JMP @mth_vmc_a_loop
+mth_vmc_done:
+  MOVI r1,255
+  MOVI r12,@mth_vmc_link
+  LD r15,r12,0
+  RET
+
+mth_vmc_link:
+  .word 0
+mth_vmc_out:
+  .word 0
+mth_vmc_a:
+  .word 0
+mth_vmc_b:
+  .word 0
+mth_vmc_sum:
+  .word 0

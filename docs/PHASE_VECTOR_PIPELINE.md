@@ -38,11 +38,14 @@ Field-driver commands:
 | 65 | `mth_vm_reset` | clear 32,640 C(256,2) cells |
 | 66 | `mth_vm_accum` | pair a/b and Q16 delta, cell 0x300000 |
 | 67 | `mth_vm_probe` | best third head above threshold |
+| 68 | `mth_vm_credits` | matrix row support -> 255 head credits |
+| 69 | `mth_pq_train` | raw centroid training, up to 8 iterations |
+| 70 | `mth_pq_residual` | sample - codebook[code] residual payload |
 
 `RawFieldVM` exposes `phase_encode_wide`, `phase_encode_batch`,
 `phase_rotate`, `pq_encode`, `spectral_iter`, `sparse_knn`,
-`vector_matrix_reset`, `vector_matrix_accumulate`, `vector_matrix_probe`, and
-`read_vector_matrix`. The C++ methods marshal Q16 words only; the guest performs
+`vector_matrix_reset`, `vector_matrix_accumulate`, `vector_matrix_probe`,
+`vector_matrix_credits`, `read_vector_matrix`, `pq_train`, and `pq_residuals`. The C++ methods marshal Q16 words only; the guest performs
 all arithmetic, including the triangular pair index.
 
 ### Trig phase encoder
@@ -226,13 +229,17 @@ The host stages byte windows and writes:
 - `state/phase_vectors.codes.bin` — PQ code and L1 residual distance;
 - `state/phase_vectors.knn.bin` — nearest-neighbor index and dot score;
 - `state/phase_vectors.spectral.bin` — one spectral coordinate vector;
+- `PREFIX.codebook.bin` — raw-trained PQ codebook;
 - `PREFIX.matrix.bin` — raw C(256,2) vector-code observer;
+- `PREFIX.residuals.bin` — raw reconstruction residuals;
+- `PREFIX.triads.bin` — raw 85-triad/255-head mapping after matrix credits;
 - `state/phase_vectors.json` — counts, dimensions, shard histogram, matrix
-  updates, probe head/score, and pipeline summary.
+  updates, probe head/score, hot heads/triads, and the 43/85 field flag.
 
-The ingest pipeline uses a local codebook taken from the first 256 encoded
-windows and a sparse bank from the first 256. This is a functional first-stage
-pipeline, not a trained corpus codebook.
+The ingest pipeline trains its codebook in the guest with `mth_pq_train`
+(initialized from up to 256 encoded windows, one assignment/centroid pass),
+then writes residual payloads with `mth_pq_residual`. The codebook remains
+per-ingest, not a corpus-wide trained artifact.
 
 ## 9. Honest boundary
 
@@ -314,21 +321,24 @@ sentinel        = 32,640 (same head, not a pair)
 ```
 
 `mth_vm_accum` updates a pair after sorting the heads; `mth_vm_probe` scans a
-row and returns the best third head above a threshold. This is a candidate
-index tensor, not vector storage and not the old byte-pair HW5 object. The host
-bridge exposes reset, accumulate, probe and read operations, and
-`build/test_raw_field` verifies pair indexing, commutativity, the sentinel,
-and probe completion.
+row and returns the best third head above a threshold; `mth_vm_credits` turns
+matrix row support into 255 head credits. Those credits feed the existing raw
+hot-trihead mapper and its 43/85 field gate, so phase-ingest now reports
+`hot_heads`, `hot_triads`, and `field_hot` from raw execution. This is a
+candidate index tensor, not vector storage and not the old byte-pair HW5
+object. The host bridge exposes reset, accumulate, probe, credits and read
+operations, and `build/test_raw_field` verifies indexing, commutativity, the
+sentinel, probe completion, credits and hot-trihead handoff.
 
 ## 12. Remaining production gates
 
-- Trained 8-subvector PQ codebook with residual payloads, rather than the
-  current first-window codebook.
+- A corpus-wide, multi-iteration 8-subvector PQ codebook rather than the
+  current per-ingest single-vector codebook and residuals.
 - Repeated normalized spectral iterations and a semantic graph above the
   codebook.
 - Remote leaf pages and reconstruct-and-verify through triheads and the 43/85
   field.
-- Feed the vector-code matrix and spectral coordinates into hot triheads and
-  the remote-fetch budget.
+- Feed spectral coordinates into the trihead/remote-fetch budget; the matrix
+  credit path into hot triheads is now live.
 - Book-disjoint phase/PQ/matrix evaluation; the phase bank itself is not yet a
   language-quality result.

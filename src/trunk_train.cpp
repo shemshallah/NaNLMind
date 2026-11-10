@@ -898,17 +898,41 @@ int phase_ingest_cli(int argc, char** argv) {
     std::size_t knn_bank = 0;
     std::size_t pipeline_dim = 0;
     std::size_t matrix_updates = 0;
+    std::size_t codebook_words = 0;
+    std::size_t residual_values = 0;
     std::vector<std::int32_t> matrix_cells;
     std::int32_t probe_head = -1;
     std::int32_t probe_score = 0;
+    std::uint16_t field_hot_heads = 0;
+    std::uint16_t field_hot_triads = 0;
+    bool field_accept = false;
     if (!samples.empty()) {
         pipeline_dim = std::min<std::size_t>(dim * 2, 128);
         pq_codewords = std::min<std::size_t>(samples.size(), 256);
+        std::vector<std::int32_t> sample_bank;
+        sample_bank.reserve(samples.size() * pipeline_dim);
+        for (const auto& sample : samples)
+            sample_bank.insert(sample_bank.end(), sample.begin(),
+                               sample.begin() + pipeline_dim);
         std::vector<std::int32_t> codebook;
-        codebook.reserve(pq_codewords * pipeline_dim);
-        for (std::size_t i = 0; i < pq_codewords; ++i)
-            codebook.insert(codebook.end(), samples[i].begin(),
-                            samples[i].begin() + pipeline_dim);
+        constexpr std::size_t kPqIterations = 1;
+        if (!vm.pq_train(sample_bank, samples.size(), pipeline_dim,
+                         pq_codewords, kPqIterations, codebook)) {
+            std::cerr << "phase PQ training failed: " << vm.error() << "\n";
+            return 7;
+        }
+        {
+            codebook_words = codebook.size();
+            std::ofstream book(output_prefix + ".codebook.bin",
+                               std::ios::binary);
+            if (!book) {
+                std::cerr << "cannot open phase codebook output\n";
+                return 3;
+            }
+            book.write(reinterpret_cast<const char*>(codebook.data()),
+                       static_cast<std::streamsize>(
+                           codebook.size() * sizeof(codebook[0])));
+        }
         std::vector<std::uint32_t> pq_codes;
         std::vector<std::int32_t> pq_distances;
         pq_codes.reserve(samples.size());
@@ -938,6 +962,25 @@ int phase_ingest_cli(int argc, char** argv) {
                 codes.write(reinterpret_cast<const char*>(&pq_distances[i]),
                             sizeof(pq_distances[i]));
             }
+        }
+        std::vector<std::int32_t> residuals;
+        if (!vm.pq_residuals(sample_bank, pq_codes, samples.size(),
+                             pipeline_dim, codebook, residuals)) {
+            std::cerr << "phase PQ residual failed: " << vm.error() << "\n";
+            return 7;
+        }
+        {
+            std::ofstream residual_file(output_prefix + ".residuals.bin",
+                                        std::ios::binary);
+            if (!residual_file) {
+                std::cerr << "cannot open phase residual output\n";
+                return 3;
+            }
+            residual_file.write(
+                reinterpret_cast<const char*>(residuals.data()),
+                static_cast<std::streamsize>(residuals.size() *
+                                              sizeof(residuals[0])));
+            residual_values = residuals.size();
         }
 
         // The C(256,2) observer is updated only in the guest. Consecutive
@@ -980,6 +1023,35 @@ int phase_ingest_cli(int argc, char** argv) {
                 std::cerr << "vector matrix probe failed: " << vm.error() << "\n";
                 return 7;
             }
+        }
+
+        // Matrix -> 255 head credits -> existing raw hot-trihead mapping and
+        // 43/85 field gate. No host score aggregation is used.
+        std::vector<std::int32_t> matrix_credits;
+        if (!vm.vector_matrix_credits(matrix_credits)) {
+            std::cerr << "vector matrix credits failed: " << vm.error() << "\n";
+            return 7;
+        }
+        std::array<std::int32_t, kTriadMemberCount> hot_credits{};
+        std::copy(matrix_credits.begin(), matrix_credits.end(),
+                  hot_credits.begin());
+        HotTriheadResult hot_result;
+        if (!vm.hot_triheads(hot_credits, 0, hot_result)) {
+            std::cerr << "vector hot triheads failed: " << vm.error() << "\n";
+            return 7;
+        }
+        field_hot_heads = hot_result.hot_heads;
+        field_hot_triads = hot_result.hot_triads;
+        field_accept = hot_result.field_hot;
+        {
+            std::ofstream triads(output_prefix + ".triads.bin",
+                                 std::ios::binary);
+            if (!triads) {
+                std::cerr << "cannot open vector triads output\n";
+                return 3;
+            }
+            triads.write(reinterpret_cast<const char*>(hot_result.members.data()),
+                         static_cast<std::streamsize>(hot_result.members.size()));
         }
 
         knn_bank = std::min<std::size_t>(samples.size(), 256);
@@ -1042,12 +1114,19 @@ int phase_ingest_cli(int argc, char** argv) {
                  << "  \"window\": " << window << ",\n"
                  << "  \"pipeline\": {\"samples\": " << samples.size()
                  << ", \"pq_codewords\": " << pq_codewords
+                 << ", \"pq_iterations\": 1"
+                 << ", \"codebook_words\": " << codebook_words
+                 << ", \"residual_words\": " << residual_values
                  << ", \"knn_bank\": " << knn_bank
                  << ", \"dim\": " << pipeline_dim
                  << ", \"matrix_updates\": " << matrix_updates
                  << ", \"matrix_cells\": " << matrix_cells.size()
                  << ", \"probe_head\": " << probe_head
-                 << ", \"probe_score\": " << probe_score << "},\n"
+                 << ", \"probe_score\": " << probe_score
+                 << ", \"hot_heads\": " << field_hot_heads
+                 << ", \"hot_triads\": " << field_hot_triads
+                 << ", \"field_hot\": " << (field_accept ? "true" : "false")
+                 << "},\n"
                  << "  \"shards\": [";
         for (std::size_t i = 0; i < shard_counts.size(); ++i) {
             if (i) manifest << ",";

@@ -70,6 +70,8 @@ JMP @field_driver_entry
 .include "../nan16/mth_phase_pq.nas"
 .include "../nan16/mth_sparse_knn.nas"
 .include "../nan16/mth_vector_matrix.nas"
+.include "../nan16/mth_pq_train.nas"
+.include "../nan16/mth_pq_residual.nas"
 .include "../nan16/mth_context_backoff.nas"
 .include "../nan16/mth_context_encode.nas"
 .include "../nan16/mth_role_step.nas"
@@ -252,6 +254,15 @@ field_driver_main:
   MOVI r3,67
   CMP r2,r3
   JMP[EQ] @field_driver_vector_matrix_probe
+  MOVI r3,68
+  CMP r2,r3
+  JMP[EQ] @field_driver_vector_matrix_credits
+  MOVI r3,69
+  CMP r2,r3
+  JMP[EQ] @field_driver_pq_train
+  MOVI r3,70
+  CMP r2,r3
+  JMP[EQ] @field_driver_pq_residual
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -984,6 +995,43 @@ field_driver_vector_matrix_probe:
   MOVI r10,0x4010
   ST r1,r10,0
   ST r2,r10,1
+  JMP @field_driver_return
+
+field_driver_vector_matrix_credits:
+  MOVI r1,0x7000
+  CALL @mth_vm_credits
+  MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_pq_train:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r4,r10,3
+  LD r5,r10,4
+  LD r6,r10,5
+  CALL @mth_pq_train
+  MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_pq_residual:
+  MOVI r10,0x4001
+  LD r4,r10,0
+  LD r5,r10,1
+  MOVI r1,0x0000
+  MOVHI r1,0x0001
+  MOVI r2,0x0000
+  MOVHI r2,0x0005
+  MOVI r3,0x0000
+  MOVHI r3,0x0008
+  MOVI r6,0x0000
+  MOVHI r6,0x0009
+  CALL @mth_pq_residual
+  MOVI r10,0x4010
+  ST r1,r10,0
   JMP @field_driver_return
 
 field_driver_context_encode:

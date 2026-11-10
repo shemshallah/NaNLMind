@@ -435,6 +435,14 @@ public:
                    const std::vector<std::int32_t>& codebook,
                    std::size_t codewords, std::size_t dim,
                    std::uint32_t& code, std::int32_t& distance);
+    bool pq_train(const std::vector<std::int32_t>& samples,
+                  std::size_t count, std::size_t dim, std::size_t codewords,
+                  std::size_t iterations, std::vector<std::int32_t>& codebook);
+    bool pq_residuals(const std::vector<std::int32_t>& samples,
+                      const std::vector<std::uint32_t>& codes,
+                      std::size_t count, std::size_t dim,
+                      const std::vector<std::int32_t>& codebook,
+                      std::vector<std::int32_t>& residuals);
     bool spectral_iter(const std::array<std::int32_t, 64>& adjacency,
                        const std::array<std::int32_t, 8>& in,
                        std::array<std::int32_t, 8>& out);
@@ -450,6 +458,7 @@ public:
     bool vector_matrix_probe(std::uint8_t a, std::int32_t threshold,
                              std::int32_t& best_head, std::int32_t& score);
     bool read_vector_matrix(std::vector<std::int32_t>& cells);
+    bool vector_matrix_credits(std::vector<std::int32_t>& credits);
     bool reset_context_readout(std::size_t buckets);
     bool load_context_readout(const std::string& path, std::size_t buckets);
     bool save_context_readout(const std::string& path, std::size_t buckets);
