@@ -671,11 +671,6 @@ bool RawFieldVM::readout_context(std::uint8_t target, float learning_rate,
         return fail("cannot write context readout command");
     }
     if (!run_command()) return false;
-    std::fprintf(stderr, "context_link_debug=0x%x r15=0x%x code0=0x%llx code1=0x%llx cmd=0x%x\n",
-                 read_word(4368u), nan_reg(vm_, 15),
-                 (unsigned long long)nan_word(vm_, 0),
-                 (unsigned long long)nan_word(vm_, 1),
-                 read_word(0x4000u));
     correct = (read_word(kResultBase + 0) & 1u) != 0;
     const std::uint32_t ls = read_word(kResultBase + 1);
     std::memcpy(&loss, &ls, sizeof(ls));

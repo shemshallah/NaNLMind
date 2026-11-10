@@ -42,6 +42,20 @@ def build_features(corpus: Path, variant: str, max_lines: int = 0):
                 b = line[7 - k]
                 x[i, k * 32 + (b & 15)] = 1.0
                 x[i, k * 32 + 16 + (b >> 4)] = 1.0
+    elif variant == "nibble8":
+        dim = 256
+        x = np.zeros((n, dim), dtype=np.float32)
+        for i, line in enumerate(usable):
+            for k in range(8):
+                b = line[7 - k]
+                x[i, k * 32 + (b & 15)] = 1.0
+                x[i, k * 32 + 16 + (b >> 4)] = 1.0
+    elif variant == "byte2":
+        dim = 512
+        x = np.zeros((n, dim), dtype=np.float32)
+        for i, line in enumerate(usable):
+            x[i, line[7]] = 1.0
+            x[i, 256 + line[6]] = 1.0
     elif variant == "byte1":
         dim = 256
         x = np.zeros((n, dim), dtype=np.float32)

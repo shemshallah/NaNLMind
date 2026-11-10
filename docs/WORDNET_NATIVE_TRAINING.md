@@ -53,6 +53,14 @@ python3 tools/wordnet_corpus.py \
 # This is the current feature-learning path; one epoch is about 206 s.
 ./build/nanlm-universal hier-train state/wordnet_corpus.txt 0 3 10000 0.1 1.0 1
 
+# Context-indexed 16x16 class memory: the current best learning path.
+# Each last-3-byte context hashes to one bucket; only that column of the
+# high/low class tables is read or updated.
+./build/nanlm-universal context-train state/wordnet_corpus.txt 0 3 10000 8192 3 0.5 1
+
+# Same path with a random 80/20 train/held-out split.
+./build/nanlm-universal context-train state/wordnet_corpus.txt 0 3 10000 8192 3 0.5 1 0.8
+
 # Matched Python reference over the same samples and mode.
 python3 experiments/native_trunk_reference.py state/wordnet_corpus.txt \
   --epochs 100 --report-every 10000 --mode sampled
@@ -180,6 +188,44 @@ learning rate `0.5` reached `28.21%` full-class accuracy, and learning rate
 `0.1` reached **`33.2641%`** after one epoch (training-window `40.4346%`).
 That is close to the Python conditional probe at `34.15%` and well above the
 current 8-lane softmax path at `21.2%` best-checkpoint accuracy.
+
+### Context-indexed class memory
+
+The best current path is not a wider dense dot product. It is a sparse
+context lookup: hash the last 3 bytes to one of 8,192 buckets, then store a
+16-class high-nibble row and 16x16 low-nibble rows per bucket. Only that one
+column is read or updated.
+
+```text
+bucket = FNV(last 3 bytes) mod 8192
+high_score[h]  = high_table[h, bucket]
+low_score[g,l] = low_table[g, l, bucket]
+```
+
+This is a native-friendly version of an n-gram class memory and maps directly
+onto the 255-head/field topology: the high nibble groups are the field
+groups, and the low classes are head rows.
+
+Native full-corpus result, 3 epochs, 8,192 buckets:
+
+| metric | value |
+|---|---:|
+| training-window accuracy | `61.3159%` |
+| same-corpus full accuracy | **`57.8644%`** |
+| same-corpus loss | `1.40043` |
+| epoch training time | about `35 s` total for 3 epochs |
+| full evaluation time | `6.79 s` |
+
+A matched host probe on a random 80/20 split gives **55.43% held-out**
+accuracy (`k=3`, 8,192 buckets). A native random 80/20 run gives
+**55.9874% held-out** accuracy after 3 epochs (`61.3539%` training-window
+accuracy), with 93,963 training samples and 23,491 held-out samples. The
+held-out split is measured, not inferred from the training set.
+
+```sh
+./build/nanlm-universal context-train state/wordnet_corpus.txt \
+  0 3 10000 8192 3 0.5 1 0.8
+```
 
 ## Pipeline status
 

@@ -421,4 +421,200 @@ int hier_train_cli(int argc, char** argv) {
     return 0;
 }
 
+int context_train_cli(int argc, char** argv) {
+    if (argc < 3) {
+        std::cerr << "usage: nanlm-universal context-train CORPUS [MAX_LINES] [EPOCHS]"
+                     " [REPORT_EVERY] [BUCKETS] [CONTEXT_BYTES] [LR] [EVAL_EVERY] [TRAIN_FRACTION]\n"
+                  << "Trains a raw context-indexed 16x16 class-memory readout.\n"
+                  << "TRAIN_FRACTION <1 holds out a random evaluation split.\n";
+        return 2;
+    }
+    const std::string corpus_path = argv[2];
+    std::size_t max_lines = 0, epochs = 3, report_every = 10000;
+    std::size_t buckets = 8192, context_bytes = 3, eval_every = 1;
+    float base_lr = 0.5f, train_fraction = 1.0f;
+    try {
+        if (argc > 3) max_lines = static_cast<std::size_t>(std::stoull(argv[3]));
+        if (argc > 4) epochs = static_cast<std::size_t>(std::stoull(argv[4]));
+        if (argc > 5) report_every = static_cast<std::size_t>(std::stoull(argv[5]));
+        if (argc > 6) buckets = static_cast<std::size_t>(std::stoull(argv[6]));
+        if (argc > 7) context_bytes = static_cast<std::size_t>(std::stoull(argv[7]));
+        if (argc > 8) base_lr = std::stof(argv[8]);
+        if (argc > 9) eval_every = static_cast<std::size_t>(std::stoull(argv[9]));
+        if (argc > 10) train_fraction = std::stof(argv[10]);
+    } catch (...) { std::cerr << "invalid numeric argument\n"; return 2; }
+    if (buckets == 0 || buckets > 16384 || context_bytes == 0 || context_bytes > 8 ||
+        base_lr <= 0.0f || train_fraction <= 0.0f || train_fraction > 1.0f) {
+        std::cerr << "buckets 1..16384, context bytes 1..8, positive LR,"
+                     " train fraction in (0,1] required\n";
+        return 2;
+    }
+    std::ifstream in(corpus_path, std::ios::binary);
+    if (!in) { std::cerr << "cannot open corpus\n"; return 3; }
+    std::string data((std::istreambuf_iterator<char>(in)),
+                     std::istreambuf_iterator<char>());
+    std::vector<std::string_view> lines;
+    std::size_t begin = 0;
+    while (begin <= data.size()) {
+        const auto end = data.find('\n', begin);
+        if (end == std::string::npos) {
+            if (begin < data.size()) lines.emplace_back(data.data() + begin,
+                                                        data.size() - begin);
+            break;
+        }
+        lines.emplace_back(data.data() + begin, end - begin);
+        begin = end + 1;
+        if (max_lines && lines.size() >= max_lines) break;
+    }
+    std::vector<std::string_view> usable;
+    usable.reserve(lines.size());
+    for (const auto line : lines) {
+        if (line.size() >= 9 && static_cast<std::uint8_t>(line[8]) < 255) {
+            usable.push_back(line);
+        }
+    }
+    std::vector<std::uint32_t> context_buckets(usable.size());
+    std::vector<std::uint8_t> targets(usable.size());
+    for (std::size_t i = 0; i < usable.size(); ++i) {
+        const auto line = usable[i];
+        targets[i] = static_cast<std::uint8_t>(line[8]);
+        std::uint32_t hash = 2166136261u;
+        for (std::size_t j = 0; j < context_bytes; ++j) {
+            const auto byte = static_cast<std::uint8_t>(line[8 - context_bytes + j]);
+            hash = (hash ^ byte) * 16777619u;
+        }
+        context_buckets[i] = hash % static_cast<std::uint32_t>(buckets);
+    }
+    std::vector<std::size_t> all_indices(usable.size());
+    for (std::size_t i = 0; i < all_indices.size(); ++i) all_indices[i] = i;
+    std::vector<std::size_t> train_indices;
+    std::vector<std::size_t> eval_indices;
+    if (train_fraction >= 1.0f) {
+        train_indices = all_indices;
+        eval_indices = all_indices;
+    } else {
+        std::mt19937 split_rng(99);
+        std::shuffle(all_indices.begin(), all_indices.end(), split_rng);
+        const std::size_t split = static_cast<std::size_t>(
+            train_fraction * static_cast<float>(all_indices.size()));
+        train_indices.assign(all_indices.begin(), all_indices.begin() + split);
+        eval_indices.assign(all_indices.begin() + split, all_indices.end());
+    }
+    RawFieldVM vm("build/field_driver.nan");
+    if (!vm.ready()) {
+        std::cerr << "raw field VM unavailable: " << vm.error() << "\n";
+        return 7;
+    }
+    const auto reset_started = std::chrono::steady_clock::now();
+    if (!vm.reset_context_readout(buckets)) {
+        std::cerr << "cannot reset context readout: " << vm.error() << "\n";
+        return 7;
+    }
+    std::cout << "context_tables buckets=" << buckets
+              << " train_samples=" << train_indices.size()
+              << " eval_samples=" << eval_indices.size()
+              << " reset_seconds="
+              << std::chrono::duration<double>(
+                     std::chrono::steady_clock::now() - reset_started).count()
+              << "\n";
+    const auto evaluate = [&](std::size_t epoch, bool final) -> bool {
+        const auto started = std::chrono::steady_clock::now();
+        std::size_t total = 0, correct_count = 0;
+        double loss_sum = 0.0;
+        for (const std::size_t sample : eval_indices) {
+            bool correct = false;
+            float loss = 0.0f;
+            std::uint8_t ph = 0, pl = 0;
+            if (!vm.readout_context(targets[sample], 0.0f,
+                                    context_buckets[sample], buckets,
+                                    correct, loss, ph, pl)) {
+                std::cerr << "context eval failed: " << vm.error() << "\n";
+                return false;
+            }
+            ++total;
+            correct_count += correct ? 1u : 0u;
+            loss_sum += loss;
+        }
+        const double seconds = std::chrono::duration<double>(
+            std::chrono::steady_clock::now() - started).count();
+        const auto print = [&](const char* tag) {
+            std::cout << tag << " samples=" << total
+                      << " loss=" << (loss_sum / std::max<std::size_t>(1, total))
+                      << " accuracy="
+                      << (100.0 * correct_count / std::max<std::size_t>(1, total))
+                      << " seconds=" << seconds;
+            if (!final) std::cout << " epoch=" << epoch;
+            std::cout << "\n";
+        };
+        print(final ? "ctx_full_eval" : "ctx_eval");
+        return true;
+    };
+
+    std::vector<std::size_t> order = train_indices;
+    std::mt19937 rng(1);
+    std::size_t global_step = 0;
+    bool final_evaluated = false;
+    const auto started = std::chrono::steady_clock::now();
+    for (std::size_t epoch = 1; epoch <= epochs; ++epoch) {
+        std::shuffle(order.begin(), order.end(), rng);
+        std::size_t epoch_total = 0, epoch_correct = 0;
+        std::size_t report_total = 0, report_correct = 0;
+        double epoch_loss = 0.0, report_loss = 0.0;
+        for (std::size_t position = 0; position < order.size(); ++position) {
+            const std::size_t sample = order[position];
+            bool correct = false;
+            float loss = 0.0f;
+            std::uint8_t ph = 0, pl = 0;
+            if (!vm.readout_context(targets[sample], base_lr,
+                                    context_buckets[sample], buckets,
+                                    correct, loss, ph, pl)) {
+                std::cerr << "context step failed: " << vm.error() << "\n";
+                return 7;
+            }
+            ++global_step;
+            ++epoch_total;
+            ++report_total;
+            epoch_correct += correct ? 1u : 0u;
+            report_correct += correct ? 1u : 0u;
+            epoch_loss += loss;
+            report_loss += loss;
+            if (report_every && report_total >= report_every) {
+                std::cout << "ctx_step epoch=" << epoch
+                          << " step=" << global_step
+                          << " train_loss=" << (report_loss / report_total)
+                          << " train_accuracy="
+                          << (100.0 * report_correct / report_total)
+                          << "\n";
+                report_total = report_correct = 0;
+                report_loss = 0.0;
+            }
+        }
+        if (report_total) {
+            std::cout << "ctx_step epoch=" << epoch
+                      << " step=" << global_step
+                      << " train_loss=" << (report_loss / report_total)
+                      << " train_accuracy="
+                      << (100.0 * report_correct / report_total)
+                      << "\n";
+        }
+        const double elapsed = std::chrono::duration<double>(
+            std::chrono::steady_clock::now() - started).count();
+        std::cout << "ctx_epoch epoch=" << epoch
+                  << " samples=" << epoch_total
+                  << " train_loss=" << (epoch_loss / std::max<std::size_t>(1, epoch_total))
+                  << " train_accuracy="
+                  << (100.0 * epoch_correct / std::max<std::size_t>(1, epoch_total))
+                  << " seconds=" << elapsed
+                  << " lr=" << base_lr
+                  << "\n";
+        if (eval_every && epoch % eval_every == 0) {
+            const bool last = epoch == epochs;
+            if (!evaluate(epoch, last)) return 7;
+            final_evaluated = last;
+        }
+    }
+    if (!final_evaluated && !evaluate(epochs, true)) return 7;
+    return 0;
+}
+
 } // namespace nanlm

@@ -1269,6 +1269,7 @@ void usage() {
               << "  field-selftest run the raw NaN16 field command driver\n"
               << "  trunk-train CORPUS [MAX_LINES] raw trunk readout training over gloss bytes\n"
               << "  hier-train CORPUS [MAX_LINES] positional 16x16 hierarchical readout training\n"
+              << "  context-train CORPUS [MAX_LINES] context-indexed 16x16 class-memory training\n"
               << "  unification canonical build/topology contract for NaNROUTER and HERMES\n"
               << "  verify      exhaustive invariants and self-tests\n"
               << "  genesis     materialize and describe the genesis register file\n"
@@ -1309,6 +1310,7 @@ int main(int argc, char** argv) {
     if (cmd == "field-selftest") return cmd_field_selftest();
     if (cmd == "trunk-train") return nanlm::trunk_train_cli(argc, argv);
     if (cmd == "hier-train") return nanlm::hier_train_cli(argc, argv);
+    if (cmd == "context-train") return nanlm::context_train_cli(argc, argv);
     if (cmd == "unification") return cmd_unification();
     if (cmd == "verify") return cmd_verify();
     if (cmd == "genesis") return cmd_genesis();
