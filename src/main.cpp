@@ -1276,6 +1276,7 @@ void usage() {
               << "  meta-tokenize CORPUS [MAX_LINES] [MAX_WORDS] [PREFIX] raw subword/meta tokens and 3-word trihead context\n"
               << "  temporal-tokenize CORPUS [MAX_LINES] [MAX_WORDS] [PREFIX] past/current/future temporally split token slots\n"
               << "  ngram-train CORPUS [MAX_BYTES] [PREFIX] train byte 1/2/3/4-gram counts and top-64 vocabularies\n"
+              << "  stream-train CORPUS [MAX_LINES] [MAX_BYTES] [PREFIX] line-streamed tokens/temporal/ngrams/codebook sample\n"
               << "  context-hash-check CORPUS [MAX_LINES] guest FNV bucket check + training smoke\n"
               << "  unification canonical build/topology contract for NaNROUTER and HERMES\n"
               << "  verify      exhaustive invariants and self-tests\n"
@@ -1324,6 +1325,7 @@ int main(int argc, char** argv) {
     if (cmd == "meta-tokenize") return nanlm::meta_tokenize_cli(argc, argv);
     if (cmd == "temporal-tokenize") return nanlm::temporal_tokenize_cli(argc, argv);
     if (cmd == "ngram-train") return nanlm::ngram_train_cli(argc, argv);
+    if (cmd == "stream-train") return nanlm::stream_train_cli(argc, argv);
     if (cmd == "context-hash-check") return nanlm::context_hash_check_cli(argc, argv);
     if (cmd == "unification") return cmd_unification();
     if (cmd == "verify") return cmd_verify();

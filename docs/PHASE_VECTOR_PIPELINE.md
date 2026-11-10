@@ -508,6 +508,33 @@ The runner refuses repository output unless `--allow-repo` is explicit. It
 does not calculate any vector, trig, PQ, spectral or kNN value; it only
 schedules the guest, computes host storage digests, and writes the manifest.
 
+### Streaming all-system training
+
+`stream-train` reads the corpus one line at a time; it never loads the whole
+file into host memory. It feeds each line through the raw tokenizer, temporal
+past/current/future slots, n-gram counter and a fixed-size phase sample window.
+The n-gram carry is passed back into the guest so n-grams crossing host read
+chunks are counted once.
+
+```sh
+./build/nanlm-universal stream-train \
+  state/gutenberg_150_train.txt 0 0 \
+  state/stream_train
+```
+
+It writes:
+
+```text
+.words.bin .subwords.bin .meta.bin .slots.bin
+.ngrams.bin
+.codebook.bin   fixed 1,024-window phase sample, 32 codewords
+.json           line/byte/token/context/field/codebook summary
+```
+
+The phase sample is bounded independently of corpus size; token, n-gram and
+temporal state are streamed. The full 8x256 phase codebook remains a separate
+`phase-codebook` stage.
+
 For releases, use chunked assets so a bank never needs to exist as one large
 local file:
 

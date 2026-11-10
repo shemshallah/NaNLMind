@@ -452,7 +452,8 @@ public:
                              std::array<std::int32_t, 4>& head255,
                              std::vector<std::int32_t>& slots);
     bool ngram_reset();
-    bool ngram_train(const std::string& bytes, std::size_t& processed);
+    bool ngram_train(const std::string& bytes, std::size_t& processed,
+                     std::size_t skip = 0);
     bool ngram_topk(std::array<std::vector<std::uint32_t>, 4>& keys,
                     std::array<std::vector<std::uint32_t>, 4>& counts);
     bool phase_rotate(const std::vector<std::int32_t>& in, std::uint32_t turn,

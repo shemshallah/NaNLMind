@@ -56,6 +56,8 @@ mth_ngram_train:
   ST r1,r12,0
   MOVI r12,@mth_ng_len
   ST r2,r12,0
+  MOVI r12,@mth_ng_skip
+  ST r3,r12,0
   MOVI r12,@mth_ng_pos
   ST r0,r12,0
 mth_ng_pos_loop:
@@ -81,6 +83,11 @@ mth_ng_n_loop:
   LD r6,r12,0
   CMP r8,r6
   JMP[GT] @mth_ng_pos_next
+  ADDI r8,r8,-1
+  MOVI r12,@mth_ng_skip
+  LD r9,r12,0
+  CMP r8,r9
+  JMP[LT] @mth_ng_n_next
   MOVI r12,@mth_ng_text
   LD r1,r12,0
   ADD r2,r5,r0
@@ -299,6 +306,8 @@ mth_ng_pos:
 mth_ng_n:
   .word 0
 mth_ng_key:
+  .word 0
+mth_ng_skip:
   .word 0
 mth_ng_oldkey:
   .word 0

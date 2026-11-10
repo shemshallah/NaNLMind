@@ -1184,6 +1184,7 @@ field_driver_ngram_reset:
 field_driver_ngram_train:
   MOVI r10,0x4001
   LD r2,r10,0
+  LD r3,r10,1
   MOVI r1,0x0000
   MOVHI r1,0x0001
   CALL @mth_ngram_train

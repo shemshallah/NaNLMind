@@ -1370,6 +1370,18 @@ int phase_train_cli(int argc, char** argv) {
     std::uint16_t best_hot_triads = 0;
     bool best_field = false;
 
+    constexpr std::size_t kTrainProbeAnchors = 256;
+    const std::size_t train_probe_count =
+        std::min<std::size_t>(train_count, kTrainProbeAnchors);
+    std::vector<std::int32_t> train_probe_bank;
+    train_probe_bank.reserve(train_probe_count * pipeline_dim);
+    for (std::size_t a = 0; a < train_probe_count; ++a) {
+        const std::size_t index =
+            (a * train_count) / std::max<std::size_t>(1, train_probe_count);
+        train_probe_bank.insert(train_probe_bank.end(), vectors[index].begin(),
+                                vectors[index].end());
+    }
+
     const auto emit_metrics = [&](std::size_t step, bool final) -> bool {
         std::uint64_t eval_distance = 0;
         std::size_t probe_hits = 0;
@@ -1377,6 +1389,8 @@ int phase_train_cli(int argc, char** argv) {
         std::size_t probe_count = 0;
         std::uint32_t prev_eval_code = 0;
         bool have_prev_eval = false;
+        std::uint64_t eval_magnitude = 0;
+        std::size_t pair_top1 = 0;
         std::vector<std::int32_t> eval_bank;
         std::vector<std::uint32_t> eval_codes;
         eval_bank.reserve(eval_vectors.size() * pipeline_dim);
@@ -1390,6 +1404,9 @@ int phase_train_cli(int argc, char** argv) {
                 return false;
             }
             eval_distance += static_cast<std::uint64_t>(distance);
+            for (std::int32_t value : eval_sample)
+                eval_magnitude += static_cast<std::uint64_t>(
+                    value < 0 ? -static_cast<std::int64_t>(value) : value);
             eval_bank.insert(eval_bank.end(), eval_sample.begin(),
                              eval_sample.end());
             eval_codes.push_back(code);
@@ -1407,6 +1424,7 @@ int phase_train_cli(int argc, char** argv) {
                     ++probe_hits;
                     probe_score_sum += static_cast<std::uint64_t>(best_score);
                 }
+                if (best_head == static_cast<std::int32_t>(code)) ++pair_top1;
             }
             prev_eval_code = code;
             have_prev_eval = true;
@@ -1456,6 +1474,26 @@ int phase_train_cli(int argc, char** argv) {
         last_hot_heads = hot.hot_heads;
         last_hot_triads = hot.hot_triads;
         last_field = hot.field_hot;
+        std::uint64_t train_current_distance = 0;
+        for (std::size_t a = 0; a < train_probe_count; ++a) {
+            std::vector<std::int32_t> probe(
+                train_probe_bank.begin() + a * pipeline_dim,
+                train_probe_bank.begin() + (a + 1) * pipeline_dim);
+            std::uint32_t probe_code = 0;
+            std::int32_t probe_distance = 0;
+            if (!vm.pq_encode(probe, codebook, codewords, pipeline_dim,
+                              probe_code, probe_distance)) {
+                std::cerr << "phase-train current probe failed: "
+                          << vm.error() << "\n";
+                return false;
+            }
+            train_current_distance +=
+                static_cast<std::uint64_t>(probe_distance);
+        }
+        const double train_current_mean = train_probe_count
+            ? static_cast<double>(train_current_distance) /
+                  static_cast<double>(train_probe_count)
+            : 0.0;
         const double train_mean = train_distance_count
             ? static_cast<double>(train_distance) /
                   static_cast<double>(train_distance_count)
@@ -1463,8 +1501,17 @@ int phase_train_cli(int argc, char** argv) {
         const double eval_mean = eval_count
             ? static_cast<double>(eval_distance) / static_cast<double>(eval_count)
             : 0.0;
+        const double eval_per_dim = pipeline_dim
+            ? eval_mean / static_cast<double>(pipeline_dim) : 0.0;
+        const double eval_relative = eval_magnitude
+            ? eval_mean / (static_cast<double>(eval_magnitude) /
+                           static_cast<double>(std::max<std::size_t>(1, eval_count)))
+            : 0.0;
         const double hit_rate = probe_count
             ? static_cast<double>(probe_hits) / static_cast<double>(probe_count)
+            : 0.0;
+        const double pair_top1_rate = probe_count
+            ? static_cast<double>(pair_top1) / static_cast<double>(probe_count)
             : 0.0;
         const double score_mean = probe_hits
             ? static_cast<double>(probe_score_sum) /
@@ -1488,8 +1535,12 @@ int phase_train_cli(int argc, char** argv) {
                 << ", \"eval_windows\": " << eval_count
                 << ", \"codewords\": " << codewords
                 << ", \"train_mean_l1_q16\": " << train_mean
+                << ", \"train_current_l1_q16\": " << train_current_mean
                 << ", \"eval_mean_l1_q16\": " << eval_mean
+                << ", \"eval_per_dim_l1_q16\": " << eval_per_dim
+                << ", \"eval_relative_l1\": " << eval_relative
                 << ", \"probe_hit_rate\": " << hit_rate
+                << ", \"pair_top1_rate\": " << pair_top1_rate
                 << ", \"probe_mean_score_q16\": " << score_mean
                 << ", \"leaf_verify_rate\": " << leaf_rate
                 << ", \"leaf_mean_error_q16\": " << leaf_mean_error
@@ -1503,7 +1554,10 @@ int phase_train_cli(int argc, char** argv) {
                   << " train_windows=" << processed
                   << " eval_windows=" << eval_count
                   << " train_l1=" << train_mean
+                  << " train_current_l1=" << train_current_mean
                   << " eval_l1=" << eval_mean
+                  << " eval_per_dim=" << eval_per_dim
+                  << " pair_top1=" << pair_top1_rate
                   << " probe_hit=" << hit_rate
                   << " leaf_verify=" << leaf_rate
                   << " field_hot=" << (hot.field_hot ? "true" : "false")
@@ -1512,6 +1566,17 @@ int phase_train_cli(int argc, char** argv) {
     };
 
     constexpr std::size_t kTrainChunk = 64;
+    constexpr std::size_t kReplayAnchors = 256;
+    const std::size_t anchor_count =
+        std::min<std::size_t>(train_count, kReplayAnchors);
+    std::vector<std::int32_t> anchor_bank;
+    anchor_bank.reserve(anchor_count * pipeline_dim);
+    for (std::size_t a = 0; a < anchor_count; ++a) {
+        const std::size_t index =
+            (a * train_count) / std::max<std::size_t>(1, anchor_count);
+        anchor_bank.insert(anchor_bank.end(), vectors[index].begin(),
+                           vectors[index].end());
+    }
     std::size_t step = 0;
     for (std::size_t start = 0; start < train_count; start += kTrainChunk) {
         const std::size_t count = std::min(kTrainChunk, train_count - start);
@@ -1541,8 +1606,11 @@ int phase_train_cli(int argc, char** argv) {
             previous_code = code;
             have_previous_code = true;
         }
-        if (!vm.pq_update(chunk_bank, count, pipeline_dim, codewords, 1,
-                          codebook)) {
+        std::vector<std::int32_t> update_bank = anchor_bank;
+        update_bank.insert(update_bank.end(), chunk_bank.begin(),
+                           chunk_bank.end());
+        if (!vm.pq_update(update_bank, anchor_count + count, pipeline_dim,
+                          codewords, 1, codebook)) {
             std::cerr << "phase-train codebook update failed: " << vm.error() << "\n";
             return 7;
         }
@@ -1604,6 +1672,7 @@ int phase_train_cli(int argc, char** argv) {
                     << "  \"codebook_words\": " << selected_codebook.size() << ",\n"
                     << "  \"matrix_words\": " << best_matrix.size() << ",\n"
                     << "  \"resumed\": " << (resumed ? "true" : "false") << ",\n"
+                    << "  \"replay_anchors\": " << anchor_count << ",\n"
                     << "  \"best_step\": " << best_step << ",\n"
                     << "  \"best_eval_mean_l1_q16\": " << best_eval_l1 << ",\n"
                     << "  \"best_hot_heads\": " << best_hot_heads << ",\n"
@@ -2147,6 +2216,218 @@ int ngram_train_cli(int argc, char** argv) {
     std::cout << "ngram_train bytes=" << trained
               << " orders=1,2,3,4 top_k=64 words=" << total
               << " output=" << output_prefix << ".ngrams.bin\n";
+    return 0;
+}
+
+
+int stream_train_cli(int argc, char** argv) {
+    if (argc < 3) {
+        std::cerr << "usage: nanlm-universal stream-train CORPUS [MAX_LINES]"
+                     " [MAX_BYTES] [PREFIX]\n";
+        return 2;
+    }
+    const std::string corpus_path = argv[2];
+    std::size_t max_lines = 0, max_bytes = 0;
+    std::string output_prefix = "state/stream_train";
+    try {
+        if (argc > 3) max_lines = static_cast<std::size_t>(std::stoull(argv[3]));
+        if (argc > 4) max_bytes = static_cast<std::size_t>(std::stoull(argv[4]));
+        if (argc > 5) output_prefix = argv[5];
+    } catch (...) {
+        std::cerr << "invalid numeric argument\n";
+        return 2;
+    }
+    std::ifstream in(corpus_path, std::ios::binary);
+    if (!in) { std::cerr << "cannot open corpus\n"; return 3; }
+    RawFieldVM vm("build/field_driver.nan");
+    if (!vm.ready()) {
+        std::cerr << "raw field VM unavailable: " << vm.error() << "\n";
+        return 7;
+    }
+    if (!vm.phase_table_init() || !vm.ngram_reset() || !vm.temporal_slots_reset()) {
+        std::cerr << "stream init failed: " << vm.error() << "\n";
+        return 7;
+    }
+    std::ofstream words_out(output_prefix + ".words.bin", std::ios::binary);
+    std::ofstream subwords_out(output_prefix + ".subwords.bin", std::ios::binary);
+    std::ofstream meta_out(output_prefix + ".meta.bin", std::ios::binary);
+    std::ofstream slots_out(output_prefix + ".slots.bin", std::ios::binary);
+    if (!words_out || !subwords_out || !meta_out || !slots_out) {
+        std::cerr << "cannot open stream token artifacts\n";
+        return 3;
+    }
+    std::string carry;
+    std::vector<std::int32_t> sample_bank;
+    constexpr std::size_t kSampleLimit = 1024;
+    constexpr std::size_t kMaxWordsPerLine = 4096;
+    std::size_t lines = 0, bytes_seen = 0, words_total = 0, subwords_total = 0;
+    std::size_t contexts_total = 0;
+    std::array<std::int32_t, 4> head255{};
+    std::string line;
+    while (std::getline(in, line)) {
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        if (max_lines && lines >= max_lines) break;
+        if (max_bytes && bytes_seen + line.size() > max_bytes) {
+            if (bytes_seen >= max_bytes) break;
+        }
+        ++lines;
+        bytes_seen += line.size();
+        auto feed_ngram = [&](const std::string& piece) -> bool {
+            std::size_t offset = 0;
+            while (offset < piece.size()) {
+                const std::size_t count = std::min<std::size_t>(
+                    65536 - carry.size(), piece.size() - offset);
+                std::string combined = carry + piece.substr(offset, count);
+                std::size_t processed = 0;
+                if (!vm.ngram_train(combined, processed, carry.size())) {
+                    std::cerr << "stream ngram failed: " << vm.error() << "\n";
+                    return false;
+                }
+                offset += count;
+                if (combined.size() >= 3)
+                    carry = combined.substr(combined.size() - 3);
+                else
+                    carry = combined;
+            }
+            return true;
+        };
+        if (!feed_ngram(line + "\n")) return 7;
+        if (line.empty()) continue;
+        std::vector<std::uint32_t> words, subwords, meta;
+        std::size_t word_count = 0, subword_count = 0;
+        if (!vm.tokenize(line, kMaxWordsPerLine, words, subwords, meta,
+                         word_count, subword_count)) {
+            std::cerr << "stream tokenize failed: " << vm.error() << "\n";
+            return 7;
+        }
+        if (word_count == 0) continue;
+        std::size_t contexts = 0;
+        if (!vm.temporal_slots_observe_batch(words, contexts)) {
+            std::cerr << "stream temporal failed: " << vm.error() << "\n";
+            return 7;
+        }
+        std::vector<std::int32_t> pv, pc, fv, fc, slots;
+        std::vector<std::uint32_t> current;
+        if (!vm.read_temporal_slots(word_count, pv, pc, fv, fc,
+                                    current, head255, slots)) {
+            std::cerr << "stream temporal read failed: " << vm.error() << "\n";
+            return 7;
+        }
+        words_out.write(reinterpret_cast<const char*>(words.data()),
+                        static_cast<std::streamsize>(words.size() * sizeof(words[0])));
+        subwords_out.write(reinterpret_cast<const char*>(subwords.data()),
+                           static_cast<std::streamsize>(subwords.size() * sizeof(subwords[0])));
+        meta_out.write(reinterpret_cast<const char*>(meta.data()),
+                       static_cast<std::streamsize>(meta.size() * sizeof(meta[0])));
+        slots_out.write(reinterpret_cast<const char*>(slots.data()),
+                        static_cast<std::streamsize>(slots.size() * sizeof(slots[0])));
+        words_total += word_count;
+        subwords_total += subword_count;
+        contexts_total += contexts;
+        if (sample_bank.size() < kSampleLimit * 128 && line.size() >= 8) {
+            std::array<std::uint8_t, 8> window{};
+            const std::size_t start = line.size() - 8;
+            for (std::size_t i = 0; i < 8; ++i)
+                window[i] = static_cast<std::uint8_t>(line[start + i]);
+            std::vector<std::int32_t> vector;
+            std::uint32_t shard = 0;
+            if (!vm.phase_encode_wide(window.data(), 8, 64, vector, shard)) {
+                std::cerr << "stream phase sample failed: " << vm.error() << "\n";
+                return 7;
+            }
+            sample_bank.insert(sample_bank.end(), vector.begin(), vector.end());
+        }
+    }
+    std::array<std::vector<std::uint32_t>, 4> ngram_keys, ngram_counts;
+    if (!vm.ngram_topk(ngram_keys, ngram_counts)) {
+        std::cerr << "stream ngram topk failed: " << vm.error() << "\n";
+        return 7;
+    }
+    std::ofstream ngram_out(output_prefix + ".ngrams.bin", std::ios::binary);
+    if (ngram_out) {
+        for (std::size_t order = 0; order < 4; ++order)
+            for (std::size_t i = 0; i < ngram_keys[order].size(); ++i) {
+                const std::uint32_t rec[3] = {
+                    static_cast<std::uint32_t>(order + 1),
+                    ngram_keys[order][i], ngram_counts[order][i]};
+                ngram_out.write(reinterpret_cast<const char*>(rec), sizeof(rec));
+            }
+    }
+    std::size_t codebook_words = 0;
+    std::size_t codebook_codewords = 0;
+    if (sample_bank.size() >= 64 * 128) {
+        const std::size_t samples = sample_bank.size() / 128;
+        codebook_codewords = std::min<std::size_t>(samples, 32);
+        std::vector<std::int32_t> codebook;
+        if (!vm.pq_train(sample_bank, samples, 128, codebook_codewords, 1,
+                         codebook)) {
+            std::cerr << "stream codebook failed: " << vm.error() << "\n";
+            return 7;
+        }
+        std::ofstream book(output_prefix + ".codebook.bin", std::ios::binary);
+        if (book) {
+            book.write(reinterpret_cast<const char*>(codebook.data()),
+                       static_cast<std::streamsize>(
+                           codebook.size() * sizeof(codebook[0])));
+            codebook_words = codebook.size();
+        }
+    }
+    if (!vm.temporal_slots_project()) {
+        std::cerr << "stream temporal project failed: " << vm.error() << "\n";
+        return 7;
+    }
+    std::vector<std::int32_t> votes, credits;
+    if (!vm.read_meta_trihead(votes, credits)) {
+        std::cerr << "stream temporal read failed: " << vm.error() << "\n";
+        return 7;
+    }
+    std::array<std::uint8_t, kTriadCount> masks{};
+    for (std::size_t i = 0; i < masks.size(); ++i)
+        masks[i] = static_cast<std::uint8_t>(votes[i] & 7);
+    std::uint16_t accepted = 0;
+    bool field_accepted = false;
+    if (!vm.field_vote(masks, accepted, field_accepted)) {
+        std::cerr << "stream field vote failed: " << vm.error() << "\n";
+        return 7;
+    }
+    std::array<std::int32_t, kTriadMemberCount> head_credits{};
+    std::copy(credits.begin(), credits.end(), head_credits.begin());
+    HotTriheadResult hot;
+    if (!vm.hot_triheads(head_credits, 0, hot)) {
+        std::cerr << "stream hot trihead failed: " << vm.error() << "\n";
+        return 7;
+    }
+    auto manifest = std::ofstream(output_prefix + ".json");
+    if (manifest) {
+        manifest << "{\n  \"schema\": \"nanlm.stream-train/1\",\n"
+                 << "  \"lines\": " << lines << ",\n"
+                 << "  \"bytes\": " << bytes_seen << ",\n"
+                 << "  \"words\": " << words_total << ",\n"
+                 << "  \"subwords\": " << subwords_total << ",\n"
+                 << "  \"temporal_contexts\": " << contexts_total << ",\n"
+                 << "  \"phase_window_bytes\": 8,\n"
+                 << "  \"preceding_context_words\": 3,\n"
+                 << "  \"anticipatory_context_words\": 3,\n"
+                 << "  \"current_slot_head\": 255,\n"
+                 << "  \"current_word\": " << head255[0] << ",\n"
+                 << "  \"current_slot\": " << head255[1] << ",\n"
+                 << "  \"ngram_orders\": [1,2,3,4],\n"
+                 << "  \"ngram_top_k\": 64,\n"
+                 << "  \"codebook_codewords\": " << codebook_codewords << ",\n"
+                 << "  \"codebook_words\": " << codebook_words << ",\n"
+                 << "  \"accepted_triads\": " << accepted << ",\n"
+                 << "  \"field_hot\": " << (field_accepted ? "true" : "false") << "\n}\n";
+    }
+    std::cout << "stream_train lines=" << lines
+              << " bytes=" << bytes_seen
+              << " words=" << words_total
+              << " subwords=" << subwords_total
+              << " contexts=" << contexts_total
+              << " current_word=" << head255[0]
+              << " codebook_words=" << codebook_words
+              << " accepted_triads=" << accepted
+              << " field_hot=" << (field_accepted ? "true" : "false")
+              << " output=" << output_prefix << "\n";
     return 0;
 }
 

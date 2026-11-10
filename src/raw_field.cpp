@@ -1729,14 +1729,16 @@ bool RawFieldVM::ngram_reset() {
     return run_command();
 }
 
-bool RawFieldVM::ngram_train(const std::string& bytes, std::size_t& processed) {
-    if (bytes.empty() || bytes.size() > 0x10000)
+bool RawFieldVM::ngram_train(const std::string& bytes, std::size_t& processed,
+                              std::size_t skip) {
+    if (bytes.empty() || bytes.size() > 0x10000 || skip > bytes.size())
         return fail("ngram train chunk 1..65536 bytes");
     for (std::size_t i = 0; i < bytes.size(); ++i)
         if (!write_word(0x10000u + static_cast<std::uint32_t>(i),
                         static_cast<std::uint8_t>(bytes[i])))
             return fail("cannot write ngram bytes");
     if (!write_word(kProposalBase + 0, static_cast<std::uint32_t>(bytes.size())) ||
+        !write_word(kProposalBase + 1, static_cast<std::uint32_t>(skip)) ||
         !write_word(kCommandBase, 81))
         return fail("cannot write ngram train");
     if (!run_command()) return false;

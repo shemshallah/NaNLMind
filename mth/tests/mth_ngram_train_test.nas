@@ -19,6 +19,7 @@ main:
   MOVI r1,0x0000
   MOVHI r1,0x0001
   MOVI r2,5
+  MOVI r3,0
   CALL @mth_ngram_train
   CALL @mth_ngram_topk
   ; unigram a/b are the top two entries (order 1, keys at 0x2D0000)
