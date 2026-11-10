@@ -176,7 +176,17 @@ mth_sp_dot:
   MOVI r12,8
   CMP r5,r12
   JMP[GE] @mth_sp_store
-  ADD r6,r6,r5
+  ; Recompute A[i][j] from scratch. The row base is not mutated by j.
+  MOVI r12,@mth_sp_i
+  LD r6,r12,0
+  MOVI r12,8
+  MUL r6,r6,r12
+  MOVI r12,@mth_sp_a
+  LD r7,r12,0
+  ADD r6,r6,r7
+  MOVI r12,@mth_sp_j
+  LD r7,r12,0
+  ADD r6,r6,r7
   LD r1,r6,0
   MOVI r12,@mth_sp_in
   LD r7,r12,0

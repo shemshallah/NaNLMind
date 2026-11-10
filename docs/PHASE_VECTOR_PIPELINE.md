@@ -195,3 +195,27 @@ pipeline still needs:
 - remote leaf paging/verification;
 - trihead/hotspot integration into the training loop;
 - book-disjoint reconstruction metrics.
+
+## 10. Streaming corpus ingest status
+
+`phase-ingest` now drives the raw phase encoder from a corpus stream:
+
+```sh
+./build/nanlm-universal phase-ingest state/gutenberg_150_train.txt \
+  10000 8 16 1000
+```
+
+This reads windows, batches 1,024 windows into one guest command, calls the
+raw phase encoder, and writes `state/phase_vectors.bin` plus a shard manifest.
+A 1,000-window smoke run took about 1.4 s and produced a balanced 16-shard
+histogram.
+
+The full 150-book vector bank is roughly:
+
+```text
+1.78M windows x 16 complex lanes x 4 bytes = ~228 MB
+```
+
+The batch path is implemented, but the full vector bank is not committed to
+Git; it is state/remote payload. The next step is to add the codebook-region
+PQ code and pair-code matrix observer to this same batch command.

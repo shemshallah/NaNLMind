@@ -122,3 +122,194 @@ mth_pe_i:
   .word 0
 mth_pe_lane:
   .word 0
+
+; Wide streaming trig phase encoder.
+; ABI:
+;   r1 = byte array pointer (one byte per guest word)
+;   r2 = byte count (0..64)
+;   r3 = lane count D (1..64)
+;   r4 = output complex[D] address (2*D Q16 words)
+; Returns r1 = shard 0..15
+mth_phase_encode_wide:
+  MOVI r12,@mth_pw_link
+  ST r15,r12,0
+  MOVI r12,@mth_pw_in
+  ST r1,r12,0
+  MOVI r12,@mth_pw_count
+  ST r2,r12,0
+  MOVI r12,@mth_pw_d
+  ST r3,r12,0
+  MOVI r12,@mth_pw_out
+  ST r4,r12,0
+
+  MOVI r5,0
+mth_pw_clear:
+  MOVI r12,@mth_pw_d
+  LD r6,r12,0
+  MOVI r7,2
+  MUL r6,r6,r7
+  CMP r5,r6
+  JMP[GE] @mth_pw_clear_done
+  ADD r6,r4,r5
+  ST r0,r6,0
+  ADDI r5,r5,1
+  JMP @mth_pw_clear
+mth_pw_clear_done:
+  MOVI r12,@mth_pw_i
+  ST r0,r12,0
+mth_pw_loop:
+  MOVI r12,@mth_pw_i
+  LD r5,r12,0
+  MOVI r12,@mth_pw_count
+  LD r6,r12,0
+  CMP r5,r6
+  JMP[GE] @mth_pw_done
+  MOVI r12,@mth_pw_in
+  LD r6,r12,0
+  ADD r6,r6,r5
+  LD r4,r6,0
+  ; lane = (byte + i) mod D
+  ADD r6,r4,r5
+  MOVI r12,@mth_pw_d
+  LD r7,r12,0
+  MODU r6,r6,r7
+  MOVI r12,@mth_pw_lane
+  ST r6,r12,0
+  ; phase = (byte*257 + i*8192) mod 65536
+  MOVI r7,257
+  MUL r6,r4,r7
+  MOVI r7,8192
+  MUL r7,r5,r7
+  ADD r6,r6,r7
+  SHL r6,r6,16
+  SHR r6,r6,16
+  ADD r1,r6,r0
+  CALL @mth_q16_sin_cos
+  MOVI r12,@mth_pw_lane
+  LD r6,r12,0
+  MOVI r7,2
+  MUL r6,r6,r7
+  MOVI r12,@mth_pw_out
+  LD r7,r12,0
+  ADD r8,r7,r6
+  LD r9,r8,0
+  ADD r9,r9,r1
+  ST r9,r8,0
+  ADDI r8,r8,1
+  LD r9,r8,0
+  ADD r9,r9,r2
+  ST r9,r8,0
+  MOVI r12,@mth_pw_i
+  LD r5,r12,0
+  ADDI r5,r5,1
+  ST r5,r12,0
+  JMP @mth_pw_loop
+mth_pw_done:
+  MOVI r12,@mth_pw_out
+  LD r8,r12,0
+  MOVI r5,0
+  MOVI r1,0
+  MOVI r12,@mth_pw_d
+  LD r6,r12,0
+mth_pw_shard:
+  CMP r5,r6
+  JMP[GE] @mth_pw_shard_done
+  MOVI r7,2
+  MUL r7,r5,r7
+  ADD r7,r8,r7
+  LD r7,r7,0
+  ADD r1,r1,r7
+  ADDI r5,r5,1
+  JMP @mth_pw_shard
+mth_pw_shard_done:
+  MOVI r6,16
+  MODU r1,r1,r6
+  MOVI r12,@mth_pw_link
+  LD r15,r12,0
+  RET
+
+mth_pw_link:
+  .word 0
+mth_pw_in:
+  .word 0
+mth_pw_count:
+  .word 0
+mth_pw_d:
+  .word 0
+mth_pw_out:
+  .word 0
+mth_pw_i:
+  .word 0
+mth_pw_lane:
+  .word 0
+
+; Batch phase encode: r1=count, r2=byte windows, r3=W, r4=D, r5=out complex.
+; Returns r1=processed count. The guest calls mth_phase_encode_wide for each
+; window; only the output pointer changes.
+mth_phase_encode_batch:
+  MOVI r12,@mth_pb_link
+  ST r15,r12,0
+  MOVI r12,@mth_pb_count
+  ST r1,r12,0
+  MOVI r12,@mth_pb_in
+  ST r2,r12,0
+  MOVI r12,@mth_pb_w
+  ST r3,r12,0
+  MOVI r12,@mth_pb_d
+  ST r4,r12,0
+  MOVI r12,@mth_pb_out
+  ST r5,r12,0
+  MOVI r12,@mth_pb_i
+  ST r0,r12,0
+mth_pb_loop:
+  MOVI r12,@mth_pb_i
+  LD r5,r12,0
+  MOVI r12,@mth_pb_count
+  LD r6,r12,0
+  CMP r5,r6
+  JMP[GE] @mth_pb_done
+  MOVI r12,@mth_pb_w
+  LD r7,r12,0
+  MUL r7,r7,r5
+  MOVI r12,@mth_pb_in
+  LD r8,r12,0
+  ADD r8,r8,r7
+  MOVI r12,@mth_pb_d
+  LD r9,r12,0
+  ADD r10,r9,r9
+  MUL r10,r10,r5
+  MOVI r12,@mth_pb_out
+  LD r11,r12,0
+  ADD r11,r11,r10
+  ADD r1,r8,r0
+  MOVI r12,@mth_pb_w
+  LD r2,r12,0
+  ADD r3,r9,r0
+  ADD r4,r11,r0
+  CALL @mth_phase_encode_wide
+  MOVI r12,@mth_pb_i
+  LD r5,r12,0
+  ADDI r5,r5,1
+  ST r5,r12,0
+  JMP @mth_pb_loop
+mth_pb_done:
+  MOVI r12,@mth_pb_count
+  LD r1,r12,0
+  MOVI r12,@mth_pb_link
+  LD r15,r12,0
+  RET
+
+mth_pb_link:
+  .word 0
+mth_pb_count:
+  .word 0
+mth_pb_in:
+  .word 0
+mth_pb_w:
+  .word 0
+mth_pb_d:
+  .word 0
+mth_pb_out:
+  .word 0
+mth_pb_i:
+  .word 0

@@ -39,7 +39,17 @@ mth_phase_test_main:
   ADD r11,r11,r12
   CMP r11,r0
   JMP[EQ] @mth_phase_fail_lane
-  ; shard must be 0..15
+  ; wide encoder, D=16
+  MOVI r1,0x7000
+  MOVI r2,3
+  MOVI r3,16
+  MOVI r4,0x5200
+  CALL @mth_phase_encode_wide
+  MOVI r10,0x5200
+  LD r11,r10,0
+  MOVI r12,65000
+  CMP r11,r12
+  JMP[LT] @mth_phase_fail_cos
   MOVI r12,15
   CMP r1,r12
   JMP[GT] @mth_phase_fail_shard

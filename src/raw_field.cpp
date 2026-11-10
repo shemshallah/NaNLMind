@@ -1335,6 +1335,154 @@ bool RawFieldVM::readout_hier(const float* feature, std::uint8_t target,
     return true;
 }
 
+bool RawFieldVM::phase_encode_wide(const std::uint8_t* bytes,
+                                   std::size_t count, std::size_t dim,
+                                   std::vector<std::int32_t>& out,
+                                   std::uint32_t& shard) {
+    if (!bytes || count == 0 || count > 64 || dim == 0 || dim > 64) {
+        return fail("phase encode requires bytes 1..64 and dim 1..64");
+    }
+    for (std::size_t i = 0; i < count; ++i) {
+        if (!write_word(0x7000u + static_cast<std::uint32_t>(i), bytes[i])) {
+            return fail("cannot write phase input byte");
+        }
+    }
+    if (!write_word(kProposalBase + 0, static_cast<std::uint32_t>(count)) ||
+        !write_word(kProposalBase + 1, static_cast<std::uint32_t>(dim)) ||
+        !write_word(kCommandBase, 60)) {
+        return fail("cannot write phase encode command");
+    }
+    if (!run_command()) return false;
+    shard = read_word(kResultBase + 0) & 15u;
+    out.resize(dim * 2);
+    for (std::size_t i = 0; i < out.size(); ++i) {
+        out[i] = static_cast<std::int32_t>(
+            read_word(0x5200u + static_cast<std::uint32_t>(i)));
+    }
+    return true;
+}
+
+
+bool RawFieldVM::phase_rotate(const std::vector<std::int32_t>& in,
+                              std::uint32_t turn,
+                              std::vector<std::int32_t>& out) {
+    if (in.size() < 2 || in.size() % 2 != 0 || in.size() / 2 > 64)
+        return fail("phase rotate lanes must be 1..64");
+    for (std::size_t i = 0; i < in.size(); ++i)
+        if (!write_word(0x7000u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(in[i])))
+            return fail("cannot write phase rotate input");
+    if (!write_word(kProposalBase + 0, turn) ||
+        !write_word(kProposalBase + 1, static_cast<std::uint32_t>(in.size() / 2)) ||
+        !write_word(kCommandBase, 58)) return fail("cannot write phase rotate command");
+    if (!run_command()) return false;
+    out.resize(in.size());
+    for (std::size_t i = 0; i < out.size(); ++i)
+        out[i] = static_cast<std::int32_t>(read_word(0x7200u + static_cast<std::uint32_t>(i)));
+    return true;
+}
+
+bool RawFieldVM::pq_encode(const std::vector<std::int32_t>& query,
+                           const std::vector<std::int32_t>& codebook,
+                           std::size_t codewords, std::size_t dim,
+                           std::uint32_t& code, std::int32_t& distance) {
+    if (codewords == 0 || codewords > 256 || dim == 0 || dim > 64 ||
+        query.size() < dim || codebook.size() < codewords * dim)
+        return fail("pq encode bounds invalid");
+    for (std::size_t i = 0; i < dim; ++i)
+        if (!write_word(0x7000u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(query[i])))
+            return fail("cannot write pq query");
+    for (std::size_t i = 0; i < codewords * dim; ++i)
+        if (!write_word(0x10000u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(codebook[i])))
+            return fail("cannot write pq codebook");
+    if (!write_word(kProposalBase + 0, static_cast<std::uint32_t>(codewords)) ||
+        !write_word(kProposalBase + 1, static_cast<std::uint32_t>(dim)) ||
+        !write_word(kCommandBase, 59)) return fail("cannot write pq command");
+    if (!run_command()) return false;
+    code = read_word(kResultBase + 0);
+    distance = static_cast<std::int32_t>(read_word(kResultBase + 1));
+    return true;
+}
+
+bool RawFieldVM::spectral_iter(
+    const std::array<std::int32_t, 64>& adjacency,
+    const std::array<std::int32_t, 8>& in,
+    std::array<std::int32_t, 8>& out) {
+    for (std::size_t i = 0; i < adjacency.size(); ++i)
+        if (!write_word(0x7000u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(adjacency[i])))
+            return fail("cannot write spectral adjacency");
+    for (std::size_t i = 0; i < in.size(); ++i)
+        if (!write_word(0x7040u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(in[i])))
+            return fail("cannot write spectral input");
+    if (!write_word(kCommandBase, 61)) return fail("cannot write spectral command");
+    if (!run_command()) return false;
+    for (std::size_t i = 0; i < out.size(); ++i)
+        out[i] = static_cast<std::int32_t>(read_word(0x7080u + static_cast<std::uint32_t>(i)));
+    return true;
+}
+
+bool RawFieldVM::sparse_knn(const std::vector<std::int32_t>& query,
+                            const std::vector<std::int32_t>& bank,
+                            std::size_t count, std::size_t dim, std::size_t k,
+                            std::vector<std::uint32_t>& indices,
+                            std::vector<std::int32_t>& scores) {
+    if (count == 0 || count > 4096 || dim == 0 || dim > 64 || k == 0 || k > 4 ||
+        query.size() < dim || bank.size() < count * dim)
+        return fail("sparse kNN bounds invalid");
+    for (std::size_t i = 0; i < dim; ++i)
+        if (!write_word(0x7000u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(query[i])))
+            return fail("cannot write kNN query");
+    for (std::size_t i = 0; i < count * dim; ++i)
+        if (!write_word(0x10000u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(bank[i])))
+            return fail("cannot write kNN bank");
+    if (!write_word(kProposalBase + 0, static_cast<std::uint32_t>(count)) ||
+        !write_word(kProposalBase + 1, static_cast<std::uint32_t>(dim)) ||
+        !write_word(kProposalBase + 2, static_cast<std::uint32_t>(k)) ||
+        !write_word(kCommandBase, 62)) return fail("cannot write kNN command");
+    if (!run_command()) return false;
+    indices.resize(k);
+    scores.resize(k);
+    for (std::size_t i = 0; i < k; ++i) {
+        indices[i] = read_word(0x7200u + static_cast<std::uint32_t>(i));
+        scores[i] = static_cast<std::int32_t>(read_word(0x7240u + static_cast<std::uint32_t>(i)));
+    }
+    return true;
+}
+
+bool RawFieldVM::phase_encode_batch(const std::uint8_t* bytes,
+                                    std::size_t windows, std::size_t window,
+                                    std::size_t dim,
+                                    std::vector<std::int32_t>& out) {
+    if (!bytes || windows == 0 || windows > 1024 || window == 0 ||
+        window > 8 || dim == 0 || dim > 64) {
+        return fail("phase batch requires 1..1024 windows, W<=8, D<=64");
+    }
+    for (std::size_t i = 0; i < windows * window; ++i) {
+        if (!write_word(0x60000u + static_cast<std::uint32_t>(i), bytes[i])) {
+            return fail("cannot write phase batch input");
+        }
+    }
+    if (!write_word(kProposalBase + 0, static_cast<std::uint32_t>(windows)) ||
+        !write_word(kProposalBase + 1, static_cast<std::uint32_t>(window)) ||
+        !write_word(kProposalBase + 2, static_cast<std::uint32_t>(dim)) ||
+        !write_word(kCommandBase, 63)) {
+        return fail("cannot write phase batch command");
+    }
+    if (!run_command()) return false;
+    out.resize(windows * dim * 2);
+    for (std::size_t i = 0; i < out.size(); ++i) {
+        out[i] = static_cast<std::int32_t>(
+            read_word(0x70000u + static_cast<std::uint32_t>(i)));
+    }
+    return true;
+}
+
 bool RawFieldVM::reset_context_readout(std::size_t buckets) {
     if (buckets == 0 || buckets > 16384) {
         return fail("context bucket count outside 1..16384");

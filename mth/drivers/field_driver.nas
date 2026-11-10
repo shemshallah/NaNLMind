@@ -60,6 +60,9 @@ JMP @field_driver_entry
 .include "../nan16/mth_softmax16.nas"
 .include "../nan16/mth_softmax16_table.nas"
 .include "../nan16/mth_context_hier.nas"
+.include "../nan16/mth_phase_encode.nas"
+.include "../nan16/mth_phase_pq.nas"
+.include "../nan16/mth_sparse_knn.nas"
 .include "../nan16/mth_context_backoff.nas"
 .include "../nan16/mth_context_encode.nas"
 .include "../nan16/mth_role_step.nas"
@@ -212,6 +215,24 @@ field_driver_main:
   MOVI r3,57
   CMP r2,r3
   JMP[EQ] @field_driver_role_step24k
+  MOVI r3,58
+  CMP r2,r3
+  JMP[EQ] @field_driver_phase_rotate
+  MOVI r3,59
+  CMP r2,r3
+  JMP[EQ] @field_driver_pq_encode
+  MOVI r3,60
+  CMP r2,r3
+  JMP[EQ] @field_driver_phase_encode
+  MOVI r3,61
+  CMP r2,r3
+  JMP[EQ] @field_driver_spectral_iter
+  MOVI r3,62
+  CMP r2,r3
+  JMP[EQ] @field_driver_sparse_knn
+  MOVI r3,63
+  CMP r2,r3
+  JMP[EQ] @field_driver_phase_encode_batch
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -849,6 +870,73 @@ mth_credit_rate_float:
   MOVHI r2,0x4780
   FDIV r1,r1,r2
   RET
+
+field_driver_phase_encode:
+  MOVI r10,0x4001
+  LD r2,r10,0
+  LD r3,r10,1
+  MOVI r1,0x7000
+  MOVI r4,0x5200
+  CALL @mth_phase_encode_wide
+  MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
+field_driver_phase_rotate:
+  MOVI r1,0x7000
+  MOVI r2,0x7200
+  MOVI r10,0x4001
+  LD r3,r10,0
+  LD r4,r10,1
+  CALL @mth_phase_rotate
+  MOVI r10,0x4010
+  ST r4,r10,0
+  JMP @field_driver_return
+field_driver_pq_encode:
+  MOVI r1,0x7000
+  MOVI r2,0x0000
+  MOVHI r2,0x0001
+  MOVI r10,0x4001
+  LD r3,r10,0
+  LD r4,r10,1
+  MOVI r5,0x4010
+  CALL @mth_pq_encode
+  JMP @field_driver_return
+field_driver_spectral_iter:
+  MOVI r1,0x7000
+  MOVI r2,0x7040
+  MOVI r3,0x7080
+  CALL @mth_spectral_iter
+  MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
+field_driver_sparse_knn:
+  MOVI r1,0x7000
+  MOVI r2,0x0000
+  MOVHI r2,0x0001
+  MOVI r10,0x4001
+  LD r3,r10,0
+  LD r4,r10,1
+  LD r5,r10,2
+  MOVI r6,0x7200
+  MOVI r7,0x7240
+  CALL @mth_sparse_knn
+  MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_phase_encode_batch:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r3,r10,1
+  LD r4,r10,2
+  MOVI r2,0x0000
+  MOVHI r2,0x0006
+  MOVI r5,0x0000
+  MOVHI r5,0x0007
+  CALL @mth_phase_encode_batch
+  MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
 
 field_driver_context_encode:
   CALL @mth_context_encode

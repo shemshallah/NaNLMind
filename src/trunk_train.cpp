@@ -6,6 +6,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <random>
@@ -787,6 +788,109 @@ int context_hash_check_cli(int, char**) {
     std::cerr << "context-hash-check is available in the hash worktree; "
                  "this integration build uses the guest-backoff trainer.\n";
     return 2;
+}
+
+
+int phase_ingest_cli(int argc, char** argv) {
+    if (argc < 3) {
+        std::cerr << "usage: nanlm-universal phase-ingest CORPUS [MAX_LINES] [WINDOW]"
+                     " [DIM] [MAX_WINDOWS]\n";
+        return 2;
+    }
+    const std::string corpus_path = argv[2];
+    std::size_t max_lines = 0, window = 8, dim = 16, max_windows = 0;
+    try {
+        if (argc > 3) max_lines = static_cast<std::size_t>(std::stoull(argv[3]));
+        if (argc > 4) window = static_cast<std::size_t>(std::stoull(argv[4]));
+        if (argc > 5) dim = static_cast<std::size_t>(std::stoull(argv[5]));
+        if (argc > 6) max_windows = static_cast<std::size_t>(std::stoull(argv[6]));
+    } catch (...) { std::cerr << "invalid numeric argument\n"; return 2; }
+    if (window == 0 || window > 64 || dim == 0 || dim > 64) {
+        std::cerr << "window 1..64 and dim 1..64 required\n";
+        return 2;
+    }
+    std::ifstream in(corpus_path, std::ios::binary);
+    if (!in) { std::cerr << "cannot open corpus\n"; return 3; }
+    std::string data((std::istreambuf_iterator<char>(in)),
+                     std::istreambuf_iterator<char>());
+    std::vector<std::string_view> lines;
+    std::size_t begin = 0;
+    while (begin <= data.size()) {
+        const auto end = data.find('\n', begin);
+        if (end == std::string::npos) {
+            if (begin < data.size()) lines.emplace_back(data.data() + begin,
+                                                        data.size() - begin);
+            break;
+        }
+        lines.emplace_back(data.data() + begin, end - begin);
+        begin = end + 1;
+        if (max_lines && lines.size() >= max_lines) break;
+    }
+    RawFieldVM vm("build/field_driver.nan");
+    if (!vm.ready()) {
+        std::cerr << "raw field VM unavailable: " << vm.error() << "\n";
+        return 7;
+    }
+    std::error_code mkdir_error;
+    std::filesystem::create_directories("state", mkdir_error);
+    std::ofstream out("state/phase_vectors.bin", std::ios::binary);
+    if (!out) { std::cerr << "cannot open phase vector output\n"; return 3; }
+    std::array<std::size_t, 16> shard_counts{};
+    std::size_t encoded = 0;
+    std::vector<std::uint8_t> batch_bytes;
+    std::size_t batch_windows = 0;
+    constexpr std::size_t kBatchWindows = 1024;
+    const auto flush_batch = [&]() -> bool {
+        if (batch_windows == 0) return true;
+        std::vector<std::int32_t> vectors;
+        if (!vm.phase_encode_batch(batch_bytes.data(), batch_windows,
+                                   window, dim, vectors)) {
+            std::cerr << "phase batch failed: " << vm.error() << "\n";
+            return false;
+        }
+        out.write(reinterpret_cast<const char*>(vectors.data()),
+                  static_cast<std::streamsize>(
+                      vectors.size() * sizeof(std::int32_t)));
+        for (std::size_t w = 0; w < batch_windows; ++w) {
+            std::int64_t sum = 0;
+            for (std::size_t d = 0; d < dim; ++d) {
+                sum += vectors[w * dim * 2 + d * 2];
+            }
+            ++shard_counts[static_cast<std::size_t>(sum) & 15u];
+        }
+        encoded += batch_windows;
+        batch_bytes.clear();
+        batch_windows = 0;
+        return true;
+    };
+    for (auto line : lines) {
+        while (!line.empty() && line.back() == '\r') line.remove_suffix(1);
+        if (line.size() < window) continue;
+        if (max_windows && encoded + batch_windows >= max_windows) break;
+        const std::size_t start = line.size() - window;
+        for (std::size_t i = 0; i < window; ++i) {
+            batch_bytes.push_back(static_cast<std::uint8_t>(line[start + i]));
+        }
+        ++batch_windows;
+        if (batch_windows == kBatchWindows && !flush_batch()) return 7;
+    }
+    if (!flush_batch()) return 7;
+    auto manifest = std::ofstream("state/phase_vectors.json");
+    if (manifest) {
+        manifest << "{\n  \"schema\": \"nanlm.phase-vectors/1\",\n"
+                 << "  \"samples\": " << encoded << ",\n"
+                 << "  \"dim\": " << dim << ",\n"
+                 << "  \"window\": " << window << ",\n"
+                 << "  \"shards\": [";
+        for (std::size_t i = 0; i < shard_counts.size(); ++i) {
+            if (i) manifest << ",";
+            manifest << shard_counts[i];
+        }
+        manifest << "]\n}\n";
+    }
+    std::cout << "phase_ingest samples=" << encoded << " dim=" << dim
+              << " window=" << window << " output=state/phase_vectors.bin\n";
+    return 0;
 }
 
 } // namespace nanlm

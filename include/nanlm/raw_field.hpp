@@ -422,6 +422,26 @@ public:
                       float learning_rate, std::size_t dim, bool& correct,
                       float& loss, std::uint8_t& predicted_high,
                       std::uint8_t& predicted_low);
+    bool phase_encode_wide(const std::uint8_t* bytes, std::size_t count,
+                           std::size_t dim, std::vector<std::int32_t>& out,
+                           std::uint32_t& shard);
+    bool phase_encode_batch(const std::uint8_t* bytes, std::size_t windows,
+                            std::size_t window, std::size_t dim,
+                            std::vector<std::int32_t>& out);
+    bool phase_rotate(const std::vector<std::int32_t>& in, std::uint32_t turn,
+                      std::vector<std::int32_t>& out);
+    bool pq_encode(const std::vector<std::int32_t>& query,
+                   const std::vector<std::int32_t>& codebook,
+                   std::size_t codewords, std::size_t dim,
+                   std::uint32_t& code, std::int32_t& distance);
+    bool spectral_iter(const std::array<std::int32_t, 64>& adjacency,
+                       const std::array<std::int32_t, 8>& in,
+                       std::array<std::int32_t, 8>& out);
+    bool sparse_knn(const std::vector<std::int32_t>& query,
+                    const std::vector<std::int32_t>& bank, std::size_t count,
+                    std::size_t dim, std::size_t k,
+                    std::vector<std::uint32_t>& indices,
+                    std::vector<std::int32_t>& scores);
     bool reset_context_readout(std::size_t buckets);
     bool load_context_readout(const std::string& path, std::size_t buckets);
     bool save_context_readout(const std::string& path, std::size_t buckets);
