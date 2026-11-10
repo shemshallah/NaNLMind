@@ -23,6 +23,9 @@ jobs:
           test -s build/mth-positive.weights
           test -s build/mth-rejected.weights
           ! cmp -s build/mth-positive.weights build/mth-rejected.weights
+          ./build/nanlm-train tests/fixtures/mth-seven-rejected.n16mth --out build/mth-resumed.weights --resume build/mth-positive.weights | tee build/mth-resumed.log
+          grep -q 'NANLM_MTH7_TRAIN .*rows=1 accepted=0' build/mth-resumed.log
+          cmp -s build/mth-positive.weights build/mth-resumed.weights
       - name: Checkout canonical NaN0S toolchain for exact guest fixtures
         uses: actions/checkout@v4
         with:
