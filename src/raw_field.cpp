@@ -187,6 +187,61 @@ bool RawFieldVM::coherence(
 }
 
 
+
+bool RawFieldVM::context_encode(
+    std::size_t token_count, const std::vector<std::uint8_t>& tokens,
+    const std::vector<std::uint8_t>& positions,
+    const std::vector<std::array<float, kRawFeatureDim>>& word_embeddings,
+    const std::array<std::array<float, kRawFeatureDim>, 4>& position_gates,
+    const std::array<float, kRawFeatureDim>& bias,
+    const std::array<float, kRawFeatureDim>& order, float orientation,
+    std::array<float, kRawFeatureDim>& out) {
+    if (token_count == 0 || token_count > 16 || tokens.size() != token_count ||
+        positions.size() != token_count ||
+        word_embeddings.size() < 64) {
+        return fail("context encoder dimensions invalid");
+    }
+    auto wf = [&](std::uint32_t index, float value) {
+        std::uint32_t bits = 0;
+        std::memcpy(&bits, &value, sizeof(bits));
+        return write_word(index, bits);
+    };
+    for (std::size_t i = 0; i < token_count; ++i) {
+        if (!write_word(0x7000u + static_cast<std::uint32_t>(i), tokens[i]) ||
+            !write_word(0x7400u + static_cast<std::uint32_t>(i), positions[i])) {
+            return fail("cannot write context token");
+        }
+    }
+    for (std::size_t t = 0; t < 64; ++t)
+        for (std::size_t d = 0; d < kRawFeatureDim; ++d)
+            if (!wf(0x7100u + static_cast<std::uint32_t>(t * 8 + d),
+                    word_embeddings[t][d])) return fail("cannot write word embedding");
+    for (std::size_t p = 0; p < 4; ++p)
+        for (std::size_t d = 0; d < kRawFeatureDim; ++d)
+            if (!wf(0x7300u + static_cast<std::uint32_t>(p * 8 + d),
+                    position_gates[p][d])) return fail("cannot write position gate");
+    for (std::size_t d = 0; d < kRawFeatureDim; ++d) {
+        if (!wf(0x7380u + static_cast<std::uint32_t>(d), bias[d]) ||
+            !wf(0x7390u + static_cast<std::uint32_t>(d), order[d])) {
+            return fail("cannot write context bias");
+        }
+    }
+    std::uint32_t obits = 0;
+    std::memcpy(&obits, &orientation, sizeof(obits));
+    if (!write_word(kProposalBase + 0, static_cast<std::uint32_t>(token_count)) ||
+        !write_word(kProposalBase + 1, obits) ||
+        !write_word(kCommandBase, 40)) {
+        return fail("cannot write context-encode command");
+    }
+    if (!run_command()) return false;
+    if (read_word(kResultBase) != kRawFeatureDim) return fail("context encode count");
+    for (std::size_t d = 0; d < kRawFeatureDim; ++d) {
+        const std::uint32_t bits = read_word(0x73A0u + static_cast<std::uint32_t>(d));
+        std::memcpy(&out[d], &bits, sizeof(bits));
+    }
+    return true;
+}
+
 bool RawFieldVM::holo(const std::array<std::uint16_t, 3>& phases,
                       std::array<std::int32_t, 2>& out) {
     for (std::size_t i = 0; i < phases.size(); ++i)

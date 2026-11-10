@@ -18,6 +18,17 @@ counted as native runtime.
 The Universe-root dependency is replaced by a checkpoint prefix, so the
 learners persist without a second universe.
 
+The shared contextual encoder is now also native raw:
+
+- `mth/nan16/mth_context_encode.nas`
+- command 40
+- word embeddings, position gates, bias/order, orientation and context slots
+  are staged by the host; the dot products, `1/sqrt(T)` normalization and
+  `FTANH` happen in the NaN16 guest.
+
+Role/sense **gradient updates** remain in the C++ reference; only the shared
+encoder forward is raw so far.
+
 ## Measured reference results
 
 Role learner:

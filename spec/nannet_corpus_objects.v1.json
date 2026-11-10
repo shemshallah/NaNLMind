@@ -22,7 +22,7 @@
         "accepted": true,
         "digest": "eeaf10d1bc68af868f8277b06c83f53cc49024189cf8f6ba4ec12ca6271eb104",
         "generation": 1,
-        "replay": false,
+        "replay": true,
         "route_id": "14d67a36a6bd154479c3cfea77ed5ad25145ec2c9b15e23cc7d0872061895c7e"
       },
       "corpus": "state/gutenberg_corpus.txt",

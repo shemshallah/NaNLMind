@@ -109,6 +109,16 @@ public:
                std::int32_t e_minus, std::int32_t grad_plus,
                std::int32_t grad_minus, std::int32_t gamma,
                std::int32_t lambda, std::array<std::int32_t, 3>& out);
+    bool context_encode(
+        std::size_t token_count,
+        const std::vector<std::uint8_t>& tokens,
+        const std::vector<std::uint8_t>& positions,
+        const std::vector<std::array<float, kRawFeatureDim>>& word_embeddings,
+        const std::array<std::array<float, kRawFeatureDim>, 4>& position_gates,
+        const std::array<float, kRawFeatureDim>& bias,
+        const std::array<float, kRawFeatureDim>& order,
+        float orientation,
+        std::array<float, kRawFeatureDim>& out);
     bool holo(const std::array<std::uint16_t, 3>& phases,
               std::array<std::int32_t, 2>& out);
     bool ring(const std::array<std::uint16_t, kTriadMemberCount>& phases,
