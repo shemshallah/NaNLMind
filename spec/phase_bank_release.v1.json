@@ -27,20 +27,65 @@
       "sha256": "b7dfbb6ea96a6feac9ec707fc0272dc4a688c2d8dd92dbbf0c2d4ef027e524d4"
     },
     {
-      "name": "gutenberg150_d64.part02",
-      "bytes": 188743680,
-      "sha256": "719aeb22e328dab165c2bf39e1b9914fe03cedee9183958a608df4c63986bd71"
+      "name": "gutenberg150_d64.chunk02",
+      "bytes": 41943040,
+      "sha256": "cb7095998c9c7d132ee02641192c0dc243362202c5c9fc56446e32fbf1a7e027"
     },
     {
-      "name": "gutenberg150_d64.part03",
-      "bytes": 188743680,
-      "sha256": "0f900f6f40c61c104fb7f2b72398bf19e13aafe8eca380f65c19fe229c1603c6"
+      "name": "gutenberg150_d64.chunk03",
+      "bytes": 41943040,
+      "sha256": "bb3a129f6c3b2f53ff42c0e2c1aca3f1687ff310e79bc5a09bfb688b74795fe8"
     },
     {
-      "name": "gutenberg150_d64.part04",
-      "bytes": 89897472,
-      "sha256": "5b2ae218dffc7fb04a7182fd60b2a2067b2b8a80f354d4507511795bf2e9ec9c"
+      "name": "gutenberg150_d64.chunk04",
+      "bytes": 41943040,
+      "sha256": "126c72c047d3550e20d69aa518c3b7a54d66580a40d52c1818afe35be2ded58b"
+    },
+    {
+      "name": "gutenberg150_d64.chunk05",
+      "bytes": 41943040,
+      "sha256": "f713a332cf27164fec25ae896376e86e6d2f285ef40a2240a55ffe2faa3b4f0f"
+    },
+    {
+      "name": "gutenberg150_d64.chunk06",
+      "bytes": 41943040,
+      "sha256": "4b6e34e3957a0caf51ee14e6de1cd58e1354ef756f009ffc390b1d9b42019898"
+    },
+    {
+      "name": "gutenberg150_d64.chunk07",
+      "bytes": 41943040,
+      "sha256": "2860bd95ee38131850a224164b8ffc572c13943c22a24b25ad283e63c57dafd6"
+    },
+    {
+      "name": "gutenberg150_d64.chunk08",
+      "bytes": 41943040,
+      "sha256": "c4fbc421536c85ea46d2b50edbcb10288e1206abcf7ef6e2d272502ca00e3653"
+    },
+    {
+      "name": "gutenberg150_d64.chunk09",
+      "bytes": 41943040,
+      "sha256": "fc79b3dfbec6412b1acbaa93bed82118f725f03f31f2e55b1267d86ed91aee68"
+    },
+    {
+      "name": "gutenberg150_d64.chunk10",
+      "bytes": 41943040,
+      "sha256": "658730d29d92d8d58c7bc03436abdf824c306a64c198746285c2b0b7871b60b0"
+    },
+    {
+      "name": "gutenberg150_d64.chunk11",
+      "bytes": 41943040,
+      "sha256": "1d75f71dfe913a1964d67cd562927c84dd3a19782b6f52a69c038c82b847b5bb"
+    },
+    {
+      "name": "gutenberg150_d64.chunk12",
+      "bytes": 41943040,
+      "sha256": "2a711692fd0b76f319512f4ad948c9e4b050dcde457bd6a209a0f71e037d73a8"
+    },
+    {
+      "name": "gutenberg150_d64.chunk13",
+      "bytes": 6011392,
+      "sha256": "3cae05e56f4111ea7ee204d987184784ddff8cc6a289834fdbea88722c4e8a5c"
     }
   ],
-  "notes": "The bank is stored as ordered release parts below 200 MB; concatenate part00..part04 in name order."
+  "notes": "The bank is stored as ordered release parts: part00..part01 (180 MiB) and chunk02..chunk13 (40 MiB); concatenate in the order listed."
 }
