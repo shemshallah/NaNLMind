@@ -526,6 +526,34 @@ bool RawFieldVM::read_trunk_weights(TrunkWeights& out) const {
     return true;
 }
 
+
+bool RawFieldVM::read_wide_weights(std::size_t dim, std::size_t hidden,
+                                   WideTrunkWeights& out) const {
+    if (dim == 0 || dim > 128 || hidden == 0 || hidden > 512) return false;
+    out.dim = dim;
+    out.hidden = hidden;
+    out.wq.resize(dim * dim);
+    out.wk.resize(dim * dim);
+    out.wv.resize(dim * dim);
+    out.wout.resize(dim * dim);
+    out.w1.resize(hidden * dim);
+    out.w2.resize(dim * hidden);
+    auto read_block = [&](std::uint32_t base, std::vector<float>& values) {
+        for (std::size_t i = 0; i < values.size(); ++i) {
+            const std::uint32_t bits = read_word(base + static_cast<std::uint32_t>(i));
+            std::memcpy(&values[i], &bits, sizeof(bits));
+        }
+    };
+    read_block(0x60000u, out.wq);
+    read_block(0x60000u + static_cast<std::uint32_t>(dim * dim), out.wk);
+    read_block(0x60000u + static_cast<std::uint32_t>(2 * dim * dim), out.wv);
+    read_block(0x60000u + static_cast<std::uint32_t>(3 * dim * dim), out.wout);
+    read_block(0x60000u + static_cast<std::uint32_t>(4 * dim * dim), out.w1);
+    read_block(0x60000u + static_cast<std::uint32_t>(4 * dim * dim + hidden * dim),
+               out.w2);
+    return true;
+}
+
 bool RawFieldVM::set_readout_row(
     std::uint8_t row, const std::array<float, kRawFeatureDim>& values) {
     if (row >= 255) return fail("readout row outside 0..254");
@@ -567,6 +595,33 @@ bool RawFieldVM::readout_sample(
     std::memcpy(&target_score, &ts, sizeof(ts));
     std::memcpy(&best_wrong_score, &bs, sizeof(bs));
     std::memcpy(&loss, &ls, sizeof(ls));
+    return true;
+}
+
+bool RawFieldVM::readout_softmax(
+    const std::array<float, kRawFeatureDim>& feature, std::uint8_t target,
+    float learning_rate, bool& correct, float& loss,
+    float& target_probability) {
+    for (std::size_t d = 0; d < kRawFeatureDim; ++d) {
+        std::uint32_t bits = 0;
+        std::memcpy(&bits, &feature[d], sizeof(bits));
+        if (!write_word(0xA000u + static_cast<std::uint32_t>(d), bits)) {
+            return fail("cannot write softmax readout feature");
+        }
+    }
+    std::uint32_t lr_bits = 0;
+    std::memcpy(&lr_bits, &learning_rate, sizeof(lr_bits));
+    if (!write_word(kProposalBase + 0, target) ||
+        !write_word(kProposalBase + 1, lr_bits) ||
+        !write_word(kCommandBase, 19)) {
+        return fail("cannot write softmax readout command");
+    }
+    if (!run_command()) return false;
+    correct = (read_word(kResultBase + 0) & 1u) != 0;
+    const std::uint32_t ls = read_word(kResultBase + 1);
+    const std::uint32_t ps = read_word(kResultBase + 2);
+    std::memcpy(&loss, &ls, sizeof(ls));
+    std::memcpy(&target_probability, &ps, sizeof(ps));
     return true;
 }
 
@@ -757,6 +812,25 @@ bool RawFieldVM::qkv_credit_wide(std::uint8_t target, std::uint8_t best_wrong,
     if (!run_command()) return false;
     if ((read_word(kResultBase) & 1u) == 0) {
         return fail("raw wide QKV credit did not complete");
+    }
+    return true;
+}
+
+
+bool RawFieldVM::trunk_credit_wide(std::uint8_t target,
+                                   std::uint8_t best_wrong,
+                                   float learning_rate) {
+    std::uint32_t lr_bits = 0;
+    std::memcpy(&lr_bits, &learning_rate, sizeof(lr_bits));
+    if (!write_word(kProposalBase + 0, target) ||
+        !write_word(kProposalBase + 1, best_wrong) ||
+        !write_word(kProposalBase + 2, lr_bits) ||
+        !write_word(kCommandBase, 20)) {
+        return fail("cannot write wide trunk-credit command");
+    }
+    if (!run_command()) return false;
+    if ((read_word(kResultBase) & 1u) == 0) {
+        return fail("raw wide trunk credit did not complete");
     }
     return true;
 }

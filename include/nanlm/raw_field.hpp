@@ -140,6 +140,8 @@ public:
                               std::size_t dim);
     bool qkv_credit_wide(std::uint8_t target, std::uint8_t best_wrong,
                          float learning_rate);
+    bool trunk_credit_wide(std::uint8_t target, std::uint8_t best_wrong,
+                           float learning_rate);
     // Raw local credit update for the fixed 8-wide output/MLP layers.
     bool trunk_credit(std::uint8_t target, std::uint8_t best_wrong,
                       float learning_rate);
@@ -161,10 +163,15 @@ public:
                         std::uint32_t salt, bool& correct,
                         float& target_score, float& best_wrong_score,
                         float& loss);
+    bool readout_softmax(const std::array<float, kRawFeatureDim>& feature,
+                         std::uint8_t target, float learning_rate,
+                         bool& correct, float& loss, float& target_probability);
     void reset_readout();
     bool set_readout_row(std::uint8_t row,
                          const std::array<float, kRawFeatureDim>& values);
     bool read_trunk_weights(TrunkWeights& out) const;
+    bool read_wide_weights(std::size_t dim, std::size_t hidden,
+                           WideTrunkWeights& out) const;
     bool remap(const std::array<std::uint16_t, 6>& masks,
                std::uint32_t a, std::uint32_t b, bool target,
                bool& improved, std::int32_t& before, std::int32_t& after);

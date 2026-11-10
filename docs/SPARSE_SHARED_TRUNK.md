@@ -179,7 +179,10 @@ gradient-checked and is the upper bound, not the native path. A raw attention/QK
 through the causal softmax to Wq/Wk/Wv using the cached alpha/q/k/v state.
 This is fixed 8-wide trunk credit. The runtime-width QKV credit is in
 `mth_qkv_credit_wide.nas` (command 18) and is exercised at D=16/T=1024.
-Full multi-layer raw BPTT and wide Wout/W1/W2 credit remain open.
+The wide Wout/W1/W2 local credit is now in
+`mth_trunk_credit_wide.nas` (command 20). Exact local-credit parity for the wide
+path is exercised at D=4/H=8/T=4, and the 1024-token path exercises both wide
+QKV and wide output/MLP credit. Full multi-layer raw BPTT remains open.
 
 This is the native **head/field** half of the sparse trunk. The shared P1
 QKV/MLP trunk kernel and its feature feed are still the next native step; the

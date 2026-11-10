@@ -86,8 +86,8 @@ mth_qk_g_store:
   JMP @mth_qk_g_j
 mth_qk_g_done:
 
-  ; h_err[d] = e[d] + sum_j W2[d][j] g[j]
-  MOVI r6,0x9180
+  ; h_err[d] = e[d] + sum_j W1[j][d] g[j]
+  MOVI r6,0x9100
   MOVI r7,0
 mth_qk_herr_d:
   MOVI r9,8
@@ -99,9 +99,9 @@ mth_qk_herr_j:
   MOVI r10,16
   CMP r8,r10
   JMP[GE] @mth_qk_herr_store
-  MOVI r10,16
-  MUL r10,r7,r10
-  ADD r10,r10,r8
+  MOVI r10,8
+  MUL r10,r8,r10
+  ADD r10,r10,r7
   ADD r10,r6,r10
   LD r10,r10,0
   MOVI r11,0x8A80

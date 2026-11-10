@@ -51,41 +51,6 @@ mth_tcrd_e:
   JMP @mth_tcrd_e
 mth_tcrd_e_done:
 
-  ; Wout[d][i] += lr * e[d] * context[i]
-  MOVI r6,0x90C0
-  MOVI r7,0x8400
-  MOVI r8,0
-mth_tcrd_wout_d:
-  MOVI r9,8
-  CMP r8,r9
-  JMP[GE] @mth_tcrd_wout_done
-  MOVI r10,0x8A00
-  ADD r10,r10,r8
-  LD r10,r10,0
-  MOVI r11,0
-mth_tcrd_wout_i:
-  CMP r11,r9
-  JMP[GE] @mth_tcrd_wout_next
-  MOVI r12,8
-  MUL r12,r8,r12
-  ADD r12,r12,r11
-  ADD r12,r6,r12
-  LD r13,r12,0
-  ADD r14,r7,r11
-  LD r14,r14,0
-  MOVI r15,@mth_tcrd_lr
-  LD r15,r15,0
-  FMUL r14,r14,r15
-  FMUL r14,r14,r10
-  FADD r13,r13,r14
-  ST r13,r12,0
-  ADDI r11,r11,1
-  JMP @mth_tcrd_wout_i
-mth_tcrd_wout_next:
-  ADDI r8,r8,1
-  JMP @mth_tcrd_wout_d
-mth_tcrd_wout_done:
-
   ; g[j] = sum_d e[d] W2[d][j] * (1 - hidden[j]^2)
   MOVI r6,0x9180
   MOVI r7,0
@@ -126,6 +91,78 @@ mth_tcrd_g_store:
   ADDI r7,r7,1
   JMP @mth_tcrd_g_j
 mth_tcrd_g_done:
+
+  ; h_err[d] = e[d] + sum_j W1[j][d] g[j]
+  MOVI r6,0x9100
+  MOVI r7,0
+mth_tcrd_herr_d:
+  MOVI r9,8
+  CMP r7,r9
+  JMP[GE] @mth_tcrd_herr_done
+  MOVI r14,0
+  MOVI r8,0
+  MOVI r10,16
+mth_tcrd_herr_j:
+  CMP r8,r10
+  JMP[GE] @mth_tcrd_herr_store
+  MOVI r11,8
+  MUL r11,r8,r11
+  ADD r11,r11,r7
+  ADD r11,r6,r11
+  LD r11,r11,0
+  MOVI r12,0x8A80
+  ADD r12,r12,r8
+  LD r12,r12,0
+  FMUL r11,r11,r12
+  FADD r14,r14,r11
+  ADDI r8,r8,1
+  JMP @mth_tcrd_herr_j
+mth_tcrd_herr_store:
+  MOVI r12,0x8A00
+  ADD r12,r12,r7
+  LD r12,r12,0
+  FADD r14,r14,r12
+  MOVI r12,0x8F00
+  ADD r12,r12,r7
+  ST r14,r12,0
+  ADDI r7,r7,1
+  JMP @mth_tcrd_herr_d
+mth_tcrd_herr_done:
+
+  ; Wout[d][i] += lr * h_err[d] * context[i]
+  MOVI r6,0x90C0
+  MOVI r7,0x8400
+  MOVI r8,0
+mth_tcrd_wout_d:
+  MOVI r9,8
+  CMP r8,r9
+  JMP[GE] @mth_tcrd_wout_done
+  MOVI r10,0x8F00
+  ADD r10,r10,r8
+  LD r10,r10,0
+  MOVI r11,0
+mth_tcrd_wout_i:
+  CMP r11,r9
+  JMP[GE] @mth_tcrd_wout_next
+  MOVI r12,8
+  MUL r12,r8,r12
+  ADD r12,r12,r11
+  ADD r12,r6,r12
+  LD r13,r12,0
+  ADD r14,r7,r11
+  LD r14,r14,0
+  MOVI r15,@mth_tcrd_lr
+  LD r15,r15,0
+  FMUL r14,r14,r15
+  FMUL r14,r14,r10
+  FADD r13,r13,r14
+  ST r13,r12,0
+  ADDI r11,r11,1
+  JMP @mth_tcrd_wout_i
+mth_tcrd_wout_next:
+  ADDI r8,r8,1
+  JMP @mth_tcrd_wout_d
+mth_tcrd_wout_done:
 
   ; W2[d][j] += lr * e[d] * hidden[j]
   MOVI r6,0x9180

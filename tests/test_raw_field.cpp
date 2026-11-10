@@ -310,6 +310,131 @@ int main() {
     CHECK(correct);
     CHECK(target_score > best_wrong);
 
+    // Wide-path exact local-credit parity at a small D/H/T.  This compares
+    // the raw wide QKV and output/MLP updates against the same float32
+    // equations used by the autograd reference.
+    WideTrunkWeights pwide;
+    pwide.dim = 4;
+    pwide.hidden = 8;
+    pwide.wq.resize(16);
+    pwide.wk.resize(16);
+    pwide.wv.resize(16);
+    pwide.wout.resize(16);
+    pwide.w1.resize(32);
+    pwide.w2.resize(32);
+    for (std::size_t i = 0; i < 16; ++i) {
+        pwide.wq[i] = 0.01f * static_cast<float>((i % 5) + 1);
+        pwide.wk[i] = 0.02f * static_cast<float>((i % 3) + 1);
+        pwide.wv[i] = 0.03f * static_cast<float>((i % 4) + 1);
+        pwide.wout[i] = 0.04f * static_cast<float>((i % 2) + 1);
+    }
+    for (std::size_t i = 0; i < 32; ++i) {
+        pwide.w1[i] = 0.05f * static_cast<float>((i % 6) + 1);
+        pwide.w2[i] = 0.06f * static_cast<float>((i % 7) + 1);
+    }
+    std::vector<float> ptokens(4 * 4);
+    for (std::size_t i = 0; i < ptokens.size(); ++i) {
+        ptokens[i] = 0.1f + 0.01f * static_cast<float>(i);
+    }
+    std::vector<float> pout;
+    CHECK(vm.causal_trunk_wide(ptokens, 4, pwide, pout));
+    std::vector<float> ptarget(4, 0.0f), pwrong(4, 0.0f);
+    ptarget[0] = 1.0f;
+    pwrong[0] = -1.0f;
+    CHECK(vm.set_wide_readout_row(1, ptarget.data(), 4));
+    CHECK(vm.set_wide_readout_row(0, pwrong.data(), 4));
+
+    WideTrunkWeights pbefore{}, pqkv_after{}, pmlp_after{};
+    CHECK(vm.read_wide_weights(4, 8, pbefore));
+    CHECK(vm.qkv_credit_wide(1, 0, 1.0f));
+    CHECK(vm.read_wide_weights(4, 8, pqkv_after));
+    CHECK(vm.trunk_credit_wide(1, 0, 1.0f));
+    CHECK(vm.read_wide_weights(4, 8, pmlp_after));
+
+    auto mv = [](const std::vector<float>& w, const float* x, float* y,
+                 std::size_t rows, std::size_t cols) {
+        for (std::size_t r = 0; r < rows; ++r) {
+            float sum = 0.0f;
+            for (std::size_t c = 0; c < cols; ++c) sum += w[r * cols + c] * x[c];
+            y[r] = sum;
+        }
+    };
+    std::array<float, 4> pq4{}, xlast{}, context{}, ph4{};
+    std::array<float, 8> phid4{};
+    std::array<std::array<float, 4>, 4> ktab{}, vtab{};
+    for (std::size_t d = 0; d < 4; ++d) xlast[d] = ptokens[3 * 4 + d];
+    mv(pbefore.wq, xlast.data(), pq4.data(), 4, 4);
+    float scores[4]{};
+    float max_score = -1e30f;
+    for (std::size_t s = 0; s < 4; ++s) {
+        mv(pbefore.wk, &ptokens[s * 4], ktab[s].data(), 4, 4);
+        mv(pbefore.wv, &ptokens[s * 4], vtab[s].data(), 4, 4);
+        for (std::size_t d = 0; d < 4; ++d) scores[s] += pq4[d] * ktab[s][d];
+        max_score = std::max(max_score, scores[s]);
+    }
+    float alpha[4]{}, sum_exp = 0.0f;
+    for (std::size_t s = 0; s < 4; ++s) {
+        alpha[s] = std::exp(scores[s] - max_score);
+        sum_exp += alpha[s];
+    }
+    for (std::size_t s = 0; s < 4; ++s) {
+        alpha[s] /= sum_exp;
+        for (std::size_t d = 0; d < 4; ++d) context[d] += alpha[s] * vtab[s][d];
+    }
+    std::array<float, 4> proj{};
+    mv(pbefore.wout, context.data(), proj.data(), 4, 4);
+    for (std::size_t d = 0; d < 4; ++d) ph4[d] = xlast[d] + proj[d];
+    mv(pbefore.w1, ph4.data(), phid4.data(), 8, 4);
+    for (float& value : phid4) value = std::tanh(value);
+    std::array<float, 4> pe{}, pherr{}, pdc{};
+    std::array<float, 8> pg{};
+    for (std::size_t d = 0; d < 4; ++d) pe[d] = ptarget[d] - pwrong[d];
+    for (std::size_t j = 0; j < 8; ++j) {
+        float sum = 0.0f;
+        for (std::size_t d = 0; d < 4; ++d) sum += pe[d] * pbefore.w2[d * 8 + j];
+        pg[j] = sum * (1.0f - phid4[j] * phid4[j]);
+    }
+    for (std::size_t d = 0; d < 4; ++d) {
+        float sum = pe[d];
+        for (std::size_t j = 0; j < 8; ++j) sum += pbefore.w1[j * 4 + d] * pg[j];
+        pherr[d] = sum;
+    }
+    for (std::size_t kk = 0; kk < 4; ++kk) {
+        float sum = 0.0f;
+        for (std::size_t i = 0; i < 4; ++i) sum += pherr[i] * pbefore.wout[i * 4 + kk];
+        pdc[kk] = sum;
+    }
+    float dalpha[4]{}, sum_ad = 0.0f;
+    for (std::size_t s = 0; s < 4; ++s) {
+        for (std::size_t d = 0; d < 4; ++d) dalpha[s] += pdc[d] * vtab[s][d];
+        sum_ad += alpha[s] * dalpha[s];
+    }
+    std::array<float, 4> pdq{};
+    for (std::size_t s = 0; s < 4; ++s) {
+        const float dz = alpha[s] * (dalpha[s] - sum_ad);
+        for (std::size_t d = 0; d < 4; ++d) pdq[d] += dz * ktab[s][d];
+    }
+    for (std::size_t d = 0; d < 4; ++d) {
+        for (std::size_t i = 0; i < 4; ++i) {
+            const float expected_wq = pbefore.wq[d * 4 + i] + pdq[d] * xlast[i];
+            CHECK(std::fabs(pqkv_after.wq[d * 4 + i] - expected_wq) < 3e-3f);
+            const float expected_wout = pbefore.wout[d * 4 + i] + pherr[d] * context[i];
+            CHECK(std::fabs(pmlp_after.wout[d * 4 + i] - expected_wout) < 3e-3f);
+        }
+    }
+    for (std::size_t j = 0; j < 8; ++j) {
+        for (std::size_t i = 0; i < 4; ++i) {
+            const float expected_w1 = pbefore.w1[j * 4 + i] + pg[j] * ph4[i];
+            CHECK(std::fabs(pmlp_after.w1[j * 4 + i] - expected_w1) < 3e-3f);
+        }
+    }
+    for (std::size_t d = 0; d < 4; ++d) {
+        for (std::size_t j = 0; j < 8; ++j) {
+            const float expected_w2 = pbefore.w2[d * 8 + j] + pe[d] * phid4[j];
+            CHECK(std::fabs(pmlp_after.w2[d * 8 + j] - expected_w2) < 3e-3f);
+        }
+    }
+
     // Wide causal trunk: runtime D/H and 1024-token context.  Use a
     // diagonal core so the expected one-token result is checkable.
     WideTrunkWeights wide;
@@ -363,6 +488,10 @@ int main() {
     CHECK(vm.qkv_credit_wide(1, 0, 0.5f));
     CHECK(vm.causal_trunk_wide_cached(wide_tokens, 1024, wide.dim, wide_out));
     CHECK(std::fabs(wide_out[0] - wide_before_credit) > 1e-7f);
+    const float wide_before_mlp = wide_out[0];
+    CHECK(vm.trunk_credit_wide(1, 0, 0.5f));
+    CHECK(vm.causal_trunk_wide_cached(wide_tokens, 1024, wide.dim, wide_out));
+    CHECK(std::fabs(wide_out[0] - wide_before_mlp) > 1e-7f);
 
     // Readout-only path: the same update without recomputing the trunk.
     vm.reset_readout();
