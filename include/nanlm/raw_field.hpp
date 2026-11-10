@@ -37,6 +37,9 @@ struct RawProposalResult {
 
 constexpr std::size_t kRawFeatureDim = 8;
 constexpr std::size_t kRawTrunkContext = 256;
+// One guest command can process at most this many context samples inside the
+// driver's 200M-step budget (roughly 3-4K guest steps per sample).
+constexpr std::size_t kRawContextBatchMax = 8192;
 
 struct WideTrunkWeights {
     std::size_t dim = 0;
@@ -250,6 +253,15 @@ public:
                          bool& correct, float& loss,
                          std::uint8_t& predicted_high,
                          std::uint8_t& predicted_low);
+    // Raw batched context readout. The host only marshals target, bucket and
+    // learning-rate word arrays; the guest loops mth_context_hier and returns
+    // the aggregate correct count and float32 loss sum.
+    bool readout_context_batch(const std::uint8_t* targets,
+                               const std::uint32_t* buckets,
+                               const float* learning_rates,
+                               std::size_t count, std::size_t bucket_count,
+                               std::size_t& correct_count, float& loss_sum,
+                               std::size_t& processed);
     void reset_readout();
     bool set_readout_row(std::uint8_t row,
                          const std::array<float, kRawFeatureDim>& values);

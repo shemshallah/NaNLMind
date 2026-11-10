@@ -426,11 +426,13 @@ int hier_train_cli(int argc, char** argv) {
 int context_train_cli(int argc, char** argv) {
     if (argc < 3) {
         std::cerr << "usage: nanlm-universal context-train CORPUS [MAX_LINES] [EPOCHS]"
-                     " [REPORT_EVERY] [BUCKETS] [CONTEXT_BYTES] [LR] [EVAL_EVERY] [TRAIN_FRACTION] [backoff|backoffcopy] [EXACT_BUCKETS] [fallback=N]\n"
+                     " [REPORT_EVERY] [BUCKETS] [CONTEXT_BYTES] [LR] [EVAL_EVERY] [TRAIN_FRACTION] [backoff|backoffcopy] [EXACT_BUCKETS] [fallback=N] [batch=N]\n"
                   << "Trains a raw context-indexed 16x16 class-memory readout.\n"
                   << "TRAIN_FRACTION <1 holds out a random evaluation split.\n"
                   << "backoff uses exact high-frequency 4-byte contexts plus a 3-byte fallback.\n"
-                  << "backoffcopy routes unseen 3-byte contexts to a copy/unigram table.\n";
+                  << "backoffcopy routes unseen 3-byte contexts to a copy/unigram table.\n"
+                  << "batch=N groups N samples into one raw guest command"
+                     " (0=off, 1..8192).\n";
         return 2;
     }
     const std::string corpus_path = argv[2];
@@ -441,6 +443,7 @@ int context_train_cli(int argc, char** argv) {
     bool copy_backoff = false;
     std::size_t exact_limit_arg = 10500;
     std::size_t fallback_bytes = 3;
+    std::size_t batch_size = 0;
     std::string load_path;
     std::string save_path;
     try {
@@ -464,13 +467,16 @@ int context_train_cli(int argc, char** argv) {
             else if (arg.rfind("save=", 0) == 0) save_path = arg.substr(5);
             else if (arg.rfind("fallback=", 0) == 0) {
                 fallback_bytes = static_cast<std::size_t>(std::stoull(arg.substr(9)));
+            } else if (arg.rfind("batch=", 0) == 0) {
+                batch_size = static_cast<std::size_t>(std::stoull(arg.substr(6)));
             }
         }
     } catch (...) { std::cerr << "invalid numeric argument\n"; return 2; }
     if (buckets == 0 || buckets > 16384 || context_bytes == 0 || context_bytes > 8 ||
-        fallback_bytes == 0 || fallback_bytes > 8 ||
+        fallback_bytes == 0 || fallback_bytes > 8 || batch_size > kRawContextBatchMax ||
         base_lr <= 0.0f || train_fraction <= 0.0f || train_fraction > 1.0f) {
-        std::cerr << "buckets 1..16384, context bytes 1..8, positive LR,"
+        std::cerr << "buckets 1..16384, context bytes 1..8, batch 1.."
+                  << kRawContextBatchMax << ", positive LR,"
                      " train fraction in (0,1] required\n";
         return 2;
     }
@@ -622,27 +628,71 @@ int context_train_cli(int argc, char** argv) {
     std::cout << "context_tables buckets=" << buckets
               << " train_samples=" << train_indices.size()
               << " eval_samples=" << eval_indices.size()
+              << " batch=" << batch_size
               << " reset_seconds="
               << std::chrono::duration<double>(
                      std::chrono::steady_clock::now() - reset_started).count()
               << "\n";
+    std::vector<std::uint8_t> batch_targets;
+    std::vector<std::uint32_t> batch_contexts;
+    std::vector<float> batch_lrs;
+    const auto run_batch = [&](const std::size_t* samples, std::size_t count,
+                               float learning_rate, std::size_t& correct_count,
+                               float& loss_sum) -> bool {
+        batch_targets.resize(count);
+        batch_contexts.resize(count);
+        batch_lrs.resize(count);
+        for (std::size_t i = 0; i < count; ++i) {
+            batch_targets[i] = targets[samples[i]];
+            batch_contexts[i] = context_buckets[samples[i]];
+            batch_lrs[i] = learning_rate;
+        }
+        std::size_t processed = 0;
+        if (!vm.readout_context_batch(
+                batch_targets.data(), batch_contexts.data(), batch_lrs.data(),
+                count, buckets, correct_count, loss_sum, processed)) {
+            std::cerr << "context batch failed: " << vm.error() << "\n";
+            return false;
+        }
+        if (processed != count) {
+            std::cerr << "context batch processed " << processed << " of "
+                      << count << "\n";
+            return false;
+        }
+        return true;
+    };
     const auto evaluate = [&](std::size_t epoch, bool final) -> bool {
         const auto started = std::chrono::steady_clock::now();
         std::size_t total = 0, correct_count = 0;
         double loss_sum = 0.0;
-        for (const std::size_t sample : eval_indices) {
-            bool correct = false;
-            float loss = 0.0f;
-            std::uint8_t ph = 0, pl = 0;
-            if (!vm.readout_context(targets[sample], 0.0f,
-                                    context_buckets[sample], buckets,
-                                    correct, loss, ph, pl)) {
-                std::cerr << "context eval failed: " << vm.error() << "\n";
-                return false;
+        for (std::size_t position = 0; position < eval_indices.size();) {
+            const std::size_t chunk = batch_size
+                ? std::min(batch_size, eval_indices.size() - position) : 1;
+            std::size_t chunk_correct = 0;
+            float chunk_loss = 0.0f;
+            if (batch_size) {
+                if (!run_batch(eval_indices.data() + position, chunk, 0.0f,
+                               chunk_correct, chunk_loss)) {
+                    return false;
+                }
+            } else {
+                const std::size_t sample = eval_indices[position];
+                bool correct = false;
+                float loss = 0.0f;
+                std::uint8_t ph = 0, pl = 0;
+                if (!vm.readout_context(targets[sample], 0.0f,
+                                        context_buckets[sample], buckets,
+                                        correct, loss, ph, pl)) {
+                    std::cerr << "context eval failed: " << vm.error() << "\n";
+                    return false;
+                }
+                chunk_correct = correct ? 1u : 0u;
+                chunk_loss = loss;
             }
-            ++total;
-            correct_count += correct ? 1u : 0u;
-            loss_sum += loss;
+            total += chunk;
+            correct_count += chunk_correct;
+            loss_sum += chunk_loss;
+            position += chunk;
         }
         const double seconds = std::chrono::duration<double>(
             std::chrono::steady_clock::now() - started).count();
@@ -669,24 +719,38 @@ int context_train_cli(int argc, char** argv) {
         std::size_t epoch_total = 0, epoch_correct = 0;
         std::size_t report_total = 0, report_correct = 0;
         double epoch_loss = 0.0, report_loss = 0.0;
-        for (std::size_t position = 0; position < order.size(); ++position) {
-            const std::size_t sample = order[position];
-            bool correct = false;
-            float loss = 0.0f;
-            std::uint8_t ph = 0, pl = 0;
-            if (!vm.readout_context(targets[sample], base_lr,
-                                    context_buckets[sample], buckets,
-                                    correct, loss, ph, pl)) {
-                std::cerr << "context step failed: " << vm.error() << "\n";
-                return 7;
+        for (std::size_t position = 0; position < order.size();) {
+            const std::size_t chunk = batch_size
+                ? std::min(batch_size, order.size() - position) : 1;
+            std::size_t chunk_correct = 0;
+            float chunk_loss = 0.0f;
+            if (batch_size) {
+                if (!run_batch(order.data() + position, chunk, base_lr,
+                               chunk_correct, chunk_loss)) {
+                    return 7;
+                }
+            } else {
+                const std::size_t sample = order[position];
+                bool correct = false;
+                float loss = 0.0f;
+                std::uint8_t ph = 0, pl = 0;
+                if (!vm.readout_context(targets[sample], base_lr,
+                                        context_buckets[sample], buckets,
+                                        correct, loss, ph, pl)) {
+                    std::cerr << "context step failed: " << vm.error() << "\n";
+                    return 7;
+                }
+                chunk_correct = correct ? 1u : 0u;
+                chunk_loss = loss;
             }
-            ++global_step;
-            ++epoch_total;
-            ++report_total;
-            epoch_correct += correct ? 1u : 0u;
-            report_correct += correct ? 1u : 0u;
-            epoch_loss += loss;
-            report_loss += loss;
+            global_step += chunk;
+            epoch_total += chunk;
+            report_total += chunk;
+            epoch_correct += chunk_correct;
+            report_correct += chunk_correct;
+            epoch_loss += chunk_loss;
+            report_loss += chunk_loss;
+            position += chunk;
             if (report_every && report_total >= report_every) {
                 std::cout << "ctx_step epoch=" << epoch
                           << " step=" << global_step
