@@ -1229,14 +1229,15 @@ int phase_train_cli(int argc, char** argv) {
                                  encoded.begin() + (i + 1) * pipeline_dim);
     }
 
-    const std::size_t codewords = std::min<std::size_t>(train_count, 256);
+    const std::size_t codewords = std::min<std::size_t>(train_count, 32);
+    const std::size_t init_count = std::min<std::size_t>(train_count, 256);
     std::vector<std::int32_t> train_bank;
-    train_bank.reserve(train_count * pipeline_dim);
-    for (std::size_t i = 0; i < train_count; ++i)
+    train_bank.reserve(init_count * pipeline_dim);
+    for (std::size_t i = 0; i < init_count; ++i)
         train_bank.insert(train_bank.end(), vectors[i].begin(),
                           vectors[i].end());
     std::vector<std::int32_t> codebook;
-    if (!vm.pq_train(train_bank, train_count, pipeline_dim, codewords, 1,
+    if (!vm.pq_train(train_bank, init_count, pipeline_dim, codewords, 1,
                      codebook)) {
         std::cerr << "phase-train codebook init failed: " << vm.error() << "\n";
         return 7;
@@ -1261,6 +1262,13 @@ int phase_train_cli(int argc, char** argv) {
     std::uint16_t last_hot_heads = 0;
     std::uint16_t last_hot_triads = 0;
     bool last_field = false;
+    double best_eval_l1 = 1e300;
+    std::size_t best_step = 0;
+    std::vector<std::int32_t> best_codebook;
+    std::vector<std::int32_t> best_matrix;
+    std::uint16_t best_hot_heads = 0;
+    std::uint16_t best_hot_triads = 0;
+    bool best_field = false;
 
     const auto emit_metrics = [&](std::size_t step, bool final) -> bool {
         std::uint64_t eval_distance = 0;
@@ -1323,6 +1331,15 @@ int phase_train_cli(int argc, char** argv) {
             ? static_cast<double>(probe_score_sum) /
                   static_cast<double>(probe_hits)
             : 0.0;
+        if (eval_count > 0 && eval_mean < best_eval_l1) {
+            best_eval_l1 = eval_mean;
+            best_step = step;
+            best_codebook = codebook;
+            best_matrix = matrix_cells;
+            best_hot_heads = hot.hot_heads;
+            best_hot_triads = hot.hot_triads;
+            best_field = hot.field_hot;
+        }
         metrics << "{\"step\": " << step
                 << ", \"train_windows\": " << processed
                 << ", \"eval_windows\": " << eval_count
@@ -1388,30 +1405,47 @@ int phase_train_cli(int argc, char** argv) {
         if (!emit_metrics(step, false)) return 7;
     }
     if (!emit_metrics(step + 1, true)) return 7;
+    const auto& selected_codebook = best_codebook.empty() ? codebook : best_codebook;
     {
         std::ofstream book(output_prefix + ".codebook.bin", std::ios::binary);
         if (book) {
-            book.write(reinterpret_cast<const char*>(codebook.data()),
+            book.write(reinterpret_cast<const char*>(selected_codebook.data()),
                        static_cast<std::streamsize>(
-                           codebook.size() * sizeof(codebook[0])));
+                           selected_codebook.size() * sizeof(selected_codebook[0])));
         }
-        std::vector<std::int32_t> matrix_cells;
-        if (vm.read_vector_matrix(matrix_cells)) {
-            std::ofstream matrix(output_prefix + ".matrix.bin", std::ios::binary);
-            if (matrix) {
-                matrix.write(reinterpret_cast<const char*>(matrix_cells.data()),
-                             static_cast<std::streamsize>(
-                                 matrix_cells.size() * sizeof(matrix_cells[0])));
-            }
+        std::vector<std::int32_t> matrix_cells = best_matrix;
+        if (matrix_cells.empty()) vm.read_vector_matrix(matrix_cells);
+        std::ofstream matrix(output_prefix + ".matrix.bin", std::ios::binary);
+        if (matrix) {
+            matrix.write(reinterpret_cast<const char*>(matrix_cells.data()),
+                         static_cast<std::streamsize>(
+                             matrix_cells.size() * sizeof(matrix_cells[0])));
+        }
+    }
+    {
+        std::ofstream summary(output_prefix + ".metrics.json");
+        if (summary) {
+            summary << "{\n  \"schema\": \"nanlm.phase-train-metrics/1\",\n"
+                    << "  \"train_windows\": " << processed << ",\n"
+                    << "  \"eval_windows\": " << eval_count << ",\n"
+                    << "  \"codewords\": " << codewords << ",\n"
+                    << "  \"best_step\": " << best_step << ",\n"
+                    << "  \"best_eval_mean_l1_q16\": " << best_eval_l1 << ",\n"
+                    << "  \"best_hot_heads\": " << best_hot_heads << ",\n"
+                    << "  \"best_hot_triads\": " << best_hot_triads << ",\n"
+                    << "  \"best_field_hot\": "
+                    << (best_field ? "true" : "false") << "\n}\n";
         }
     }
     std::cout << "phase_train complete steps=" << step
               << " train_windows=" << processed
               << " eval_windows=" << eval_count
               << " codewords=" << codewords
-              << " hot_heads=" << last_hot_heads
-              << " hot_triads=" << last_hot_triads
-              << " field_hot=" << (last_field ? "true" : "false")
+              << " best_step=" << best_step
+              << " best_eval_l1=" << best_eval_l1
+              << " best_hot_heads=" << best_hot_heads
+              << " best_hot_triads=" << best_hot_triads
+              << " best_field_hot=" << (best_field ? "true" : "false")
               << " output=" << output_prefix << "\n";
     return 0;
 }
