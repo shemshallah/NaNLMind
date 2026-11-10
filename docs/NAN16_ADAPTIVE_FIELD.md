@@ -44,6 +44,7 @@ adaptive-field mathematics:
 | `mth_credit_gate.nas` | CFT/TRAIL credit gate for local updates |
 | `mth_credit_field.nas` | 255 head credits -> 2/3 triad votes -> 43/85 field |
 | `mth_credit_combine.nas` | weighted 7-credit combination (command 25) |
+| `mth_credit_bundle.nas` | seven credits derived from raw local state (command 29) |
 | `mth_flux_credit.nas` | temporal-link flux/divergence credit |
 | `mth_tca_credit.nas` | leave-one-out triad advantage |
 | `mth_leaf_credit.nas` | hypermatrix leaf support and counter credit |
@@ -241,6 +242,14 @@ the same combined gate to the **fixed all-trunk** update
 update. The C++ bridges are `combined_trunk_credit_all`,
 `combined_trunk_credit_wide`, `commit_combined_credit` and
 `commit_combined_credit_wide`.
+
+Command 29 (`mth_credit_bundle.nas`) derives all seven credits from raw local
+state: CFT edges/error/rate, TRAIL rails, HOLO phases, RING phases/shift, LEAF
+row/mask/counter, TCA log-probs and FLUX potentials. The C++
+`RawFieldVM::credit_bundle` loads that state and returns the seven raw credits.
+`RawFieldVM::credit_ablation` computes the combined credit and each
+leave-one-credit-out ablation. Coefficient learning on held-out data remains
+open; ablation is now executable.
 
 The staged commit path is now:
 

@@ -911,6 +911,55 @@ bool RawFieldVM::combine_credits(const std::array<std::int32_t, 7>& credits,
 }
 
 
+
+bool RawFieldVM::credit_bundle(const CreditBundleState& state,
+                               std::array<std::int32_t, 7>& credits) {
+    auto w = [&](std::uint32_t index, std::int32_t value) {
+        return write_word(index, static_cast<std::uint32_t>(value));
+    };
+    for (std::size_t i = 0; i < state.cft.size(); ++i)
+        if (!w(0x8000u + i, state.cft[i])) return fail("cannot write CFT bundle");
+    for (std::size_t i = 0; i < state.trail.size(); ++i)
+        if (!w(0x8010u + i, state.trail[i])) return fail("cannot write TRAIL bundle");
+    for (std::size_t i = 0; i < state.holo.size(); ++i)
+        if (!w(0x8020u + i, state.holo[i])) return fail("cannot write HOLO bundle");
+    if (!w(0x8030u, state.ring_shift)) return fail("cannot write RING shift");
+    for (std::size_t i = 0; i < state.ring_phases.size(); ++i)
+        if (!write_word(0x7500u + static_cast<std::uint32_t>(i),
+                        state.ring_phases[i])) return fail("cannot write RING phases");
+    for (std::size_t i = 0; i < state.leaf.size(); ++i)
+        if (!w(0x8040u + i, state.leaf[i])) return fail("cannot write LEAF bundle");
+    for (std::size_t i = 0; i < state.tca.size(); ++i)
+        if (!w(0x8050u + i, state.tca[i])) return fail("cannot write TCA bundle");
+    for (std::size_t i = 0; i < state.flux.size(); ++i)
+        if (!w(0x8060u + i, state.flux[i])) return fail("cannot write FLUX bundle");
+    if (!write_word(kCommandBase, 29)) return fail("cannot write credit-bundle command");
+    if (!run_command()) return false;
+    for (std::size_t i = 0; i < credits.size(); ++i) {
+        credits[i] = static_cast<std::int32_t>(read_word(0x7200u +
+                                                        static_cast<std::uint32_t>(i)));
+    }
+    return true;
+}
+
+bool RawFieldVM::credit_ablation(
+    const CreditBundleState& state,
+    const std::array<std::int32_t, 7>& base_coefficients,
+    std::array<std::int32_t, 8>& combined) {
+    std::array<std::int32_t, 7> credits{};
+    if (!credit_bundle(state, credits)) return false;
+    std::int32_t value = 0;
+    if (!combine_credits(credits, base_coefficients, value)) return false;
+    combined[0] = value;
+    for (std::size_t ablate = 0; ablate < 7; ++ablate) {
+        std::array<std::int32_t, 7> coefficients = base_coefficients;
+        coefficients[ablate] = 0;
+        if (!combine_credits(credits, coefficients, value)) return false;
+        combined[ablate + 1] = value;
+    }
+    return true;
+}
+
 bool RawFieldVM::combined_trunk_credit(
     std::uint8_t target, std::uint8_t best_wrong,
     std::int32_t base_lr_q16, std::int32_t threshold_q16,

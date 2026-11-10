@@ -49,6 +49,17 @@ struct WideTrunkWeights {
     std::vector<float> w2;
 };
 
+struct CreditBundleState {
+    std::array<std::int32_t, 5> cft{};    // Eab,Ebc,Eca,error,rate
+    std::array<std::int32_t, 11> trail{};
+    std::array<std::int32_t, 3> holo{};   // phases
+    std::int32_t ring_shift = 0;
+    std::array<std::uint16_t, kTriadMemberCount> ring_phases{};
+    std::array<std::int32_t, 3> leaf{};   // row,mask,counter
+    std::array<std::int32_t, 3> tca{};    // local,peerA,peerB
+    std::array<std::int32_t, 4> flux{};   // phi_u,phi_v,weight,source
+};
+
 struct TrunkWeights {
     std::array<float, 64> wq{};
     std::array<float, 64> wk{};
@@ -145,6 +156,12 @@ public:
     bool combine_credits(const std::array<std::int32_t, 7>& credits,
                          const std::array<std::int32_t, 7>& coefficients,
                          std::int32_t& combined);
+    bool credit_bundle(const CreditBundleState& state,
+                       std::array<std::int32_t, 7>& credits);
+    bool credit_ablation(
+        const CreditBundleState& state,
+        const std::array<std::int32_t, 7>& base_coefficients,
+        std::array<std::int32_t, 8>& combined);
     bool combined_trunk_credit(
         std::uint8_t target, std::uint8_t best_wrong,
         std::int32_t base_lr_q16, std::int32_t threshold_q16,

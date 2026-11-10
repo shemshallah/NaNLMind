@@ -25,6 +25,7 @@
 ; CFT/TRAIL gated local credit: command 22/23
 ; Credit field: 255 credits at 0x7000, threshold 0x4001, votes 0x7100
 ; Credit combine: 7 credits at 0x7000, 7 coefficients at 0x7100, result 0x4010
+; Credit bundle: state at 0x8000, credits at 0x7200; command 29
 ; Combined gated credit: target/best/base/threshold 0x4001..4, credits 0x7000, coeffs 0x7100
 ;
 ; The driver contains no host math. It is assembled by nmk.awk and executed
@@ -62,6 +63,12 @@ JMP @field_driver_entry
 .include "../nan16/mth_credit_gate.nas"
 .include "../nan16/mth_credit_field.nas"
 .include "../nan16/mth_credit_combine.nas"
+.include "../nan16/mth_holo_credit.nas"
+.include "../nan16/mth_ring_credit.nas"
+.include "../nan16/mth_leaf_credit.nas"
+.include "../nan16/mth_tca_credit.nas"
+.include "../nan16/mth_flux_credit.nas"
+.include "../nan16/mth_credit_bundle.nas"
 
 field_driver_entry:
   MOVI r13,1
@@ -154,6 +161,9 @@ field_driver_main:
   MOVI r3,28
   CMP r2,r3
   JMP[EQ] @field_driver_combined_wide
+  MOVI r3,29
+  CMP r2,r3
+  JMP[EQ] @field_driver_credit_bundle
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -592,6 +602,12 @@ field_driver_combined_wide:
   CALL @mth_trunk_credit_wide
   MOVI r10,0x4010
   MOVI r1,1
+  ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_credit_bundle:
+  CALL @mth_credit_bundle
+  MOVI r10,0x4010
   ST r1,r10,0
   JMP @field_driver_return
 
