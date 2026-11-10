@@ -37,32 +37,6 @@ std::array<float, kRawFeatureDim> token_vector(std::uint8_t byte) {
     v[byte & 7u] = 1.0f;
     return v;
 }
-
-// Reference FNV oracle for the hash-check CLI/tests and for the legacy
-// long-context/backoff path. The default non-backoff training path calls
-// RawFieldVM::readout_context_hashed so the guest selects the bucket.
-std::uint32_t reference_fnv_context_bucket(std::string_view line,
-                                           std::size_t context_bytes,
-                                           std::uint32_t buckets) {
-    std::uint32_t hash = 2166136261u;
-    for (std::size_t j = 0; j < context_bytes; ++j) {
-        const auto byte =
-            static_cast<std::uint8_t>(line[8 - context_bytes + j]);
-        hash = (hash ^ byte) * 16777619u;
-    }
-    return hash % buckets;
-}
-
-std::uint32_t pack_context_bytes(std::string_view line,
-                                 std::size_t context_bytes) {
-    std::uint32_t packed = 0;
-    for (std::size_t j = 0; j < context_bytes; ++j) {
-        packed |= static_cast<std::uint32_t>(
-                      static_cast<std::uint8_t>(line[8 - context_bytes + j]))
-                  << (8 * j);
-    }
-    return packed;
-}
 } // namespace
 
 int trunk_train_cli(int argc, char** argv) {
@@ -449,182 +423,10 @@ int hier_train_cli(int argc, char** argv) {
     return 0;
 }
 
-int context_hash_check_cli(int argc, char** argv) {
-    if (argc < 3) {
-        std::cerr << "usage: nanlm-universal context-hash-check CORPUS [MAX_LINES]"
-                     " [SAMPLES] [BUCKETS] [CONTEXT_BYTES]\n"
-                  << "Compares the raw guest FNV-1a context bucket with the legacy"
-                     " host reference for widths 1..4,\n"
-                  << "then runs a deterministic two-epoch training smoke through"
-                     " the guest-hashed readout path.\n";
-        return 2;
-    }
-    const std::string corpus_path = argv[2];
-    std::size_t max_lines = 0, samples = 512, buckets = 8192;
-    std::size_t smoke_context_bytes = 3;
-    try {
-        if (argc > 3) max_lines = static_cast<std::size_t>(std::stoull(argv[3]));
-        if (argc > 4) samples = static_cast<std::size_t>(std::stoull(argv[4]));
-        if (argc > 5) buckets = static_cast<std::size_t>(std::stoull(argv[5]));
-        if (argc > 6) {
-            smoke_context_bytes = static_cast<std::size_t>(std::stoull(argv[6]));
-        }
-    } catch (...) {
-        std::cerr << "invalid numeric argument\n";
-        return 2;
-    }
-    if (buckets == 0 || buckets > 16384 || smoke_context_bytes == 0 ||
-        smoke_context_bytes > 4) {
-        std::cerr << "buckets 1..16384 and context bytes 1..4 required\n";
-        return 2;
-    }
-    std::ifstream in(corpus_path, std::ios::binary);
-    if (!in) {
-        std::cerr << "cannot open corpus\n";
-        return 3;
-    }
-    const std::string data((std::istreambuf_iterator<char>(in)),
-                           std::istreambuf_iterator<char>());
-    std::vector<std::string_view> usable;
-    std::size_t begin = 0;
-    while (begin <= data.size() && (!max_lines || usable.size() < max_lines)) {
-        const auto end = data.find('\n', begin);
-        const std::string_view line =
-            end == std::string::npos
-                ? std::string_view(data.data() + begin, data.size() - begin)
-                : std::string_view(data.data() + begin, end - begin);
-        if (line.size() >= 9 &&
-            static_cast<std::uint8_t>(line[8]) < 255) {
-            usable.push_back(line);
-        }
-        if (end == std::string::npos) break;
-        begin = end + 1;
-    }
-    if (usable.empty()) {
-        std::cerr << "no usable context samples\n";
-        return 3;
-    }
-    RawFieldVM vm("build/field_driver.nan");
-    if (!vm.ready()) {
-        std::cerr << "raw field VM unavailable: " << vm.error() << "\n";
-        return 7;
-    }
-    if (!vm.reset_context_readout(buckets)) {
-        std::cerr << "cannot reset context readout: " << vm.error() << "\n";
-        return 7;
-    }
-    const std::size_t check_count = samples == 0
-        ? usable.size() : std::min<std::size_t>(samples, usable.size());
-    const auto sample_index = [&](std::size_t position) {
-        if (samples == 0) return position;
-        return position * usable.size() / check_count;
-    };
-    for (std::size_t width = 1; width <= 4; ++width) {
-        std::size_t mismatches = 0;
-        for (std::size_t position = 0; position < check_count; ++position) {
-            const auto line = usable[sample_index(position)];
-            const auto target = static_cast<std::uint8_t>(line[8]);
-            const auto packed = pack_context_bytes(line, width);
-            bool correct = false;
-            float loss = 0.0f;
-            std::uint8_t high = 0, low = 0;
-            std::uint32_t bucket = 0;
-            if (!vm.readout_context_hashed(
-                    target, 0.0f, packed, static_cast<std::uint8_t>(width),
-                    buckets, correct, loss, high, low, bucket)) {
-                std::cerr << "raw context hash step failed: " << vm.error()
-                          << "\n";
-                return 7;
-            }
-            const auto expected = reference_fnv_context_bucket(
-                line, width, static_cast<std::uint32_t>(buckets));
-            if (bucket != expected) {
-                if (mismatches < 4) {
-                    std::cerr << "hash mismatch width=" << width
-                              << " sample=" << sample_index(position)
-                              << " guest=" << bucket
-                              << " host=" << expected << "\n";
-                }
-                ++mismatches;
-            }
-        }
-        std::cout << "ctx_hash_check width=" << width
-                  << " buckets=" << buckets
-                  << " samples=" << check_count
-                  << " mismatches=" << mismatches << "\n";
-        if (mismatches != 0) return 1;
-    }
-
-    // Deterministic training smoke on the guest-hashed readout path.
-    const std::size_t smoke_count =
-        std::min<std::size_t>(check_count, 256);
-    double loss_before = 0.0, loss_after = 0.0;
-    std::size_t correct_before = 0, correct_after = 0;
-    const auto smoke_eval = [&](double& loss_sum, std::size_t& correct_sum) {
-        loss_sum = 0.0;
-        correct_sum = 0;
-        for (std::size_t position = 0; position < smoke_count; ++position) {
-            const auto line = usable[sample_index(position)];
-            bool correct = false;
-            float loss = 0.0f;
-            std::uint8_t high = 0, low = 0;
-            std::uint32_t bucket = 0;
-            if (!vm.readout_context_hashed(
-                    static_cast<std::uint8_t>(line[8]), 0.0f,
-                    pack_context_bytes(line, smoke_context_bytes),
-                    static_cast<std::uint8_t>(smoke_context_bytes), buckets,
-                    correct, loss, high, low, bucket)) {
-                return false;
-            }
-            loss_sum += loss;
-            correct_sum += correct ? 1u : 0u;
-        }
-        return true;
-    };
-    if (!smoke_eval(loss_before, correct_before)) {
-        std::cerr << "context hash smoke eval failed: " << vm.error() << "\n";
-        return 7;
-    }
-    constexpr std::size_t kSmokeEpochs = 2;
-    for (std::size_t epoch = 0; epoch < kSmokeEpochs; ++epoch) {
-        for (std::size_t position = 0; position < smoke_count; ++position) {
-            const auto line = usable[sample_index(position)];
-            bool correct = false;
-            float loss = 0.0f;
-            std::uint8_t high = 0, low = 0;
-            std::uint32_t bucket = 0;
-            if (!vm.readout_context_hashed(
-                    static_cast<std::uint8_t>(line[8]), 0.5f,
-                    pack_context_bytes(line, smoke_context_bytes),
-                    static_cast<std::uint8_t>(smoke_context_bytes), buckets,
-                    correct, loss, high, low, bucket)) {
-                std::cerr << "context hash smoke step failed: " << vm.error()
-                          << "\n";
-                return 7;
-            }
-        }
-    }
-    if (!smoke_eval(loss_after, correct_after)) {
-        std::cerr << "context hash smoke eval failed: " << vm.error() << "\n";
-        return 7;
-    }
-    std::cout << "ctx_hash_smoke samples=" << smoke_count
-              << " epochs=" << kSmokeEpochs
-              << " context_bytes=" << smoke_context_bytes
-              << " buckets=" << buckets
-              << " loss_before=" << (loss_before / smoke_count)
-              << " loss_after=" << (loss_after / smoke_count)
-              << " accuracy_before="
-              << (100.0 * correct_before / smoke_count)
-              << " accuracy_after="
-              << (100.0 * correct_after / smoke_count) << "\n";
-    return 0;
-}
-
 int context_train_cli(int argc, char** argv) {
     if (argc < 3) {
         std::cerr << "usage: nanlm-universal context-train CORPUS [MAX_LINES] [EPOCHS]"
-                     " [REPORT_EVERY] [BUCKETS] [CONTEXT_BYTES] [LR] [EVAL_EVERY] [TRAIN_FRACTION] [backoff|backoffcopy|induction] [EXACT_BUCKETS] [fallback=N] [aux=N] [weight=F]\n"
+                     " [REPORT_EVERY] [BUCKETS] [CONTEXT_BYTES] [LR] [EVAL_EVERY] [TRAIN_FRACTION] [backoff|backoffcopy] [EXACT_BUCKETS] [fallback=N]\n"
                   << "Trains a raw context-indexed 16x16 class-memory readout.\n"
                   << "TRAIN_FRACTION <1 holds out a random evaluation split.\n"
                   << "backoff uses exact high-frequency 4-byte contexts plus a 3-byte fallback.\n"
@@ -641,8 +443,6 @@ int context_train_cli(int argc, char** argv) {
     bool guest_backoff = false;
     std::size_t exact_limit_arg = 10500;
     std::size_t fallback_bytes = 3;
-    std::size_t aux_buckets = 1024;
-    float gate_weight = 0.15f;
     std::string load_path;
     std::string save_path;
     try {
@@ -668,20 +468,13 @@ int context_train_cli(int argc, char** argv) {
             else if (arg.rfind("save=", 0) == 0) save_path = arg.substr(5);
             else if (arg.rfind("fallback=", 0) == 0) {
                 fallback_bytes = static_cast<std::size_t>(std::stoull(arg.substr(9)));
-            } else if (arg.rfind("aux=", 0) == 0) {
-                aux_buckets = static_cast<std::size_t>(std::stoull(arg.substr(4)));
-            } else if (arg.rfind("weight=", 0) == 0) {
-                gate_weight = std::stof(arg.substr(7));
             }
         }
     } catch (...) { std::cerr << "invalid numeric argument\n"; return 2; }
     if (buckets == 0 || buckets > 16384 || context_bytes == 0 || context_bytes > 8 ||
         fallback_bytes == 0 || fallback_bytes > 8 ||
-        aux_buckets == 0 || aux_buckets > 1024 ||
-        base_lr <= 0.0f || train_fraction <= 0.0f || train_fraction > 1.0f ||
-        gate_weight < 0.0f) {
-        std::cerr << "buckets 1..16384, context bytes 1..8, aux 1..1024,"
-                     " non-negative gate weight, positive LR,"
+        base_lr <= 0.0f || train_fraction <= 0.0f || train_fraction > 1.0f) {
+        std::cerr << "buckets 1..16384, context bytes 1..8, positive LR,"
                      " train fraction in (0,1] required\n";
         return 2;
     }
@@ -742,8 +535,6 @@ int context_train_cli(int argc, char** argv) {
             context_buckets[i] = hash % static_cast<std::uint32_t>(buckets);
         }
     }
-    std::size_t exact_count = 0;
-    std::vector<std::uint32_t> exact_keys;
     std::vector<std::size_t> all_indices(usable.size());
     for (std::size_t i = 0; i < all_indices.size(); ++i) all_indices[i] = i;
     std::vector<std::size_t> train_indices;
@@ -780,13 +571,11 @@ int context_train_cli(int argc, char** argv) {
         std::sort(ranked.begin(), ranked.end(),
                   [](const auto& a, const auto& b) { return a.first > b.first; });
         const std::size_t exact_limit = std::min<std::size_t>(exact_limit_arg, buckets - 1);
-        exact_count = std::min(exact_limit, ranked.size());
+        const std::size_t exact_count = std::min(exact_limit, ranked.size());
         std::unordered_map<std::uint32_t, std::uint32_t> exact;
         exact.reserve(exact_count * 2);
-        exact_keys.assign(exact_count, 0);
         for (std::size_t i = 0; i < exact_count; ++i) {
             exact.emplace(ranked[i].second, static_cast<std::uint32_t>(i));
-            exact_keys[i] = ranked[i].second;
         }
         const std::size_t fallback = buckets - exact_count;
         const std::size_t k3_fallback = copy_backoff && fallback > 1
@@ -846,13 +635,7 @@ int context_train_cli(int argc, char** argv) {
         return 7;
     }
     const auto reset_started = std::chrono::steady_clock::now();
-    if (induction_mode) {
-        if (!vm.reset_context_readout(buckets) ||
-            !vm.reset_context_copy(exact_keys, buckets, aux_buckets)) {
-            std::cerr << "cannot reset context copy readout: " << vm.error() << "\n";
-            return 7;
-        }
-    } else if (!load_path.empty()) {
+    if (!load_path.empty()) {
         if (!vm.load_context_readout(load_path, buckets)) {
             std::cerr << "cannot load context readout: " << vm.error() << "\n";
             return 7;
@@ -896,22 +679,10 @@ int context_train_cli(int argc, char** argv) {
     std::cout << "context_tables buckets=" << buckets
               << " train_samples=" << train_indices.size()
               << " eval_samples=" << eval_indices.size()
-              << " joint_readout=" << (joint_readout ? 1 : 0)
               << " reset_seconds="
               << std::chrono::duration<double>(
                      std::chrono::steady_clock::now() - reset_started).count()
               << "\n";
-    const auto readout = [&](std::uint8_t target, float learning_rate,
-                             std::uint32_t bucket, bool& correct, float& loss,
-                             std::uint8_t& predicted_high,
-                             std::uint8_t& predicted_low) {
-        return joint_readout
-            ? vm.readout_context_joint(target, learning_rate, bucket, buckets,
-                                       correct, loss, predicted_high,
-                                       predicted_low)
-            : vm.readout_context(target, learning_rate, bucket, buckets,
-                                 correct, loss, predicted_high, predicted_low);
-    };
     const auto evaluate = [&](std::size_t epoch, bool final) -> bool {
         const auto started = std::chrono::steady_clock::now();
         std::size_t total = 0, correct_count = 0;
@@ -939,10 +710,9 @@ int context_train_cli(int argc, char** argv) {
                 std::cerr << "context eval failed: " << vm.error() << "\n";
                 return false;
             }
-            total += chunk;
-            correct_count += chunk_correct;
-            loss_sum += chunk_loss;
-            position += chunk;
+            ++total;
+            correct_count += correct ? 1u : 0u;
+            loss_sum += loss;
         }
         const double seconds = std::chrono::duration<double>(
             std::chrono::steady_clock::now() - started).count();
@@ -993,14 +763,13 @@ int context_train_cli(int argc, char** argv) {
                 std::cerr << "context step failed: " << vm.error() << "\n";
                 return 7;
             }
-            global_step += chunk;
-            epoch_total += chunk;
-            report_total += chunk;
-            epoch_correct += chunk_correct;
-            report_correct += chunk_correct;
-            epoch_loss += chunk_loss;
-            report_loss += chunk_loss;
-            position += chunk;
+            ++global_step;
+            ++epoch_total;
+            ++report_total;
+            epoch_correct += correct ? 1u : 0u;
+            report_correct += correct ? 1u : 0u;
+            epoch_loss += loss;
+            report_loss += loss;
             if (report_every && report_total >= report_every) {
                 std::cout << "ctx_step epoch=" << epoch
                           << " step=" << global_step
@@ -1042,6 +811,12 @@ int context_train_cli(int argc, char** argv) {
         return 7;
     }
     return 0;
+}
+
+int context_hash_check_cli(int, char**) {
+    std::cerr << "context-hash-check is available in the hash worktree; "
+                 "this integration build uses the guest-backoff trainer.\n";
+    return 2;
 }
 
 } // namespace nanlm

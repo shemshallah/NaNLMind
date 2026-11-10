@@ -61,6 +61,11 @@ JMP @field_driver_entry
 .include "../nan16/mth_softmax16_table.nas"
 .include "../nan16/mth_context_hier.nas"
 .include "../nan16/mth_context_backoff.nas"
+.include "../nan16/mth_context_encode.nas"
+.include "../nan16/mth_context_hash.nas"
+.include "../nan16/mth_context_batch.nas"
+.include "../nan16/mth_context_copy.nas"
+.include "../nan16/mth_context_class.nas"
 .include "../nan16/mth_readout_hier.nas"
 .include "../nan16/mth_trunk_credit.nas"
 .include "../nan16/mth_qkv_credit.nas"
@@ -781,6 +786,14 @@ field_driver_ctx_applied_done:
   LD r11,r12,0
   ST r11,r10,11           ; guest credit delta
   JMP @field_driver_return
+
+; Native Q16.16 -> float32 bit-pattern conversion for trunk ABI.
+mth_credit_rate_float:
+  CVTIF r1,r1
+  MOVI r2,0
+  MOVHI r2,0x4780
+  FDIV r1,r1,r2
+  RET
 
 field_driver_return:
   MOVI r10,@field_driver_link

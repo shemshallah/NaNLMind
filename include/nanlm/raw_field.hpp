@@ -96,6 +96,47 @@ struct ContextBackoffStep {
     std::uint32_t bucket = 0;
 };
 
+
+enum class ContextCreditKind : std::uint8_t {
+    None = 0,
+    Cft = 1,
+    Trail = 2,
+};
+
+struct ContextClassInput {
+    std::uint32_t high_table = 0x100000;
+    std::uint32_t low_table = 0;
+    std::size_t buckets = 1;
+    std::uint32_t bucket = 0;
+    bool direct = false;
+    std::uint8_t direct_high = 0;
+    std::uint8_t direct_low = 0;
+    std::int32_t head_threshold = 0;
+};
+
+struct ContextCreditInput {
+    ContextCreditKind kind = ContextCreditKind::None;
+    std::array<std::int32_t, 5> cft{};
+    std::array<std::int32_t, 11> trail{};
+};
+
+struct ContextClassResult {
+    std::uint8_t high = 0;
+    std::uint8_t low = 0;
+    std::uint8_t head = 0;
+    std::uint16_t triad = 0xFFFFu;
+    std::uint16_t member = 0xFFFFu;
+    bool field_head = false;
+    std::uint16_t accepted_triads = 0;
+    bool field_accepted = false;
+    bool triad_accepted = false;
+    std::int32_t head_credit_before = 0;
+    std::int32_t head_credit_after = 0;
+    std::int32_t credit_delta = 0;
+    bool credit_applied = false;
+    std::array<std::uint8_t, kTriadCount> votes{};
+};
+
 class RawFieldVM {
 public:
     explicit RawFieldVM(const std::string& driver_image);
