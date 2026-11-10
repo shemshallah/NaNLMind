@@ -902,7 +902,7 @@ int phase_ingest_cli(int argc, char** argv) {
     std::int32_t probe_head = -1;
     std::int32_t probe_score = 0;
     if (!samples.empty()) {
-        pipeline_dim = std::min<std::size_t>(dim * 2, 64);
+        pipeline_dim = std::min<std::size_t>(dim * 2, 128);
         pq_codewords = std::min<std::size_t>(samples.size(), 256);
         std::vector<std::int32_t> codebook;
         codebook.reserve(pq_codewords * pipeline_dim);
@@ -963,7 +963,7 @@ int phase_ingest_cli(int argc, char** argv) {
             return 7;
         }
         {
-            std::ofstream matrix("state/vector_code_matrix.bin",
+            std::ofstream matrix(output_prefix + ".matrix.bin",
                                  std::ios::binary);
             if (!matrix) {
                 std::cerr << "cannot open vector matrix output\n";

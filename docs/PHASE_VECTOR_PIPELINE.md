@@ -35,10 +35,15 @@ Field-driver commands:
 | 61 | `mth_spectral_iter` | A[8][8] 0x7000, x[8] 0x7040, out 0x7080 |
 | 62 | `mth_sparse_knn` | query 0x7000, bank 0x10000, N/D/k 0x4001..3 |
 | 63 | `mth_phase_encode_batch` | windows 0x60000, W/D 0x4002/3, complex out 0x70000 |
+| 65 | `mth_vm_reset` | clear 32,640 C(256,2) cells |
+| 66 | `mth_vm_accum` | pair a/b and Q16 delta, cell 0x300000 |
+| 67 | `mth_vm_probe` | best third head above threshold |
 
 `RawFieldVM` exposes `phase_encode_wide`, `phase_encode_batch`,
-`phase_rotate`, `pq_encode`, `spectral_iter`, and `sparse_knn`. The C++
-methods marshal Q16 words only; the guest performs all arithmetic.
+`phase_rotate`, `pq_encode`, `spectral_iter`, `sparse_knn`,
+`vector_matrix_reset`, `vector_matrix_accumulate`, `vector_matrix_probe`, and
+`read_vector_matrix`. The C++ methods marshal Q16 words only; the guest performs
+all arithmetic, including the triangular pair index.
 
 ### Trig phase encoder
 
@@ -186,6 +191,21 @@ codebook is not a concept graph; the leaf is not a synset ID.
 The old byte-pair C(256,2) object remains a diagnostic. The new object must be
 tagged `vector-code-hypermatrix` with encoder/codebook digests.
 
+### C(256,2) vector-code observer
+
+`mth_vector_matrix.nas` owns the 32,640 unordered pair cells at guest word
+`0x300000`:
+
+```text
+pair_index(a,b) = a*255 - a*(a-1)/2 + (b-a-1), a < b
+```
+
+The phase ingest path quantizes encoded vectors into up to 256 codes, then
+accumulates consecutive code pairs with Q16 support in the guest. The host
+writes `state/vector_code_matrix.bin` and records the number of updates plus a
+raw probe result in the manifest. This is the first C(256,2) vector-code
+observer; it is separate from the byte-pair corpus matrix.
+
 ## 8. Tests
 
 Raw fixtures:
@@ -218,11 +238,12 @@ make phase-ingest-check
 The host stages byte windows and writes:
 
 - `state/phase_vectors.bin` — complex Q16 phase vectors;
-- `state/phase_codes.bin` — PQ code and L1 residual distance;
-- `state/phase_knn.bin` — nearest-neighbor index and dot score;
-- `state/phase_spectral.bin` — one spectral coordinate vector;
-- `state/phase_vectors.json` — counts, dimensions, shard histogram, and
-  pipeline summary.
+- `state/phase_vectors.codes.bin` — PQ code and L1 residual distance;
+- `state/phase_vectors.knn.bin` — nearest-neighbor index and dot score;
+- `state/phase_vectors.spectral.bin` — one spectral coordinate vector;
+- `PREFIX.matrix.bin` — raw C(256,2) vector-code observer;
+- `state/phase_vectors.json` — counts, dimensions, shard histogram, matrix
+  updates, probe head/score, and pipeline summary.
 
 The ingest pipeline uses a local codebook taken from the first 16 encoded
 windows and a sparse bank from the first 256. This is a functional first-stage

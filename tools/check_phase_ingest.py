@@ -9,8 +9,8 @@ from pathlib import Path
 
 
 def main() -> int:
-    root = Path(sys.argv[1] if len(sys.argv) > 1 else "state")
-    manifest_path = root / "phase_vectors.json"
+    prefix = Path(sys.argv[1] if len(sys.argv) > 1 else "state/phase_vectors")
+    manifest_path = prefix.with_suffix(".json")
     if not manifest_path.exists():
         print(f"missing {manifest_path}", file=sys.stderr)
         return 1
@@ -23,7 +23,7 @@ def main() -> int:
     if samples <= 0 or dim <= 0:
         print("empty phase ingest", file=sys.stderr)
         return 1
-    vectors = (root / "phase_vectors.bin").read_bytes()
+    vectors = prefix.with_suffix(".bin").read_bytes()
     expected_vectors = samples * dim * 2 * 4
     if len(vectors) != expected_vectors:
         print(f"phase vectors size {len(vectors)} != {expected_vectors}", file=sys.stderr)
@@ -37,36 +37,43 @@ def main() -> int:
     pipeline = manifest.get("pipeline", {})
     pipeline_samples = int(pipeline.get("samples", 0))
     pipeline_dim = int(pipeline.get("dim", 0))
-    codes_path = root / "phase_vectors.codes.bin"
-    if not codes_path.exists():
-        codes_path = root / "phase_codes.bin"
-    codes = codes_path.read_bytes()
+    if pipeline_dim <= 0 or pipeline_dim > 128:
+        print("invalid phase pipeline dimension", file=sys.stderr)
+        return 1
+
+    codes = Path(str(prefix) + ".codes.bin").read_bytes()
     if len(codes) != pipeline_samples * 8:
         print("phase codes size mismatch", file=sys.stderr)
         return 1
-    knn_path = root / "phase_vectors.knn.bin"
-    if not knn_path.exists():
-        knn_path = root / "phase_knn.bin"
-    knn = knn_path.read_bytes()
+    knn = Path(str(prefix) + ".knn.bin").read_bytes()
     if len(knn) != pipeline_samples * 8:
         print("phase kNN size mismatch", file=sys.stderr)
         return 1
-    spectral_path = root / "phase_vectors.spectral.bin"
-    if not spectral_path.exists():
-        spectral_path = root / "phase_spectral.bin"
-    spectral = spectral_path.read_bytes()
+    spectral = Path(str(prefix) + ".spectral.bin").read_bytes()
     if len(spectral) != 8 * 4:
         print("phase spectral size mismatch", file=sys.stderr)
         return 1
-    if pipeline_dim <= 0 or pipeline_dim > 128:
-        print("invalid phase pipeline dimension", file=sys.stderr)
+
+    matrix_path = Path(str(prefix) + ".matrix.bin")
+    if not matrix_path.exists():
+        print(f"missing {matrix_path}", file=sys.stderr)
+        return 1
+    matrix = matrix_path.read_bytes()
+    if len(matrix) != 32640 * 4:
+        print("vector matrix size mismatch", file=sys.stderr)
+        return 1
+    cells = struct.unpack("<32640i", matrix)
+    if int(pipeline.get("matrix_updates", 0)) > 0 and not any(cells):
+        print("vector matrix has updates but is empty", file=sys.stderr)
         return 1
 
     print(
         "PHASE_INGEST PASS "
         f"samples={samples} dim={dim} nonzero={nonzero} "
         f"pipeline_samples={pipeline_samples} pq_codewords={pipeline.get('pq_codewords')} "
-        f"knn_bank={pipeline.get('knn_bank')} pipeline_dim={pipeline_dim}"
+        f"knn_bank={pipeline.get('knn_bank')} pipeline_dim={pipeline_dim} "
+        f"matrix_updates={pipeline.get('matrix_updates')} "
+        f"probe_head={pipeline.get('probe_head')}"
     )
     return 0
 
