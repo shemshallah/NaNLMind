@@ -164,6 +164,21 @@ field_driver_main:
   MOVI r3,29
   CMP r2,r3
   JMP[EQ] @field_driver_credit_bundle
+  MOVI r3,35
+  CMP r2,r3
+  JMP[EQ] @field_driver_holo
+  MOVI r3,36
+  CMP r2,r3
+  JMP[EQ] @field_driver_ring
+  MOVI r3,37
+  CMP r2,r3
+  JMP[EQ] @field_driver_leaf
+  MOVI r3,38
+  CMP r2,r3
+  JMP[EQ] @field_driver_tca
+  MOVI r3,39
+  CMP r2,r3
+  JMP[EQ] @field_driver_flux
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -457,6 +472,7 @@ field_driver_cft_credit:
   CALL @mth_credit_gate
   CMP r1,r0
   JMP[EQ] @field_driver_credit_rejected
+  CALL @mth_credit_rate_float
   ADD r6,r1,r0          ; gated learning rate
   MOVI r10,0x4001
   LD r1,r10,0
@@ -498,6 +514,7 @@ field_driver_trail_credit:
   CALL @mth_credit_gate
   CMP r1,r0
   JMP[EQ] @field_driver_credit_rejected
+  CALL @mth_credit_rate_float
   ADD r6,r1,r0
   MOVI r10,0x4001
   LD r1,r10,0
@@ -541,6 +558,7 @@ field_driver_combined_credit:
   CALL @mth_credit_gate
   CMP r1,r0
   JMP[EQ] @field_driver_credit_rejected
+  CALL @mth_credit_rate_float
   ADD r6,r1,r0
   MOVI r10,0x4001
   LD r1,r10,0
@@ -565,6 +583,7 @@ field_driver_combined_all:
   CALL @mth_credit_gate
   CMP r1,r0
   JMP[EQ] @field_driver_credit_rejected
+  CALL @mth_credit_rate_float
   ADD r6,r1,r0
   MOVI r10,0x4001
   LD r1,r10,0
@@ -589,6 +608,7 @@ field_driver_combined_wide:
   CALL @mth_credit_gate
   CMP r1,r0
   JMP[EQ] @field_driver_credit_rejected
+  CALL @mth_credit_rate_float
   ADD r6,r1,r0
   MOVI r10,0x4001
   LD r1,r10,0
@@ -609,6 +629,67 @@ field_driver_credit_bundle:
   CALL @mth_credit_bundle
   MOVI r10,0x4010
   ST r1,r10,0
+  JMP @field_driver_return
+
+; Native Q16.16 -> float32 bit-pattern conversion for trunk ABI.
+; CVTIF casts the signed Q16 integer to float32; FDIV scales by 65536.0.
+; No host math, no new opcode handler. Clobbers r2 only.
+mth_credit_rate_float:
+  CVTIF r1,r1
+  MOVI r2,0
+  MOVHI r2,0x4780
+  FDIV r1,r1,r2
+  RET
+
+field_driver_holo:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  CALL @mth_holo_credit
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  JMP @field_driver_return
+field_driver_ring:
+  MOVI r1,0x6000
+  MOVI r10,0x4001
+  LD r2,r10,0
+  CALL @mth_ring_credit
+  MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
+field_driver_leaf:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  CALL @mth_leaf_credit
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  JMP @field_driver_return
+field_driver_tca:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  CALL @mth_tca_credit
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  JMP @field_driver_return
+field_driver_flux:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r4,r10,3
+  CALL @mth_flux_credit
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
   JMP @field_driver_return
 
 field_driver_return:

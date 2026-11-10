@@ -186,6 +186,65 @@ bool RawFieldVM::coherence(
     return true;
 }
 
+
+bool RawFieldVM::holo(const std::array<std::uint16_t, 3>& phases,
+                      std::array<std::int32_t, 2>& out) {
+    for (std::size_t i = 0; i < phases.size(); ++i)
+        if (!write_word(kProposalBase + static_cast<std::uint32_t>(i), phases[i]))
+            return fail("cannot write HOLO phases");
+    if (!write_word(kCommandBase, 35)) return fail("cannot write HOLO command");
+    if (!run_command()) return false;
+    out[0] = static_cast<std::int32_t>(read_word(kResultBase));
+    out[1] = static_cast<std::int32_t>(read_word(kResultBase + 1));
+    return true;
+}
+bool RawFieldVM::ring(const std::array<std::uint16_t, kTriadMemberCount>& phases,
+                      std::uint32_t shift, std::int32_t& correlation) {
+    if (shift >= kTriadMemberCount) return fail("RING shift outside ring");
+    for (std::size_t i = 0; i < phases.size(); ++i)
+        if (!write_word(kCoherencePhases + static_cast<std::uint32_t>(i), phases[i]))
+            return fail("cannot write RING phases");
+    if (!write_word(kProposalBase, shift) || !write_word(kCommandBase, 36))
+        return fail("cannot write RING command");
+    if (!run_command()) return false;
+    correlation = static_cast<std::int32_t>(read_word(kResultBase));
+    return true;
+}
+bool RawFieldVM::leaf(std::uint32_t row_bits, std::uint32_t leaf_mask,
+                      std::int32_t counter_q16, std::array<std::int32_t, 2>& out) {
+    if (!write_word(kProposalBase, row_bits) ||
+        !write_word(kProposalBase + 1, leaf_mask) ||
+        !write_word(kProposalBase + 2, static_cast<std::uint32_t>(counter_q16)) ||
+        !write_word(kCommandBase, 37)) return fail("cannot write LEAF command");
+    if (!run_command()) return false;
+    out[0] = static_cast<std::int32_t>(read_word(kResultBase));
+    out[1] = static_cast<std::int32_t>(read_word(kResultBase + 1));
+    return true;
+}
+bool RawFieldVM::tca(std::int32_t local, std::int32_t peer_a, std::int32_t peer_b,
+                     std::int32_t& advantage) {
+    if (!write_word(kProposalBase, static_cast<std::uint32_t>(local)) ||
+        !write_word(kProposalBase + 1, static_cast<std::uint32_t>(peer_a)) ||
+        !write_word(kProposalBase + 2, static_cast<std::uint32_t>(peer_b)) ||
+        !write_word(kCommandBase, 38)) return fail("cannot write TCA command");
+    if (!run_command()) return false;
+    advantage = static_cast<std::int32_t>(read_word(kResultBase));
+    return true;
+}
+bool RawFieldVM::flux(std::int32_t phase_u, std::int32_t phase_v,
+                      std::int32_t weight, std::int32_t source,
+                      std::array<std::int32_t, 3>& out) {
+    if (!write_word(kProposalBase, static_cast<std::uint32_t>(phase_u)) ||
+        !write_word(kProposalBase + 1, static_cast<std::uint32_t>(phase_v)) ||
+        !write_word(kProposalBase + 2, static_cast<std::uint32_t>(weight)) ||
+        !write_word(kProposalBase + 3, static_cast<std::uint32_t>(source)) ||
+        !write_word(kCommandBase, 39)) return fail("cannot write FLUX command");
+    if (!run_command()) return false;
+    for (std::size_t i = 0; i < out.size(); ++i)
+        out[i] = static_cast<std::int32_t>(read_word(kResultBase + i));
+    return true;
+}
+
 bool RawFieldVM::cft(std::int32_t e_ab, std::int32_t e_bc,
                      std::int32_t e_ca, std::int32_t error,
                      std::int32_t rate, std::array<std::int32_t, 4>& out) {
