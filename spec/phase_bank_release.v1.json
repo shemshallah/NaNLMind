@@ -103,5 +103,19 @@
     "training_windows": 4096,
     "release_asset": true,
     "context_description": "last 8 bytes per line; no word tokenization"
+  },
+  "codebook_256": {
+    "file": "gutenberg150_d256.codebook8x256.bin",
+    "bytes": 262184,
+    "sha256": "f1fd9ac36c9d4491315bae3e2e9b8c8d15bafbc4b88b45fd2cd99dc569542297",
+    "schema": "nanlm.phase-codebook/1",
+    "pipeline_dim": 256,
+    "subvectors": 8,
+    "subdim": 32,
+    "codewords": 256,
+    "context_bytes": 8,
+    "context_words": 0,
+    "training_windows": 4096,
+    "release_asset": true
   }
 }
