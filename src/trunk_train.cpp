@@ -808,7 +808,7 @@ int phase_ingest_cli(int argc, char** argv) {
         return 2;
     }
     const std::string corpus_path = argv[2];
-    std::size_t max_lines = 0, window = 8, dim = 64, max_windows = 0;
+    std::size_t max_lines = 0, window = 8, dim = 128, max_windows = 0;
     std::string output_prefix = "state/phase_vectors";
     try {
         if (argc > 3) max_lines = static_cast<std::size_t>(std::stoull(argv[3]));
@@ -914,7 +914,7 @@ int phase_ingest_cli(int argc, char** argv) {
     std::uint16_t field_hot_triads = 0;
     bool field_accept = false;
     if (!samples.empty()) {
-        pipeline_dim = std::min<std::size_t>(dim * 2, 128);
+        pipeline_dim = std::min<std::size_t>(dim * 2, 256);
         pq_codewords = std::min<std::size_t>(samples.size(), 32);
         std::vector<std::int32_t> sample_bank;
         sample_bank.reserve(samples.size() * pipeline_dim);
@@ -1154,7 +1154,7 @@ int phase_train_cli(int argc, char** argv) {
         return 2;
     }
     const std::string corpus_path = argv[2];
-    std::size_t max_lines = 0, window = 8, dim = 64, max_windows = 0;
+    std::size_t max_lines = 0, window = 8, dim = 128, max_windows = 0;
     std::string output_prefix = "state/phase_train";
     std::string eval_path;
     try {
@@ -1255,7 +1255,7 @@ int phase_train_cli(int argc, char** argv) {
         std::cerr << "phase table init failed: " << vm.error() << "\n";
         return 7;
     }
-    const std::size_t pipeline_dim = std::min<std::size_t>(dim * 2, 128);
+    const std::size_t pipeline_dim = std::min<std::size_t>(dim * 2, 256);
     const auto encode_windows = [&](const std::vector<std::vector<std::uint8_t>>& source,
                                     std::vector<std::vector<std::int32_t>>& dest) {
         dest.clear();
@@ -1382,7 +1382,9 @@ int phase_train_cli(int argc, char** argv) {
                                 vectors[index].end());
     }
 
-    const auto emit_metrics = [&](std::size_t step, bool final) -> bool {
+    std::size_t rollbacks = 0;
+    const auto emit_metrics = [&](std::size_t step, bool final,
+                                  double& eval_value) -> bool {
         std::uint64_t eval_distance = 0;
         std::size_t probe_hits = 0;
         std::uint64_t probe_score_sum = 0;
@@ -1501,6 +1503,7 @@ int phase_train_cli(int argc, char** argv) {
         const double eval_mean = eval_count
             ? static_cast<double>(eval_distance) / static_cast<double>(eval_count)
             : 0.0;
+        eval_value = eval_mean;
         const double eval_per_dim = pipeline_dim
             ? eval_mean / static_cast<double>(pipeline_dim) : 0.0;
         const double eval_relative = eval_magnitude
@@ -1544,6 +1547,7 @@ int phase_train_cli(int argc, char** argv) {
                 << ", \"probe_mean_score_q16\": " << score_mean
                 << ", \"leaf_verify_rate\": " << leaf_rate
                 << ", \"leaf_mean_error_q16\": " << leaf_mean_error
+                << ", \"codebook_rollbacks\": " << rollbacks
                 << ", \"matrix_nonzero\": " << matrix_nonzero
                 << ", \"hot_heads\": " << hot.hot_heads
                 << ", \"hot_triads\": " << hot.hot_triads
@@ -1610,15 +1614,22 @@ int phase_train_cli(int argc, char** argv) {
         update_bank.insert(update_bank.end(), chunk_bank.begin(),
                            chunk_bank.end());
         if (!vm.pq_update(update_bank, anchor_count + count, pipeline_dim,
-                          codewords, 1, codebook)) {
+                          codewords, 1, codebook, 0)) {
             std::cerr << "phase-train codebook update failed: " << vm.error() << "\n";
             return 7;
         }
         processed = start + count;
         ++step;
-        if (!emit_metrics(step, false)) return 7;
+        double candidate_eval = 0.0;
+        if (!emit_metrics(step, false, candidate_eval)) return 7;
+        if (candidate_eval > best_eval_l1 + 1e-9 &&
+            !best_codebook.empty()) {
+            codebook = best_codebook;
+            ++rollbacks;
+        }
     }
-    if (!emit_metrics(step + 1, true)) return 7;
+    double final_eval = 0.0;
+    if (!emit_metrics(step + 1, true, final_eval)) return 7;
     const auto& selected_codebook = best_codebook.empty() ? codebook : best_codebook;
     {
         std::ofstream book(output_prefix + ".codebook.bin", std::ios::binary);
@@ -1673,6 +1684,7 @@ int phase_train_cli(int argc, char** argv) {
                     << "  \"matrix_words\": " << best_matrix.size() << ",\n"
                     << "  \"resumed\": " << (resumed ? "true" : "false") << ",\n"
                     << "  \"replay_anchors\": " << anchor_count << ",\n"
+                    << "  \"codebook_rollbacks\": " << rollbacks << ",\n"
                     << "  \"best_step\": " << best_step << ",\n"
                     << "  \"best_eval_mean_l1_q16\": " << best_eval_l1 << ",\n"
                     << "  \"best_hot_heads\": " << best_hot_heads << ",\n"
@@ -1689,6 +1701,7 @@ int phase_train_cli(int argc, char** argv) {
               << " best_eval_l1=" << best_eval_l1
               << " best_hot_heads=" << best_hot_heads
               << " best_hot_triads=" << best_hot_triads
+              << " codebook_rollbacks=" << rollbacks
               << " best_field_hot=" << (best_field ? "true" : "false")
               << " resumed=" << (resumed ? "true" : "false")
               << " output=" << output_prefix << "\n";
@@ -1703,7 +1716,7 @@ int phase_codebook_cli(int argc, char** argv) {
         return 2;
     }
     const std::string corpus_path = argv[2];
-    std::size_t max_lines = 0, window = 8, dim = 64, codewords = 256;
+    std::size_t max_lines = 0, window = 8, dim = 128, codewords = 256;
     std::size_t max_windows = 4096;
     std::string output_prefix = "state/phase_codebook";
     try {
@@ -1723,7 +1736,7 @@ int phase_codebook_cli(int argc, char** argv) {
                      " max_windows >=64 required\n";
         return 2;
     }
-    const std::size_t pipeline_dim = std::min<std::size_t>(dim * 2, 128);
+    const std::size_t pipeline_dim = std::min<std::size_t>(dim * 2, 256);
     constexpr std::size_t kSubvectors = 8;
     if (pipeline_dim % kSubvectors != 0) {
         std::cerr << "pipeline dimension must divide into 8 subvectors\n";
@@ -1805,8 +1818,9 @@ int phase_codebook_cli(int argc, char** argv) {
     std::size_t trained = 0;
     for (std::size_t sub = 0; sub < kSubvectors; ++sub) {
         std::vector<std::int32_t> codebook;
-        for (std::size_t start = 0; start < vectors.size(); start += kEncodeBatch) {
-            const std::size_t count = std::min(kEncodeBatch, vectors.size() - start);
+        constexpr std::size_t kTrainBatch = 512;
+        for (std::size_t start = 0; start < vectors.size(); start += kTrainBatch) {
+            const std::size_t count = std::min(kTrainBatch, vectors.size() - start);
             std::vector<std::int32_t> bank;
             bank.reserve(count * subdim);
             for (std::size_t i = 0; i < count; ++i)
@@ -2324,14 +2338,14 @@ int stream_train_cli(int argc, char** argv) {
         words_total += word_count;
         subwords_total += subword_count;
         contexts_total += contexts;
-        if (sample_bank.size() < kSampleLimit * 128 && line.size() >= 8) {
+        if (sample_bank.size() < kSampleLimit * 256 && line.size() >= 8) {
             std::array<std::uint8_t, 8> window{};
             const std::size_t start = line.size() - 8;
             for (std::size_t i = 0; i < 8; ++i)
                 window[i] = static_cast<std::uint8_t>(line[start + i]);
             std::vector<std::int32_t> vector;
             std::uint32_t shard = 0;
-            if (!vm.phase_encode_wide(window.data(), 8, 64, vector, shard)) {
+            if (!vm.phase_encode_wide(window.data(), 8, 128, vector, shard)) {
                 std::cerr << "stream phase sample failed: " << vm.error() << "\n";
                 return 7;
             }
@@ -2355,11 +2369,11 @@ int stream_train_cli(int argc, char** argv) {
     }
     std::size_t codebook_words = 0;
     std::size_t codebook_codewords = 0;
-    if (sample_bank.size() >= 64 * 128) {
-        const std::size_t samples = sample_bank.size() / 128;
+    if (sample_bank.size() >= 64 * 256) {
+        const std::size_t samples = sample_bank.size() / 256;
         codebook_codewords = std::min<std::size_t>(samples, 32);
         std::vector<std::int32_t> codebook;
-        if (!vm.pq_train(sample_bank, samples, 128, codebook_codewords, 1,
+        if (!vm.pq_train(sample_bank, samples, 256, codebook_codewords, 1,
                          codebook)) {
             std::cerr << "stream codebook failed: " << vm.error() << "\n";
             return 7;
@@ -2370,6 +2384,42 @@ int stream_train_cli(int argc, char** argv) {
                        static_cast<std::streamsize>(
                            codebook.size() * sizeof(codebook[0])));
             codebook_words = codebook.size();
+        }
+    }
+    const std::size_t geometry_samples = sample_bank.size() / 256;
+    std::int32_t path_length = 0, path_closure = 0, path_turn = 0;
+    std::int32_t path_curvature = 0;
+    std::int32_t hyper_mean = 0, hyper_radial = 0;
+    std::int32_t tri_area = 0, tri_tight = 0, tri_orientation = 0;
+    std::array<std::int32_t, 3> tri_sides{};
+    std::int32_t field_value = 0;
+    std::vector<std::int32_t> field_credits, field_votes;
+    if (geometry_samples >= 2) {
+        if (!vm.path_geometry(sample_bank, geometry_samples, 256,
+                              path_length, path_closure, path_turn,
+                              path_curvature)) {
+            std::cerr << "stream path geometry failed: " << vm.error() << "\n";
+            return 7;
+        }
+        std::vector<std::int32_t> last(sample_bank.end() - 256,
+                                       sample_bank.end());
+        if (!vm.hyperbolic_measure(last, 256, hyper_mean, hyper_radial)) {
+            std::cerr << "stream hyperbolic failed: " << vm.error() << "\n";
+            return 7;
+        }
+        if (!vm.field_perturb(last, 256, field_credits, field_votes,
+                              field_value)) {
+            std::cerr << "stream field perturb failed: " << vm.error() << "\n";
+            return 7;
+        }
+    }
+    if (geometry_samples >= 3) {
+        std::vector<std::int32_t> tri(sample_bank.begin(),
+                                      sample_bank.begin() + 3 * 256);
+        if (!vm.triangle_geometry(tri, 256, tri_sides, tri_area, tri_tight,
+                                  tri_orientation)) {
+            std::cerr << "stream triangle failed: " << vm.error() << "\n";
+            return 7;
         }
     }
     if (!vm.temporal_slots_project()) {
@@ -2415,6 +2465,16 @@ int stream_train_cli(int argc, char** argv) {
                  << "  \"ngram_top_k\": 64,\n"
                  << "  \"codebook_codewords\": " << codebook_codewords << ",\n"
                  << "  \"codebook_words\": " << codebook_words << ",\n"
+                 << "  \"geometry\": {\"samples\": " << geometry_samples
+                 << ", \"path_length\": " << path_length
+                 << ", \"path_closure\": " << path_closure
+                 << ", \"path_turn\": " << path_turn
+                 << ", \"path_curvature\": " << path_curvature
+                 << ", \"hyperbolic_radius\": " << hyper_radial
+                 << ", \"triangle_area\": " << tri_area
+                 << ", \"triangle_tightness\": " << tri_tight
+                 << ", \"triangle_orientation\": " << tri_orientation
+                 << ", \"field_perturbation\": " << field_value << "},\n"
                  << "  \"accepted_triads\": " << accepted << ",\n"
                  << "  \"field_hot\": " << (field_accepted ? "true" : "false") << "\n}\n";
     }

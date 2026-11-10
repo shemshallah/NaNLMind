@@ -44,6 +44,8 @@ mth_pq_train:
   ST r6,r12,0
   MOVI r12,@mth_pqt_warm
   ST r7,r12,0
+  MOVI r12,@mth_pqt_prior
+  ST r8,r12,0
 
   ; A warm update keeps the supplied codebook; a cold train initializes from
   ; the first C samples, wrapping if N < C.
@@ -315,6 +317,19 @@ mth_pqt_update_d:
   MOVHI r11,0x0007
   ADD r11,r11,r9
   LD r9,r11,0
+  ; Prior-weighted centroid update:
+  ;   new = (sum + prior*old) / (count + prior)
+  ; prior=0 reproduces the hard batch mean.
+  MOVI r12,@mth_pqt_prior
+  LD r11,r12,0
+  CMP r11,r0
+  JMP[EQ] @mth_pqt_update_no_prior
+  ADD r9,r9,r11
+  ADD r12,r7,r5
+  LD r12,r12,0
+  MUL r12,r12,r11
+  ADD r8,r8,r12
+mth_pqt_update_no_prior:
   DIV r8,r8,r9
   ADD r9,r7,r5
   ST r8,r9,0
@@ -388,6 +403,8 @@ mth_pqt_ni:
 mth_pqt_iter:
   .word 0
 mth_pqt_warm:
+  .word 0
+mth_pqt_prior:
   .word 0
 mth_pqt_best:
   .word 0

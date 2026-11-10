@@ -53,6 +53,10 @@ Field-driver commands:
 | 80 | `mth_ngram_reset` | clear four byte n-gram tables |
 | 81 | `mth_ngram_train` | count byte orders 1..4 |
 | 82 | `mth_ngram_topk` | select top 64 keys per order |
+| 83 | `mth_geom_hyperbolic` | mean radius + Poincare radial proxy |
+| 84 | `mth_geom_path` | length, closure, turn, curvature |
+| 85 | `mth_geom_triangle` | three-vector sides/area proxy/tightness/orientation |
+| 86 | `mth_geom_field_perturb` | vector -> 255 credits, 85 votes, head255 |
 | 72 | `mth_leaf_verify` | reconstruct codebook+residual, L1 accept/reject |
 | 73 | `mth_ckpt_hash` | raw FNV-1a checkpoint payload digest |
 
@@ -459,6 +463,44 @@ as a tie-break. Metrics are written to `PREFIX.metrics.jsonl` and
 `PREFIX.metrics.json`; the codebook and matrix files are the selected best
 checkpoint.
 
+### Metric semantics and stability
+
+`eval_mean_l1_q16` is a Q16.16 **L1 reconstruction distance**, not a
+cross-entropy or accuracy. `65536` is `1.0`; for D=32 complex lanes the sum is
+over 64 Q16 components. `eval_per_dim_l1_q16` normalizes by that component
+count, and `eval_relative_l1` divides by the mean held-out vector magnitude.
+
+`train_mean_l1_q16` is a historical cumulative diagnostic: each chunk was
+encoded under the codebook that existed before that chunk's update. The
+comparable current metric is `train_current_l1_q16`, evaluated on a fixed
+training probe bank after each update.
+
+The matrix `probe_hit_rate` only asks whether any partner exists, so it
+saturates at 1.0. `pair_top1_rate` asks whether the probe returns the actual
+next code and is the meaningful matrix metric.
+
+Online phase training now uses three controls:
+
+- 256 evenly spaced replay anchors in every warm codebook update;
+- a prior-weighted centroid option in `mth_pq_train` (disabled by default);
+- validation-gated codebook updates. A candidate update is rolled back when
+  held-out L1 is worse than the best run; `codebook_rollbacks` records the
+  count.
+
+Hash-split 2,000-word experiment with replay and gating:
+
+```text
+step 1   train_current=342,115  eval=491,304
+step 14  train_current=275,916  eval=474,834
+step 20  train_current=274,989  eval=471,729  <- best
+step 25  train_current=278,900  eval=472,054
+codebook_rollbacks=18
+```
+
+The useful next architectural step is to freeze the selected global codebook
+and continue training a residual/adapter and directed matrix while the global
+centroid set stays stable.
+
 ### Persistent checkpoints
 
 `phase-train` writes `PREFIX.ckpt` with:
@@ -597,7 +639,41 @@ object. The host bridge exposes reset, accumulate, probe, credits and read
 operations, and `build/test_raw_field` verifies indexing, commutativity, the
 sentinel, probe completion, credits and hot-trihead handoff.
 
-## 12. Remaining production gates
+## 12. 256-dimensional vector geometry
+
+The production phase vector is now **D=128 complex lanes = 256 Q16
+components**. The 8-subvector codebook is therefore:
+
+```text
+pipeline dimension  256
+subvectors          8
+subvector width     32
+codewords/subvector 256
+codebook words      65,536
+artifact            262,184 bytes
+sha256              f1fd9ac36c9d4491315bae3e2e9b8c8d15bafbc4b88b45fd2cd99dc569542297
+release asset       gutenberg150_d256.codebook8x256.bin
+```
+
+`stream-train` now samples 256-component phase vectors and computes:
+
+- hyperbolic radial proxy: `mean/(mean+65536)`, monotone inward/outward;
+- path length, closure, turn/second difference and curvature;
+- triangle side lengths, area proxy, tightness, orientation;
+- field perturbation: vector components -> 255 head credits, 85 triad votes,
+  and the head-255 current/field component.
+
+The geometry is raw guest code in `mth_geometry.nas`. The triangle is the
+three-component proposition object: `(subject, relation, object)` vectors give
+three sides, a tightness score and a signed orientation. The current area is a
+bounded proxy (minimum side), not a full floating Heron area; this keeps all
+arithmetic in Q16. The stream JSON carries the measured path and triangle
+values.
+
+The existing released phase bank is the earlier D64/128-component bank. The
+new 256-component codebook is released separately under the same release tag.
+
+## 13. Remaining production gates
 
 - A corpus-wide, multi-iteration 8-subvector PQ codebook rather than the
   current per-ingest single-vector codebook and residuals.

@@ -78,6 +78,7 @@ JMP @field_driver_entry
 .include "../nan16/mth_meta_trihead.nas"
 .include "../nan16/mth_temporal_slots.nas"
 .include "../nan16/mth_ngram_train.nas"
+.include "../nan16/mth_geometry.nas"
 .include "../nan16/mth_context_backoff.nas"
 .include "../nan16/mth_context_encode.nas"
 .include "../nan16/mth_role_step.nas"
@@ -305,6 +306,18 @@ field_driver_main:
   MOVI r3,82
   CMP r2,r3
   JMP[EQ] @field_driver_ngram_topk
+  MOVI r3,83
+  CMP r2,r3
+  JMP[EQ] @field_driver_hyperbolic
+  MOVI r3,84
+  CMP r2,r3
+  JMP[EQ] @field_driver_geometry_path
+  MOVI r3,85
+  CMP r2,r3
+  JMP[EQ] @field_driver_geometry_triangle
+  MOVI r3,86
+  CMP r2,r3
+  JMP[EQ] @field_driver_geometry_field
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -1057,6 +1070,7 @@ field_driver_pq_train:
   MOVI r6,0x0000
   MOVHI r6,0x0005
   MOVI r7,0
+  MOVI r8,0
   CALL @mth_pq_train
   MOVI r10,0x4010
   ST r1,r10,0
@@ -1072,6 +1086,8 @@ field_driver_pq_update:
   MOVI r6,0x0000
   MOVHI r6,0x0005
   MOVI r7,1
+  MOVI r8,0
+  LD r8,r10,4
   CALL @mth_pq_train
   MOVI r10,0x4010
   ST r1,r10,0
@@ -1194,6 +1210,56 @@ field_driver_ngram_train:
 
 field_driver_ngram_topk:
   CALL @mth_ngram_topk
+  MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_hyperbolic:
+  MOVI r10,0x4001
+  LD r2,r10,0
+  MOVI r1,0x0000
+  MOVHI r1,0x0034
+  CALL @mth_geom_hyperbolic
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  JMP @field_driver_return
+
+field_driver_geometry_path:
+  MOVI r10,0x4001
+  LD r2,r10,0
+  LD r3,r10,1
+  MOVI r1,0x0000
+  MOVHI r1,0x0034
+  CALL @mth_geom_path
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  ST r4,r10,3
+  JMP @field_driver_return
+
+field_driver_geometry_triangle:
+  MOVI r10,0x4001
+  LD r2,r10,0
+  MOVI r1,0x0000
+  MOVHI r1,0x0034
+  CALL @mth_geom_triangle
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  ST r4,r10,3
+  ST r5,r10,4
+  ST r6,r10,5
+  JMP @field_driver_return
+
+field_driver_geometry_field:
+  MOVI r10,0x4001
+  LD r2,r10,0
+  MOVI r1,0x0000
+  MOVHI r1,0x0034
+  CALL @mth_geom_field_perturb
   MOVI r10,0x4010
   ST r1,r10,0
   JMP @field_driver_return

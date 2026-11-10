@@ -456,6 +456,21 @@ public:
                      std::size_t skip = 0);
     bool ngram_topk(std::array<std::vector<std::uint32_t>, 4>& keys,
                     std::array<std::vector<std::uint32_t>, 4>& counts);
+    bool hyperbolic_measure(const std::vector<std::int32_t>& vector,
+                            std::size_t dim, std::int32_t& mean,
+                            std::int32_t& radial);
+    bool path_geometry(const std::vector<std::int32_t>& bank,
+                       std::size_t count, std::size_t dim,
+                       std::int32_t& length, std::int32_t& closure,
+                       std::int32_t& turn, std::int32_t& curvature);
+    bool triangle_geometry(const std::vector<std::int32_t>& vectors,
+                           std::size_t dim, std::array<std::int32_t, 3>& sides,
+                           std::int32_t& area_proxy, std::int32_t& tightness,
+                           std::int32_t& orientation);
+    bool field_perturb(const std::vector<std::int32_t>& vector,
+                       std::size_t dim, std::vector<std::int32_t>& credits,
+                       std::vector<std::int32_t>& votes,
+                       std::int32_t& field_value);
     bool phase_rotate(const std::vector<std::int32_t>& in, std::uint32_t turn,
                       std::vector<std::int32_t>& out);
     bool pq_encode(const std::vector<std::int32_t>& query,
@@ -467,7 +482,8 @@ public:
                   std::size_t iterations, std::vector<std::int32_t>& codebook);
     bool pq_update(const std::vector<std::int32_t>& samples,
                    std::size_t count, std::size_t dim, std::size_t codewords,
-                   std::size_t iterations, std::vector<std::int32_t>& codebook);
+                   std::size_t iterations, std::vector<std::int32_t>& codebook,
+                   std::size_t prior_count = 0);
     bool pq_residuals(const std::vector<std::int32_t>& samples,
                       const std::vector<std::uint32_t>& codes,
                       std::size_t count, std::size_t dim,

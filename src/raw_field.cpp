@@ -1386,7 +1386,7 @@ bool RawFieldVM::pq_encode(const std::vector<std::int32_t>& query,
                            const std::vector<std::int32_t>& codebook,
                            std::size_t codewords, std::size_t dim,
                            std::uint32_t& code, std::int32_t& distance) {
-    if (codewords == 0 || codewords > 256 || dim == 0 || dim > 128 ||
+    if (codewords == 0 || codewords > 256 || dim == 0 || dim > 256 ||
         query.size() < dim || codebook.size() < codewords * dim)
         return fail("pq encode bounds invalid");
     for (std::size_t i = 0; i < dim; ++i)
@@ -1430,7 +1430,7 @@ bool RawFieldVM::sparse_knn(const std::vector<std::int32_t>& query,
                             std::size_t count, std::size_t dim, std::size_t k,
                             std::vector<std::uint32_t>& indices,
                             std::vector<std::int32_t>& scores) {
-    if (count == 0 || count > 4096 || dim == 0 || dim > 128 || k == 0 || k > 4 ||
+    if (count == 0 || count > 4096 || dim == 0 || dim > 256 || k == 0 || k > 4 ||
         query.size() < dim || bank.size() < count * dim)
         return fail("sparse kNN bounds invalid");
     for (std::size_t i = 0; i < dim; ++i)
@@ -1459,7 +1459,7 @@ bool RawFieldVM::pq_train(const std::vector<std::int32_t>& samples,
                           std::size_t count, std::size_t dim,
                           std::size_t codewords, std::size_t iterations,
                           std::vector<std::int32_t>& codebook) {
-    if (count == 0 || count > 1024 || dim == 0 || dim > 128 ||
+    if (count == 0 || count > 1024 || dim == 0 || dim > 256 ||
         codewords == 0 || codewords > 256 || iterations > 8 ||
         samples.size() < count * dim) {
         return fail("pq train bounds invalid");
@@ -1490,8 +1490,9 @@ bool RawFieldVM::pq_train(const std::vector<std::int32_t>& samples,
 bool RawFieldVM::pq_update(const std::vector<std::int32_t>& samples,
                            std::size_t count, std::size_t dim,
                            std::size_t codewords, std::size_t iterations,
-                           std::vector<std::int32_t>& codebook) {
-    if (count == 0 || count > 1024 || dim == 0 || dim > 128 ||
+                           std::vector<std::int32_t>& codebook,
+                           std::size_t prior_count) {
+    if (count == 0 || count > 1024 || dim == 0 || dim > 256 ||
         codewords == 0 || codewords > 256 || iterations > 8 ||
         samples.size() < count * dim || codebook.size() < codewords * dim)
         return fail("pq update bounds invalid");
@@ -1507,6 +1508,7 @@ bool RawFieldVM::pq_update(const std::vector<std::int32_t>& samples,
         !write_word(kProposalBase + 1, static_cast<std::uint32_t>(dim)) ||
         !write_word(kProposalBase + 2, static_cast<std::uint32_t>(codewords)) ||
         !write_word(kProposalBase + 3, static_cast<std::uint32_t>(iterations)) ||
+        !write_word(kProposalBase + 4, static_cast<std::uint32_t>(prior_count)) ||
         !write_word(kCommandBase, 71)) return fail("cannot write pq update command");
     if (!run_command()) return false;
     codebook.resize(codewords * dim);
@@ -1521,7 +1523,7 @@ bool RawFieldVM::pq_residuals(const std::vector<std::int32_t>& samples,
                               std::size_t count, std::size_t dim,
                               const std::vector<std::int32_t>& codebook,
                               std::vector<std::int32_t>& residuals) {
-    if (count == 0 || count > 1024 || dim == 0 || dim > 128 ||
+    if (count == 0 || count > 1024 || dim == 0 || dim > 256 ||
         samples.size() < count * dim || codes.size() < count ||
         codebook.empty()) {
         return fail("pq residual bounds invalid");
@@ -1556,7 +1558,7 @@ bool RawFieldVM::leaf_verify(const std::vector<std::int32_t>& expected,
                               std::uint32_t code, std::size_t dim,
                               std::uint32_t tolerance, bool& accepted,
                               std::int32_t& error) {
-    if (dim == 0 || dim > 128 || expected.size() < dim ||
+    if (dim == 0 || dim > 256 || expected.size() < dim ||
         residual.size() < dim || codebook.size() < (code + 1) * dim)
         return fail("leaf verify bounds invalid");
     for (std::size_t i = 0; i < dim; ++i) {
@@ -1761,6 +1763,88 @@ bool RawFieldVM::ngram_topk(
                 static_cast<std::uint32_t>(order * 0x100 + i));
         }
     }
+    return true;
+}
+
+bool RawFieldVM::hyperbolic_measure(
+    const std::vector<std::int32_t>& vector, std::size_t dim,
+    std::int32_t& mean, std::int32_t& radial) {
+    if (dim == 0 || dim > 256 || vector.size() < dim)
+        return fail("hyperbolic bounds invalid");
+    for (std::size_t i = 0; i < dim; ++i)
+        if (!write_word(0x340000u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(vector[i])))
+            return fail("cannot write hyperbolic vector");
+    if (!write_word(kProposalBase, static_cast<std::uint32_t>(dim)) ||
+        !write_word(kCommandBase, 83)) return fail("cannot write hyperbolic cmd");
+    if (!run_command()) return false;
+    mean = static_cast<std::int32_t>(read_word(kResultBase));
+    radial = static_cast<std::int32_t>(read_word(kResultBase + 1));
+    return true;
+}
+
+bool RawFieldVM::path_geometry(
+    const std::vector<std::int32_t>& bank, std::size_t count, std::size_t dim,
+    std::int32_t& length, std::int32_t& closure, std::int32_t& turn,
+    std::int32_t& curvature) {
+    if (count < 2 || count > 4096 || dim == 0 || dim > 256 ||
+        bank.size() < count * dim) return fail("path bounds invalid");
+    for (std::size_t i = 0; i < count * dim; ++i)
+        if (!write_word(0x340000u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(bank[i])))
+            return fail("cannot write path bank");
+    if (!write_word(kProposalBase + 0, static_cast<std::uint32_t>(count)) ||
+        !write_word(kProposalBase + 1, static_cast<std::uint32_t>(dim)) ||
+        !write_word(kCommandBase, 84)) return fail("cannot write path cmd");
+    if (!run_command()) return false;
+    length = static_cast<std::int32_t>(read_word(kResultBase));
+    closure = static_cast<std::int32_t>(read_word(kResultBase + 1));
+    turn = static_cast<std::int32_t>(read_word(kResultBase + 2));
+    curvature = static_cast<std::int32_t>(read_word(kResultBase + 3));
+    return true;
+}
+
+bool RawFieldVM::triangle_geometry(
+    const std::vector<std::int32_t>& vectors, std::size_t dim,
+    std::array<std::int32_t, 3>& sides, std::int32_t& area_proxy,
+    std::int32_t& tightness, std::int32_t& orientation) {
+    if (dim == 0 || dim > 256 || vectors.size() < dim * 3)
+        return fail("triangle bounds invalid");
+    for (std::size_t i = 0; i < dim * 3; ++i)
+        if (!write_word(0x340000u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(vectors[i])))
+            return fail("cannot write triangle vectors");
+    if (!write_word(kProposalBase, static_cast<std::uint32_t>(dim)) ||
+        !write_word(kCommandBase, 85)) return fail("cannot write triangle cmd");
+    if (!run_command()) return false;
+    for (std::size_t i = 0; i < 3; ++i)
+        sides[i] = static_cast<std::int32_t>(read_word(kResultBase + i));
+    area_proxy = static_cast<std::int32_t>(read_word(kResultBase + 3));
+    tightness = static_cast<std::int32_t>(read_word(kResultBase + 4));
+    orientation = static_cast<std::int32_t>(read_word(kResultBase + 5));
+    return true;
+}
+
+bool RawFieldVM::field_perturb(
+    const std::vector<std::int32_t>& vector, std::size_t dim,
+    std::vector<std::int32_t>& credits, std::vector<std::int32_t>& votes,
+    std::int32_t& field_value) {
+    if (dim == 0 || dim > 256 || vector.size() < dim)
+        return fail("field perturb bounds invalid");
+    for (std::size_t i = 0; i < dim; ++i)
+        if (!write_word(0x340000u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(vector[i])))
+            return fail("cannot write field vector");
+    if (!write_word(kProposalBase, static_cast<std::uint32_t>(dim)) ||
+        !write_word(kCommandBase, 86)) return fail("cannot write field perturb cmd");
+    if (!run_command()) return false;
+    credits.resize(255);
+    votes.resize(85);
+    for (std::size_t i = 0; i < 255; ++i)
+        credits[i] = static_cast<std::int32_t>(read_word(0x260000u + i));
+    for (std::size_t i = 0; i < 85; ++i)
+        votes[i] = static_cast<std::int32_t>(read_word(0x260100u + i));
+    field_value = static_cast<std::int32_t>(read_word(kResultBase));
     return true;
 }
 
@@ -2187,7 +2271,7 @@ bool RawFieldVM::qkv_credit(std::uint8_t target, std::uint8_t best_wrong,
 bool RawFieldVM::causal_trunk_wide_cached(const std::vector<float>& tokens,
                                           std::size_t count, std::size_t dim,
                                           std::vector<float>& out) {
-    if (count == 0 || count > 1024 || dim == 0 || dim > 128 ||
+    if (count == 0 || count > 1024 || dim == 0 || dim > 256 ||
         tokens.size() != count * dim) {
         return fail("wide cached trunk dimensions are invalid");
     }

@@ -788,6 +788,38 @@ int main() {
         CHECK(saw_bigram);
     }
 
+    // 256-dimensional geometry: hyperbolic radius, path, triangle, field.
+    {
+        std::vector<std::int32_t> v0(256, 0), v1(256, 0), v2(256, 0);
+        for (std::size_t i = 0; i < 256; ++i) {
+            v0[i] = static_cast<std::int32_t>(i + 1);
+            v1[i] = static_cast<std::int32_t>(2 * (i + 1));
+            v2[i] = static_cast<std::int32_t>(3 * (i + 1));
+        }
+        std::int32_t mean = 0, radial = 0;
+        CHECK(vm.hyperbolic_measure(v0, 256, mean, radial));
+        CHECK(mean > 0);
+        CHECK(radial >= 0);
+        std::vector<std::int32_t> bank;
+        bank.insert(bank.end(), v0.begin(), v0.end());
+        bank.insert(bank.end(), v1.begin(), v1.end());
+        bank.insert(bank.end(), v2.begin(), v2.end());
+        std::int32_t length = 0, closure = 0, turn = 0, curvature = 0;
+        CHECK(vm.path_geometry(bank, 3, 256, length, closure, turn,
+                               curvature));
+        CHECK(length > 0);
+        CHECK(closure > 0);
+        std::array<std::int32_t, 3> sides{};
+        std::int32_t area = 0, tight = 0, orient = 0;
+        CHECK(vm.triangle_geometry(bank, 256, sides, area, tight, orient));
+        CHECK(sides[0] > 0 && sides[1] > 0 && sides[2] > 0);
+        std::vector<std::int32_t> gcredits, gvotes;
+        std::int32_t field = 0;
+        CHECK(vm.field_perturb(v0, 256, gcredits, gvotes, field));
+        CHECK_EQ(gcredits.size(), 255u);
+        CHECK_EQ(gvotes.size(), 85u);
+    }
+
     // C(256,2) vector-code observer: raw pair indexing and accumulation.
     CHECK(vm.vector_matrix_reset());
     std::uint32_t matrix_index = 999;
