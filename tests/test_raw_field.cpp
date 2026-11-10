@@ -765,6 +765,29 @@ int main() {
         CHECK(projected_nonzero >= 1);
     }
 
+    // Byte n-gram trainer: all four orders are counted in the guest.
+    {
+        CHECK(vm.ngram_reset());
+        const std::string bytes = "ababa";
+        std::size_t processed = 0;
+        CHECK(vm.ngram_train(bytes, processed));
+        CHECK_EQ(processed, bytes.size());
+        std::array<std::vector<std::uint32_t>, 4> keys, counts;
+        CHECK(vm.ngram_topk(keys, counts));
+        for (const auto& list : keys) CHECK_EQ(list.size(), 64u);
+        std::uint32_t a_count = 0, b_count = 0;
+        for (std::size_t i = 0; i < keys[0].size(); ++i) {
+            if (keys[0][i] == 'a') a_count = counts[0][i];
+            if (keys[0][i] == 'b') b_count = counts[0][i];
+        }
+        CHECK_EQ(a_count, 3u);
+        CHECK_EQ(b_count, 2u);
+        bool saw_bigram = false;
+        for (std::size_t i = 0; i < keys[1].size(); ++i)
+            saw_bigram = saw_bigram || (keys[1][i] == 0x6162u); // "ab"
+        CHECK(saw_bigram);
+    }
+
     // C(256,2) vector-code observer: raw pair indexing and accumulation.
     CHECK(vm.vector_matrix_reset());
     std::uint32_t matrix_index = 999;

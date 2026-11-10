@@ -1165,8 +1165,8 @@ int phase_train_cli(int argc, char** argv) {
         if (argc > 7) output_prefix = argv[7];
         if (argc > 8) {
             const std::string eval_arg = argv[8];
-            if (eval_arg.rfind("eval=", 0) == 0)
-                eval_path = eval_arg.substr(5);
+            eval_path = eval_arg.rfind("eval=", 0) == 0
+                ? eval_arg.substr(5) : eval_arg;
         }
     } catch (...) {
         std::cerr << "invalid numeric argument\n";
@@ -2071,6 +2071,82 @@ int temporal_tokenize_cli(int argc, char** argv) {
               << " hot_heads=" << hot.hot_heads
               << " hot_triads=" << hot.hot_triads
               << " output=" << output_prefix << "\n";
+    return 0;
+}
+
+
+int ngram_train_cli(int argc, char** argv) {
+    if (argc < 3) {
+        std::cerr << "usage: nanlm-universal ngram-train CORPUS [MAX_BYTES]"
+                     " [PREFIX]\n";
+        return 2;
+    }
+    const std::string corpus_path = argv[2];
+    std::size_t max_bytes = 1u << 20;
+    std::string output_prefix = "state/ngrams";
+    try {
+        if (argc > 3) max_bytes = static_cast<std::size_t>(std::stoull(argv[3]));
+        if (argc > 4) output_prefix = argv[4];
+    } catch (...) {
+        std::cerr << "invalid numeric argument\n";
+        return 2;
+    }
+    std::ifstream in(corpus_path, std::ios::binary);
+    if (!in) { std::cerr << "cannot open corpus\n"; return 3; }
+    std::string data((std::istreambuf_iterator<char>(in)),
+                     std::istreambuf_iterator<char>());
+    if (max_bytes && data.size() > max_bytes) data.resize(max_bytes);
+    if (data.empty()) { std::cerr << "empty ngram input\n"; return 3; }
+    RawFieldVM vm("build/field_driver.nan");
+    if (!vm.ready()) {
+        std::cerr << "raw field VM unavailable: " << vm.error() << "\n";
+        return 7;
+    }
+    if (!vm.ngram_reset()) {
+        std::cerr << "ngram reset failed: " << vm.error() << "\n";
+        return 7;
+    }
+    std::size_t trained = 0;
+    constexpr std::size_t kChunk = 65536;
+    for (std::size_t start = 0; start < data.size(); start += kChunk) {
+        const std::size_t count = std::min(kChunk, data.size() - start);
+        std::size_t processed = 0;
+        if (!vm.ngram_train(data.substr(start, count), processed)) {
+            std::cerr << "ngram train failed: " << vm.error() << "\n";
+            return 7;
+        }
+        trained += processed;
+    }
+    std::array<std::vector<std::uint32_t>, 4> keys, counts;
+    if (!vm.ngram_topk(keys, counts)) {
+        std::cerr << "ngram topk failed: " << vm.error() << "\n";
+        return 7;
+    }
+    std::ofstream out(output_prefix + ".ngrams.bin", std::ios::binary);
+    if (!out) { std::cerr << "cannot open ngram output\n"; return 3; }
+    for (std::size_t order = 0; order < 4; ++order) {
+        for (std::size_t i = 0; i < keys[order].size(); ++i) {
+            const std::uint32_t record[3] = {
+                static_cast<std::uint32_t>(order + 1),
+                keys[order][i], counts[order][i]};
+            out.write(reinterpret_cast<const char*>(record), sizeof(record));
+        }
+    }
+    auto manifest = std::ofstream(output_prefix + ".json");
+    if (manifest) {
+        manifest << "{\n  \"schema\": \"nanlm.byte-ngrams/1\",\n"
+                 << "  \"orders\": [1,2,3,4],\n"
+                 << "  \"top_k_per_order\": 64,\n"
+                 << "  \"bytes_trained\": " << trained << ",\n"
+                 << "  \"chunk_bytes\": " << kChunk << ",\n"
+                 << "  \"boundary_ngrams\": \"chunk-local; cross-chunk ngrams are not counted\",\n"
+                 << "  \"output\": \"" << output_prefix << ".ngrams.bin\"\n}\n";
+    }
+    std::size_t total = 0;
+    for (const auto& list : keys) total += list.size();
+    std::cout << "ngram_train bytes=" << trained
+              << " orders=1,2,3,4 top_k=64 words=" << total
+              << " output=" << output_prefix << ".ngrams.bin\n";
     return 0;
 }
 

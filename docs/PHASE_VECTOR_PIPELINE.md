@@ -50,6 +50,9 @@ Field-driver commands:
 | 77 | `mth_temporal_reset` | clear past/future/current temporal slots |
 | 78 | `mth_temporal_observe` | fill past/current/future slots per word |
 | 79 | `mth_temporal_project` | merge past/future slots into trihead tables |
+| 80 | `mth_ngram_reset` | clear four byte n-gram tables |
+| 81 | `mth_ngram_train` | count byte orders 1..4 |
+| 82 | `mth_ngram_topk` | select top 64 keys per order |
 | 72 | `mth_leaf_verify` | reconstruct codebook+residual, L1 accept/reject |
 | 73 | `mth_ckpt_hash` | raw FNV-1a checkpoint payload digest |
 
@@ -373,6 +376,32 @@ This emits `PREFIX.words.bin`, `PREFIX.subwords.bin`, `PREFIX.meta.bin` and a
 JSON summary with accepted triads, hot heads, hot triads, and 43/85 field
 state. On 100 lines of Alice it produced 789 words and 9,153 base/bigram
 subwords.
+
+### Byte n-gram training
+
+`mth_ngram_train.nas` counts **unigram, bigram, trigram and quadrigram**
+events directly over raw bytes, including binary/control bytes. Four
+fixed-memory tables of 65,536 buckets each are used, with a two-word
+`[packed_key, count]` bucket. `mth_ngram_topk` selects 64 entries per order in
+the guest.
+
+```sh
+./build/nanlm-universal ngram-train \
+  state/gutenberg_150_clean_corpus.txt 0 \
+  state/gutenberg150_ngrams
+```
+
+Artifacts:
+
+```text
+PREFIX.ngrams.bin   4 orders x 64 records [order, packed_key, count]
+PREFIX.json         byte count, orders, top-k and boundary notes
+```
+
+The packed keys are exact byte sequences for orders 1..4. The trainer is
+byte-level; it does not silently turn control or UTF-8 bytes into text. Counts
+are chunk-local: a 65,536-byte chunk boundary can omit up to three n-grams
+that cross the boundary.
 
 For the full temporally split register:
 

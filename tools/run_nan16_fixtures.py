@@ -88,6 +88,8 @@ FIXTURES = (
             "MTH META TRIHEAD PASS"),
     Fixture("temporal_slots", "mth/tests/mth_temporal_slots_test.nas", 1_000_000,
             "MTH TEMPORAL SLOTS PASS"),
+    Fixture("ngram_train", "mth/tests/mth_ngram_train_test.nas", 20_000_000,
+            "MTH NGRAM TRAIN PASS"),
 )
 
 

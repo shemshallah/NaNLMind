@@ -1724,6 +1724,44 @@ bool RawFieldVM::read_temporal_slots(
     return true;
 }
 
+bool RawFieldVM::ngram_reset() {
+    if (!write_word(kCommandBase, 80)) return fail("cannot write ngram reset");
+    return run_command();
+}
+
+bool RawFieldVM::ngram_train(const std::string& bytes, std::size_t& processed) {
+    if (bytes.empty() || bytes.size() > 0x10000)
+        return fail("ngram train chunk 1..65536 bytes");
+    for (std::size_t i = 0; i < bytes.size(); ++i)
+        if (!write_word(0x10000u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint8_t>(bytes[i])))
+            return fail("cannot write ngram bytes");
+    if (!write_word(kProposalBase + 0, static_cast<std::uint32_t>(bytes.size())) ||
+        !write_word(kCommandBase, 81))
+        return fail("cannot write ngram train");
+    if (!run_command()) return false;
+    processed = read_word(kResultBase + 0);
+    return processed == bytes.size();
+}
+
+bool RawFieldVM::ngram_topk(
+    std::array<std::vector<std::uint32_t>, 4>& keys,
+    std::array<std::vector<std::uint32_t>, 4>& counts) {
+    if (!write_word(kCommandBase, 82)) return fail("cannot write ngram topk");
+    if (!run_command()) return false;
+    for (std::size_t order = 0; order < 4; ++order) {
+        keys[order].resize(64);
+        counts[order].resize(64);
+        for (std::size_t i = 0; i < 64; ++i) {
+            keys[order][i] = read_word(0x2D0000u +
+                static_cast<std::uint32_t>(order * 0x100 + i));
+            counts[order][i] = read_word(0x2D1000u +
+                static_cast<std::uint32_t>(order * 0x100 + i));
+        }
+    }
+    return true;
+}
+
 bool RawFieldVM::phase_table_init() {
     if (!write_word(kCommandBase, 64)) return fail("cannot write phase table init");
     if (!run_command()) return false;
