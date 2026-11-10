@@ -1,0 +1,22 @@
+{
+  "schema": "nanlm.byte-ngrams/1",
+  "orders": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "top_k_per_order": 64,
+  "bytes_trained": 100648974,
+  "chunk_bytes": 65536,
+  "boundary_ngrams": "chunk-local; cross-chunk ngrams are not counted",
+  "output": "/data/data/com.termux/files/usr/tmp/ngram_full.ngrams.bin",
+  "release_repository": "shemshallah/NaNLMind",
+  "release_tag": "phase-bank-gutenberg150-d64-v1",
+  "artifact": {
+    "name": "gutenberg150_ngrams.ngrams.bin",
+    "bytes": 3072,
+    "sha256": "05c270b38e4d41322800107cd574952f7085ed9e7773673fdb21690fbaab3a5c"
+  },
+  "top_keys": "packed exact byte keys; order 1=8-bit, order 2=16-bit, order 3=24-bit, order 4=32-bit"
+}
