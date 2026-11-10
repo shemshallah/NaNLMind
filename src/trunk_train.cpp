@@ -439,7 +439,7 @@ int context_train_cli(int argc, char** argv) {
     float base_lr = 0.5f, train_fraction = 1.0f;
     bool backoff_mode = false;
     bool copy_backoff = false;
-    std::size_t exact_limit_arg = 8192;
+    std::size_t exact_limit_arg = 10500;
     std::size_t fallback_bytes = 3;
     std::string load_path;
     std::string save_path;
@@ -560,11 +560,10 @@ int context_train_cli(int argc, char** argv) {
         if (copy_backoff) {
             k3_seen.reserve(train_indices.size());
             for (const std::size_t sample : train_indices) {
-                std::uint32_t key = 0;
-                for (std::size_t j = 1; j <= 3; ++j) {
-                    key = (key << 8) |
-                        static_cast<std::uint8_t>(usable[sample][8 - j]);
-                }
+                const auto key =
+                    (static_cast<std::uint32_t>(static_cast<std::uint8_t>(usable[sample][5])) << 16) |
+                    (static_cast<std::uint32_t>(static_cast<std::uint8_t>(usable[sample][6])) << 8) |
+                    static_cast<std::uint32_t>(static_cast<std::uint8_t>(usable[sample][7]));
                 k3_seen.insert(key);
             }
         }

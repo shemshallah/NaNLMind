@@ -42,17 +42,17 @@ per sample. It is the basis of the native `hier-train` path.
 ### 0. Context-indexed class memory
 
 The strongest immediate result is a sparse n-gram class memory, not a wider
-dense readout. Hash the last 4 bytes to one of 11,456 buckets, then store a
-16-class high-nibble head and 16x16 conditional low-nibble heads per bucket.
-Only one table column is read or updated per sample.
+dense readout. Map the top exact 4-byte contexts to compact bucket IDs and
+use a 3-byte hash fallback for rare/unseen contexts; each bucket stores a
+16-class high-nibble head and 16x16 conditional low-nibble heads. Only one
+table column is read or updated per sample.
 
 - Native `context-train` / `mth_context_hier.nas` / `mth_softmax16_table.nas`.
-- Full-corpus, 3 epochs: **66.4822% same-corpus** accuracy, about 32 s of
-  training and 6.2 s of evaluation.
-- Native random 80/20: **61.3639% held-out** (`67.3435%` training-window)
+- Full-corpus, 3 epochs: **73.7795% same-corpus** accuracy, about 31 s of
+  training and 6.1 s of evaluation.
+- Native random 80/20: **66.8894% held-out** (`67.3435%` training-window)
   after 5 epochs.
-- Earlier 8,192-bucket / 3-byte setting: `57.8644%` same-corpus and
-  `55.9874%` held-out.
+- Pure hash control: `57.8644%` same-corpus and `55.9874%` held-out.
 - This maps directly to the existing topology: high nibbles are field groups,
   low classes are head rows; the context bucket is sparse memory.
 
@@ -69,20 +69,21 @@ Only one table column is read or updated per sample.
 
 ### 2. Map the hierarchy onto the 255 physical heads
 
-The 255 triad-member heads plus field head naturally form a 16 x 16 class
-table:
+The mapping tool `tools/context_head_map.py` writes
+`state/context_head_map.json`:
 
 ```text
-head = high_nibble * 16 + low_nibble      (0..255; 255 is the field head)
-triad group = high_nibble                 (16 groups)
-field gate = 43/85 vote over the selected groups
+class head = high_nibble * 16 + low_nibble   (0..254)
+field head = 255
+class triad = class // 3, member = class % 3
+high group g = triads 5g..5g+4
+field threshold = 43/85
 ```
 
-Use the existing triads/field commit to select the high-nibble group and the
-low-nibble head rows as class experts. CFT triangle credit and TRAIL
-eligibility can update the selected group instead of a dense 255-row update.
-This links class factorization directly to the existing topology instead of
-building a second readout bank.
+This is the canonical class/head map for connecting the context memory to the
+existing triad/field bank. The next gate is to make the memory rows physically
+live in the sparse head adapters and use CFT/TRAIL credit on the selected
+high/low entries.
 
 ### 3. Train the trunk, not just the readout
 
@@ -126,21 +127,30 @@ Do not report sampled-window accuracy as model quality.
 
 ### 6. Copy and induction heads
 
-Next-byte prediction benefits from copying recent bytes. Add residual
-features for the last byte and short n-grams, and let the sparse field select
-a copy expert when the context repeats. This is a cheap inductive bias and a
-natural use for the 255-head field overlay.
+The `backoffcopy` route allocates a small unigram/copy table for contexts that
+have no seen 3-byte history. It was tested against the 3-byte backoff:
+WordNet held-out `66.7788%` versus `66.8894%`, so the 3-byte backoff remains
+the default. The route and table partition are implemented, but the copy
+expert is not yet a win. A learned gate rather than a hard route is the next
+step.
 
 ### 7. Batching and parallel runners
 
-Per-sample guest invocation is still the main cost. Batch several samples
-inside one guest command, reuse the readout matrix, and shard independent
-evaluation across runner slots. Keep the raw arithmetic unchanged.
+`tools/parallel_context_train.sh` runs WordNet and Gutenberg context-memory
+training concurrently and saves both tables:
+
+- WordNet: held-out `66.8894%`, 12.46 MB saved context table.
+- Gutenberg (Alice + Moby): held-out `40.7879%`, 12.46 MB saved table.
+
+`HW4`/`HW5` in the logs are local job labels, not instantiated HW nodes; the
+canonical topology remains `HW0::BS0`.
 
 ## Current native evidence
 
-- `context-train ... 11456 4 0.1 1`: **66.4822% same-corpus** full accuracy
-  after 3 epochs; native random 80/20 **61.3639% held-out** after 5 epochs.
+- `context-train ... backoff`: **73.7795% same-corpus** full accuracy after 3
+  epochs; native random 80/20 **66.8894% held-out** after 5 epochs.
+- `context-train ... 11456 4 0.1 1`: earlier hash-only `66.4822%`
+  same-corpus and `61.3639%` held-out.
 - `context-train ... 8192 3 0.5 1`: earlier `57.8644%` same-corpus and
   `55.9874%` held-out.
 - `trunk-train ... softmax shuffle 0.1`: one epoch `19.8341%`; three fixed-rate

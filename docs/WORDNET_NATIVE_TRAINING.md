@@ -193,48 +193,60 @@ current 8-lane softmax path at `21.2%` best-checkpoint accuracy.
 ### Context-indexed class memory
 
 The best current path is not a wider dense dot product. It is a sparse
-context lookup: hash the last 3 bytes to one of 8,192 buckets, then store a
-16-class high-nibble row and 16x16 low-nibble rows per bucket. Only that one
-column is read or updated.
+context lookup: map the top exact 4-byte contexts to compact bucket IDs, and
+use a 3-byte hash fallback for rare/unseen contexts. Each bucket stores a
+16-class high-nibble row and 16x16 low-nibble rows. Only that one column is
+read or updated.
 
 ```text
-bucket = FNV(last 3 bytes) mod 8192
-high_score[h]  = high_table[h, bucket]
-low_score[g,l] = low_table[g, l, bucket]
+exact k=4 context -> compact bucket 0..10499
+otherwise         -> 3-byte FNV fallback in buckets 10500..11455
+high_score[h]     = high_table[h, bucket]
+low_score[g,l]    = low_table[g, l, bucket]
 ```
 
 This is a native-friendly version of an n-gram class memory and maps directly
 onto the 255-head/field topology: the high nibble groups are the field
 groups, and the low classes are head rows.
 
-Native full-corpus result, 3 epochs, 11,456 buckets, 4-byte context:
+Native full-corpus result, 3 epochs, 11,456 buckets, backoff:
 
 | metric | value |
 |---|---:|
-| training-window accuracy | `66.9343%` |
-| same-corpus full accuracy | **`66.4822%`** |
-| same-corpus loss | `1.9452` |
-| 3-epoch training time | about `32 s` |
-| full evaluation time | `6.22 s` |
+| training-window accuracy | `74.3746%` |
+| same-corpus full accuracy | **`73.7795%`** |
+| same-corpus loss | `1.9369` |
+| 3-epoch training time | about `31 s` |
+| full evaluation time | `6.09 s` |
 
-A native random 80/20 run at the same setting gives **61.3639% held-out**
-accuracy after 5 epochs (`67.3435%` training-window), with 93,963 training
-samples and 23,491 held-out samples. The held-out split is measured, not
-inferred from the training set.
+Native random 80/20 result, 5 epochs, same setting:
+
+| metric | value |
+|---|---:|
+| training-window accuracy | `67.3435%` |
+| held-out accuracy | **`66.8894%`** |
+| held-out loss | `2.25456` |
+| training samples | 93,963 |
+| held-out samples | 23,491 |
+
+The held-out split is measured, not inferred from the training set. The
+earlier pure hash setting (8,192 buckets / 3 bytes) reached `57.8644%`
+same-corpus and `55.9874%` held-out; compact context IDs plus backoff is a
+large improvement.
 
 ```sh
 # Best same-corpus setting.
 ./build/nanlm-universal context-train state/wordnet_corpus.txt \
-  0 3 100000 11456 4 0.1 1
+  0 3 100000 11456 4 0.1 1 1 backoff
 
 # Best held-out setting.
 ./build/nanlm-universal context-train state/wordnet_corpus.txt \
-  0 5 100000 11456 4 0.1 1 0.8
+  0 5 100000 11456 4 0.1 1 0.8 backoff
 ```
 
-The earlier 8,192-bucket / 3-byte setting reached `57.8644%` same-corpus and
-`55.9874%` held-out; the larger 4-byte memory is better. `11,456` is close to
-the fixed VM table limit (`272 * B` words plus the `0x100000` base).
+`11,456` is close to the fixed VM table limit. The Gutenberg parallel job
+(Alice + Moby) reaches `40.7879%` held-out at the same settings; it is a
+smaller, more varied corpus and is not directly comparable to WordNet.
 
 ## Pipeline status
 
