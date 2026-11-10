@@ -41,6 +41,7 @@ Field-driver commands:
 | 68 | `mth_vm_credits` | matrix row support -> 255 head credits |
 | 69 | `mth_pq_train` | raw centroid training, up to 8 iterations |
 | 70 | `mth_pq_residual` | sample - codebook[code] residual payload |
+| 71 | `mth_pq_update` | warm-codebook update without reinitialization |
 
 `RawFieldVM` exposes `phase_encode_wide`, `phase_encode_batch`,
 `phase_rotate`, `pq_encode`, `spectral_iter`, `sparse_knn`,
