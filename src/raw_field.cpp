@@ -1470,12 +1470,10 @@ bool RawFieldVM::pq_train(const std::vector<std::int32_t>& samples,
             return fail("cannot write pq training samples");
         }
     }
-    if (!write_word(kProposalBase + 0, 0x10000u) ||
-        !write_word(kProposalBase + 1, static_cast<std::uint32_t>(count)) ||
-        !write_word(kProposalBase + 2, static_cast<std::uint32_t>(dim)) ||
-        !write_word(kProposalBase + 3, static_cast<std::uint32_t>(codewords)) ||
-        !write_word(kProposalBase + 4, static_cast<std::uint32_t>(iterations)) ||
-        !write_word(kProposalBase + 5, 0x50000u) ||
+    if (!write_word(kProposalBase + 0, static_cast<std::uint32_t>(count)) ||
+        !write_word(kProposalBase + 1, static_cast<std::uint32_t>(dim)) ||
+        !write_word(kProposalBase + 2, static_cast<std::uint32_t>(codewords)) ||
+        !write_word(kProposalBase + 3, static_cast<std::uint32_t>(iterations)) ||
         !write_word(kCommandBase, 69)) {
         return fail("cannot write pq training command");
     }
@@ -1485,6 +1483,36 @@ bool RawFieldVM::pq_train(const std::vector<std::int32_t>& samples,
         codebook[i] = static_cast<std::int32_t>(
             read_word(0x50000u + static_cast<std::uint32_t>(i)));
     }
+    return true;
+}
+
+
+bool RawFieldVM::pq_update(const std::vector<std::int32_t>& samples,
+                           std::size_t count, std::size_t dim,
+                           std::size_t codewords, std::size_t iterations,
+                           std::vector<std::int32_t>& codebook) {
+    if (count == 0 || count > 1024 || dim == 0 || dim > 128 ||
+        codewords == 0 || codewords > 256 || iterations > 8 ||
+        samples.size() < count * dim || codebook.size() < codewords * dim)
+        return fail("pq update bounds invalid");
+    for (std::size_t i = 0; i < count * dim; ++i)
+        if (!write_word(0x10000u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(samples[i])))
+            return fail("cannot write pq update samples");
+    for (std::size_t i = 0; i < codewords * dim; ++i)
+        if (!write_word(0x50000u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(codebook[i])))
+            return fail("cannot write pq update codebook");
+    if (!write_word(kProposalBase + 0, static_cast<std::uint32_t>(count)) ||
+        !write_word(kProposalBase + 1, static_cast<std::uint32_t>(dim)) ||
+        !write_word(kProposalBase + 2, static_cast<std::uint32_t>(codewords)) ||
+        !write_word(kProposalBase + 3, static_cast<std::uint32_t>(iterations)) ||
+        !write_word(kCommandBase, 71)) return fail("cannot write pq update command");
+    if (!run_command()) return false;
+    codebook.resize(codewords * dim);
+    for (std::size_t i = 0; i < codebook.size(); ++i)
+        codebook[i] = static_cast<std::int32_t>(
+            read_word(0x50000u + static_cast<std::uint32_t>(i)));
     return true;
 }
 

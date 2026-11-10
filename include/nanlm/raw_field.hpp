@@ -438,6 +438,9 @@ public:
     bool pq_train(const std::vector<std::int32_t>& samples,
                   std::size_t count, std::size_t dim, std::size_t codewords,
                   std::size_t iterations, std::vector<std::int32_t>& codebook);
+    bool pq_update(const std::vector<std::int32_t>& samples,
+                   std::size_t count, std::size_t dim, std::size_t codewords,
+                   std::size_t iterations, std::vector<std::int32_t>& codebook);
     bool pq_residuals(const std::vector<std::int32_t>& samples,
                       const std::vector<std::uint32_t>& codes,
                       std::size_t count, std::size_t dim,

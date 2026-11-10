@@ -679,6 +679,12 @@ int main() {
         CHECK_EQ(trained_codebook[1], 0);
         CHECK_EQ(trained_codebook[2], 100);
         CHECK_EQ(trained_codebook[3], 100);
+        std::vector<std::int32_t> warm_codebook = {10, 10, 90, 90};
+        CHECK(vm.pq_update(train_samples, 2, 2, 2, 1, warm_codebook));
+        CHECK_EQ(warm_codebook[0], 0);
+        CHECK_EQ(warm_codebook[1], 0);
+        CHECK_EQ(warm_codebook[2], 100);
+        CHECK_EQ(warm_codebook[3], 100);
         const std::vector<std::int32_t> residual_samples = {5, 7, 100, 100};
         const std::vector<std::uint32_t> residual_codes = {0, 1};
         std::vector<std::int32_t> residuals;

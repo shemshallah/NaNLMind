@@ -42,8 +42,16 @@ mth_pq_train:
   ST r5,r12,0
   MOVI r12,@mth_pqt_out
   ST r6,r12,0
+  MOVI r12,@mth_pqt_warm
+  ST r7,r12,0
 
-  ; initialize codebook from the first C samples, wrapping if N < C
+  ; A warm update keeps the supplied codebook; a cold train initializes from
+  ; the first C samples, wrapping if N < C.
+  MOVI r12,@mth_pqt_warm
+  LD r7,r12,0
+  CMP r7,r0
+  JMP[NE] @mth_pqt_init_done
+
   MOVI r12,@mth_pqt_ci
   ST r0,r12,0
 mth_pqt_init_ci:
@@ -378,6 +386,8 @@ mth_pqt_di:
 mth_pqt_ni:
   .word 0
 mth_pqt_iter:
+  .word 0
+mth_pqt_warm:
   .word 0
 mth_pqt_best:
   .word 0

@@ -263,6 +263,9 @@ field_driver_main:
   MOVI r3,70
   CMP r2,r3
   JMP[EQ] @field_driver_pq_residual
+  MOVI r3,71
+  CMP r2,r3
+  JMP[EQ] @field_driver_pq_update
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -1005,13 +1008,31 @@ field_driver_vector_matrix_credits:
   JMP @field_driver_return
 
 field_driver_pq_train:
+  MOVI r1,0x0000
+  MOVHI r1,0x0001
   MOVI r10,0x4001
-  LD r1,r10,0
-  LD r2,r10,1
-  LD r3,r10,2
-  LD r4,r10,3
-  LD r5,r10,4
-  LD r6,r10,5
+  LD r2,r10,0
+  LD r3,r10,1
+  LD r4,r10,2
+  LD r5,r10,3
+  MOVI r6,0x0000
+  MOVHI r6,0x0005
+  MOVI r7,0
+  CALL @mth_pq_train
+  MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
+field_driver_pq_update:
+  MOVI r1,0x0000
+  MOVHI r1,0x0001
+  MOVI r10,0x4001
+  LD r2,r10,0
+  LD r3,r10,1
+  LD r4,r10,2
+  LD r5,r10,3
+  MOVI r6,0x0000
+  MOVHI r6,0x0005
+  MOVI r7,1
   CALL @mth_pq_train
   MOVI r10,0x4010
   ST r1,r10,0
