@@ -32,6 +32,7 @@ adaptive-field mathematics:
 | `mth_micro_feature.nas` | raw two-token QKV/softmax/tanh feature feed for the sparse field |
 | `mth_trunk_causal.nas` | raw learned QKV/MLP causal feature block, 1..256 tokens |
 | `mth_trunk_wide.nas` | runtime-width learned QKV/MLP causal block, up to 1024 tokens |
+| `mth_trunk_credit.nas` | raw local credit update for Wout/W1/W2 |
 | `mth/drivers/field_driver.nas` | guest command dispatcher for proposal, field vote, coherence, remap, CFT, TRAIL and hot triheads |
 | `include/nanlm/raw_field.hpp` | host orchestration: writes command words, runs the VM, reads results |
 
@@ -141,8 +142,28 @@ r1 T (1..1024), r2 D (1..128), r3 H (1..512)
 All loops are driven by runtime D/H/T. `RawFieldVM::causal_trunk_wide` writes
 the matrices and tokens, runs command 13, and returns D features. The test
 covers D=16, T=1 exact math, and T=1024. This is 1024-token context, not
-GPT-2-quality depth or training. The existing readout trainer is raw; the
-QKV/MLP matrices are still host-initialized, not backpropagated.
+GPT-2-quality depth or training.
+
+## Backprop reference and raw local credit
+
+`experiments/native_trunk_backprop.py` is a proper autograd reference for the
+same block. It trains QKV/Wout/W1/W2/readout with Adam, runs a finite-difference
+gradient check, and reports loss reduction. It is the differentiable upper
+bound, not the raw runtime.
+
+`mth_trunk_credit.nas` is the raw local credit step for the fixed 8-wide block:
+
+```text
+e[d] = W[target][d] - W[best_wrong][d]
+Wout[d][i] += lr e[d] context[i]
+W2[d][j]   += lr e[d] hidden[j]
+g[j]       = sum_d e[d] W2[d][j] (1 - hidden[j]^2)
+W1[j][i]   += lr g[j] h[i]
+```
+
+Command 14 applies this update. It is a true local error-corrective gradient for
+the output and MLP layers; Q/K/V updates and full raw BPTT are still open.
+The wide path currently uses host-initialized QKV/MLP.
 
 ## Learnable credit, not host gradients
 

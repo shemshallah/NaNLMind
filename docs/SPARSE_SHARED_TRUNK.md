@@ -171,8 +171,11 @@ training and credit updates are the next gate.
 The wide path `mth_trunk_wide.nas` supports runtime D up to 128, hidden H up
 to 512, and 1024 tokens. `RawFieldVM::causal_trunk_wide` writes host-loaded
 matrices and returns D features; the test exercises D=16 with T=1 exact math
-and T=1024. The readout trainer is already raw; the QKV/MLP matrices remain
-host-initialized until the local matrix-credit step lands.
+and T=1024. The readout trainer is already raw. A local credit step for Wout/W1/W2 is
+implemented in `mth_trunk_credit.nas` (command 14). A proper autograd reference
+for QKV/Wout/W1/W2/readout is in `experiments/native_trunk_backprop.py`; it is
+gradient-checked and is the upper bound, not the native path. Q/K/V raw updates
+and full raw BPTT remain open.
 
 This is the native **head/field** half of the sparse trunk. The shared P1
 QKV/MLP trunk kernel and its feature feed are still the next native step; the

@@ -497,6 +497,24 @@ bool RawFieldVM::causal_trunk_wide(
     return true;
 }
 
+
+bool RawFieldVM::trunk_credit(std::uint8_t target, std::uint8_t best_wrong,
+                              float learning_rate) {
+    std::uint32_t lr_bits = 0;
+    std::memcpy(&lr_bits, &learning_rate, sizeof(lr_bits));
+    if (!write_word(kProposalBase + 0, target) ||
+        !write_word(kProposalBase + 1, best_wrong) ||
+        !write_word(kProposalBase + 2, lr_bits) ||
+        !write_word(kCommandBase, 14)) {
+        return fail("cannot write trunk-credit command");
+    }
+    if (!run_command()) return false;
+    if ((read_word(kResultBase) & 1u) == 0) {
+        return fail("raw trunk credit did not complete");
+    }
+    return true;
+}
+
 bool RawFieldVM::remap(const std::array<std::uint16_t, 6>& masks,
                        std::uint32_t a, std::uint32_t b, bool target,
                        bool& improved, std::int32_t& before,

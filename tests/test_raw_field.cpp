@@ -263,6 +263,9 @@ int main() {
     CHECK(vm.causal_trunk(causal_tokens, weights, causal_feature));
     CHECK(std::isfinite(causal_feature[0]));
 
+    // Raw local credit update for Wout/W1/W2 after a readout step.
+    CHECK(vm.trunk_credit(1, 0, 0.05f));
+
     // Native readout training over the raw trunk feature.
     vm.reset_readout();
     bool correct = true;

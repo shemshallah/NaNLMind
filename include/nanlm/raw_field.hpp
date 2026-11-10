@@ -124,6 +124,9 @@ public:
     bool causal_trunk_wide(const std::vector<float>& tokens, std::size_t count,
                            const WideTrunkWeights& weights,
                            std::vector<float>& out);
+    // Raw local credit update for the fixed 8-wide output/MLP layers.
+    bool trunk_credit(std::uint8_t target, std::uint8_t best_wrong,
+                      float learning_rate);
     bool readout_train(
         const std::vector<std::array<float, kRawFeatureDim>>& tokens,
         const TrunkWeights& weights, std::uint8_t target, float learning_rate,
