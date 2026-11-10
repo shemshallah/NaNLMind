@@ -14,6 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "spec" / "nannet_training_routes.v1.json"
+OBJECTS = ROOT / "spec" / "nannet_corpus_objects.v1.json"
 
 
 def load_routes(path: Path = MANIFEST) -> dict:
@@ -33,14 +34,27 @@ def route_receipt(route: str, *, execute: bool = False,
         raise ValueError("unknown training route: " + route)
     corpus = ROOT / spec["corpus"]
     digest = hashlib.sha256(corpus.read_bytes()).hexdigest() if corpus.is_file() else ""
+    object_manifest = json.loads(OBJECTS.read_text(encoding="utf-8"))
+    object_entry = object_manifest["routes"][route]
+    object_path = ROOT / object_entry["object_file"]
+    object_row = json.loads(object_path.read_text(encoding="utf-8"))
     receipt = {
         "schema": "nanlm.nannet.training-receipt/1",
         "route": route,
-        "route_uri": spec["route_uri"],
+        "route_uri": spec["route"],
+        "route_id": spec["route_id"],
         "job": spec["job"],
         "canonical_universe": doc["canonical_universe"],
         "ring_route": doc["ring_route"],
         "node_instantiated": False,
+        "route_object": {
+            "kind": spec["object_kind"],
+            "id": spec["object_id"],
+            "file": spec["object_file"],
+            "matrix_pairs": spec["matrix_pairs"],
+            "matrix_sha256": object_row["matrix_sha256"],
+            "nonzero_pairs": object_row["nonzero_pairs"],
+        },
         "trainer": spec["trainer"],
         "corpus": str(corpus.relative_to(ROOT)),
         "corpus_sha256": digest,

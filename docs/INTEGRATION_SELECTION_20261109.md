@@ -80,19 +80,25 @@ PR50 (contextual roles, held-out 100%, shuffled control 54.17%) and PR52
 references**, but they are C++ double-precision learners. They are not raw
 guest kernels and are not merged as production.
 
-### 7. NANNET route mapping
+### 7. NANNET C(256,2) corpus objects
 
-Pick a route **manifest**, not fake HW nodes:
+The routes are actual `RawRoute` definitions with typed object references:
 
-- `HW4` = WordNet training job label;
-- `HW5` = Gutenberg training job label;
-- canonical universe stays `HW0::BS0`;
-- the runner ring is `HW5:0`.
+- `HW4` → `hyperedge` object over the WordNet corpus;
+- `HW5` → `memory` object over the Gutenberg corpus;
+- both objects contain a **C(256,2) = 32,640-entry unordered byte-pair
+  matrix** derived from the corpus bytes;
+- object IDs and matrix SHA-256 values are stable and recorded;
+- route definitions are committed to the NANNET rawroute registry.
 
-`spec/nannet_training_routes.v1.json` and
-`tools/nannet_route_train.py` resolve those labels to corpora, checkpoints and
-receipts. They do not instantiate HW4/HW5 nodes, consistent with
-`docs/RUNNER_RING_AUTHORITY.md` and `docs/PARALLEL_NATIVE_WORKSTREAMS.md`.
+`spec/nannet_corpus_objects.v1.json` lists the canonical route text, route ID,
+object ID, matrix digest and object files. `tools/nannet_corpus_objects.py`
+builds the matrices and commits the routes. `tools/nannet_route_train.py`
+resolves the object back to the corpus/checkpoint and emits a receipt containing
+the typed object and matrix digest.
+
+The canonical universe remains `HW0::BS0`; the route target is the HW4/HW5
+control-plane object, not a second universe. The runner ring remains `HW5:0`.
 
 ## Rejects
 
@@ -100,7 +106,7 @@ receipts. They do not instantiate HW4/HW5 nodes, consistent with
 - Wholesale branch merges that delete context memory/checkpoints while adding
   a narrower geometric path.
 - Host C++/Python semantic or role learners counted as native.
-- Fabricated HW4/HW5 nodes; only the `HW5:0` ring identity is real.
+- Fabricated HW4/HW5 nodes or labels without actual C(256,2) route objects.
 - Byte-only improvements that do not preserve context or held-out performance.
 
 ## Next raw implementation order
