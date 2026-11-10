@@ -393,3 +393,8 @@ existing Koyeb service as documented in
 `integrations/nannet/README.md`. See
 `docs/72_CANONICAL_TRAINING_UNIVERSE.md` and
 `specs/CLOCKED_CHAINABLE_TRAINING.md`.
+
+## Corpus intake
+
+See `docs/WORDLIST_CORPUS_INTAKE.md` for normalizing
+`NaNROUTER/corpora/wordlists/` into `state/wordlists.corpus.txt`.

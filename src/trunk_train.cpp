@@ -33,6 +33,16 @@ TrunkWeights identity_trunk() {
     return w;
 }
 
+std::vector<std::uint8_t> make_window(std::string_view line,
+                                       std::size_t window) {
+    std::vector<std::uint8_t> bytes(window, static_cast<std::uint8_t>(' '));
+    const std::size_t take = std::min(window, line.size());
+    const std::size_t offset = window - take;
+    for (std::size_t i = 0; i < take; ++i)
+        bytes[offset + i] = static_cast<std::uint8_t>(line[line.size() - take + i]);
+    return bytes;
+}
+
 std::array<float, kRawFeatureDim> token_vector(std::uint8_t byte) {
     std::array<float, kRawFeatureDim> v{};
     v[byte & 7u] = 1.0f;
@@ -878,12 +888,10 @@ int phase_ingest_cli(int argc, char** argv) {
     };
     for (auto line : lines) {
         while (!line.empty() && line.back() == '\r') line.remove_suffix(1);
-        if (line.size() < window) continue;
+        if (line.empty()) continue;
         if (max_windows && encoded + batch_windows >= max_windows) break;
-        const std::size_t start = line.size() - window;
-        for (std::size_t i = 0; i < window; ++i) {
-            batch_bytes.push_back(static_cast<std::uint8_t>(line[start + i]));
-        }
+        const auto bytes = make_window(line, window);
+        batch_bytes.insert(batch_bytes.end(), bytes.begin(), bytes.end());
         ++batch_windows;
         if (batch_windows == kBatchWindows && !flush_batch()) return 7;
     }
@@ -1186,13 +1194,9 @@ int phase_train_cli(int argc, char** argv) {
             begin = end + 1;
         }
         while (!line.empty() && line.back() == '\r') line.remove_suffix(1);
-        if (line.size() < window) continue;
+        if (line.empty()) continue;
         if (max_windows && windows.size() >= max_windows) break;
-        std::vector<std::uint8_t> bytes(window);
-        const std::size_t start = line.size() - window;
-        for (std::size_t i = 0; i < window; ++i)
-            bytes[i] = static_cast<std::uint8_t>(line[start + i]);
-        windows.push_back(std::move(bytes));
+        windows.push_back(make_window(line, window));
         if (max_lines && windows.size() >= max_lines) break;
     }
     if (windows.size() < 4 && eval_path.empty()) {
@@ -1226,13 +1230,9 @@ int phase_train_cli(int argc, char** argv) {
             }
             while (!line.empty() && line.back() == '\r')
                 line.remove_suffix(1);
-            if (line.size() < window) continue;
+            if (line.empty()) continue;
             if (max_windows && eval_windows.size() >= max_windows) break;
-            std::vector<std::uint8_t> bytes(window);
-            const std::size_t start = line.size() - window;
-            for (std::size_t i = 0; i < window; ++i)
-                bytes[i] = static_cast<std::uint8_t>(line[start + i]);
-            eval_windows.push_back(std::move(bytes));
+            eval_windows.push_back(make_window(line, window));
             if (max_lines && eval_windows.size() >= max_lines) break;
         }
         train_count = windows.size();
@@ -1680,11 +1680,10 @@ int phase_codebook_cli(int argc, char** argv) {
             begin = end + 1;
         }
         while (!line.empty() && line.back() == '\r') line.remove_suffix(1);
-        if (line.size() < window) continue;
+        if (line.empty()) continue;
+        const auto packed = make_window(line, window);
         std::array<std::uint8_t, 8> bytes{};
-        const std::size_t start = line.size() - window;
-        for (std::size_t i = 0; i < window; ++i)
-            bytes[i] = static_cast<std::uint8_t>(line[start + i]);
+        for (std::size_t i = 0; i < window; ++i) bytes[i] = packed[i];
         windows.push_back(bytes);
         if (max_lines && windows.size() >= max_lines) break;
     }
