@@ -625,6 +625,49 @@ bool RawFieldVM::readout_softmax(
     return true;
 }
 
+bool RawFieldVM::reset_hier_readout(std::size_t dim) {
+    if (dim == 0 || dim > 256) return fail("hier readout dim outside 1..256");
+    const std::size_t words = 16 * dim + 16 * 16 * dim;
+    for (std::size_t i = 0; i < words; ++i) {
+        if (!write_word(0xB000u + static_cast<std::uint32_t>(i), 0)) {
+            return fail("cannot reset hierarchical readout");
+        }
+    }
+    return true;
+}
+
+bool RawFieldVM::readout_hier(const float* feature, std::uint8_t target,
+                              float learning_rate, std::size_t dim,
+                              bool& correct, float& loss,
+                              std::uint8_t& predicted_high,
+                              std::uint8_t& predicted_low) {
+    if (feature == nullptr || dim == 0 || dim > 256) {
+        return fail("invalid hierarchical readout input");
+    }
+    for (std::size_t d = 0; d < dim; ++d) {
+        std::uint32_t bits = 0;
+        std::memcpy(&bits, &feature[d], sizeof(bits));
+        if (!write_word(0xA000u + static_cast<std::uint32_t>(d), bits)) {
+            return fail("cannot write hierarchical feature");
+        }
+    }
+    std::uint32_t lr_bits = 0;
+    std::memcpy(&lr_bits, &learning_rate, sizeof(lr_bits));
+    if (!write_word(kProposalBase + 0, target) ||
+        !write_word(kProposalBase + 1, lr_bits) ||
+        !write_word(kProposalBase + 2, static_cast<std::uint32_t>(dim)) ||
+        !write_word(kCommandBase, 21)) {
+        return fail("cannot write hierarchical readout command");
+    }
+    if (!run_command()) return false;
+    correct = (read_word(kResultBase + 0) & 1u) != 0;
+    const std::uint32_t ls = read_word(kResultBase + 1);
+    std::memcpy(&loss, &ls, sizeof(ls));
+    predicted_high = static_cast<std::uint8_t>(read_word(kResultBase + 2) & 15u);
+    predicted_low = static_cast<std::uint8_t>(read_word(kResultBase + 3) & 15u);
+    return true;
+}
+
 void RawFieldVM::reset_readout() {
     for (std::uint32_t i = 0; i < 255u * 8u; ++i) {
         (void)write_word(0xB000u + i, 0);
@@ -832,6 +875,31 @@ bool RawFieldVM::trunk_credit_wide(std::uint8_t target,
     if ((read_word(kResultBase) & 1u) == 0) {
         return fail("raw wide trunk credit did not complete");
     }
+    return true;
+}
+
+
+bool RawFieldVM::cft_trunk_credit(std::uint8_t target, std::uint8_t best_wrong,
+                                  std::int32_t base_lr_q16,
+                                  std::int32_t threshold_q16,
+                                  std::int32_t e_ab, std::int32_t e_bc,
+                                  std::int32_t e_ca, std::int32_t error,
+                                  std::int32_t rate, bool& applied) {
+    const std::uint32_t args[9] = {
+        target, best_wrong, static_cast<std::uint32_t>(base_lr_q16),
+        static_cast<std::uint32_t>(threshold_q16), static_cast<std::uint32_t>(e_ab),
+        static_cast<std::uint32_t>(e_bc), static_cast<std::uint32_t>(e_ca),
+        static_cast<std::uint32_t>(error), static_cast<std::uint32_t>(rate)};
+    for (std::size_t i = 0; i < 9; ++i) {
+        if (!write_word(kProposalBase + static_cast<std::uint32_t>(i), args[i])) {
+            return fail("cannot write CFT trunk-credit args");
+        }
+    }
+    if (!write_word(kCommandBase, 22)) {
+        return fail("cannot write CFT trunk-credit command");
+    }
+    if (!run_command()) return false;
+    applied = (read_word(kResultBase) & 1u) != 0;
     return true;
 }
 

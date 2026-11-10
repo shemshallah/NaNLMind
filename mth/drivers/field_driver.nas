@@ -22,6 +22,7 @@
 ; Trunk local credit: target/best at 0x4001/0x4002, lr at 0x4003
 ;   result r1=1 at 0x4010
 ; QKV local credit: same target/best/lr, command 15, uses last forward
+; CFT/TRAIL gated local credit: command 22/23
 ;
 ; The driver contains no host math. It is assembled by nmk.awk and executed
 ; by the canonical NaN0S VM. The guest starts at word 0.
@@ -47,10 +48,13 @@ JMP @field_driver_entry
 .include "../nan16/mth_readout_only.nas"
 .include "../nan16/mth_readout_sample.nas"
 .include "../nan16/mth_readout_softmax.nas"
+.include "../nan16/mth_softmax16.nas"
+.include "../nan16/mth_readout_hier.nas"
 .include "../nan16/mth_trunk_credit.nas"
 .include "../nan16/mth_qkv_credit.nas"
 .include "../nan16/mth_qkv_credit_wide.nas"
 .include "../nan16/mth_trunk_credit_wide.nas"
+.include "../nan16/mth_credit_gate.nas"
 
 field_driver_entry:
   MOVI r13,1
@@ -122,6 +126,15 @@ field_driver_main:
   MOVI r3,20
   CMP r2,r3
   JMP[EQ] @field_driver_trunk_credit_wide
+  MOVI r3,21
+  CMP r2,r3
+  JMP[EQ] @field_driver_readout_hier
+  MOVI r3,22
+  CMP r2,r3
+  JMP[EQ] @field_driver_cft_credit
+  MOVI r3,23
+  CMP r2,r3
+  JMP[EQ] @field_driver_trail_credit
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -309,6 +322,19 @@ field_driver_readout_softmax:
   ST r3,r10,2
   JMP @field_driver_return
 
+field_driver_readout_hier:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  CALL @mth_readout_hier
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  ST r4,r10,3
+  JMP @field_driver_return
+
 field_driver_field_commit:
   MOVI r10,0x4001
   LD r2,r10,0
@@ -367,6 +393,76 @@ field_driver_trunk_credit_wide:
   LD r3,r10,2
   CALL @mth_trunk_credit_wide
   MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_cft_credit:
+  ; target,best,base_lr,threshold at 0x4001..0x4004; CFT args at 0x4005..0x4009
+  MOVI r10,0x4005
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r4,r10,3
+  LD r5,r10,4
+  CALL @mth_cft_credit
+  ADD r6,r4,r0          ; CFT residual is the credit
+  MOVI r10,0x4003
+  LD r2,r10,0
+  MOVI r10,0x4004
+  LD r3,r10,0
+  ADD r1,r6,r0
+  CALL @mth_credit_gate
+  CMP r1,r0
+  JMP[EQ] @field_driver_credit_rejected
+  ADD r6,r1,r0          ; gated learning rate
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  ADD r3,r6,r0
+  CALL @mth_trunk_credit
+  MOVI r10,0x4010
+  MOVI r1,1
+  ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_credit_rejected:
+  MOVI r10,0x4010
+  ST r0,r10,0
+  JMP @field_driver_return
+
+field_driver_trail_credit:
+  ; target,best,base_lr,threshold at 0x4001..0x4004; TRAIL args at 0x4005..0x400F
+  MOVI r10,0x4005
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r4,r10,3
+  LD r5,r10,4
+  LD r6,r10,5
+  LD r7,r10,6
+  LD r8,r10,7
+  LD r9,r10,8
+  LD r10,r10,9
+  MOVI r11,0x400F
+  LD r11,r11,0
+  CALL @mth_trail_credit
+  ADD r6,r3,r0          ; TRAIL credit
+  MOVI r10,0x4003
+  LD r2,r10,0
+  MOVI r10,0x4004
+  LD r3,r10,0
+  ADD r1,r6,r0
+  CALL @mth_credit_gate
+  CMP r1,r0
+  JMP[EQ] @field_driver_credit_rejected
+  ADD r6,r1,r0
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  ADD r3,r6,r0
+  CALL @mth_trunk_credit
+  MOVI r10,0x4010
+  MOVI r1,1
   ST r1,r10,0
   JMP @field_driver_return
 

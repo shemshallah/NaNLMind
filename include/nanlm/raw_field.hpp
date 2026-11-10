@@ -142,6 +142,11 @@ public:
                          float learning_rate);
     bool trunk_credit_wide(std::uint8_t target, std::uint8_t best_wrong,
                            float learning_rate);
+    bool cft_trunk_credit(std::uint8_t target, std::uint8_t best_wrong,
+                          std::int32_t base_lr_q16, std::int32_t threshold_q16,
+                          std::int32_t e_ab, std::int32_t e_bc,
+                          std::int32_t e_ca, std::int32_t error,
+                          std::int32_t rate, bool& applied);
     // Raw local credit update for the fixed 8-wide output/MLP layers.
     bool trunk_credit(std::uint8_t target, std::uint8_t best_wrong,
                       float learning_rate);
@@ -166,6 +171,11 @@ public:
     bool readout_softmax(const std::array<float, kRawFeatureDim>& feature,
                          std::uint8_t target, float learning_rate,
                          bool& correct, float& loss, float& target_probability);
+    bool reset_hier_readout(std::size_t dim);
+    bool readout_hier(const float* feature, std::uint8_t target,
+                      float learning_rate, std::size_t dim, bool& correct,
+                      float& loss, std::uint8_t& predicted_high,
+                      std::uint8_t& predicted_low);
     void reset_readout();
     bool set_readout_row(std::uint8_t row,
                          const std::array<float, kRawFeatureDim>& values);

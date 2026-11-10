@@ -310,6 +310,16 @@ int main() {
     CHECK(correct);
     CHECK(target_score > best_wrong);
 
+    // CFT-gated local credit: positive residual passes the gate; negative
+    // residual is rejected before any local update.
+    bool cft_applied = false;
+    CHECK(vm.cft_trunk_credit(1, 0, 32768, 0, 65536, 65536, 65536,
+                              65536, 32768, cft_applied));
+    CHECK(cft_applied);
+    CHECK(vm.cft_trunk_credit(1, 0, 32768, 0, -65536, -65536, -65536,
+                              65536, 32768, cft_applied));
+    CHECK(!cft_applied);
+
     // Wide-path exact local-credit parity at a small D/H/T.  This compares
     // the raw wide QKV and output/MLP updates against the same float32
     // equations used by the autograd reference.
