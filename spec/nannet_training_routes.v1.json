@@ -21,7 +21,7 @@
     "HW5": {
       "checkpoint": "state/transfer/hw5_gutenberg150_guest.ctx",
       "corpus": "state/gutenberg_corpus.txt",
-      "epochs": 1,
+      "epochs": 5,
       "job": "gutenberg",
       "matrix_pairs": 32640,
       "matrix_sha256": "ba178def3afab5f965ac5ed286bdd260c6afe4a5acf1c673b131550adec13d28",

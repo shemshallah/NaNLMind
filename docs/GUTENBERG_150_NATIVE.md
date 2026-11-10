@@ -53,25 +53,25 @@ checkpoint) with the raw guest exact/backoff route:
 |---|---:|
 | train samples | 1,357,268 |
 | held-out samples | 339,317 |
-| training-window accuracy | `54.1966%` |
-| held-out accuracy | **`53.191%`** |
-| held-out loss | `2.06797` |
-| training time | `457.8 s` |
-| eval time | `117.1 s` |
+| training-window accuracy | `54.388%` |
+| held-out accuracy | **`53.1653%`** |
+| held-out loss | `1.67926` |
+| eval time | `112.2 s` |
 | checkpoint | `state/transfer/hw5_gutenberg150_guest.ctx` |
 
 ```sh
 # executed in the isolated raw-backoff worktree
 context-train state/gutenberg_150_corpus.txt \
-  0 1 100000 11456 4 0.1 1 0.8 guestbackoff 10500 \
+  0 5 100000 11456 4 0.1 1 0.8 guestbackoff 10500 \
   save=state/transfer/hw5_gutenberg150_guest.ctx
 ```
 
-The 21-book 5-epoch run reached `54.6394%`; the 150-book 1-epoch run reached
-`53.191%`. The comparison is not epoch-matched: expansion did not collapse the
-score, but it also did not improve it in one epoch. A 150-book multi-epoch run
-is the next measurement. The checkpoint path is now the HW5 training-route
-target.
+The 21-book 5-epoch run reached `54.6394%`; the 150-book 5-epoch run reached
+**`53.1653%`**. The epoch-1 score was `53.191%`, so five epochs were flat. The
+150-book expansion did not collapse the table, but it did not improve the
+held-out result. More books and more epochs are not substitutes for a better
+feature/optimizer at this capacity. The checkpoint path is the HW5
+training-route target.
 
 ## Non-claims
 
