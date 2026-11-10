@@ -43,6 +43,73 @@ int main() {
     CHECK_EQ(before, 2);
     CHECK_EQ(after, 4);
 
+
+    // NaNLMind seven-method credit suite: call the actual NaN16 kernels,
+    // not C++ formula substitutes.  Exact Q16.16 oracle values come from
+    // the original mth/tests guest fixtures.
+    std::array<std::int32_t, 4> cft_output{};
+    CHECK(vm.cft(0, 0, 0, 65536, 39321, cft_output));
+    CHECK_EQ(cft_output[0], 13107);
+    CHECK_EQ(cft_output[1], 13107);
+    CHECK_EQ(cft_output[2], -13107);
+    CHECK_EQ(cft_output[3], 13107);
+    std::array<std::int32_t, 3> trail_output{};
+    CHECK(vm.trail(0x8000, 0x6666, 0x4CCC, 0x3333, 0x1999,
+                   0x1999, 0x3333, 0x0CCC, 0x051E, 0xE666, 0xCCCC,
+                   trail_output));
+    CHECK_EQ(trail_output[0], 0x1F39);
+    CHECK_EQ(trail_output[1], 0x29FA);
+    CHECK_EQ(trail_output[2], static_cast<std::int32_t>(0xFFFFF924u));
+    std::array<std::int32_t, 2> holo_output{};
+    CHECK(vm.holo({0, 0, 0}, holo_output));
+    CHECK_EQ(holo_output[0], 0);
+    CHECK(holo_output[1] >= 0 && holo_output[1] <= 64);
+    std::int32_t ring_correlation = 0;
+    CHECK(vm.ring(phases, 0, ring_correlation));
+    CHECK(ring_correlation >= 65000 && ring_correlation <= 65536);
+    CHECK(!vm.ring(phases, 255, ring_correlation));  // bounds checked
+    std::array<std::int32_t, 2> leaf_output{};
+    CHECK(vm.leaf(0xFu, 0x3u, 100, leaf_output));
+    CHECK_EQ(leaf_output[0], 2);
+    CHECK_EQ(leaf_output[1], 200);
+    std::int32_t triad_advantage = 0;
+    CHECK(vm.tca(100, 50, 50, triad_advantage));
+    CHECK_EQ(triad_advantage, 50);
+    CHECK(vm.tca(50, 50, 50, triad_advantage));
+    CHECK_EQ(triad_advantage, 0);
+    std::array<std::int32_t, 3> flux_output{};
+    CHECK(vm.flux(0, 65536, 32768, 0, flux_output));
+    CHECK_EQ(flux_output[0], 32768);
+    CHECK_EQ(flux_output[1], 32768);
+    CHECK_EQ(flux_output[2], 16384);
+
+    // Seven independent nonzero channels are truly combined by the guest.
+    // All signals except LEAF are on 1/65536 fixed-point units.
+    std::array<std::int32_t, 7> all_credits = {
+        cft_output[3], trail_output[2], holo_output[1],
+        ring_correlation, leaf_output[1], triad_advantage, flux_output[2]};
+    const std::array<std::int32_t, 7> equal_coefficients = {
+        8192, 8192, 8192, 8192, 8192, 8192, 8192};
+    std::int32_t combined = 0;
+    CHECK(vm.combine_credits(all_credits, equal_coefficients, combined));
+    // Guest multiply rounds each contribution down by Q16 scaling.
+    std::int32_t expected_combined = 0;
+    for (std::size_t i = 0; i < 7; ++i) {
+        const std::int64_t product =
+            static_cast<std::int64_t>(all_credits[i]) *
+            static_cast<std::int64_t>(equal_coefficients[i]);
+        expected_combined += static_cast<std::int32_t>(product >> 16);
+    }
+    CHECK_EQ(combined, expected_combined);
+    const std::array<std::int32_t, 7> zero_credits{};
+    bool applied = true;
+    CHECK(vm.combined_trunk_credit(1, 0, 32768, 0, zero_credits,
+                                   equal_coefficients, applied));
+    CHECK(!applied);
+    CHECK(vm.combined_trunk_credit_all(1, 0, 32768, 0, zero_credits,
+                                       equal_coefficients, applied));
+    CHECK(!applied);
+
     // Chart bridge: the guest decision changes only the proposer's mask and
     // updates the chart's integer credit fields.
     Universe universe;
