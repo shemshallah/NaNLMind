@@ -653,6 +653,51 @@ bool RawFieldVM::reset_context_readout(std::size_t buckets) {
     return true;
 }
 
+
+bool RawFieldVM::load_context_readout(const std::string& path,
+                                      std::size_t buckets) {
+    const std::size_t words = 272 * buckets;
+    std::ifstream in(path, std::ios::binary);
+    if (!in) return fail("cannot open context checkpoint: " + path);
+    in.seekg(0, std::ios::end);
+    const std::streamoff bytes = in.tellg();
+    if (bytes < 0 || static_cast<std::size_t>(bytes) != words * 4) {
+        return fail("context checkpoint size mismatch");
+    }
+    in.seekg(0, std::ios::beg);
+    std::array<std::uint8_t, 4> raw{};
+    for (std::size_t i = 0; i < words; ++i) {
+        if (!in.read(reinterpret_cast<char*>(raw.data()), raw.size())) {
+            return fail("cannot read context checkpoint");
+        }
+        const std::uint32_t bits = static_cast<std::uint32_t>(raw[0]) |
+            (static_cast<std::uint32_t>(raw[1]) << 8) |
+            (static_cast<std::uint32_t>(raw[2]) << 16) |
+            (static_cast<std::uint32_t>(raw[3]) << 24);
+        if (!write_word(0x100000u + static_cast<std::uint32_t>(i), bits)) {
+            return fail("cannot write context checkpoint");
+        }
+    }
+    return true;
+}
+
+bool RawFieldVM::save_context_readout(const std::string& path,
+                                      std::size_t buckets) {
+    const std::size_t words = 272 * buckets;
+    std::ofstream out(path, std::ios::binary);
+    if (!out) return fail("cannot create context checkpoint: " + path);
+    for (std::size_t i = 0; i < words; ++i) {
+        const std::uint32_t bits = read_word(0x100000u + static_cast<std::uint32_t>(i));
+        const std::array<std::uint8_t, 4> raw = {
+            static_cast<std::uint8_t>(bits & 0xFFu),
+            static_cast<std::uint8_t>((bits >> 8) & 0xFFu),
+            static_cast<std::uint8_t>((bits >> 16) & 0xFFu),
+            static_cast<std::uint8_t>((bits >> 24) & 0xFFu)};
+        out.write(reinterpret_cast<const char*>(raw.data()), raw.size());
+    }
+    return static_cast<bool>(out);
+}
+
 bool RawFieldVM::readout_context(std::uint8_t target, float learning_rate,
                                  std::uint32_t bucket, std::size_t buckets,
                                  bool& correct, float& loss,

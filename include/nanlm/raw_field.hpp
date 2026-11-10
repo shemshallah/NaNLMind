@@ -243,6 +243,8 @@ public:
                       float& loss, std::uint8_t& predicted_high,
                       std::uint8_t& predicted_low);
     bool reset_context_readout(std::size_t buckets);
+    bool load_context_readout(const std::string& path, std::size_t buckets);
+    bool save_context_readout(const std::string& path, std::size_t buckets);
     bool readout_context(std::uint8_t target, float learning_rate,
                          std::uint32_t bucket, std::size_t buckets,
                          bool& correct, float& loss,

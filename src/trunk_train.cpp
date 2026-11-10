@@ -9,6 +9,8 @@
 #include <fstream>
 #include <iostream>
 #include <random>
+#include <unordered_map>
+#include <unordered_set>
 #include <string>
 #include <vector>
 
@@ -424,15 +426,23 @@ int hier_train_cli(int argc, char** argv) {
 int context_train_cli(int argc, char** argv) {
     if (argc < 3) {
         std::cerr << "usage: nanlm-universal context-train CORPUS [MAX_LINES] [EPOCHS]"
-                     " [REPORT_EVERY] [BUCKETS] [CONTEXT_BYTES] [LR] [EVAL_EVERY] [TRAIN_FRACTION]\n"
+                     " [REPORT_EVERY] [BUCKETS] [CONTEXT_BYTES] [LR] [EVAL_EVERY] [TRAIN_FRACTION] [backoff|backoffcopy] [EXACT_BUCKETS] [fallback=N]\n"
                   << "Trains a raw context-indexed 16x16 class-memory readout.\n"
-                  << "TRAIN_FRACTION <1 holds out a random evaluation split.\n";
+                  << "TRAIN_FRACTION <1 holds out a random evaluation split.\n"
+                  << "backoff uses exact high-frequency 4-byte contexts plus a 3-byte fallback.\n"
+                  << "backoffcopy routes unseen 3-byte contexts to a copy/unigram table.\n";
         return 2;
     }
     const std::string corpus_path = argv[2];
     std::size_t max_lines = 0, epochs = 3, report_every = 10000;
     std::size_t buckets = 8192, context_bytes = 3, eval_every = 1;
     float base_lr = 0.5f, train_fraction = 1.0f;
+    bool backoff_mode = false;
+    bool copy_backoff = false;
+    std::size_t exact_limit_arg = 8192;
+    std::size_t fallback_bytes = 3;
+    std::string load_path;
+    std::string save_path;
     try {
         if (argc > 3) max_lines = static_cast<std::size_t>(std::stoull(argv[3]));
         if (argc > 4) epochs = static_cast<std::size_t>(std::stoull(argv[4]));
@@ -442,8 +452,23 @@ int context_train_cli(int argc, char** argv) {
         if (argc > 8) base_lr = std::stof(argv[8]);
         if (argc > 9) eval_every = static_cast<std::size_t>(std::stoull(argv[9]));
         if (argc > 10) train_fraction = std::stof(argv[10]);
+        if (argc > 11) {
+            const std::string route = argv[11];
+            backoff_mode = route == "backoff" || route == "backoffcopy";
+            copy_backoff = route == "backoffcopy";
+        }
+        if (argc > 12) exact_limit_arg = static_cast<std::size_t>(std::stoull(argv[12]));
+        for (int i = 13; i < argc; ++i) {
+            const std::string arg = argv[i];
+            if (arg.rfind("load=", 0) == 0) load_path = arg.substr(5);
+            else if (arg.rfind("save=", 0) == 0) save_path = arg.substr(5);
+            else if (arg.rfind("fallback=", 0) == 0) {
+                fallback_bytes = static_cast<std::size_t>(std::stoull(arg.substr(9)));
+            }
+        }
     } catch (...) { std::cerr << "invalid numeric argument\n"; return 2; }
     if (buckets == 0 || buckets > 16384 || context_bytes == 0 || context_bytes > 8 ||
+        fallback_bytes == 0 || fallback_bytes > 8 ||
         base_lr <= 0.0f || train_fraction <= 0.0f || train_fraction > 1.0f) {
         std::cerr << "buckets 1..16384, context bytes 1..8, positive LR,"
                      " train fraction in (0,1] required\n";
@@ -500,13 +525,98 @@ int context_train_cli(int argc, char** argv) {
         train_indices.assign(all_indices.begin(), all_indices.begin() + split);
         eval_indices.assign(all_indices.begin() + split, all_indices.end());
     }
+    if (backoff_mode) {
+        if (buckets < 2) {
+            std::cerr << "backoff requires at least 2 buckets\n";
+            return 2;
+        }
+        const auto context_key = [](std::string_view line) {
+            return (static_cast<std::uint32_t>(static_cast<std::uint8_t>(line[4])) << 24) |
+                   (static_cast<std::uint32_t>(static_cast<std::uint8_t>(line[5])) << 16) |
+                   (static_cast<std::uint32_t>(static_cast<std::uint8_t>(line[6])) << 8) |
+                   static_cast<std::uint32_t>(static_cast<std::uint8_t>(line[7]));
+        };
+        std::unordered_map<std::uint32_t, std::uint32_t> counts;
+        for (const std::size_t sample : train_indices) {
+            ++counts[context_key(usable[sample])];
+        }
+        std::vector<std::pair<std::uint32_t, std::uint32_t>> ranked;
+        ranked.reserve(counts.size());
+        for (const auto& entry : counts) ranked.emplace_back(entry.second, entry.first);
+        std::sort(ranked.begin(), ranked.end(),
+                  [](const auto& a, const auto& b) { return a.first > b.first; });
+        const std::size_t exact_limit = std::min<std::size_t>(exact_limit_arg, buckets - 1);
+        const std::size_t exact_count = std::min(exact_limit, ranked.size());
+        std::unordered_map<std::uint32_t, std::uint32_t> exact;
+        exact.reserve(exact_count * 2);
+        for (std::size_t i = 0; i < exact_count; ++i) {
+            exact.emplace(ranked[i].second, static_cast<std::uint32_t>(i));
+        }
+        const std::size_t fallback = buckets - exact_count;
+        const std::size_t k3_fallback = copy_backoff && fallback > 1
+            ? std::max<std::size_t>(1, (fallback * 3) / 4) : fallback;
+        const std::size_t copy_fallback = fallback - k3_fallback;
+        std::unordered_set<std::uint32_t> k3_seen;
+        if (copy_backoff) {
+            k3_seen.reserve(train_indices.size());
+            for (const std::size_t sample : train_indices) {
+                std::uint32_t key = 0;
+                for (std::size_t j = 1; j <= 3; ++j) {
+                    key = (key << 8) |
+                        static_cast<std::uint8_t>(usable[sample][8 - j]);
+                }
+                k3_seen.insert(key);
+            }
+        }
+        for (std::size_t sample = 0; sample < usable.size(); ++sample) {
+            const auto key = context_key(usable[sample]);
+            const auto it = exact.find(key);
+            if (it != exact.end()) {
+                context_buckets[sample] = it->second;
+            } else {
+                std::uint32_t hash = 2166136261u;
+                const std::size_t fallback_width = fallback_bytes;
+                for (std::size_t j = 1; j <= fallback_width; ++j) {
+                    const auto byte = static_cast<std::uint8_t>(usable[sample][8 - j]);
+                    hash = (hash ^ byte) * 16777619u;
+                }
+                if (copy_backoff && k3_seen.find(key & 0xFFFFFFu) != k3_seen.end()) {
+                    std::uint32_t k3_hash = 2166136261u;
+                    for (std::size_t j = 1; j <= 3; ++j) {
+                        const auto byte = static_cast<std::uint8_t>(usable[sample][8 - j]);
+                        k3_hash = (k3_hash ^ byte) * 16777619u;
+                    }
+                    context_buckets[sample] = static_cast<std::uint32_t>(exact_count) +
+                        (k3_fallback ? k3_hash % k3_fallback : 0);
+                } else if (copy_backoff && copy_fallback) {
+                    std::uint32_t copy_hash = 2166136261u;
+                    copy_hash = (copy_hash ^ static_cast<std::uint8_t>(usable[sample][7])) * 16777619u;
+                    context_buckets[sample] = static_cast<std::uint32_t>(exact_count + k3_fallback) +
+                        copy_hash % copy_fallback;
+                } else {
+                    context_buckets[sample] = static_cast<std::uint32_t>(exact_count) +
+                        (fallback ? hash % fallback : 0);
+                }
+            }
+        }
+        std::cout << "context_backoff exact=" << exact_count
+                  << " fallback=" << fallback
+                  << " k3_fallback=" << k3_fallback
+                  << " copy_fallback=" << copy_fallback
+                  << " fallback_bytes=" << fallback_bytes << "\n";
+    }
     RawFieldVM vm("build/field_driver.nan");
     if (!vm.ready()) {
         std::cerr << "raw field VM unavailable: " << vm.error() << "\n";
         return 7;
     }
     const auto reset_started = std::chrono::steady_clock::now();
-    if (!vm.reset_context_readout(buckets)) {
+    if (!load_path.empty()) {
+        if (!vm.load_context_readout(load_path, buckets)) {
+            std::cerr << "cannot load context readout: " << vm.error() << "\n";
+            return 7;
+        }
+    } else if (!vm.reset_context_readout(buckets)) {
         std::cerr << "cannot reset context readout: " << vm.error() << "\n";
         return 7;
     }
@@ -614,6 +724,10 @@ int context_train_cli(int argc, char** argv) {
         }
     }
     if (!final_evaluated && !evaluate(epochs, true)) return 7;
+    if (!save_path.empty() && !vm.save_context_readout(save_path, buckets)) {
+        std::cerr << "cannot save context readout: " << vm.error() << "\n";
+        return 7;
+    }
     return 0;
 }
 
