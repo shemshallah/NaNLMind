@@ -277,6 +277,7 @@ field_driver_readout_sample:
   MOVI r10,0x4001
   LD r1,r10,0
   LD r2,r10,1
+  LD r3,r10,2
   CALL @mth_readout_sample
   MOVI r10,0x4010
   ST r1,r10,0

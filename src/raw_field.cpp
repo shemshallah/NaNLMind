@@ -509,6 +509,23 @@ bool RawFieldVM::readout_only(
 }
 
 
+
+bool RawFieldVM::read_trunk_weights(TrunkWeights& out) const {
+    auto read_float = [&](std::uint32_t base, float* values, std::size_t count) {
+        for (std::size_t i = 0; i < count; ++i) {
+            const std::uint32_t bits = read_word(base + static_cast<std::uint32_t>(i));
+            std::memcpy(&values[i], &bits, sizeof(bits));
+        }
+    };
+    read_float(0x9000, out.wq.data(), out.wq.size());
+    read_float(0x9040, out.wk.data(), out.wk.size());
+    read_float(0x9080, out.wv.data(), out.wv.size());
+    read_float(0x90C0, out.wout.data(), out.wout.size());
+    read_float(0x9100, out.w1.data(), out.w1.size());
+    read_float(0x9180, out.w2.data(), out.w2.size());
+    return true;
+}
+
 bool RawFieldVM::set_readout_row(
     std::uint8_t row, const std::array<float, kRawFeatureDim>& values) {
     if (row >= 255) return fail("readout row outside 0..254");
@@ -525,8 +542,8 @@ bool RawFieldVM::set_readout_row(
 
 bool RawFieldVM::readout_sample(
     const std::array<float, kRawFeatureDim>& feature, std::uint8_t target,
-    float learning_rate, bool& correct, float& target_score,
-    float& best_wrong_score, float& loss) {
+    float learning_rate, std::uint32_t salt, bool& correct,
+    float& target_score, float& best_wrong_score, float& loss) {
     for (std::size_t d = 0; d < kRawFeatureDim; ++d) {
         std::uint32_t bits = 0;
         std::memcpy(&bits, &feature[d], sizeof(bits));
@@ -538,6 +555,7 @@ bool RawFieldVM::readout_sample(
     std::memcpy(&lr_bits, &learning_rate, sizeof(lr_bits));
     if (!write_word(kProposalBase + 0, target) ||
         !write_word(kProposalBase + 1, lr_bits) ||
+        !write_word(kProposalBase + 2, salt) ||
         !write_word(kCommandBase, 17)) {
         return fail("cannot write sampled readout command");
     }

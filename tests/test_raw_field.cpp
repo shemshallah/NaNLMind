@@ -268,6 +268,8 @@ int main() {
     // QKV credit uses the last fixed-trunk forward.  T=8 makes the softmax
     // gradient non-trivial for Wq/Wk as well as Wv.
     CHECK(vm.causal_trunk(causal_tokens, weights, causal_feature));
+    causal_tokens.resize(8);
+    CHECK(vm.causal_trunk(causal_tokens, weights, causal_feature));
     const float before_qkv_credit = causal_feature[0];
     std::array<float, kRawFeatureDim> target_row{};
     std::array<float, kRawFeatureDim> wrong_row{};
@@ -275,7 +277,23 @@ int main() {
     wrong_row[0] = -1.0f;
     CHECK(vm.set_readout_row(1, target_row));
     CHECK(vm.set_readout_row(0, wrong_row));
+
+    // Functional QKV credit update: the raw guest must change at least one
+    // Q/K/V coefficient and the cached forward must see the update.
+    TrunkWeights qkv_before{};
+    CHECK(vm.read_trunk_weights(qkv_before));
     CHECK(vm.qkv_credit(1, 0, 0.5f));
+    TrunkWeights qkv_after{};
+    CHECK(vm.read_trunk_weights(qkv_after));
+    bool qkv_changed = false;
+    for (std::size_t i = 0; i < qkv_before.wq.size(); ++i) {
+        if (std::fabs(qkv_before.wq[i] - qkv_after.wq[i]) > 1e-6f ||
+            std::fabs(qkv_before.wk[i] - qkv_after.wk[i]) > 1e-6f ||
+            std::fabs(qkv_before.wv[i] - qkv_after.wv[i]) > 1e-6f) {
+            qkv_changed = true;
+        }
+    }
+    CHECK(qkv_changed);
     CHECK(vm.causal_trunk_cached(causal_tokens, causal_feature));
     CHECK(std::fabs(causal_feature[0] - before_qkv_credit) > 1e-7f);
 
