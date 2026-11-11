@@ -470,6 +470,8 @@ slf_hot:
   .word 0
 slf_members:
   .word 0,0,0
+slf_bit:
+  .word 1,2,4
 slf_seen:
   .word 0
 slf_meta:
