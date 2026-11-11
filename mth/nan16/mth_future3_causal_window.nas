@@ -66,7 +66,8 @@ f3_slot:
   LD r9,r0,@f3_count
   LD r10,r0,@f3_gcount
   ADD r9,r9,r10
-  SUBI r9,r9,3
+  MOVI r10,3
+  SUB r9,r9,r10
   ADD r9,r9,r8
   CMPS r9,r0
   JMP[LT] @f3_next
