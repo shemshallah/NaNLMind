@@ -1,7 +1,6 @@
 # Geometric credit replacements for BPTT
 
-Status: **design record, not an implementation claim**. NaNLMind v2 is the
-target. NaNLM is v1 and is not imported. The canonical VM is NaN0S; N16I is a
+Status: **historical mathematical design; the 255-head geometric-TRAIL guest kernel has been ported to main.** The unchanged frozen 48M decoder is the sole trained language model. NaNLM is v1 and is not imported. The canonical VM is NaN0S; N16I is a
 guest interpreter running on it, not a second VM.
 
 The user rejected a global BPTT tape as the primary learning path. The
@@ -82,13 +81,10 @@ fits the free extension (32,640 links).
 
 ## Implementation status
 
-All seven credit primitives now exist as raw NaN16 kernels: TRAIL, CFT, HOLO,
-RING, LEAF, TCA and FLUX, plus a weighted combiner. The trunk also has
-diagnostic local error-corrective updates and a host autograd reference;
-neither is the production learning policy. CFT/TRAIL are the first pair wired
-into the gate/field commit path; the other five are available but not yet
-fully wired into every trunk weight, and no quality claim follows from the
-primitives.
+Raw NaN16 CFT and TRAIL credit primitives, a signed Q16 multiply, a field
+command driver, and a deterministic auto-remap scheduler now exist in
+`mth/nan16/` and `include/nanlm/raw_field.hpp`. They are not yet integrated
+into a joint training loop, and no quality claim follows from the primitives.
 
 ## Recommendation
 
@@ -124,3 +120,28 @@ P1 (full d=8 QKV/MLP block) can proceed in parallel because the block only
 needs the existing op set. P2 is replaced by TRAIL/CFT/HOLO/RING/LEAF credit,
 not a global BPTT tape. No mechanism is claimed to be equivalent to BPTT; the
 matched controls decide.
+
+## NaN16 TRAIL field-batch kernel (experimental implementation)
+
+`mth/nan16/mth_geometric_trail_field.nas` now stages one fully native,
+255-head, two-rail TRAIL credit block, groups heads into **85 unique triads**,
+requires **2/3 matching-sign votes** per triad and **43/85** eligible
+triads before committing the eligible head-local Q16.16 coefficients and
+eligibility traces. The caller supplies expected/current generation;
+stale generations and below-quorum proposals leave all coefficient and
+persistent eligibility registers unchanged. The kernel is available as
+command 41 of the existing raw NaN16 field driver. All TD, Q16.16
+multiplication, sign votes and gating occur inside the guest, not the host.
+
+The source uses an explicit 255×9 input grid at `0xD000`, local two-rail
+trace and coefficient banks at `0xE600/0xE700/0xE800`, and staged credit
+and 85-triad vote arrays in guest scratch. This is a first **joint
+calculation/gate** without any activation tape. Its fixture checks a
+stale-generation rejection, the precise 43/85 majority with a 2/3
+sign-consensus subgroup, and a 42/85 rejection. It does **not** yet claim
+production persisted-chart integration, full event-ledger replay, or an
+improvement on held-out language tasks. Those are subsequent gates.
+
+## Mainline reconciliation, 2026-11-11
+
+`mth/nan16/mth_geometric_trail_field.nas` and `mth/tests/mth_geometric_field_train_test.nas` are now present on `main`. The native dispatch is opcode 41, not 13, because opcode 13 is the wide causal trunk. The seven native credit kernels are listed with their formula contracts, source and tests in `spec/unified_48m_math_manifest.v1.json`; the original 48M checkpoint and trie are not replaced. Production chart persistence, exact crash/replay and new held-out language gains remain unverified.
