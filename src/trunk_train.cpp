@@ -1,13 +1,16 @@
 #include "nanlm/trunk_train.hpp"
 #include "nanlm/raw_field.hpp"
+#include "nanlm/sha256.hpp"
 
 #include <algorithm>
 #include <array>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <random>
 #include <unordered_map>
@@ -2259,7 +2262,8 @@ int stream_train_cli(int argc, char** argv) {
         return 7;
     }
     if (!vm.phase_table_init() || !vm.ngram_reset() ||
-        !vm.temporal_slots_reset() || !vm.triangle_model_reset()) {
+        !vm.temporal_slots_reset() || !vm.triangle_model_reset() ||
+        !vm.shape_field_reset()) {
         std::cerr << "stream init failed: " << vm.error() << "\n";
         return 7;
     }
@@ -2290,6 +2294,8 @@ int stream_train_cli(int argc, char** argv) {
     std::uint32_t word_rotation_turn = 0;
     std::int32_t word_field_value = 0;
     std::size_t word_field_hot_heads = 0, word_field_hot_triads = 0;
+    std::vector<std::int32_t> first_head255_vector, last_head255_vector;
+    std::int32_t first_head255_word = 0, last_head255_word = 0;
     bool word_field_hot = false;
     std::array<std::int32_t, 3> word_tri_sides{};
     std::int32_t word_tri_area = 0, word_tri_tight = 0;
@@ -2388,6 +2394,14 @@ int stream_train_cli(int argc, char** argv) {
             word_vectors.push_back(std::move(rotated));
         }
         word_vector_count += word_vectors.size();
+        if (!word_vectors.empty()) {
+            if (first_head255_vector.empty()) {
+                first_head255_vector = word_vectors.back();
+                first_head255_word = head255[0];
+            }
+            last_head255_vector = word_vectors.back();
+            last_head255_word = head255[0];
+        }
         if (word_vectors.size() >= 2) {
             std::vector<std::int32_t> wbank;
             wbank.reserve(word_vectors.size() * 256);
@@ -2447,6 +2461,14 @@ int stream_train_cli(int argc, char** argv) {
             }
             word_triangle_records.push_back({sides[0], sides[1], sides[2],
                                              area, tight, orient, shape_score});
+            const std::size_t triad_index =
+                (ti + 2 < word_count && (ti + 2) * 6 + 2 < meta.size())
+                    ? static_cast<std::uint32_t>(meta[(ti + 2) * 6 + 2] % 85)
+                    : static_cast<std::uint32_t>(shape_score % 85);
+            if (!vm.shape_field_observe(triad_index, tight, orient, area)) {
+                std::cerr << "shape field observe failed: " << vm.error() << "\n";
+                return 7;
+            }
             ++word_triangle_count;
             word_tri_area_sum += area;
             word_tri_tight_sum += tight;
@@ -2565,6 +2587,31 @@ int stream_train_cli(int argc, char** argv) {
                 tri_out.write(reinterpret_cast<const char*>(record.data()),
                               static_cast<std::streamsize>(record.size() *
                                                            sizeof(record[0])));
+        }
+    }
+    std::int32_t head255_closure = word_path_closure;
+    if (!first_head255_vector.empty() && !last_head255_vector.empty()) {
+        std::vector<std::int32_t> endpoints;
+        endpoints.insert(endpoints.end(), first_head255_vector.begin(),
+                         first_head255_vector.end());
+        endpoints.insert(endpoints.end(), last_head255_vector.begin(),
+                         last_head255_vector.end());
+        std::int32_t head_len = 0, head_turn = 0, head_curvature = 0;
+        if (!vm.path_geometry(endpoints, 2, 256, head_len, head255_closure,
+                              head_turn, head_curvature)) {
+            std::cerr << "head255 closure failed: " << vm.error() << "\n";
+            return 7;
+        }
+    }
+    std::uint16_t shape_field_accepted = 0;
+    bool shape_field_hot = false;
+    std::int32_t shape_field_mean = 0;
+    if (word_triangle_count > 0) {
+        if (!vm.shape_field_gate(head255_closure, word_path_length, 0,
+                                 shape_field_accepted, shape_field_hot,
+                                 shape_field_mean)) {
+            std::cerr << "shape field gate failed: " << vm.error() << "\n";
+            return 7;
         }
     }
     const std::size_t geometry_samples = sample_bank.size() / 256;
@@ -2714,6 +2761,13 @@ int stream_train_cli(int argc, char** argv) {
                  << ", \"last_triangle_score\": "
                  << (word_triangle_records.empty() ? 0 :
                      word_triangle_records.back()[6])
+                 << ", \"shape_field_accepted\": " << shape_field_accepted
+                 << ", \"shape_field_hot\": "
+                 << (shape_field_hot ? "true" : "false")
+                 << ", \"shape_field_mean\": " << shape_field_mean
+                 << ", \"head255_first_word\": " << first_head255_word
+                 << ", \"head255_last_word\": " << last_head255_word
+                 << ", \"head255_closure\": " << head255_closure
                  << "},\n"
                  << "  \"accepted_triads\": " << accepted << ",\n"
                  << "  \"field_hot\": " << (field_accepted ? "true" : "false") << "\n}\n";
@@ -2728,6 +2782,866 @@ int stream_train_cli(int argc, char** argv) {
               << " accepted_triads=" << accepted
               << " field_hot=" << (field_accepted ? "true" : "false")
               << " output=" << output_prefix << "\n";
+    return 0;
+}
+
+// ---------------------------------------------------------------------------
+// Relation-triangle contrast trainer
+//
+// N16TRI/1 rows carry role text, not precomputed vectors.  This trainer
+// phase-encodes each role in the raw guest, computes the raw triangle shape,
+// trains the positive and negative shape banks, selects a threshold on the
+// valid split, and reports held-out test metrics.  Host code never computes a
+// triangle score itself.
+// ---------------------------------------------------------------------------
+namespace {
+
+constexpr std::size_t kTriDim = 256;
+constexpr std::size_t kTriComponents = 3 * kTriDim;
+constexpr std::size_t kTriRelationCount = 6;
+
+constexpr std::array<const char*, kTriRelationCount> kTriRelationNames = {
+    "ISA", "HAS_SUBTYPE", "PART_OF", "HAS_PART", "CONTRADICTS", "ASSOCIATED"};
+constexpr std::array<const char*, 3> kTriSplitNames = {"train", "valid", "test"};
+constexpr std::array<const char*, 5> kTriLabelNames = {
+    "positive", "inverse", "hard_negative", "negative", "self_negative"};
+
+enum TriSplit : std::uint8_t { kTriTrain = 0, kTriValid = 1, kTriTest = 2 };
+enum TriLabel : std::uint8_t {
+    kTriPositive = 0,
+    kTriInverse = 1,
+    kTriHardNegative = 2,
+    kTriNegative = 3,
+    kTriSelfNegative = 4,
+};
+
+bool tri_positive_label(TriLabel label) {
+    return label == kTriPositive || label == kTriInverse;
+}
+
+struct TriFeature {
+    TriSplit split = kTriTrain;
+    std::uint8_t relation = 0;
+    TriLabel label = kTriPositive;
+    std::uint32_t confidence = 0;
+    std::int32_t score = 0;
+    std::int32_t global_score = 0;
+    std::int32_t shape_score = 0;
+    std::int32_t global_shape_score = 0;
+    std::array<std::int32_t, 3> sides{};
+    std::int32_t area = 0;
+    std::int32_t tightness = 0;
+    std::int32_t orientation = 0;
+};
+
+struct TriBank {
+    std::array<std::int32_t, 3> positive_shape{};
+    std::array<std::int32_t, 2> positive_orientation{};
+    std::array<std::int32_t, 3> negative_shape{};
+    std::array<std::int32_t, 2> negative_orientation{};
+};
+
+struct TriMetrics {
+    std::size_t n = 0;
+    std::size_t positives = 0;
+    std::size_t negatives = 0;
+    std::size_t tp = 0;
+    std::size_t fp = 0;
+    std::size_t tn = 0;
+    std::size_t fn = 0;
+    double auc = 0.5;
+    double balanced_accuracy = 0.0;
+    double precision = 0.0;
+    double recall = 0.0;
+    double f1 = 0.0;
+    double mean_score_positive = 0.0;
+    double mean_score_negative = 0.0;
+    std::int32_t threshold = 0;
+};
+
+std::vector<std::string> tri_split_tabs(const std::string& line) {
+    std::vector<std::string> out;
+    std::size_t start = 0;
+    while (true) {
+        const std::size_t pos = line.find('\t', start);
+        if (pos == std::string::npos) {
+            out.push_back(line.substr(start));
+            break;
+        }
+        out.push_back(line.substr(start, pos - start));
+        start = pos + 1;
+    }
+    return out;
+}
+
+bool tri_parse_uint(const std::string& text, std::uint32_t& value) {
+    if (text.empty()) return false;
+    std::uint64_t acc = 0;
+    for (char c : text) {
+        if (c < '0' || c > '9') return false;
+        acc = acc * 10 + static_cast<std::uint64_t>(c - '0');
+        if (acc > 0xFFFFFFFFull) return false;
+    }
+    value = static_cast<std::uint32_t>(acc);
+    return true;
+}
+
+bool tri_unhex(const std::string& text, std::string& out) {
+    if (text.empty() || (text.size() & 1u)) return false;
+    auto nibble = [](char c) -> int {
+        if (c >= '0' && c <= '9') return c - '0';
+        if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+        if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+        return -1;
+    };
+    out.clear();
+    out.reserve(text.size() / 2);
+    for (std::size_t i = 0; i < text.size(); i += 2) {
+        const int hi = nibble(text[i]);
+        const int lo = nibble(text[i + 1]);
+        if (hi < 0 || lo < 0) return false;
+        out.push_back(static_cast<char>((hi << 4) | lo));
+    }
+    return true;
+}
+
+bool tri_is_sha256_hex(const std::string& text) {
+    if (text.size() != 64) return false;
+    for (char c : text) {
+        const bool digit = c >= '0' && c <= '9';
+        const bool lower = c >= 'a' && c <= 'f';
+        const bool upper = c >= 'A' && c <= 'F';
+        if (!digit && !lower && !upper) return false;
+    }
+    return true;
+}
+
+bool tri_parse_split(const std::string& text, TriSplit& split) {
+    for (std::size_t i = 0; i < kTriSplitNames.size(); ++i) {
+        if (text == kTriSplitNames[i]) {
+            split = static_cast<TriSplit>(i);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool tri_parse_relation(const std::string& text, std::uint8_t& relation) {
+    for (std::size_t i = 0; i < kTriRelationNames.size(); ++i) {
+        if (text == kTriRelationNames[i]) {
+            relation = static_cast<std::uint8_t>(i);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool tri_parse_label(const std::string& text, TriLabel& label) {
+    for (std::size_t i = 0; i < kTriLabelNames.size(); ++i) {
+        if (text == kTriLabelNames[i]) {
+            label = static_cast<TriLabel>(i);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool tri_encode_role(
+    RawFieldVM& vm, const std::string& text,
+    std::unordered_map<std::string, std::vector<std::int32_t>>& cache,
+    std::vector<std::int32_t>& out, std::uint32_t& shard) {
+    const auto found = cache.find(text);
+    if (found != cache.end()) {
+        out = found->second;
+        return true;
+    }
+    std::array<std::uint8_t, 8> window{};
+    window.fill(static_cast<std::uint8_t>(' '));
+    const std::size_t take = std::min<std::size_t>(8, text.size());
+    for (std::size_t i = 0; i < take; ++i)
+        window[8 - take + i] =
+            static_cast<std::uint8_t>(text[text.size() - take + i]);
+    std::vector<std::int32_t> encoded;
+    if (!vm.phase_encode_wide(window.data(), 8, 128, encoded, shard))
+        return false;
+    out = encoded;
+    // Keep the cache bounded.  WordNet lemmas repeat heavily, so this avoids
+    // re-encoding the same role while keeping memory predictable.
+    if (cache.size() >= 24000) cache.clear();
+    cache.emplace(text, encoded);
+    return true;
+}
+
+void tri_read_bank(RawFieldVM& vm, TriBank& bank) {
+    vm.read_triangle_model(bank.positive_shape, bank.positive_orientation);
+    vm.read_triangle_model_negative(bank.negative_shape,
+                                    bank.negative_orientation);
+}
+
+template <typename ScoreFn>
+double tri_auc(const std::vector<const TriFeature*>& rows, ScoreFn score) {
+    std::size_t positives = 0, negatives = 0;
+    std::vector<std::pair<std::int32_t, bool>> values;
+    values.reserve(rows.size());
+    for (const TriFeature* row : rows) {
+        const bool positive = tri_positive_label(row->label);
+        values.emplace_back(score(*row), positive);
+        if (positive) ++positives;
+        else ++negatives;
+    }
+    if (positives == 0 || negatives == 0) return 0.5;
+    std::sort(values.begin(), values.end(),
+              [](const auto& a, const auto& b) {
+                  if (a.first != b.first) return a.first < b.first;
+                  return a.second < b.second;
+              });
+    double rank_sum_positive = 0.0;
+    double rank = 1.0;
+    std::size_t i = 0;
+    while (i < values.size()) {
+        std::size_t j = i;
+        while (j < values.size() && values[j].first == values[i].first) ++j;
+        const double group_size = static_cast<double>(j - i);
+        const double average_rank = rank + (group_size - 1.0) / 2.0;
+        for (std::size_t k = i; k < j; ++k)
+            if (values[k].second) rank_sum_positive += average_rank;
+        rank += group_size;
+        i = j;
+    }
+    const double npos = static_cast<double>(positives);
+    const double nneg = static_cast<double>(negatives);
+    return (rank_sum_positive - npos * (npos + 1.0) / 2.0) / (npos * nneg);
+}
+
+template <typename ScoreFn>
+TriMetrics tri_evaluate(const std::vector<const TriFeature*>& rows,
+                        ScoreFn score, std::int32_t threshold) {
+    TriMetrics metrics;
+    metrics.n = rows.size();
+    metrics.threshold = threshold;
+    double positive_sum = 0.0, negative_sum = 0.0;
+    for (const TriFeature* row : rows) {
+        const bool positive = tri_positive_label(row->label);
+        const std::int32_t value = score(*row);
+        if (positive) {
+            ++metrics.positives;
+            positive_sum += value;
+        } else {
+            ++metrics.negatives;
+            negative_sum += value;
+        }
+        const bool predicted = value >= threshold;
+        if (positive && predicted) ++metrics.tp;
+        else if (positive) ++metrics.fn;
+        else if (predicted) ++metrics.fp;
+        else ++metrics.tn;
+    }
+    if (metrics.positives > 0)
+        metrics.mean_score_positive =
+            positive_sum / static_cast<double>(metrics.positives);
+    if (metrics.negatives > 0)
+        metrics.mean_score_negative =
+            negative_sum / static_cast<double>(metrics.negatives);
+    const double tp = static_cast<double>(metrics.tp);
+    const double fp = static_cast<double>(metrics.fp);
+    const double tn = static_cast<double>(metrics.tn);
+    const double fn = static_cast<double>(metrics.fn);
+    metrics.precision = (tp + fp) > 0.0 ? tp / (tp + fp) : 0.0;
+    metrics.recall = (tp + fn) > 0.0 ? tp / (tp + fn) : 0.0;
+    const double specificity = (tn + fp) > 0.0 ? tn / (tn + fp) : 0.0;
+    metrics.balanced_accuracy = 0.5 * (metrics.recall + specificity);
+    metrics.f1 = (metrics.precision + metrics.recall) > 0.0
+                     ? 2.0 * metrics.precision * metrics.recall /
+                           (metrics.precision + metrics.recall)
+                     : 0.0;
+    metrics.auc = tri_auc(rows, score);
+    return metrics;
+}
+
+template <typename ScoreFn>
+std::int32_t tri_select_threshold(const std::vector<const TriFeature*>& rows,
+                                  ScoreFn score) {
+    if (rows.empty()) return 32768;
+    std::vector<std::pair<std::int32_t, bool>> values;
+    values.reserve(rows.size());
+    std::size_t positives = 0, negatives = 0;
+    for (const TriFeature* row : rows) {
+        const bool positive = tri_positive_label(row->label);
+        values.emplace_back(score(*row), positive);
+        if (positive) ++positives;
+        else ++negatives;
+    }
+    if (positives == 0 || negatives == 0) return 32768;
+    std::sort(values.begin(), values.end(),
+              [](const auto& a, const auto& b) {
+                  if (a.first != b.first) return a.first > b.first;
+                  return a.second > b.second;
+              });
+    auto candidate = [&](std::size_t tp, std::size_t fp,
+                         std::int32_t threshold, double& ba, double& f1) {
+        const std::size_t tn = negatives - fp;
+        const std::size_t fn = positives - tp;
+        const double precision =
+            (tp + fp) > 0 ? static_cast<double>(tp) / (tp + fp) : 0.0;
+        const double recall =
+            (tp + fn) > 0 ? static_cast<double>(tp) / (tp + fn) : 0.0;
+        const double specificity =
+            (tn + fp) > 0 ? static_cast<double>(tn) / (tn + fp) : 0.0;
+        ba = 0.5 * (recall + specificity);
+        f1 = (precision + recall) > 0.0
+                 ? 2.0 * precision * recall / (precision + recall)
+                 : 0.0;
+        (void)threshold;
+    };
+    std::size_t tp = 0, fp = 0;
+    double best_ba = 0.0, best_f1 = 0.0;
+    std::int32_t best_threshold = 65537;
+    candidate(0, 0, 65537, best_ba, best_f1);
+    std::size_t i = 0;
+    while (i < values.size()) {
+        std::size_t j = i;
+        while (j < values.size() && values[j].first == values[i].first) {
+            if (values[j].second) ++tp;
+            else ++fp;
+            ++j;
+        }
+        const std::int32_t threshold = values[i].first;
+        double ba = 0.0, f1 = 0.0;
+        candidate(tp, fp, threshold, ba, f1);
+        const bool better =
+            ba > best_ba + 1e-12 ||
+            (std::abs(ba - best_ba) <= 1e-12 && f1 > best_f1 + 1e-12) ||
+            (std::abs(ba - best_ba) <= 1e-12 &&
+             std::abs(f1 - best_f1) <= 1e-12 &&
+             std::abs(threshold - 32768) < std::abs(best_threshold - 32768));
+        if (better) {
+            best_ba = ba;
+            best_f1 = f1;
+            best_threshold = threshold;
+        }
+        i = j;
+    }
+    return best_threshold;
+}
+
+std::string tri_json_escape(const std::string& text) {
+    std::string out;
+    out.reserve(text.size() + 8);
+    for (char c : text) {
+        switch (c) {
+            case '\\': out += "\\\\"; break;
+            case '"': out += "\\\""; break;
+            case '\n': out += "\\n"; break;
+            case '\r': out += "\\r"; break;
+            case '\t': out += "\\t"; break;
+            default:
+                if (static_cast<unsigned char>(c) < 0x20) {
+                    out += "\\u00";
+                    const char* digits = "0123456789abcdef";
+                    out.push_back(digits[(c >> 4) & 0xF]);
+                    out.push_back(digits[c & 0xF]);
+                } else {
+                    out.push_back(c);
+                }
+                break;
+        }
+    }
+    return out;
+}
+
+void tri_write_metrics(std::ostream& out, const TriMetrics& metrics) {
+    out << "{\"n\":" << metrics.n
+        << ",\"positives\":" << metrics.positives
+        << ",\"negatives\":" << metrics.negatives
+        << ",\"tp\":" << metrics.tp << ",\"fp\":" << metrics.fp
+        << ",\"tn\":" << metrics.tn << ",\"fn\":" << metrics.fn
+        << ",\"auc\":" << std::fixed << std::setprecision(6) << metrics.auc
+        << ",\"balanced_accuracy\":" << metrics.balanced_accuracy
+        << ",\"precision\":" << metrics.precision
+        << ",\"recall\":" << metrics.recall
+        << ",\"f1\":" << metrics.f1
+        << ",\"mean_score_positive\":" << metrics.mean_score_positive
+        << ",\"mean_score_negative\":" << metrics.mean_score_negative
+        << ",\"threshold\":" << metrics.threshold << "}";
+}
+
+void tri_write_bank(std::ostream& out, const TriBank& bank) {
+    out << "{\"positive_shape\":["
+        << bank.positive_shape[0] << "," << bank.positive_shape[1] << ","
+        << bank.positive_shape[2] << "],\"positive_orientation\":["
+        << bank.positive_orientation[0] << ","
+        << bank.positive_orientation[1] << "],\"negative_shape\":["
+        << bank.negative_shape[0] << "," << bank.negative_shape[1] << ","
+        << bank.negative_shape[2] << "],\"negative_orientation\":["
+        << bank.negative_orientation[0] << ","
+        << bank.negative_orientation[1] << "]}";
+}
+
+std::string tri_file_sha256(const std::string& path) {
+    std::ifstream in(path, std::ios::binary);
+    if (!in) return "";
+    Sha256 hash;
+    std::array<char, 65536> buffer{};
+    while (in) {
+        in.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
+        const std::streamsize got = in.gcount();
+        if (got > 0)
+            hash.update(buffer.data(), static_cast<std::size_t>(got));
+    }
+    return hex(hash.final());
+}
+
+} // namespace
+
+int triangle_contrast_train_cli(int argc, char** argv) {
+    if (argc < 3) {
+        std::cerr << "usage: nanlm-universal triangle-contrast-train RECORDS"
+                     " [PREFIX] [MAX_ROWS]\n";
+        return 2;
+    }
+    const std::string records_path = argv[2];
+    std::string prefix = "state/triangle_contrast";
+    std::size_t max_rows = 0;
+    try {
+        if (argc > 3) prefix = argv[3];
+        if (argc > 4) max_rows = static_cast<std::size_t>(std::stoull(argv[4]));
+    } catch (...) {
+        std::cerr << "invalid numeric argument\n";
+        return 2;
+    }
+    std::ifstream records(records_path, std::ios::binary);
+    if (!records) {
+        std::cerr << "cannot open records: " << records_path << "\n";
+        return 3;
+    }
+    std::string header;
+    std::getline(records, header);
+    if (!header.empty() && header.back() == '\r') header.pop_back();
+    if (header != "N16TRI/1") {
+        std::cerr << "unsupported records header: " << header << "\n";
+        return 3;
+    }
+    RawFieldVM vm("build/field_driver.nan");
+    if (!vm.ready()) {
+        std::cerr << "raw field VM unavailable: " << vm.error() << "\n";
+        return 7;
+    }
+    if (!vm.phase_table_init()) {
+        std::cerr << "phase table init failed: " << vm.error() << "\n";
+        return 7;
+    }
+    if (!vm.triangle_model_reset()) {
+        std::cerr << "triangle reset failed: " << vm.error() << "\n";
+        return 7;
+    }
+
+    std::vector<TriFeature> features;
+    features.reserve(max_rows ? max_rows : 1u << 20);
+    std::unordered_map<std::string, std::vector<std::int32_t>> role_cache;
+    std::array<std::size_t, 3> split_counts{};
+    std::array<std::size_t, 5> label_counts{};
+    std::array<std::size_t, kTriRelationCount> relation_counts{};
+    std::uint32_t shard = 0;
+    std::string line;
+    std::size_t line_no = 1;
+    while (std::getline(records, line)) {
+        ++line_no;
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        if (line.empty()) continue;
+        if (max_rows && features.size() >= max_rows) break;
+        const std::vector<std::string> fields = tri_split_tabs(line);
+        if (fields.size() != 9) {
+            std::cerr << "line " << line_no << ": expected 9 fields, got "
+                      << fields.size() << "\n";
+            return 3;
+        }
+        TriFeature feature;
+        if (!tri_parse_split(fields[0], feature.split) ||
+            !tri_parse_relation(fields[1], feature.relation) ||
+            !tri_parse_label(fields[2], feature.label)) {
+            std::cerr << "line " << line_no << ": invalid split/relation/label\n";
+            return 3;
+        }
+        if (!tri_parse_uint(fields[3], feature.confidence) ||
+            feature.confidence > 65535) {
+            std::cerr << "line " << line_no << ": invalid confidence\n";
+            return 3;
+        }
+        std::string subject_text, predicate_text, object_text;
+        if (!tri_unhex(fields[4], subject_text) ||
+            !tri_unhex(fields[5], predicate_text) ||
+            !tri_unhex(fields[6], object_text)) {
+            std::cerr << "line " << line_no << ": invalid role hex\n";
+            return 3;
+        }
+        if (subject_text.empty() || predicate_text.empty() || object_text.empty()) {
+            std::cerr << "line " << line_no << ": empty role text\n";
+            return 3;
+        }
+        if (!tri_is_sha256_hex(fields[7])) {
+            std::cerr << "line " << line_no << ": invalid source_sha256\n";
+            return 3;
+        }
+        if (fields[8].empty()) {
+            std::cerr << "line " << line_no << ": empty provenance\n";
+            return 3;
+        }
+        if (feature.label == kTriSelfNegative) {
+            if (subject_text != object_text) {
+                std::cerr << "line " << line_no
+                          << ": self_negative roles differ\n";
+                return 3;
+            }
+        }
+        // Non-self rows may share role text when two distinct synsets have the
+        // same first lemma.  The synset IDs live in provenance; the trainer
+        // must not reject a legitimate homonym relation on text equality.
+        std::vector<std::int32_t> subject_vector, predicate_vector,
+            object_vector;
+        if (!tri_encode_role(vm, subject_text, role_cache, subject_vector,
+                             shard) ||
+            !tri_encode_role(vm, predicate_text, role_cache, predicate_vector,
+                             shard) ||
+            !tri_encode_role(vm, object_text, role_cache, object_vector,
+                             shard)) {
+            std::cerr << "line " << line_no
+                      << ": role phase encoding failed: " << vm.error() << "\n";
+            return 7;
+        }
+        std::vector<std::int32_t> triangle;
+        triangle.reserve(kTriComponents);
+        triangle.insert(triangle.end(), subject_vector.begin(),
+                        subject_vector.end());
+        triangle.insert(triangle.end(), predicate_vector.begin(),
+                        predicate_vector.end());
+        triangle.insert(triangle.end(), object_vector.begin(),
+                        object_vector.end());
+        if (triangle.size() != kTriComponents) {
+            std::cerr << "line " << line_no << ": role vector size mismatch\n";
+            return 7;
+        }
+        if (!vm.triangle_geometry(triangle, kTriDim, feature.sides,
+                                  feature.area, feature.tightness,
+                                  feature.orientation)) {
+            std::cerr << "line " << line_no
+                      << ": triangle geometry failed: " << vm.error() << "\n";
+            return 7;
+        }
+        ++split_counts[static_cast<std::size_t>(feature.split)];
+        ++label_counts[static_cast<std::size_t>(feature.label)];
+        ++relation_counts[feature.relation];
+        features.push_back(feature);
+        if (features.size() % 100000 == 0)
+            std::cerr << "parsed " << features.size() << " rows\n";
+    }
+    if (features.empty()) {
+        std::cerr << "no rows parsed\n";
+        return 3;
+    }
+
+    std::array<TriBank, kTriRelationCount> relation_banks{};
+    std::array<bool, kTriRelationCount> relation_trained{};
+    std::array<std::size_t, kTriRelationCount> relation_train_positive{};
+    std::array<std::size_t, kTriRelationCount> relation_train_negative{};
+    for (std::size_t r = 0; r < kTriRelationCount; ++r) {
+        if (!vm.triangle_model_reset()) {
+            std::cerr << "triangle reset failed: " << vm.error() << "\n";
+            return 7;
+        }
+        std::size_t positive = 0, negative = 0;
+        for (const TriFeature& feature : features) {
+            if (feature.split != kTriTrain || feature.relation != r) continue;
+            std::int32_t count = 0;
+            if (tri_positive_label(feature.label)) {
+                if (!vm.triangle_model_observe(feature.sides, feature.area,
+                                               feature.tightness,
+                                               feature.orientation, count)) {
+                    std::cerr << "positive observe failed: " << vm.error()
+                              << "\n";
+                    return 7;
+                }
+                ++positive;
+            } else {
+                if (!vm.triangle_model_observe_negative(
+                        feature.sides, feature.area, feature.tightness,
+                        feature.orientation, count)) {
+                    std::cerr << "negative observe failed: " << vm.error()
+                              << "\n";
+                    return 7;
+                }
+                ++negative;
+            }
+        }
+        relation_train_positive[r] = positive;
+        relation_train_negative[r] = negative;
+        relation_trained[r] = positive > 0 && negative > 0;
+        tri_read_bank(vm, relation_banks[r]);
+        for (TriFeature& feature : features) {
+            if (feature.relation != r) continue;
+            if (!vm.triangle_model_score_contrastive(
+                    feature.sides, feature.area, feature.tightness,
+                    feature.score) ||
+                !vm.triangle_model_score(feature.sides, feature.area,
+                                         feature.tightness,
+                                         feature.shape_score)) {
+                std::cerr << "relation score failed: " << vm.error() << "\n";
+                return 7;
+            }
+        }
+        std::cerr << "trained relation " << kTriRelationNames[r]
+                  << " pos=" << positive << " neg=" << negative << "\n";
+    }
+
+    TriBank global_bank;
+    if (!vm.triangle_model_reset()) {
+        std::cerr << "triangle reset failed: " << vm.error() << "\n";
+        return 7;
+    }
+    std::size_t global_positive = 0, global_negative = 0;
+    for (const TriFeature& feature : features) {
+        if (feature.split != kTriTrain) continue;
+        std::int32_t count = 0;
+        if (tri_positive_label(feature.label)) {
+            if (!vm.triangle_model_observe(feature.sides, feature.area,
+                                           feature.tightness,
+                                           feature.orientation, count)) {
+                std::cerr << "global positive observe failed: " << vm.error()
+                          << "\n";
+                return 7;
+            }
+            ++global_positive;
+        } else {
+            if (!vm.triangle_model_observe_negative(
+                    feature.sides, feature.area, feature.tightness,
+                    feature.orientation, count)) {
+                std::cerr << "global negative observe failed: " << vm.error()
+                          << "\n";
+                return 7;
+            }
+            ++global_negative;
+        }
+    }
+    tri_read_bank(vm, global_bank);
+    for (TriFeature& feature : features) {
+        if (!vm.triangle_model_score_contrastive(
+                feature.sides, feature.area, feature.tightness,
+                feature.global_score) ||
+            !vm.triangle_model_score(feature.sides, feature.area,
+                                     feature.tightness,
+                                     feature.global_shape_score)) {
+            std::cerr << "global score failed: " << vm.error() << "\n";
+            return 7;
+        }
+    }
+
+    const std::filesystem::path prefix_path(prefix);
+    if (prefix_path.has_parent_path())
+        std::filesystem::create_directories(prefix_path.parent_path());
+
+    std::array<std::vector<const TriFeature*>, kTriRelationCount> valid_rows,
+        test_rows;
+    for (const TriFeature& feature : features) {
+        if (feature.split == kTriValid)
+            valid_rows[feature.relation].push_back(&feature);
+        else if (feature.split == kTriTest)
+            test_rows[feature.relation].push_back(&feature);
+    }
+    auto relation_score = [](const TriFeature& feature) {
+        return feature.score;
+    };
+    auto global_score = [](const TriFeature& feature) {
+        return feature.global_score;
+    };
+    std::array<std::int32_t, kTriRelationCount> relation_thresholds{};
+    std::array<TriMetrics, kTriRelationCount> relation_valid_metrics{};
+    std::array<TriMetrics, kTriRelationCount> relation_test_metrics{};
+    for (std::size_t r = 0; r < kTriRelationCount; ++r) {
+        relation_thresholds[r] =
+            tri_select_threshold(valid_rows[r], relation_score);
+        relation_valid_metrics[r] = tri_evaluate(
+            valid_rows[r], relation_score, relation_thresholds[r]);
+        relation_test_metrics[r] = tri_evaluate(
+            test_rows[r], relation_score, relation_thresholds[r]);
+    }
+    std::vector<const TriFeature*> global_valid, global_test;
+    for (const TriFeature& feature : features) {
+        if (feature.split == kTriValid) global_valid.push_back(&feature);
+        else if (feature.split == kTriTest) global_test.push_back(&feature);
+    }
+    const std::int32_t global_threshold =
+        tri_select_threshold(global_valid, global_score);
+    const TriMetrics global_valid_metrics =
+        tri_evaluate(global_valid, global_score, global_threshold);
+    const TriMetrics global_test_metrics =
+        tri_evaluate(global_test, global_score, global_threshold);
+
+    {
+        std::ofstream scores(prefix + ".scores.tsv", std::ios::binary);
+        if (!scores) {
+            std::cerr << "cannot write scores\n";
+            return 4;
+        }
+        scores << "split\trelation\tlabel\tconfidence\trelation_trained\t"
+                  "score\tglobal_score\tshape_score\tglobal_shape_score\t"
+                  "side0\tside1\tside2\tarea\ttightness\torientation\t"
+                  "provenance\n";
+        std::ifstream replay(records_path, std::ios::binary);
+        std::string replay_header;
+        std::getline(replay, replay_header);
+        std::size_t index = 0;
+        std::string replay_line;
+        while (std::getline(replay, replay_line) && index < features.size()) {
+            if (!replay_line.empty() && replay_line.back() == '\r')
+                replay_line.pop_back();
+            if (replay_line.empty()) continue;
+            const std::vector<std::string> fields =
+                tri_split_tabs(replay_line);
+            if (fields.size() != 9) {
+                std::cerr << "replay field mismatch\n";
+                return 4;
+            }
+            const TriFeature& feature = features[index++];
+            scores << kTriSplitNames[static_cast<std::size_t>(feature.split)]
+                   << '\t' << kTriRelationNames[feature.relation] << '\t'
+                   << kTriLabelNames[static_cast<std::size_t>(feature.label)]
+                   << '\t' << feature.confidence << '\t'
+                   << (relation_trained[feature.relation] ? 1 : 0) << '\t'
+                   << feature.score << '\t' << feature.global_score << '\t'
+                   << feature.shape_score << '\t'
+                   << feature.global_shape_score << '\t' << feature.sides[0]
+                   << '\t' << feature.sides[1] << '\t' << feature.sides[2]
+                   << '\t' << feature.area << '\t' << feature.tightness
+                   << '\t' << feature.orientation << '\t' << fields[8]
+                   << '\n';
+        }
+        if (index != features.size()) {
+            std::cerr << "replay row count mismatch\n";
+            return 4;
+        }
+    }
+
+    {
+        std::ofstream banks(prefix + ".banks.tsv", std::ios::binary);
+        if (!banks) {
+            std::cerr << "cannot write banks\n";
+            return 4;
+        }
+        banks << "model\tpos_tight_sum\tpos_area_sum\tpos_count\t"
+                 "pos_orient_positive\tpos_orient_negative\t"
+                 "neg_tight_sum\tneg_area_sum\tneg_count\t"
+                 "neg_orient_positive\tneg_orient_negative\n";
+        for (std::size_t r = 0; r < kTriRelationCount; ++r) {
+            const TriBank& bank = relation_banks[r];
+            banks << kTriRelationNames[r] << '\t'
+                  << bank.positive_shape[0] << '\t'
+                  << bank.positive_shape[1] << '\t'
+                  << bank.positive_shape[2] << '\t'
+                  << bank.positive_orientation[0] << '\t'
+                  << bank.positive_orientation[1] << '\t'
+                  << bank.negative_shape[0] << '\t'
+                  << bank.negative_shape[1] << '\t'
+                  << bank.negative_shape[2] << '\t'
+                  << bank.negative_orientation[0] << '\t'
+                  << bank.negative_orientation[1] << '\n';
+        }
+        banks << "global\t" << global_bank.positive_shape[0] << '\t'
+              << global_bank.positive_shape[1] << '\t'
+              << global_bank.positive_shape[2] << '\t'
+              << global_bank.positive_orientation[0] << '\t'
+              << global_bank.positive_orientation[1] << '\t'
+              << global_bank.negative_shape[0] << '\t'
+              << global_bank.negative_shape[1] << '\t'
+              << global_bank.negative_shape[2] << '\t'
+              << global_bank.negative_orientation[0] << '\t'
+              << global_bank.negative_orientation[1] << '\n';
+    }
+
+    {
+        std::ofstream metrics(prefix + ".metrics.json", std::ios::binary);
+        if (!metrics) {
+            std::cerr << "cannot write metrics\n";
+            return 4;
+        }
+        metrics << "{\n"
+                << "  \"schema\": \"nanlm.triangle-contrast-metrics/1\",\n"
+                << "  \"records\": \"" << tri_json_escape(records_path)
+                << "\",\n"
+                << "  \"records_sha256\": \"" << tri_file_sha256(records_path)
+                << "\",\n"
+                << "  \"rows\": " << features.size() << ",\n"
+                << "  \"splits\": {\"train\": " << split_counts[0]
+                << ", \"valid\": " << split_counts[1]
+                << ", \"test\": " << split_counts[2] << "},\n"
+                << "  \"labels\": {\"positive\": " << label_counts[0]
+                << ", \"inverse\": " << label_counts[1]
+                << ", \"hard_negative\": " << label_counts[2]
+                << ", \"negative\": " << label_counts[3]
+                << ", \"self_negative\": " << label_counts[4] << "},\n"
+                << "  \"relations\": {\"ISA\": " << relation_counts[0]
+                << ", \"HAS_SUBTYPE\": " << relation_counts[1]
+                << ", \"PART_OF\": " << relation_counts[2]
+                << ", \"HAS_PART\": " << relation_counts[3]
+                << ", \"CONTRADICTS\": " << relation_counts[4]
+                << ", \"ASSOCIATED\": " << relation_counts[5] << "},\n"
+                << "  \"per_relation\": {\n";
+        for (std::size_t r = 0; r < kTriRelationCount; ++r) {
+            const std::size_t train_rows =
+                relation_train_positive[r] + relation_train_negative[r];
+            metrics << "    \"" << kTriRelationNames[r] << "\": {\n"
+                    << "      \"train_rows\": " << train_rows << ",\n"
+                    << "      \"train_positive\": "
+                    << relation_train_positive[r] << ",\n"
+                    << "      \"train_negative\": "
+                    << relation_train_negative[r] << ",\n"
+                    << "      \"valid_rows\": " << valid_rows[r].size()
+                    << ",\n"
+                    << "      \"test_rows\": " << test_rows[r].size()
+                    << ",\n"
+                    << "      \"trained\": "
+                    << (relation_trained[r] ? "true" : "false") << ",\n"
+                    << "      \"bank\": ";
+            tri_write_bank(metrics, relation_banks[r]);
+            metrics << ",\n      \"threshold\": " << relation_thresholds[r]
+                    << ",\n      \"valid\": ";
+            tri_write_metrics(metrics, relation_valid_metrics[r]);
+            metrics << ",\n      \"test\": ";
+            tri_write_metrics(metrics, relation_test_metrics[r]);
+            metrics << "\n    }"
+                    << (r + 1 < kTriRelationCount ? "," : "") << "\n";
+        }
+        metrics << "  },\n"
+                << "  \"global\": {\n"
+                << "    \"train_positive\": " << global_positive << ",\n"
+                << "    \"train_negative\": " << global_negative << ",\n"
+                << "    \"trained\": "
+                << ((global_positive > 0 && global_negative > 0) ? "true"
+                                                                  : "false")
+                << ",\n"
+                << "    \"bank\": ";
+        tri_write_bank(metrics, global_bank);
+        metrics << ",\n    \"threshold\": " << global_threshold
+                << ",\n    \"valid\": ";
+        tri_write_metrics(metrics, global_valid_metrics);
+        metrics << ",\n    \"test\": ";
+        tri_write_metrics(metrics, global_test_metrics);
+        metrics << "\n  },\n"
+                << "  \"notes\": [\n"
+                << "    \"raw scores are shape-bank contrastive scores, not calibrated probabilities\",\n"
+                << "    \"threshold is selected on valid by balanced accuracy; test metrics are held out\",\n"
+                << "    \"per-relation banks are sequential snapshots; the global bank is the production model\",\n"
+                << "    \"train scores are in-sample diagnostics and must not be used for calibration\"\n"
+                << "  ]\n"
+                << "}\n";
+    }
+
+    std::cout << "triangle_contrast_train rows=" << features.size()
+              << " valid=" << global_valid.size() << " test=" << global_test.size()
+              << " global_threshold=" << global_threshold
+              << " global_test_auc=" << std::fixed << std::setprecision(6)
+              << global_test_metrics.auc
+              << " global_test_balanced_accuracy="
+              << global_test_metrics.balanced_accuracy
+              << " prefix=" << prefix << "\n";
     return 0;
 }
 

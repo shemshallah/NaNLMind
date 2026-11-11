@@ -60,6 +60,9 @@ Field-driver commands:
 | 90 | `mth_tri_model_reset` | clear semantic triangle shape stats |
 | 91 | `mth_tri_model_observe` | train tightness/area/orientation stats |
 | 92 | `mth_tri_model_score` | score a triangle against learned shape |
+| 96 | `mth_tri_field_reset` | clear shape-gated field tables |
+| 97 | `mth_tri_field_observe` | bind a triangle to a triad and quality |
+| 98 | `mth_shape_field_gate` | 43/85 count gated by shape and closure |
 | 93 | `mth_tri_model_observe_negative` | accumulate negative-shape stats |
 | 94 | `mth_tri_model_score_contrast` | positive-vs-negative shape score |
 | 72 | `mth_leaf_verify` | reconstruct codebook+residual, L1 accept/reject |
@@ -815,6 +818,37 @@ The current smoke corpus produced 789 word vectors and 637 scored triangles.
 The triangle shape model learns positive/negative tightness and area banks in
 the guest and scores the first/last examples. The semantic layer is now using
 actual word spans and word phase vectors, not arbitrary sample vectors.
+
+### Shape-gated head → trihead → field
+
+The semantic triangle is now wired into a second raw 43/85 gate:
+
+```text
+word triangle
+  -> triad index from the tokenizer meta record
+  -> vote mask 7 + best tightness quality
+  -> 0x2F0000 votes / 0x2F0100 quality
+
+field gate:
+  votes >= 2-of-3
+  quality >= mean quality
+  head255 endpoint closure <= path/2
+  accepted triads >= 43
+```
+
+`mth_shape_field_gate` returns the accepted count, field flag and mean shape
+quality. `stream-train` also records the first and last head-255 current word
+and their raw endpoint closure. The temporal structural field and the semantic
+shape field are reported separately:
+
+```text
+field_hot          temporal S+/S-/head-255 field
+shape_field_hot    semantic triangle-shape field
+head255_first/last current anchors
+head255_closure    endpoint distance
+```
+
+This makes the field a geometric gate as well as a vote count.
 
 The existing released phase bank is the earlier D64/128-component bank. The
 new 256-component codebook is released separately under the same release tag.

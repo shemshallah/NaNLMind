@@ -496,6 +496,12 @@ public:
     bool phase_hyperbolic(const std::vector<std::int32_t>& phase_vector,
                           std::size_t lanes, std::int32_t& mean_energy,
                           std::int32_t& radial);
+    bool shape_field_reset();
+    bool shape_field_observe(std::uint32_t triad, std::int32_t tightness,
+                             std::int32_t orientation, std::int32_t area);
+    bool shape_field_gate(std::int32_t closure, std::int32_t path_length,
+                          std::int32_t threshold, std::uint16_t& accepted,
+                          bool& field_hot, std::int32_t& mean_quality);
     bool triangle_model_reset();
     bool triangle_model_observe(const std::array<std::int32_t, 3>& sides,
                                 std::int32_t area, std::int32_t tightness,

@@ -81,6 +81,7 @@ JMP @field_driver_entry
 .include "../nan16/mth_geometry.nas"
 .include "../nan16/mth_triangle_model.nas"
 .include "../nan16/mth_phase_geometry.nas"
+.include "../nan16/mth_shape_field.nas"
 .include "../nan16/mth_dual_gate.nas"
 .include "../nan16/mth_context_backoff.nas"
 .include "../nan16/mth_context_encode.nas"
@@ -342,6 +343,15 @@ field_driver_main:
   MOVI r3,95
   CMP r2,r3
   JMP[EQ] @field_driver_phase_hyperbolic
+  MOVI r3,96
+  CMP r2,r3
+  JMP[EQ] @field_driver_shape_field_reset
+  MOVI r3,97
+  CMP r2,r3
+  JMP[EQ] @field_driver_shape_field_observe
+  MOVI r3,98
+  CMP r2,r3
+  JMP[EQ] @field_driver_shape_field_gate
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -1365,6 +1375,35 @@ field_driver_phase_hyperbolic:
   MOVI r10,0x4010
   ST r1,r10,0
   ST r2,r10,1
+  JMP @field_driver_return
+
+field_driver_shape_field_reset:
+  CALL @mth_tri_field_reset
+  MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_shape_field_observe:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r4,r10,3
+  CALL @mth_tri_field_observe
+  MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_shape_field_gate:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  CALL @mth_shape_field_gate
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
   JMP @field_driver_return
 
 field_driver_context_encode:

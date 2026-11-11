@@ -2017,6 +2017,40 @@ bool RawFieldVM::read_triangle_model_negative(
     return true;
 }
 
+bool RawFieldVM::shape_field_reset() {
+    if (!write_word(kCommandBase, 96)) return fail("cannot write shape field reset");
+    return run_command();
+}
+
+bool RawFieldVM::shape_field_observe(std::uint32_t triad,
+                                     std::int32_t tightness,
+                                     std::int32_t orientation,
+                                     std::int32_t area) {
+    if (triad >= 85) return fail("shape field triad outside 0..84");
+    if (!write_word(kProposalBase + 0, triad) ||
+        !write_word(kProposalBase + 1, static_cast<std::uint32_t>(tightness)) ||
+        !write_word(kProposalBase + 2, static_cast<std::uint32_t>(orientation)) ||
+        !write_word(kProposalBase + 3, static_cast<std::uint32_t>(area)) ||
+        !write_word(kCommandBase, 97)) return fail("cannot write shape observe");
+    return run_command();
+}
+
+bool RawFieldVM::shape_field_gate(std::int32_t closure,
+                                  std::int32_t path_length,
+                                  std::int32_t threshold,
+                                  std::uint16_t& accepted, bool& field_hot,
+                                  std::int32_t& mean_quality) {
+    if (!write_word(kProposalBase + 0, static_cast<std::uint32_t>(closure)) ||
+        !write_word(kProposalBase + 1, static_cast<std::uint32_t>(path_length)) ||
+        !write_word(kProposalBase + 2, static_cast<std::uint32_t>(threshold)) ||
+        !write_word(kCommandBase, 98)) return fail("cannot write shape gate");
+    if (!run_command()) return false;
+    accepted = static_cast<std::uint16_t>(read_word(kResultBase));
+    field_hot = (read_word(kResultBase + 1) & 1u) != 0;
+    mean_quality = static_cast<std::int32_t>(read_word(kResultBase + 2));
+    return true;
+}
+
 bool RawFieldVM::phase_hyperbolic(
     const std::vector<std::int32_t>& phase_vector, std::size_t lanes,
     std::int32_t& mean_energy, std::int32_t& radial) {

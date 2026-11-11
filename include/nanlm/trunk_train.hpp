@@ -10,5 +10,6 @@ int meta_tokenize_cli(int argc, char** argv);
 int temporal_tokenize_cli(int argc, char** argv);
 int ngram_train_cli(int argc, char** argv);
 int stream_train_cli(int argc, char** argv);
+int triangle_contrast_train_cli(int argc, char** argv);
 int context_hash_check_cli(int argc, char** argv);
 }
