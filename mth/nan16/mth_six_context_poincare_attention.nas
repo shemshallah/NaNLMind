@@ -252,12 +252,18 @@ scpa_return:
   LD r15,r0,@scpa_link
   RET
 
-scpa_link: .word 0
-scpa_request: .word 0
-scpa_output: .word 0
-scpa_valid: .word 0
-scpa_i: .word 0
-scpa_word_slot: .word 0
+scpa_link:
+  .word 0
+scpa_request:
+  .word 0
+scpa_output:
+  .word 0
+scpa_valid:
+  .word 0
+scpa_i:
+  .word 0
+scpa_word_slot:
+  .word 0
 scpa_mask_bits:
   .word 1,2,4,8,16,32
 scpa_offsets:
