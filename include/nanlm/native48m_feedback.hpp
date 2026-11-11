@@ -133,6 +133,51 @@ public:
         r.candidate_staged=true;
         return r;
     }
+    struct LossFeedbackResult {
+        std::int32_t guest_tca_credit_q16=0;
+        std::int32_t guest_combined_credit_q16=0;
+        float candidate_tensor_value=0.0f;
+    };
+    // Call only after the ORIGINAL R25 decoder has scored a candidate word.
+    // The transport passes log P(candidate word|context) from the frozen
+    // 48M decoder and the normalized candidate distribution as Q16.16.
+    // Native TCA computes their signed advantage; native credit-combine
+    // blends it with the earlier guest MC0 response. The C++ side performs
+    // only ABI conversion and stages the result in candidate storage.
+    // No active tensor or 48M parameter mutation is allowed here.
+    LossFeedbackResult stage_decoder_loss_feedback(
+        const Native48MFeedbackReceipt& receipt,
+        std::int32_t baseline_log_probability_q16,
+        std::int32_t candidate_log_probability_q16,
+        const std::array<std::int32_t,7>& guest_coefficients_q16) {
+        if(!receipt.native_measured||!receipt.meta_available||!receipt.candidate_staged)
+            throw std::invalid_argument("requires staged guest feedback receipt");
+        if(!arena_.candidate_open())
+            throw std::logic_error("candidate bank was closed before loss feedback");
+        if(baseline_log_probability_q16>0||candidate_log_probability_q16>0)
+            throw std::invalid_argument("invalid log-probability sign");
+        std::int32_t advantage=0;
+        if(!vm_.tca(candidate_log_probability_q16,
+                    baseline_log_probability_q16,
+                    baseline_log_probability_q16,advantage))
+            throw std::runtime_error("native loss TCA: "+vm_.error());
+        const double meta_q16=static_cast<double>(receipt.native_log_weight)*65536.0;
+        if(!std::isfinite(meta_q16)||std::fabs(meta_q16)>524288.0)
+            throw std::invalid_argument("invalid native meta credit");
+        std::array<std::int32_t,7> channels{};
+        channels[0]=static_cast<std::int32_t>(std::llround(meta_q16));
+        channels[5]=advantage; // TCA, native signed exact-word loss improvement
+        std::int32_t guest_combined=0;
+        if(!vm_.combine_credits(channels,guest_coefficients_q16,guest_combined))
+            throw std::runtime_error("native loss credit combine: "+vm_.error());
+        const float candidate_value=static_cast<float>(guest_combined)/65536.0f;
+        if(!std::isfinite(candidate_value)||std::fabs(candidate_value)>8.0f)
+            throw std::invalid_argument("native candidate credit outside bound");
+        arena_.stage_native_value(receipt.proposer,receipt.h,receipt.a,
+                                  receipt.b,candidate_value);
+        return {advantage,guest_combined,candidate_value};
+    }
+
     // Caller commits only sourced past context. Not a 48M model-weight commit.
     void commit_context(const Native48MFeedbackReceipt& receipt){
         if(!receipt.native_measured)throw std::invalid_argument("not guest measured");
