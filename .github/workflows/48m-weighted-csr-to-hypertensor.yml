@@ -13,7 +13,12 @@ permissions:
   contents: read
 jobs:
   weighted-csr-native-integration:
-    runs-on: ubuntu-latest
+    name: Native CSR to tensor / ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
