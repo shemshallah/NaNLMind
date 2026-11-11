@@ -776,9 +776,13 @@ the positive bank. `stream-train` constructs negatives from non-adjacent word
 vectors in the same line and reports `contrastive_triangles`,
 `contrastive_score_sum` and `contrastive_example_score`.
 
-This is still a shape prior, not a supervised semantic truth classifier; the
-next step is a source-disjoint positive/negative evaluation with calibrated
-thresholds.
+This is still a shape prior, not a supervised semantic truth classifier. The
+source-disjoint positive/negative evaluation with calibrated thresholds is now
+implemented in [Relation and inverse triangle corpus](RELATION_TRIANGLE_CORPUS.md).
+On the current medium WordNet sample the global raw test AUC is 0.5659 and the
+calibrated global test AUC is 0.5976 (ECE 0.0044), with weak per-relation
+results. Those are corpus labels and calibrated research outputs, not semantic
+truth.
 
 ### Trig rotation + hyperbolic synergy
 
@@ -853,6 +857,46 @@ This makes the field a geometric gate as well as a vote count.
 The existing released phase bank is the earlier D64/128-component bank. The
 new 256-component codebook is released separately under the same release tag.
 
+### Source-disjoint relation corpus and calibration
+
+`N16TRI/1` is the provenance-bound WordNet 3.1 relation corpus. It contains
+canonical forward anchors, inverse-direction rows, hard negatives, uniform
+same-POS random negatives, and self-negatives. Each row carries a pair-derived
+split, a source-line digest, and a pipe-delimited provenance string. The
+default pair split has zero cross-split anchor pairs and zero cross-split row
+pairs; the manifest reports synset leakage separately, and `--split-by synset`
+is available for a stricter evaluation.
+
+The raw trainer fits six independent per-relation shape banks and one global
+bank:
+
+```sh
+./build/nanlm-universal triangle-contrast-train \
+  state/relation_triangle/tri.tsv \
+  state/relation_triangle/contrast 0
+```
+
+Calibration fits Platt and isotonic models on `valid` only, chooses isotonic
+only when valid log loss improves by at least `0.01`, selects a balanced
+accuracy threshold on valid calibrated probabilities, and evaluates untouched
+`test` at that threshold and at `0.5`:
+
+```sh
+python3 tools/calibrate_triangle_relations.py \
+  state/relation_triangle/contrast.scores.tsv \
+  state/relation_triangle/contrast
+```
+
+The current medium run (18,802 anchors, 143,746 rows) has global raw test AUC
+`0.5659`, calibrated global test AUC `0.5976`, balanced accuracy `0.5980`, and
+ECE `0.0044` at the valid-optimal threshold `0.3075`. Per-relation results are
+weak: `CONTRADICTS` raw AUC `0.6991`, `PART_OF` `0.6186`, `HAS_PART` `0.5843`,
+`ISA` `0.5340`, `ASSOCIATED` `0.5303`, and `HAS_SUBTYPE` `0.5127`. The model is
+a shape prior over the last 8 bytes of each role text, not a semantic relation
+encoder; the calibrated labels are corpus labels, not truth. See
+[Relation and inverse triangle corpus](RELATION_TRIANGLE_CORPUS.md) for the
+schema, commands, full metric table, and caveats.
+
 ## 13. Remaining production gates
 
 - A corpus-wide, multi-iteration 8-subvector PQ codebook rather than the
@@ -865,3 +909,6 @@ new 256-component codebook is released separately under the same release tag.
   credit path into hot triheads is now live.
 - Book-disjoint phase/PQ/matrix evaluation; the phase bank itself is not yet a
   language-quality result.
+- Relation-triangle role features beyond the 8-byte phase suffix. The current
+  shape model is a weak prior; calibrated relation labels are corpus labels,
+  not semantic truth.

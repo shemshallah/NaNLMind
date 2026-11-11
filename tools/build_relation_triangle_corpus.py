@@ -153,6 +153,8 @@ class Anchor:
     pointer: str
     source_file: str
     source_line: int
+    source_sha256: str
+    source_sid: str
     split: str
 
 
@@ -320,6 +322,7 @@ def row_provenance(
     pointer: str = "",
     source_file: str = "",
     source_line: int = 0,
+    source_sid: str = "",
     extra: str = "",
 ) -> str:
     gloss_digest = sha256_hex(obj.gloss.encode("utf-8", "replace"))[:16]
@@ -339,6 +342,8 @@ def row_provenance(
         parts.append(f"file={source_file}")
     if source_line:
         parts.append(f"line={source_line}")
+    if source_sid:
+        parts.append(f"source_synset={source_sid}")
     if extra:
         parts.append(extra)
     return "|".join(parts)
@@ -507,6 +512,8 @@ def build_anchors(
                 pointer=sym,
                 source_file=synset.file,
                 source_line=synset.line_no,
+                source_sha256=synset.line_sha256,
+                source_sid=synset.sid,
                 split="",
             )
     ordered = sorted(anchors.values(), key=lambda a: (a.relation, a.src.sid, a.dst.sid))
@@ -604,10 +611,11 @@ def build_rows(
         extra: str,
     ) -> None:
         # The row is derived from the canonical forward anchor.  Use the
-        # anchor's source line for every direction so positive and inverse rows
-        # share one provenance root; the row's subject may be the anchor's
-        # object for inverse rows.
-        source_sha = anchor.src.line_sha256
+        # source line where the pointer was found for every direction, so
+        # positive and inverse rows share one provenance root.  For symmetric
+        # relations the pointer may live on the anchor's dst; source_sid records
+        # that synset explicitly.
+        source_sha = anchor.source_sha256
         emit(
             make_row(
                 split=split,
@@ -624,7 +632,7 @@ def build_rows(
                     label=label,
                     pointer=pointer,
                     source_file=anchor.source_file,
-                    source_line=anchor.source_line,
+                    source_line=anchor.source_line, source_sid=anchor.source_sid,
                     extra=extra,
                 ),
             )
@@ -649,7 +657,7 @@ def build_rows(
                         label="hard_negative",
                         pointer=pointer,
                         source_file=anchor.source_file,
-                        source_line=anchor.source_line,
+                        source_line=anchor.source_line, source_sid=anchor.source_sid,
                         extra=(
                             f"anchor_object={obj.sid}|similarity={sim:.6f}"
                             f"|method={method}|fallback=0"
@@ -677,7 +685,7 @@ def build_rows(
                             label="hard_negative",
                             pointer=pointer,
                             source_file=anchor.source_file,
-                            source_line=anchor.source_line,
+                            source_line=anchor.source_line, source_sid=anchor.source_sid,
                             extra=(
                                 f"anchor_object={obj.sid}|similarity=0"
                                 f"|method={method}|fallback=1"
@@ -705,7 +713,7 @@ def build_rows(
                         label="negative",
                         pointer=pointer,
                         source_file=anchor.source_file,
-                        source_line=anchor.source_line,
+                        source_line=anchor.source_line, source_sid=anchor.source_sid,
                         extra=f"anchor_object={obj.sid}|method={method}|seed={seed}",
                     ),
                 )
@@ -727,7 +735,7 @@ def build_rows(
                     label="self_negative",
                     pointer=pointer,
                     source_file=anchor.source_file,
-                    source_line=anchor.source_line,
+                    source_line=anchor.source_line, source_sid=anchor.source_sid,
                     extra=f"anchor_object={obj.sid}|method=identity",
                 ),
             )

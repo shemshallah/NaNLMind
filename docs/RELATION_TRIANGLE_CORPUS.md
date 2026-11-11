@@ -76,17 +76,20 @@ data.verb  eb1cf196dab6e1b815a1c86fa20c909fb7413b2f34250d7fe60a0fb35ef59e03
 ```
 
 Every machine row has a `source_sha256` field: the SHA-256 of the WordNet
-source line that supplied the canonical forward anchor. Inverse rows share the
-forward anchor's source line even though the row's subject is the anchor's
-object, so the provenance chain has one root per anchor. The `file` and `line`
-fields in the provenance string point to that same anchor source line.
+source line where the canonical pointer was found. Positive and inverse rows
+share that digest, so the provenance chain has one root per anchor. The
+`file`, `line`, and `source_synset` fields in the provenance string identify
+that same source synset. For symmetric relations the pointer may be found on
+either endpoint; the canonical `src`/`dst` are sorted by synset ID, but the
+provenance root is the pointer's synset.
 
 The machine `provenance` field is pipe-delimited and contains no tabs:
 
 ```text
 wordnet3.1|subject=<synset-id>|object=<synset-id>|relation=<name>|label=<label>
 |subject_gloss_sha16=<16 hex>|object_gloss_sha16=<16 hex>|pointer=<symbol>
-|file=<data.*>|line=<n>|anchor=forward|inverse|source_relation=<name>
+|file=<data.*>|line=<n>|source_synset=<synset-id>
+|anchor=forward|inverse|source_relation=<name>
 |anchor_object=<synset-id>|similarity=<float>|method=<name>|fallback=<0|1>
 ```
 
@@ -210,6 +213,13 @@ that the tri/readable rows are aligned, recomputes the split from
 digests, byte counts, and `resplit` note. It refuses to write if any pair still
 crosses splits.
 
+For an older corpus whose inverse rows stored the inverse subject's source-line
+digest instead of the forward anchor's, add `--fix-inverse-source-sha`. The
+tool then copies the canonical positive row's digest to each inverse row and
+records `provenance_repair.inverse_source_sha_fixed` in the manifest. This is
+for older corpora; new generator runs already use the pointer-source-rooted
+digest.
+
 ## 6. Generator
 
 ```sh
@@ -250,12 +260,13 @@ rows                       143746
 train / valid / test       115184 / 14333 / 14229
 labels                     hard 37518, inverse 18802, negative 37602,
                            positive 18802, self 31022
-tri sha256                 ea19dc43fbb989a2e897fba3ae26a5a82bc642b9bb894ecb89bd0ae032f50a97
-readable sha256            b86f8eaa11eacc48fc0e256549e17db09982281ef7ff1dce465c2684f52d6038
+tri sha256                 1446cfc6cc51fabfad359e325081528ff9ee4d089c8dc301f8518aec7e97f4df
+readable sha256            db25a1b7ca2e8bbe3bef89cd0743640a5c595704fd5a0aeb2d90cad9fa70ed1b
 ```
 
 `state/` is ignored by git; the generated corpus and model outputs are not
-committed. The generator and calibration scripts are the committed artifacts.
+committed. The generator, resplit, and calibration scripts are the committed
+artifacts.
 
 ## 7. Raw contrastive trainer
 

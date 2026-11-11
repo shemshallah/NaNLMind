@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Repair N16TRI/1 split assignments without regenerating the corpus.
+"""Repair N16TRI/1 split assignments and inverse source digests.
 
 The original generator assigned every row derived from an anchor to the
 anchor's split.  That is correct for the positive/inverse pair, but a hard,
@@ -8,8 +8,14 @@ different split.  This tool streams the existing tri/readable files, derives
 each row's split from its own unordered endpoint pair, and rewrites the
 manifest audit fields.
 
+It can also repair an older provenance bug: inverse rows used to store the
+inverse subject's source-line digest while their `file`/`line` provenance
+pointed at the forward anchor.  With `--fix-inverse-source-sha`, inverse rows
+copy the canonical positive row's source digest, so positive and inverse rows
+share one provenance root.  New corpora already do this.
+
 Use this for corpora produced before the generator learned pair-level
-assignment.  New corpora are already pair-consistent.
+assignment and anchor-rooted source digests.
 """
 
 from __future__ import annotations
@@ -32,6 +38,10 @@ from build_relation_triangle_corpus import (  # noqa: E402
 
 TRIPLE_FIELDS = 9
 READABLE_FIELDS = 11
+READABLE_HEADER = (
+    "split\trelation\tlabel\tconfidence\tsubject\tpredicate\tobject\t"
+    "subject_id\tobject_id\tsource_sha256\tprovenance"
+)
 POSITIVE_LABELS = {"positive", "inverse"}
 
 
@@ -62,6 +72,39 @@ def _split_tsv(line: str, fields: int, path: Path, line_no: int) -> list[str]:
     return parts
 
 
+def _machine_provenance(text: str) -> str:
+    marker = "wordnet3.1|"
+    index = text.find(marker)
+    return text[index:] if index >= 0 else text
+
+
+def _provenance_fields(text: str) -> dict[str, str]:
+    fields: dict[str, str] = {}
+    for part in _machine_provenance(text).split("|"):
+        if "=" in part:
+            key, value = part.split("=", 1)
+            fields[key] = value
+    return fields
+
+
+def _positive_source_map(readable_path: Path) -> dict[tuple[str, str, str], str]:
+    source: dict[tuple[str, str, str], str] = {}
+    with readable_path.open("r", encoding="utf-8", newline="") as handle:
+        header = handle.readline()
+        _check_header(header, READABLE_HEADER, readable_path)
+        for line_no, line in enumerate(handle, 2):
+            parts = _split_tsv(line, READABLE_FIELDS, readable_path, line_no)
+            relation, label, subject_id, object_id = (
+                parts[1],
+                parts[2],
+                parts[7],
+                parts[8],
+            )
+            if label == "positive":
+                source[(relation, subject_id, object_id)] = parts[9]
+    return source
+
+
 def _replace_atomic(path: Path, tmp_path: Path) -> None:
     os.replace(tmp_path, path)
 
@@ -72,9 +115,14 @@ def resplit_corpus(
     readable_path: Path,
     manifest_path: Path,
     dry_run: bool = False,
+    fix_inverse_source_sha: bool = False,
 ) -> dict[str, object]:
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     before_cross_pairs = int(manifest.get("cross_split_row_pairs", -1))
+    positive_source = (
+        _positive_source_map(readable_path) if fix_inverse_source_sha else {}
+    )
+    fixed_inverse_source_sha = 0
 
     split_counts: Counter[str] = Counter()
     split_relation: Counter[str] = Counter()
@@ -101,12 +149,7 @@ def resplit_corpus(
             tri_header = tri.readline()
             _check_header(tri_header, SCHEMA, tri_path)
             readable_header = readable.readline()
-            _check_header(
-                readable_header,
-                "split\trelation\tlabel\tconfidence\tsubject\tpredicate\tobject\t"
-                "subject_id\tobject_id\tsource_sha256\tprovenance",
-                readable_path,
-            )
+            _check_header(readable_header, READABLE_HEADER, readable_path)
             tri_handle.write(tri_header)
             tri_hash.update(tri_header.encode("utf-8"))
             tri_bytes += len(tri_header.encode("utf-8"))
@@ -152,6 +195,29 @@ def resplit_corpus(
                     raise SystemExit(
                         f"{tri_path}:{tri_line_no}: tri/readable rows are not aligned"
                     )
+
+                if fix_inverse_source_sha and label == "inverse":
+                    provenance_fields = _provenance_fields(provenance)
+                    source_relation = provenance_fields.get("source_relation")
+                    if not source_relation:
+                        raise SystemExit(
+                            f"{readable_path}:{readable_line_no}: inverse row "
+                            "is missing source_relation provenance"
+                        )
+                    canonical_source = positive_source.get(
+                        (source_relation, object_id, subject_id)
+                    )
+                    if canonical_source is None:
+                        raise SystemExit(
+                            f"{readable_path}:{readable_line_no}: no positive "
+                            f"row for inverse {source_relation} "
+                            f"{object_id}->{subject_id}"
+                        )
+                    if canonical_source != source_sha:
+                        fixed_inverse_source_sha += 1
+                    source_sha = canonical_source
+                    tparts[7] = source_sha
+                    rparts[9] = source_sha
 
                 new_split = split_for_pair(subject_id, object_id)
                 split_counts[new_split] += 1
@@ -232,6 +298,15 @@ def resplit_corpus(
         "cross_split_row_pairs_before": before_cross_pairs,
         "cross_split_row_pairs_after": cross_row_pairs,
     }
+    if fix_inverse_source_sha:
+        manifest["provenance_repair"] = {
+            "tool": "tools/resplit_relation_triangle_corpus.py",
+            "inverse_source_sha_fixed": fixed_inverse_source_sha,
+            "policy": (
+                "inverse rows copy the canonical positive row's anchor "
+                "source digest"
+            ),
+        }
     if isinstance(manifest.get("options"), dict):
         manifest["options"]["resplit"] = True
 
@@ -246,6 +321,7 @@ def resplit_corpus(
             "cross_split_row_pairs_after": cross_row_pairs,
             "cross_split_anchor_pairs": cross_anchor_pairs,
             "cross_split_synsets": len(cross_synsets),
+            "inverse_source_sha_fixed": fixed_inverse_source_sha,
         }
 
     _replace_atomic(readable_path, readable_tmp)
@@ -263,6 +339,7 @@ def resplit_corpus(
         "cross_split_row_pairs_after": cross_row_pairs,
         "cross_split_anchor_pairs": cross_anchor_pairs,
         "cross_split_synsets": len(cross_synsets),
+        "inverse_source_sha_fixed": fixed_inverse_source_sha,
         "tri_sha256": manifest["tri_sha256"],
         "readable_sha256": manifest["readable_sha256"],
     }
@@ -274,17 +351,31 @@ def self_test() -> int:
         tri = root / "tri.tsv"
         readable = root / "tri.readable.tsv"
         manifest = root / "manifest.json"
+        positive_tri_prov = (
+            "wordnet3.1|subject=n0001|object=n0002|relation=ISA|"
+            "label=positive|anchor=forward"
+        )
+        inverse_tri_prov = (
+            "wordnet3.1|subject=n0002|object=n0001|relation=HAS_SUBTYPE|"
+            "label=inverse|source_relation=ISA|anchor=inverse"
+        )
         tri.write_text(
             SCHEMA + "\n"
-            "train\tISA\tpositive\t50000\t61\t495341\t62\tabc\tprov-a\n"
-            "test\tISA\thard_negative\t40000\t61\t495341\t63\tabc\tprov-b\n",
+            f"train\tISA\tpositive\t50000\t61\t495341\t62\tabc\t{positive_tri_prov}\n"
+            "test\tISA\thard_negative\t40000\t61\t495341\t63\tabc\tprov-b\n"
+            f"train\tHAS_SUBTYPE\tinverse\t65000\t62\t4841535f53554254595045\t61"
+            f"\tdeadbeef\t{inverse_tri_prov}\n",
             encoding="utf-8",
         )
         readable.write_text(
             "split\trelation\tlabel\tconfidence\tsubject\tpredicate\tobject\t"
             "subject_id\tobject_id\tsource_sha256\tprovenance\n"
-            "train\tISA\tpositive\t50000\ta\tISA\tb\tn0001\tn0002\tabc\tprov-a\n"
-            "test\tISA\thard_negative\t40000\ta\tISA\tc\tn0001\tn0003\tabc\tprov-b\n",
+            "train\tISA\tpositive\t50000\ta\tISA\tb\tn0001\tn0002\tabc\t"
+            f"a [n0001] ISA b [n0002] | {positive_tri_prov}\n"
+            "test\tISA\thard_negative\t40000\ta\tISA\tc\tn0001\tn0003\tabc\tprov-b\n"
+            "train\tHAS_SUBTYPE\tinverse\t65000\tb\tHAS_SUBTYPE\ta\tn0002\tn0001"
+            "\tdeadbeef\tb [n0002] HAS_SUBTYPE a [n0001] | "
+            f"{inverse_tri_prov}\n",
             encoding="utf-8",
         )
         manifest.write_text(
@@ -292,10 +383,10 @@ def self_test() -> int:
                 {
                     "schema": "nanlm.relation-triangle-corpus/1",
                     "tri_schema": SCHEMA,
-                    "rows": 2,
-                    "splits": {"train": 1, "test": 1},
+                    "rows": 3,
+                    "splits": {"train": 2, "test": 1},
                     "cross_split_row_pairs": 1,
-                    "row_stats": {"split:train": 1, "split:test": 1},
+                    "row_stats": {"split:train": 2, "split:test": 1},
                     "options": {"split_by": "pair"},
                     "split_note": "old",
                 }
@@ -307,8 +398,10 @@ def self_test() -> int:
             tri_path=tri,
             readable_path=readable,
             manifest_path=manifest,
+            fix_inverse_source_sha=True,
         )
         assert result["cross_split_row_pairs_after"] == 0, result
+        assert result["inverse_source_sha_fixed"] == 1, result
         expected = {
             "n0001|n0002": split_for_pair("n0001", "n0002"),
             "n0001|n0003": split_for_pair("n0001", "n0003"),
@@ -316,28 +409,47 @@ def self_test() -> int:
         tri_lines = tri.read_text(encoding="utf-8").splitlines()
         readable_lines = readable.read_text(encoding="utf-8").splitlines()
         assert tri_lines[0] == SCHEMA
-        assert len(tri_lines) == 3
-        assert len(readable_lines) == 3
-        for index, key in enumerate(expected, start=1):
+        assert len(tri_lines) == 4
+        assert len(readable_lines) == 4
+        for index, key in enumerate(
+            ("n0001|n0002", "n0001|n0003", "n0001|n0002"), start=1
+        ):
             assert tri_lines[index].split("\t")[0] == expected[key]
             assert readable_lines[index].split("\t")[0] == expected[key]
         updated = json.loads(manifest.read_text(encoding="utf-8"))
         assert updated["cross_split_row_pairs"] == 0
         assert updated["resplit"]["cross_split_row_pairs_before"] == 1
-        assert sum(updated["splits"].values()) == 2
+        assert updated["provenance_repair"]["inverse_source_sha_fixed"] == 1
+        assert sum(updated["splits"].values()) == 3
         assert updated["tri_sha256"] == sha256_file(tri)
         assert updated["readable_sha256"] == sha256_file(readable)
         assert updated["tri_bytes"] == tri.stat().st_size
         assert updated["readable_bytes"] == readable.stat().st_size
-        # The rest of each row must be byte-for-byte unchanged.
-        assert tri_lines[1].split("\t")[1:] == [
-            "ISA", "positive", "50000", "61", "495341", "62", "abc", "prov-a"
+        # The inverse row keeps its provenance and geometry, but copies the
+        # canonical positive row's source digest.
+        inverse_tri = tri_lines[3].split("\t")
+        inverse_readable = readable_lines[3].split("\t")
+        assert inverse_tri[1:7] == [
+            "HAS_SUBTYPE", "inverse", "65000", "62",
+            "4841535f53554254595045", "61",
         ]
-        assert readable_lines[2].split("\t")[1:] == [
-            "ISA", "hard_negative", "40000", "a", "ISA", "c",
-            "n0001", "n0003", "abc", "prov-b"
+        assert inverse_tri[7] == "abc"
+        assert inverse_tri[8] == inverse_tri_prov
+        assert inverse_readable[1:9] == [
+            "HAS_SUBTYPE", "inverse", "65000", "b", "HAS_SUBTYPE", "a",
+            "n0002", "n0001",
         ]
-    print("self-test PASS resplit pairs=2 cross_split_row_pairs=0")
+        assert inverse_readable[9] == "abc"
+        assert inverse_readable[10].endswith(inverse_tri_prov)
+        # The positive and hard-negative rows keep their original digests.
+        assert tri_lines[1].split("\t")[7] == "abc"
+        assert tri_lines[2].split("\t")[7] == "abc"
+        assert readable_lines[1].split("\t")[9] == "abc"
+        assert readable_lines[2].split("\t")[9] == "abc"
+    print(
+        "self-test PASS resplit pairs=2 inverse_source_sha=1 "
+        "cross_split_row_pairs=0"
+    )
     return 0
 
 
@@ -351,6 +463,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help="audit and report without rewriting files",
     )
+    parser.add_argument(
+        "--fix-inverse-source-sha",
+        action="store_true",
+        help=(
+            "copy the canonical positive row's source digest to inverse rows "
+            "(repairs pre-anchor-rooted corpora)"
+        ),
+    )
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args(argv)
     if args.self_test:
@@ -362,6 +482,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         readable_path=args.readable,
         manifest_path=args.manifest,
         dry_run=args.dry_run,
+        fix_inverse_source_sha=args.fix_inverse_source_sha,
     )
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0
