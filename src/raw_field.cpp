@@ -456,6 +456,9 @@ bool RawFieldVM::native_triad_hotcold_vector(
     receipt.radius=radius;receipt.radial_distance=depth;
     receipt.signed_curl_feedback=curl;
     receipt.candidate_credit_gradient=gradient;
+    return true;
+}
+
 bool RawFieldVM::native_shortlist_batch(
     const std::array<std::uint32_t,6>& context_words,
     std::uint8_t valid_mask, std::uint8_t task,
