@@ -1,0 +1,18 @@
+{
+  "schema": "nanlm.void255-active-head-math/1",
+  "source_contract": "NaNROUTER/design/head-trihead-global-meta-attention-v1-20261110",
+  "physical_fixed_points": 256,
+  "canonical_pairs": 32640,
+  "active_math_head_indices": {
+    "first": 0,
+    "last": 254,
+    "count": 255
+  },
+  "reserved_zero_void_head_index": 255,
+  "void_incident_edge_flow": "signed_zero_only",
+  "void_allowed_in_simplicial_faces": false,
+  "current_slot": "separate field register; sentinel -1",
+  "root0_control_plane_policy": "preserve NANNET/BSR roles; math eligibility grants no writer permission",
+  "nannet_root_remapped": false,
+  "overbootstrap_mc0_meta_enabled": false
+}

@@ -56,7 +56,7 @@ Field-driver commands:
 | 83 | `mth_geom_hyperbolic` | mean radius + Poincare radial proxy |
 | 84 | `mth_geom_path` | length, closure, turn, curvature |
 | 85 | `mth_geom_triangle` | three-vector sides/area proxy/tightness/orientation |
-| 86 | `mth_geom_field_perturb` | vector -> 255 credits, 85 votes, head255 |
+| 86 | `mth_geom_field_perturb` | vector -> 255 credits, 85 votes, separate field value |
 | 90 | `mth_tri_model_reset` | clear semantic triangle shape stats |
 | 91 | `mth_tri_model_observe` | train tightness/area/orientation stats |
 | 92 | `mth_tri_model_score` | score a triangle against learned shape |
@@ -362,7 +362,7 @@ them.
 ```text
 S+ preceding slot       3 preceding words
 S- anticipatory slot    3 following words
-C  current slot         current word; head 255
+C  current slot         separate field register (head 255 is void)
 ```
 
 For each word it stores:
@@ -373,11 +373,11 @@ For each word it stores:
 0x230100  S+ head credits
 0x231000  S- triad votes
 0x231100  S- head credits
-0x233000  head-255 current slot [word,255,index,0]
+0x233000  current field slot [word,-1,index,0]
 ```
 
 `mth_temporal_project` merges S+ and S- into the normal trihead tables, while
-the current word remains in the non-triad head-255 field slot.
+the current word remains in a separate field register; head 255 is reserved void and is not an incidence endpoint.
 
 ```sh
 ./build/nanlm-universal meta-tokenize \
@@ -444,7 +444,7 @@ For the full temporally split register:
 This writes `.words.bin`, `.subwords.bin`, `.meta.bin`, `.slots.bin` and JSON.
 The slots file contains `[preceding_hash, current_word, anticipatory_hash]`
 triples. The JSON reports `preceding_context_words=3`,
-`anticipatory_context_words=3`, `current_slot_head=255`, and the 43/85 field
+`anticipatory_context_words=3`, `current_slot_head=-1`, and the 43/85 field
 state.
 
 The field result is a structural hook check, not a language-quality score;
@@ -696,7 +696,7 @@ release asset       gutenberg150_d256.codebook8x256.bin
 - path length, closure, turn/second difference and curvature;
 - triangle side lengths, area proxy, tightness, orientation;
 - field perturbation: vector components -> 255 head credits, 85 triad votes,
-  and the head-255 current/field component.
+  and a separate field value; head 255 remains void.
 
 The geometry is raw guest code in `mth_geometry.nas`. The triangle is the
 three-component proposition object: `(subject, relation, object)` vectors give
@@ -836,19 +836,19 @@ word triangle
 field gate:
   votes >= 2-of-3
   quality >= mean quality
-  head255 endpoint closure <= path/2
+  separate current-slot endpoint closure <= path/2
   accepted triads >= 43
 ```
 
 `mth_shape_field_gate` returns the accepted count, field flag and mean shape
-quality. `stream-train` also records the first and last head-255 current word
+quality. `stream-train` also records the first and last current field-slot words
 and their raw endpoint closure. The temporal structural field and the semantic
 shape field are reported separately:
 
 ```text
 field_hot          temporal S+/S-/head-255 field
 shape_field_hot    semantic triangle-shape field
-head255_first/last current anchors
+current_field_first/last anchors
 head255_closure    endpoint distance
 ```
 

@@ -754,7 +754,7 @@ int main() {
         std::array<std::int32_t, 4> head255{};
         CHECK(vm.read_temporal_slots(tw, pv, pc, fv, fc, current_words,
                                      head255, slots));
-        CHECK_EQ(head255[1], 255);
+        CHECK_EQ(head255[1], -1);
         CHECK_EQ(head255[0], static_cast<std::int32_t>(t_words.back()));
         CHECK_EQ(slots.size(), tw * 3);
         CHECK(vm.temporal_slots_project());

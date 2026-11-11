@@ -502,6 +502,12 @@ public:
     bool shape_field_gate(std::int32_t closure, std::int32_t path_length,
                           std::int32_t threshold, std::uint16_t& accepted,
                           bool& field_hot, std::int32_t& mean_quality);
+    std::uint32_t debug_word(std::uint32_t index);
+    bool global_hodge(
+        const std::array<float, 32640>& pair_flows,
+        const std::vector<std::array<std::uint32_t, 3>>& triangles,
+        std::array<float, 256>& divergence,
+        std::array<float, 16>& curl);
     bool triangle_model_reset();
     bool triangle_model_observe(const std::array<std::int32_t, 3>& sides,
                                 std::int32_t area, std::int32_t tightness,

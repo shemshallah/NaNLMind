@@ -16,7 +16,7 @@
 ;
 ; mth_geom_field_perturb:
 ;   r1=vector, r2=D -> credits[255] at 0x2E0000, triad votes[85] at 0x2E0100.
-;   Returns the head-255/current component.
+;   Returns a separate field/current component; head255 is void.
 
 mth_geom_hyperbolic:
   MOVI r12,@mth_g_ptr

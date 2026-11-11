@@ -80,6 +80,8 @@ FIXTURES = (
             "MTH VECTOR MATRIX PASS"),
     Fixture("triangle_contrast", "mth/tests/mth_triangle_contrast_test.nas",
             1_000_000, "MTH TRIANGLE CONTRAST PASS"),
+    Fixture("global_hodge", "mth/tests/mth_global_hodge256_native_test.nas",
+            3_000_000, "MTH GLOBAL HODGE256 PASS"),
     Fixture("leaf_hash", "mth/tests/mth_leaf_hash_test.nas", 200_000,
             "MTH LEAF HASH PASS"),
     Fixture("dual_gate", "mth/tests/mth_dual_gate_test.nas", 200_000,

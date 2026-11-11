@@ -2133,7 +2133,8 @@ int temporal_tokenize_cli(int argc, char** argv) {
         manifest << "{\n  \"schema\": \"nanlm.temporal-tokenizer/1\",\n"
                  << "  \"preceding_context_words\": 3,\n"
                  << "  \"anticipatory_context_words\": 3,\n"
-                 << "  \"current_slot_head\": 255,\n"
+                 << "  \"current_slot_head\": -1,\n"
+                 << "  \"head255_policy\": \"void; current slot is a separate field register\",\n"
                  << "  \"phase_window_bytes\": 8,\n"
                  << "  \"lines\": " << lines_seen << ",\n"
                  << "  \"words\": " << total_words << ",\n"
@@ -2697,7 +2698,8 @@ int stream_train_cli(int argc, char** argv) {
                  << "  \"phase_window_bytes\": 8,\n"
                  << "  \"preceding_context_words\": 3,\n"
                  << "  \"anticipatory_context_words\": 3,\n"
-                 << "  \"current_slot_head\": 255,\n"
+                 << "  \"current_slot_head\": -1,\n"
+                 << "  \"head255_policy\": \"void; current slot is a separate field register\",\n"
                  << "  \"current_word\": " << head255[0] << ",\n"
                  << "  \"current_slot\": " << head255[1] << ",\n"
                  << "  \"ngram_orders\": [1,2,3,4],\n"
@@ -2765,9 +2767,9 @@ int stream_train_cli(int argc, char** argv) {
                  << ", \"shape_field_hot\": "
                  << (shape_field_hot ? "true" : "false")
                  << ", \"shape_field_mean\": " << shape_field_mean
-                 << ", \"head255_first_word\": " << first_head255_word
-                 << ", \"head255_last_word\": " << last_head255_word
-                 << ", \"head255_closure\": " << head255_closure
+                 << ", \"current_field_first_word\": " << first_head255_word
+                 << ", \"current_field_last_word\": " << last_head255_word
+                 << ", \"current_field_closure\": " << head255_closure
                  << "},\n"
                  << "  \"accepted_triads\": " << accepted << ",\n"
                  << "  \"field_hot\": " << (field_accepted ? "true" : "false") << "\n}\n";

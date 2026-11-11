@@ -1927,6 +1927,49 @@ bool RawFieldVM::field_perturb(
     return true;
 }
 
+
+std::uint32_t RawFieldVM::debug_word(std::uint32_t index) {
+    return read_word(index);
+}
+
+bool RawFieldVM::global_hodge(
+    const std::array<float, 32640>& pair_flows,
+    const std::vector<std::array<std::uint32_t, 3>>& triangles,
+    std::array<float, 256>& divergence, std::array<float, 16>& curl) {
+    if (triangles.size() > 16) return fail("global hodge accepts at most 16 faces");
+    auto wf = [&](std::uint32_t index, float value) {
+        std::uint32_t bits = 0;
+        std::memcpy(&bits, &value, sizeof(bits));
+        return write_word(index, bits);
+    };
+    for (std::size_t i = 0; i < pair_flows.size(); ++i)
+        if (!wf(0x360000u + static_cast<std::uint32_t>(i), pair_flows[i]))
+            return fail("cannot write global hodge flows at " +
+                        std::to_string(i));
+    for (std::size_t t = 0; t < triangles.size(); ++t)
+        for (std::size_t k = 0; k < 3; ++k)
+            if (!write_word(0x368000u + static_cast<std::uint32_t>(t * 3 + k),
+                            triangles[t][k]))
+                return fail("cannot write global hodge triangles");
+    if (!write_word(kProposalBase + 0, static_cast<std::uint32_t>(triangles.size())) ||
+        !write_word(kCommandBase, 99))
+        return fail("cannot write global hodge command");
+    if (!run_command()) return false;
+    if ((read_word(kResultBase) & 1u) == 0) {
+        return fail("global hodge rejected status=" +
+                    std::to_string(read_word(kResultBase + 1)));
+    }
+    for (std::size_t i = 0; i < divergence.size(); ++i) {
+        const std::uint32_t bits = read_word(0x369000u + static_cast<std::uint32_t>(i));
+        std::memcpy(&divergence[i], &bits, sizeof(bits));
+    }
+    for (std::size_t i = 0; i < curl.size(); ++i) {
+        const std::uint32_t bits = read_word(0x369400u + static_cast<std::uint32_t>(i));
+        std::memcpy(&curl[i], &bits, sizeof(bits));
+    }
+    return true;
+}
+
 bool RawFieldVM::triangle_model_reset() {
     if (!write_word(kCommandBase, 90)) return fail("cannot write triangle model reset");
     return run_command();
@@ -2018,7 +2061,7 @@ bool RawFieldVM::read_triangle_model_negative(
 }
 
 bool RawFieldVM::shape_field_reset() {
-    if (!write_word(kCommandBase, 96)) return fail("cannot write shape field reset");
+    if (!write_word(kCommandBase, 99)) return fail("cannot write shape field reset");
     return run_command();
 }
 
