@@ -111,7 +111,7 @@ The measured 70%+ context route is canonical:
 ```text
 mth_context_hier.nas   16x16 high-nibble / conditional-low-nibble memory
 mth_context_backoff.nas guest-owned exact 4-byte / FNV 3-byte fallback
-mth_context_class.nas   class -> head/triad/43-85 bridge (command 31)
+mth_context_class.nas   class -> head/triad/43-85 bridge (command 30)
 ```
 
 `context-train` now defaults to the 4-byte guest-backoff route when no route is
@@ -149,7 +149,7 @@ cherry-picked. `docs/BRANCH_TRIAGE.md` is the decision list.
 
 ## Guest driver budget and restored context routes
 
-The raw field driver is capped at **0x3000 words** (12,288 emitted words).
+The raw field driver is capped at **0x3E00 words** (15,872 emitted words).
 Adding code past that boundary silently corrupts dispatch/state; the Makefile
 now rejects an over-budget image. To make room for the canonical routes, the
 unused `mth_context_hash` and `mth_context_batch` includes were removed from
@@ -159,10 +159,10 @@ Restored raw commands:
 
 | command | kernel | purpose |
 |---:|---|---|
-| 31 | `mth_context_class` | 16x16 class -> head/triad/43-85 field bridge |
-| 32 | `mth_context_hier_joint` | joint high/low head-pair readout |
-| 33 | `mth_context_copy` | copy/induction context route |
-| 34 | `mth_triad_score` | 2-of-3 triad objective with majority bonus |
+| 30 | `mth_context_class` | 16x16 class -> head/triad/43-85 field bridge |
+| 43 | `mth_context_hier_joint` | joint high/low head-pair readout |
+| 44 | `mth_context_copy` | copy/induction context route |
+| 45 | `mth_triad_score` | 2-of-3 triad objective with majority bonus |
 
 These are the kernel-level paths removed by the earlier ABI-conflict merge.
 They are now reachable and covered by focused tests. CLI exposure for the

@@ -1075,7 +1075,7 @@ bool RawFieldVM::triad_score(std::uint16_t m0, std::uint16_t m1,
         !write_word(kProposalBase + 3, a) ||
         !write_word(kProposalBase + 4, b) ||
         !write_word(kProposalBase + 5, target ? 1u : 0u) ||
-        !write_word(kCommandBase, 34))
+        !write_word(kCommandBase, 45))
         return fail("cannot write triad score command");
     if (!run_command()) return false;
     score = static_cast<std::int32_t>(read_word(kResultBase));
@@ -1959,7 +1959,7 @@ bool RawFieldVM::context_class_credit(
             }
         }
     }
-    if (!write_word(kCommandBase, 31)) {
+    if (!write_word(kCommandBase, 30)) {
         return fail("cannot write context class command");
     }
     if (!run_command()) return false;
@@ -3426,7 +3426,7 @@ bool RawFieldVM::readout_context_joint(std::uint8_t target,
         !write_word(kProposalBase + 1, lr_bits) ||
         !write_word(kProposalBase + 2, bucket) ||
         !write_word(kProposalBase + 3, static_cast<std::uint32_t>(buckets)) ||
-        !write_word(kCommandBase, 32)) {
+        !write_word(kCommandBase, 43)) {
         return fail("cannot write context joint-readout command");
     }
     if (!run_command()) return false;
@@ -3525,7 +3525,7 @@ bool RawFieldVM::readout_context_copy(
         !write_word(kProposalBase + 4, static_cast<std::uint32_t>(exact_count)) ||
         !write_word(kProposalBase + 5, static_cast<std::uint32_t>(aux_buckets)) ||
         !write_word(kProposalBase + 6, weight_bits) ||
-        !write_word(kCommandBase, 33)) {
+        !write_word(kCommandBase, 44)) {
         return fail("cannot write context copy command");
     }
     if (!run_command()) return false;

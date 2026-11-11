@@ -2,8 +2,8 @@
   "schema": "nanlm.context-model/1",
   "canonical_kernel": "mth_context_hier.nas",
   "canonical_route": "mth_context_backoff.nas",
-  "driver_command": 30,
-  "context_class_command": 31,
+  "driver_command": 40,
+  "context_class_command": 30,
   "description": "16x16 high-nibble / conditional-low-nibble context memory over the last four bytes, with guest-owned exact k=4 / FNV k=3 backoff routing.",
   "config": {
     "buckets": 11456,
@@ -27,7 +27,7 @@
     "member": "head%3",
     "field_head": 255,
     "field_threshold": "43/85",
-    "command": 31
+    "command": 30
   },
   "classification": {
     "canonical": [
@@ -45,10 +45,10 @@
       "mth_context_encode24"
     ],
     "restored_raw_commands": {
-      "31": "mth_context_class",
-      "32": "mth_context_hier_joint",
-      "33": "mth_context_copy",
-      "34": "mth_triad_score"
+      "42": "mth_context_class",
+      "43": "mth_context_hier_joint",
+      "44": "mth_context_copy",
+      "45": "mth_triad_score"
     },
     "cli_pending": [
       "backoffjoint",

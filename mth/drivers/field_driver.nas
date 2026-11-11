@@ -216,13 +216,13 @@ field_driver_main:
   MOVI r3,40
   CMP r2,r3
   JMP[EQ] @field_driver_context_backoff
-  MOVI r3,32
+  MOVI r3,43
   CMP r2,r3
   JMP[EQ] @field_driver_readout_context_joint
-  MOVI r3,33
+  MOVI r3,44
   CMP r2,r3
   JMP[EQ] @field_driver_context_copy
-  MOVI r3,34
+  MOVI r3,45
   CMP r2,r3
   JMP[EQ] @field_driver_triad_score
   MOVI r3,27
@@ -234,7 +234,7 @@ field_driver_main:
   MOVI r3,29
   CMP r2,r3
   JMP[EQ] @field_driver_credit_bundle
-  MOVI r3,31
+  MOVI r3,30
   CMP r2,r3
   JMP[EQ] @field_driver_context_class
   ; Legacy credit opcodes 25..28 conflicted with decoder readout.

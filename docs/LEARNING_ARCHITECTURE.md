@@ -82,7 +82,7 @@ field threshold = 43/85
 
 This is the canonical class/head map for connecting the context memory to the
 existing triad/field bank. The raw NaN16 kernel
-`mth/nan16/mth_context_class.nas` (driver command 31) now implements it in the
+`mth/nan16/mth_context_class.nas` (driver command 30) now implements it in the
 guest: it reads the high and conditional-low scores, computes
 `head = high*16 + low` and `triad = head/3`, optionally applies a native CFT or
 TRAIL credit to the selected head, and votes the 255 head credits through
