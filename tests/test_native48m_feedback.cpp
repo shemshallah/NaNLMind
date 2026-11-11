@@ -1,4 +1,5 @@
 #include "nanlm/native48m_feedback.hpp"
+#include "nanlm/native_head_leaf_feedback.hpp"
 #include <cassert>
 #include <cmath>
 #include <iostream>
@@ -235,6 +236,79 @@ int main(){
     assert(!stale_spectral.accepted && stale_spectral.records.empty());
     assert(stale_spectral.rejection_reason==1);
     assert(arena.candidate(1,1,2)==1.0f);
+    // FULL native integration: 16 Boolean local operators at each independent
+    // head -> its 128D trigonometric Poincare vector & own scratch ->
+    // native 2/3 trihead 128D vector, signed true Hodge curl and native
+    // seven-credit gradient -> ONE existing candidate tensor with TYPED
+    // vector/truth/hyperedge data leaves at the SAME canonical coordinates.
+    const auto source_digest=std::string(64,'c'); // fixture provenance only
+    std::array<float,128> independent_source{};
+    independent_source[0]=1.0f;
+    independent_source[127]=0.5f;
+    std::array<nanlm::NativeHead16Receipt,3> head_vectors{};
+    for(unsigned h=0;h<3;++h) {
+        const std::uint16_t boolmask=h<2?64u:256u;
+        assert(vm.native_head16_vector(
+            static_cast<std::uint8_t>(h),independent_source,
+            boolmask,0u,1u,0u,true,
+            std::array<std::uint8_t,3>{0,1,2},
+            second.curl[0],static_cast<std::uint16_t>(2048*h),
+            0,0,head_vectors[h]));
+        assert(head_vectors[h].accepted && head_vectors[h].head==h);
+        assert(head_vectors[h].hot_vote==(h<2?1u:0u));
+        assert(head_vectors[h].candidate_truth_mask==boolmask);
+        assert(head_vectors[h].radius>0 && head_vectors[h].radius<1);
+        const auto staged_head=nanlm::stage_native_head_leaf_candidate(
+            arena,head_vectors[h],100+h,source_digest);
+        assert(staged_head.proposer==h);
+        assert(staged_head.numerical_writes==1);
+        assert(staged_head.typed_leaf_attachments==2);
+        assert(arena.candidate(h,h,h)==head_vectors[h].signed_curl_feedback);
+        assert(arena.active(h,h,h)==0.0f);
+        assert(arena.candidate_leaves(h,h,h).size()==2);
+        assert(arena.active_leaves(h,h,h).empty());
+    }
+    // A complete permutation of all 255 physical candidate-eligible heads,
+    // with the real trihead0 formed from heads0/1/2, not another model.
+    std::array<std::uint8_t,255> native_head_map{};
+    for(unsigned i=0;i<255;++i)
+        native_head_map[i]=static_cast<std::uint8_t>(i);
+    nanlm::NativeTrihead128Receipt measured_trihead{};
+    assert(vm.native_triad_hotcold_vector(
+        0,native_head_map,second.curl[0],seven.native_combined_q16,
+        0,0,measured_trihead));
+    assert(measured_trihead.accepted);
+    assert(measured_trihead.hot_count==2 && measured_trihead.cold_count==1);
+    assert(!measured_trihead.unanimous_hot &&
+           !measured_trihead.unanimous_cold);
+    assert(measured_trihead.majority_sign==1);
+    assert(std::isfinite(measured_trihead.candidate_credit_gradient));
+    const float earlier_head_credit=arena.candidate(0,1,2);
+    const auto staged_triad=nanlm::stage_native_triad_leaf_candidate(
+        arena,measured_trihead,200,source_digest);
+    assert(staged_triad.numerical_writes==2);
+    assert(staged_triad.typed_leaf_attachments==2);
+    // The trihead gradient/depth occupies reserved scalar slots. Existing
+    // seven-credit/temporal tensor numbers at oriented face stay unchanged.
+    assert(arena.candidate(0,1,1)==measured_trihead.candidate_credit_gradient);
+    assert(arena.candidate(0,2,2)==measured_trihead.radial_distance);
+    assert(arena.candidate(0,1,2)==earlier_head_credit);
+    assert(arena.candidate_leaves(0,1,2).size()==1u);
+    assert(arena.candidate_leaves(0,2,1).size()==1u);
+    assert(arena.active_leaves(0,1,2).empty());
+    // Guest rejects stale trihead before the candidate tensor can see it.
+    nanlm::NativeTrihead128Receipt stale_triad{};
+    assert(vm.native_triad_hotcold_vector(
+        0,native_head_map,second.curl[0],seven.native_combined_q16,
+        0,1,stale_triad));
+    assert(!stale_triad.accepted && stale_triad.rejection_reason==2);
+    bool deny_stage=false;
+    try {
+        nanlm::stage_native_triad_leaf_candidate(
+            arena,stale_triad,201,source_digest);
+    } catch(const std::logic_error&) {deny_stage=true;}
+    assert(deny_stage);
+    assert(arena.candidate_leaves(0,1,2).size()==1u);
     // This is a real native calculation but not a held-out quality gate:
     // unknown NLL must reject promotion.
     nanlm::TensorMetaGate gate;
@@ -246,6 +320,9 @@ int main(){
     const auto result=arena.decide(gate);
     assert(!result.promoted && result.generation==0);
     assert(arena.active(7,2,3)==0.0f);
+    assert(arena.active_leaves(0,0,0).empty());
+    assert(arena.active_leaves(0,1,2).empty());
+    assert(arena.active(0,1,1)==0.0f);
     std::cout<<"PASS native phase -> cumulative triheads -> Hodge -> committed MC0 -> mirrored candidate; no unvalidated promotion\n";
     return 0;
 }
