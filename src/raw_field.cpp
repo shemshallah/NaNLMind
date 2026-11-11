@@ -219,6 +219,166 @@ bool RawFieldVM::native_stream6_attention(
     return true;
 }
 
+bool RawFieldVM::native_head16_vector(
+    std::uint8_t head,const std::array<float,128>& source_vector,
+    std::uint16_t learned_truth_mask,std::uint16_t xor_candidate_patch,
+    std::uint32_t bool_operand_a,std::uint32_t bool_operand_b,
+    bool authorized_candidate_writer,
+    const std::array<std::uint8_t,3>& sourced_oriented_hyperedge,
+    float native_hodge_curl,std::uint16_t phase_turns,
+    std::uint32_t expected_generation,std::uint32_t current_generation,
+    NativeHead16Receipt& receipt) {
+    receipt={};
+    if(!vm_||head==255)return fail("native head16: invalid guest/head");
+    const std::uint32_t base=0x003B0000u+(static_cast<std::uint32_t>(head)<<8u);
+    const std::uint32_t outbase=0x003F0000u+(static_cast<std::uint32_t>(head)<<8u);
+    const auto as_bits=[](float value) {
+        std::uint32_t bits=0;static_assert(sizeof(value)==sizeof(bits));
+        std::memcpy(&bits,&value,4);return bits;
+    };
+    const auto as_float=[](std::uint32_t bits) {
+        float value=0;std::memcpy(&value,&bits,4);return value;
+    };
+    for(std::uint32_t d=0;d<128u;++d)
+        if(!write_word(base+d,as_bits(source_vector[d])))
+            return fail("native head16: source vector transmit failed");
+    const std::array<std::uint32_t,12> meta={
+        learned_truth_mask,xor_candidate_patch,bool_operand_a,bool_operand_b,
+        authorized_candidate_writer?1u:0u,expected_generation,
+        current_generation,
+        sourced_oriented_hyperedge[0],sourced_oriented_hyperedge[1],
+        sourced_oriented_hyperedge[2],as_bits(native_hodge_curl),
+        static_cast<std::uint32_t>(phase_turns)};
+    for(std::uint32_t i=0;i<meta.size();++i)
+        if(!write_word(base+128u+i,meta[i]))
+            return fail("native head16: independent scratch transport failed");
+    if(!write_word(kProposalBase,head)||!write_word(kCommandBase,110u)||
+       !run_command())return fail("native head16: guest execution rejected: "+error_);
+    const auto accepted=read_word(kResultBase+0);
+    const auto returning_head=read_word(kResultBase+1);
+    const auto vote=read_word(kResultBase+2);
+    const auto reason=read_word(kResultBase+3);
+    if(accepted==0u) {
+        if(returning_head!=0||vote!=0||reason<1u||reason>5u)
+            return fail("native head16: bad guest rejection receipt");
+        receipt.rejection_reason=static_cast<std::uint8_t>(reason);
+        return true;
+    }
+    if(accepted!=1u||returning_head!=head||vote>1u||reason!=0u)
+        return fail("native head16: malformed success receipt");
+    if(read_word(base+128)!=learned_truth_mask ||
+       read_word(base+140)!=vote || read_word(base+147)!=1u)
+        return fail("native head16: independent mask/Boolean vote drift");
+    const auto chosen=read_word(base+141);
+    const auto candidate_mask=read_word(base+146);
+    if(chosen>=16u||candidate_mask==0||candidate_mask>65535u)
+        return fail("native head16: invalid selected Boolean function");
+    const float radius=as_float(read_word(base+168));
+    const float depth=as_float(read_word(base+142));
+    const float curl=as_float(read_word(base+143));
+    if(!std::isfinite(radius)||!std::isfinite(depth)||!std::isfinite(curl)||
+       radius<0.0f||radius>=1.0f||depth<0.0f||std::fabs(curl)>8.0f)
+        return fail("native head16: invalid Poincare/curl receipt");
+    for(std::uint32_t d=0;d<128u;++d){
+        const float v=as_float(read_word(outbase+d));
+        if(!std::isfinite(v)||std::fabs(v)>1.0f)
+            return fail("native head16: nonfinite/invalid native projection");
+        receipt.poincare_vector[d]=v;
+    }
+    receipt.accepted=true;
+    receipt.head=head;receipt.hot_vote=static_cast<std::uint8_t>(vote);
+    receipt.rule=static_cast<std::uint8_t>(chosen);
+    receipt.candidate_truth_mask=static_cast<std::uint16_t>(candidate_mask);
+    receipt.source_generation=expected_generation;
+    receipt.radius=radius;receipt.radial_distance=depth;
+    receipt.signed_curl_feedback=curl;
+    receipt.phase_cos_q16=static_cast<std::int32_t>(read_word(base+144));
+    receipt.phase_sin_q16=static_cast<std::int32_t>(read_word(base+145));
+    return true;
+}
+
+bool RawFieldVM::native_triad_hotcold_vector(
+    std::uint8_t triad,const std::array<std::uint8_t,255>& mapping,
+    float native_hodge_curl,std::int32_t native_seven_credit_q16,
+    std::uint32_t expected_generation,std::uint32_t current_generation,
+    NativeTrihead128Receipt& receipt) {
+    receipt={};
+    if(!vm_||triad>=85)return fail("native trihead128: invalid guest/triad");
+    std::array<bool,255> seen{};
+    for(std::uint32_t i=0;i<255;++i) {
+        const auto h=mapping[i];
+        if(h>=255||seen[h])return fail("native trihead128: mapping is not a permutation");
+        seen[h]=true;
+        if(!write_word(0x003E7000u+i,h))
+            return fail("native trihead128: mapping transmit failed");
+    }
+    std::uint32_t curl_bits=0;std::memcpy(&curl_bits,&native_hodge_curl,4);
+    const std::array<std::uint32_t,5> args={
+        triad,curl_bits,expected_generation,current_generation,
+        static_cast<std::uint32_t>(native_seven_credit_q16)};
+    for(std::uint32_t i=0;i<args.size();++i)
+        if(!write_word(kProposalBase+i,args[i]))
+            return fail("native trihead128: command args transmit failed");
+    if(!write_word(kCommandBase,111u)||!run_command())
+        return fail("native trihead128: guest execution rejected: "+error_);
+    const auto accepted=read_word(kResultBase);
+    const auto hot=read_word(kResultBase+1);
+    const auto cold=read_word(kResultBase+2);
+    const auto reason=read_word(kResultBase+3);
+    if(accepted==0u) {
+        if(hot!=0u||cold!=0u||reason<1u||reason>5u)
+            return fail("native trihead128: malformed rejected receipt");
+        receipt.rejection_reason=static_cast<std::uint8_t>(reason);
+        return true;
+    }
+    if(accepted!=1u||hot>3u||hot+cold!=3u||reason!=0u)
+        return fail("native trihead128: malformed triad vote receipt");
+    const auto meta=0x003EE000u+(static_cast<std::uint32_t>(triad)<<4u);
+    if(read_word(meta+5)!=hot||read_word(meta+6)!=cold||
+       read_word(meta+12)!=1u||read_word(meta+13)!=triad||
+       read_word(meta+14)!=1u||
+       read_word(meta+11)!=static_cast<std::uint32_t>(native_seven_credit_q16)||
+       read_word(meta+4)!=255u)
+        return fail("native trihead128: metadata identity drift");
+    const auto hot3=read_word(meta+8);
+    const auto cold3=read_word(meta+9);
+    const auto majority=static_cast<std::int32_t>(read_word(meta+7));
+    if(hot3!=(hot==3u?1u:0u)||cold3!=(cold==3u?1u:0u)||
+       majority!=(hot>=2u?1:-1))
+        return fail("native trihead128: HOT/COLD classifications disagree");
+    const auto as_float=[](std::uint32_t bits) {
+        float v=0;std::memcpy(&v,&bits,4);return v;
+    };
+    const float radius=as_float(read_word(meta+0));
+    const float depth=as_float(read_word(meta+1));
+    const float curl=as_float(read_word(meta+2));
+    const float gradient=as_float(read_word(meta+10));
+    if(!std::isfinite(radius)||radius<0||radius>=1||
+       !std::isfinite(depth)||depth<0||
+       !std::isfinite(curl)||!std::isfinite(gradient))
+        return fail("native trihead128: invalid Poincare/curl/gradient");
+    const auto dest=0x003EB000u+(static_cast<std::uint32_t>(triad)<<7u);
+    for(std::uint32_t d=0;d<128u;++d){
+        const float value=as_float(read_word(dest+d));
+        if(!std::isfinite(value)||std::fabs(value)>1.0f)
+            return fail("native trihead128: invalid vector component");
+        receipt.poincare_vector[d]=value;
+    }
+    receipt.accepted=true;receipt.triad=triad;
+    receipt.hot_count=static_cast<std::uint8_t>(hot);
+    receipt.cold_count=static_cast<std::uint8_t>(cold);
+    receipt.members={mapping[3u*triad],mapping[3u*triad+1],mapping[3u*triad+2]};
+    receipt.unanimous_hot=hot3==1u;
+    receipt.unanimous_cold=cold3==1u;
+    receipt.majority_sign=majority;
+    receipt.source_seven_credit_q16=native_seven_credit_q16;
+    receipt.source_generation=expected_generation;
+    receipt.radius=radius;receipt.radial_distance=depth;
+    receipt.signed_curl_feedback=curl;
+    receipt.candidate_credit_gradient=gradient;
+    return true;
+}
+
 bool RawFieldVM::native_hyperedge128_depth(
     const std::array<float,128>& sourced_vector,
     const std::array<std::uint8_t,3>& ordered_hyperedge,
