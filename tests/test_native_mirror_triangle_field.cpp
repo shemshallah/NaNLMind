@@ -41,6 +41,7 @@ int main(){
     assert(vm.native_mirror_pair_rail_gradient(
         mirror_rails,0,0,pair_flows,hot_pairs,cold_pairs,flat_pairs,
         rails_ok,rail_reason));
+    if(!rails_ok)std::cerr<<"NATIVE RAIL REJECT reason="<<unsigned(rail_reason)<<" err="<<vm.error()<<"\n";
     assert(rails_ok && rail_reason==0);
     assert(pair_flows[0]==1.0f && pair_flows[1]==-3.0f &&
            pair_flows[255]==2.0f && pair_flows[509]==-1.0f);
