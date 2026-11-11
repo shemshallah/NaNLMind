@@ -55,6 +55,17 @@ struct NativeSpectralTensorResult {
     std::vector<NativeSpectralTensorRecord> records;
 };
 
+// Native six-neighbor temporal attention / Poincare disk ABI receipt.
+// The NOW reference is physical VOID255 and never a candidate writer.
+struct NativeContext6Receipt {
+    bool accepted=false;
+    std::uint8_t valid_count=0, task=0, reason=0;
+    float poincare_x=0.0f,poincare_y=0.0f;
+    float radius=0.0f, radial_distance=0.0f;
+    std::uint8_t mask=0,now_head=255;
+    std::uint32_t observed_anchor=0;
+};
+
 struct DualProposalResult {
     RawProposalResult fast;
     RawProposalResult slow;
@@ -182,6 +193,15 @@ public:
 
     // Host transports authenticated observations/leases into the raw guest.
     // No spectral arithmetic, quorum scoring or mirror offsets happen here.
+    // Six slots are ordered [-3,-2,-1,+1,+2,+3].
+    // task0 strictly rejects future words; task1 is for MASKED INFILL only.
+    // Native opcode107 does ALL CORDIC/attention/Poincare arithmetic.
+    bool native_context6_attention(
+        std::uint32_t observed_anchor,
+        const std::array<std::uint32_t,6>& neighbors,
+        std::uint8_t valid_mask, std::uint8_t task,
+        std::uint32_t expected_generation, std::uint32_t current_generation,
+        NativeContext6Receipt& receipt);
     bool native_spectral_tensor_propose(
         const std::array<std::int64_t,256>& spectral_q16_i64,
         const std::array<std::uint8_t,85>& trihead_masks,
