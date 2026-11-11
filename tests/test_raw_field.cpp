@@ -870,6 +870,14 @@ int main() {
         CHECK(vm.meta_attention(q, k, v, mask, 2, 2, out));
         CHECK_EQ(out.size(), 2u);
         CHECK(out[0] > out[1]);
+        mask = {1, 0};
+        CHECK(vm.meta_attention(q, k, v, mask, 2, 2, out));
+        CHECK(std::fabs(out[0] - 1.0f) < 1.0e-5f);
+        CHECK(std::fabs(out[1]) < 1.0e-5f);
+        mask = {0, 0};
+        CHECK(!vm.meta_attention(q, k, v, mask, 2, 2, out));
+        mask = {2, 1};
+        CHECK(!vm.meta_attention(q, k, v, mask, 2, 2, out));
     }
 
     // Semantic triangle flow -> global Hodge.
