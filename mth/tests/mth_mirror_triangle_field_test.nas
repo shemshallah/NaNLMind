@@ -7,6 +7,7 @@ JMP @mpt_main
 .include "../nan16/mth_hyperedge_poincare128_curl.nas"
 .include "../nan16/mth_head16_poincare_vector.nas"
 .include "../nan16/mth_mirror_triangle_boot.nas"
+.include "../nan16/mth_mirror_rail_gradient.nas"
 .include "../nan16/mth_mirror_triangle_field.nas"
 .include "../nan16/mth_mirror_triangle_recover.nas"
 .include "../nan16/mth_mirror_triangle_poincare128.nas"
@@ -99,34 +100,105 @@ mpt_main:
   CMP r10,r11
   JMP[NE] @mpt_fail
 
-  ; REAL native directed pair-flow indexing:
-  ; pair(0,1) index0=+1, pair(0,2) index1=-3,
-  ; pair(1,2) index255=+2, so g20=+3, curl L=6.
+  MOVI r10,1
+  ST r10,r0,@mpt_stage
+  ; Authenticated-source fixture S+/S- mirror rails are two INDEPENDENT
+  ; directed stored float32 values per canonical C(256,2) cell.
+  ; The guest, NOT the test harness, constructs anti-symmetric g=S+-S-.
   MOVI r8,0
-  MOVHI r8,0x003A
+  MOVHI r8,0x0034  ; physical per-pair [S+,S-] source snapshot
   MOVI r10,0
-  MOVHI r10,0x3F80
-  ST r10,r8,0
+  MOVHI r10,0x3F80  ; +1
+  ST r10,r8,0        ; pair0 (0,1): +1 - 0 = +1
   MOVI r10,0
-  MOVHI r10,0xC040
-  ST r10,r8,1
+  MOVHI r10,0x4040  ; +3
+  ST r10,r8,3        ; pair1 (0,2): 0 - 3 = -3
   MOVI r10,0
-  MOVHI r10,0x4000
-  ST r10,r8,255
-  ; Pair(1,3) index256=+2, (2,3) index509=-1:
-  ; triangle(1,2,3) has HOT1 COLD2 and negative curl.
-  ST r10,r8,256
+  MOVHI r10,0x4000  ; +2
+  ST r10,r8,510      ; pair255 (1,2): +2
+  ST r10,r8,512      ; pair256 (1,3): +2
+  ST r10,r8,5012     ; pair2506 (10,12): +2
   MOVI r10,0
-  MOVHI r10,0xBF80
-  ST r10,r8,509
-  ; Triangle(10,11,12) all COLD: -1 -1 -2 = -4.
-  ST r10,r8,2505
-  ST r10,r8,2750
-  MOVI r10,0
-  MOVHI r10,0x4000
-  ST r10,r8,2506
+  MOVHI r10,0x3F80  ; +1 reverse directed weights
+  ST r10,r8,1019     ; pair509 (2,3): -1
+  ST r10,r8,5011     ; pair2505 (10,11): -1
+  ST r10,r8,5501     ; pair2750 (11,12): -1
 
   MOVI r1,0
+  MOVHI r1,0x0034    ; raw mirrored S+/S- rail pairs
+  MOVI r2,0
+  MOVHI r2,0x0035    ; scratch signed edge gradients
+  MOVI r3,0
+  MOVHI r3,0x003A    ; published 32640 native gradient 1-form
+  MOVI r4,7
+  MOVI r5,7
+  MOVI r6,0x8000
+  MOVHI r6,0x0035    ; sample report
+  CALL @mth_mirror_rail_gradient
+  CMP r1,r13
+  JMP[NE] @mpt_fail
+  MOVI r10,32640
+  CMP r2,r10
+  JMP[NE] @mpt_fail
+  CMP r3,r0
+  JMP[LE] @mpt_fail
+  MOVI r8,0
+  MOVHI r8,0x003A
+  LD r10,r8,0
+  MOVI r11,0
+  MOVHI r11,0x3F80
+  CMP r10,r11
+  JMP[NE] @mpt_fail
+  LD r10,r8,1
+  MOVI r11,0
+  MOVHI r11,0xC040
+  CMP r10,r11
+  JMP[NE] @mpt_fail
+  LD r10,r8,255
+  MOVI r11,0
+  MOVHI r11,0x4000
+  CMP r10,r11
+  JMP[NE] @mpt_fail
+  MOVI r10,2
+  ST r10,r0,@mpt_stage
+  ; Invalid nonzero VOID255 mirror rail rejected before publishing.
+  MOVI r8,0
+  MOVHI r8,0x0034
+  MOVI r10,0
+  MOVHI r10,0x3F80
+  ST r10,r8,508      ; pair(0,255) forward rail must be zero
+  MOVI r1,0
+  MOVHI r1,0x0034
+  MOVI r2,0
+  MOVHI r2,0x0035
+  MOVI r3,0
+  MOVHI r3,0x003A
+  MOVI r4,7
+  MOVI r5,7
+  MOVI r6,0x8000
+  MOVHI r6,0x0035
+  CALL @mth_mirror_rail_gradient
+  CMP r1,r0
+  JMP[NE] @mpt_fail
+  MOVI r10,3
+  CMP r4,r10
+  JMP[NE] @mpt_fail
+  MOVI r8,0
+  MOVHI r8,0x0034
+  MOVI r10,3
+  ST r10,r0,@mpt_stage
+  ST r0,r8,508       ; restore valid physical snapshot
+  MOVI r8,0
+  MOVHI r8,0x003A
+  LD r10,r8,0
+  MOVI r11,0
+  MOVHI r11,0x3F80
+  CMP r10,r11
+  JMP[NE] @mpt_fail
+
+  MOVI r1,0
+  MOVI r10,4
+  ST r10,r0,@mpt_stage
   MOVHI r1,0x003A       ; 32640 signed canonical pair flows
   MOVI r2,0
   MOVHI r2,0x0039       ; boot frozen 510 triples
@@ -237,6 +309,8 @@ mpt_main:
   CMP r10,r11
   JMP[NE] @mpt_fail
 
+  MOVI r10,5
+  ST r10,r0,@mpt_stage
   ; Trainable 128D head vectors must originate from SAME native head guest.
   ST r0,r0,@mpt_index
 mpt_seed_head:
@@ -277,6 +351,19 @@ mpt_seed_head:
   ADD r1,r9,r0
   CALL @mth_head16_poincare_measure
   CMP r1,r13
+  JMP[NE] @mpt_fail
+  ; Require guest vector-bank stamp, not a host or scratch-only claim.
+  LD r9,r0,@mpt_index
+  MOVI r8,0
+  MOVHI r8,0x003F
+  SHL r10,r9,8
+  ADD r8,r8,r10
+  LD r10,r8,133
+  MOVI r11,7
+  CMP r10,r11
+  JMP[NE] @mpt_fail
+  LD r10,r8,147
+  CMP r10,r13
   JMP[NE] @mpt_fail
   LD r9,r0,@mpt_index
   ADDI r9,r9,1
@@ -324,6 +411,8 @@ mpt_project:
   FCMP r10,r0
   JMP[LE] @mpt_fail
 
+  MOVI r10,6
+  ST r10,r0,@mpt_stage
   ; Corrupt only g_01: 1 -> 4, retain L=6 and trusted g_12,g_20.
   MOVI r8,0
   MOVHI r8,0x003A
@@ -378,6 +467,8 @@ mpt_project:
   CMP r10,r11
   JMP[NE] @mpt_fail
 
+  MOVI r10,7
+  ST r10,r0,@mpt_stage
   ; Source-generation failure does NOT publish new triangle records.
   MOVI r8,0
   MOVHI r8,0x0036
@@ -410,6 +501,35 @@ mpt_project:
   CALL @mpt_print
   HALT
 mpt_fail:
+  ; Diagnostics: failed rail source pair index in four hex digits.
+  LD r9,r0,@mrg_pair_index
+  MOVI r8,4
+mpt_debug_pair_hex:
+  SHR r10,r9,12
+  SHL r9,r9,4
+  MOVI r11,15
+  BOOL.8 r10,r10,r11
+  MOVI r11,9
+  CMP r10,r11
+  JMP[LE] @mpt_debug_digit
+  ADDI r10,r10,7
+mpt_debug_digit:
+  ADDI r10,r10,48
+  PUTC r10
+  ADDI r8,r8,-1
+  CMP r8,r0
+  JMP[GT] @mpt_debug_pair_hex
+  MOVI r8,48
+  ADD r8,r8,r4
+  PUTC r8
+  ; Guest-only failure discriminator after canonical pair index and reason.
+  LD r8,r0,@mrg_fail_site
+  ADDI r8,r8,48
+  PUTC r8
+  LD r8,r0,@mpt_stage
+  MOVI r11,48
+  ADD r8,r8,r11
+  PUTC r8
   MOVI r1,@mpt_bad
   CALL @mpt_print
   HALT
@@ -436,4 +556,6 @@ mpt_bad:
 mpt_random_c:
   .word 0
 mpt_index:
+  .word 0
+mpt_stage:
   .word 0

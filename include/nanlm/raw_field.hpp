@@ -352,6 +352,15 @@ public:
         const std::array<std::int32_t,85>& sourced_seven_credits_q16,
         std::uint32_t expected_epoch, std::uint32_t current_epoch,
         NativeFullField128Receipt& receipt);
+    // Native opcode120: construct the SAME Hodge edge 1-form directly
+    // from the TWO independent physical S+/S- rails. Host transports
+    // authenticated snapshot bytes but does not subtract mirror weights.
+    bool native_mirror_pair_rail_gradient(
+        const std::array<float,65280>& sourced_mirror_rails,
+        std::uint32_t expected_epoch,std::uint32_t current_epoch,
+        std::array<float,32640>& directed_gradients,
+        std::uint32_t& hot_pairs,std::uint32_t& cold_pairs,
+        std::uint32_t& flat_pairs,bool& accepted,std::uint8_t& reason);
     // Guest opcode114 freezes 255 local and 255 seeded long-distance
     // mirror triangles. A second call rejects silent topology resampling.
     bool native_mirror_triangle_boot(std::uint32_t seed,

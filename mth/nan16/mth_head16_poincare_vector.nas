@@ -172,7 +172,12 @@ mth_head16_poincare_measure:
   ST r11,r8,145
   LD r11,r8,180
   ST r11,r8,146  ; candidate truth mask
+  ; Stamp the SAME measured 128D output slab consumed by mirror faces.
+  ; [133]=measured generation, [147]=accepted. The 128D vector is intact.
+  LD r11,r8,133
+  ST r11,r10,133
   MOVI r11,1
+  ST r11,r10,147
   ST r11,r8,147
   LD r15,r8,190
   MOVI r1,1

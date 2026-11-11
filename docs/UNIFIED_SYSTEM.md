@@ -188,6 +188,7 @@ Restored raw commands:
 | 108 | `mth_hyperedge_poincare128_curl` | 128D Poincare hyperedge depth + signed curl |
 | 109 | `mth_context6_window_stream` fused | source stream -> six-slot attention -> Poincare NOW |
 | 118 | `mth_shortlist_batch_proposal` | one native call for an entire candidate shortlist |
+| 120 | `mth_mirror_rail_gradient` | native oriented gradient from both physical mirror rails |
 
 These are the kernel-level paths removed by the earlier ABI-conflict merge.
 They are now reachable and covered by focused tests. CLI exposure for the
@@ -231,7 +232,7 @@ generated prefix
   -> Hodge divergence/curl
   -> MC0 committed meta
   -> 128D hyperedge Poincare/curl (opcode 108)
-  -> native shortlist batch (opcode 112)
+  -> native shortlist batch (opcode 118)
   -> frozen 48M exact normalization
   -> choose next word
   -> append and remeasure

@@ -18,10 +18,16 @@ main:
   ; Verify that a single native three-word observation credits precisely
   ; its selected three heads, not the next 82 heads or another triad.
   CALL @mth_meta_trihead_reset
+  MOVI r14,1
+  CMP r13,r14
+  JMP[NE] @mth_mt_test_fail
   MOVI r1,100
   MOVI r2,200
   MOVI r3,300
   CALL @mth_meta_trihead_observe
+  MOVI r14,1
+  CMP r13,r14
+  JMP[NE] @mth_mt_test_fail
   MOVI r5,3
   MUL r6,r1,r5       ; first credited head
   ADDI r7,r6,3       ; exclusive upper bound
@@ -50,10 +56,16 @@ mth_mt_credit_exact_next:
   JMP[LT] @mth_mt_credit_exact_loop
   ; Continue the original multi-context fixture after a clean reset.
   CALL @mth_meta_trihead_reset
+  MOVI r14,1
+  CMP r13,r14
+  JMP[NE] @mth_mt_test_fail
   MOVI r1,0x0000
   MOVHI r1,0x0002
   MOVI r2,4
   CALL @mth_meta_trihead_observe_batch
+  MOVI r14,1
+  CMP r13,r14
+  JMP[NE] @mth_mt_test_fail
   MOVI r12,4
   CMP r1,r12
   JMP[NE] @mth_mt_test_fail
@@ -76,6 +88,64 @@ mth_mt_test_next:
 mth_mt_test_done:
   CMP r6,r0
   JMP[EQ] @mth_mt_test_fail
+  ; Signed Q16 overflow pressure, full-field rescale and returned ABI.
+  CALL @mth_meta_trihead_reset
+  MOVI r1,100
+  MOVI r2,200
+  MOVI r3,300
+  CALL @mth_meta_trihead_observe
+  MOVI r5,3
+  MUL r6,r1,r5
+  MOVI r10,0x0100
+  MOVHI r10,0x0022
+  ADD r10,r10,r6
+  MOVI r11,0
+  MOVHI r11,0x7FFF
+  ST r11,r10,0
+  ; Select an unrelated control outside the chosen three-head group.
+  MOVI r7,254
+  MOVI r9,252
+  CMP r6,r9
+  JMP[NE] @mth_mt_test_unrelated_ready
+  MOVI r7,0
+mth_mt_test_unrelated_ready:
+  MOVI r8,0x0100
+  MOVHI r8,0x0022
+  ADD r8,r8,r7
+  MOVI r11,0
+  MOVHI r11,0x0004
+  ST r11,r8,0
+  MOVI r1,100
+  MOVI r2,200
+  MOVI r3,300
+  CALL @mth_meta_trihead_observe
+  MOVI r14,1
+  CMP r13,r14
+  JMP[NE] @mth_mt_test_fail
+  MOVI r5,3
+  MUL r6,r1,r5
+  MOVI r8,0x0100
+  MOVHI r8,0x0022
+  ADD r8,r8,r6
+  LD r9,r8,0
+  MOVI r10,0x8000
+  MOVHI r10,0x4000
+  CMP r9,r10
+  JMP[NE] @mth_mt_test_fail
+  MOVI r7,254
+  MOVI r9,252
+  CMP r6,r9
+  JMP[NE] @mth_mt_test_control_ready
+  MOVI r7,0
+mth_mt_test_control_ready:
+  MOVI r8,0x0100
+  MOVHI r8,0x0022
+  ADD r8,r8,r7
+  LD r9,r8,0
+  MOVI r10,0
+  MOVHI r10,0x0002
+  CMP r9,r10
+  JMP[NE] @mth_mt_test_fail
   MOVI r1,@mth_mt_test_pass
   CALL @mth_mt_test_puts
   HALT

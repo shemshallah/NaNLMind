@@ -126,6 +126,7 @@ JMP @field_driver_entry
 .include "../nan16/mth_triad_hotcold_poincare128.nas"
 .include "../nan16/mth_full_field_head_triad_measure.nas"
 .include "../nan16/mth_mirror_triangle_boot.nas"
+.include "../nan16/mth_mirror_rail_gradient.nas"
 .include "../nan16/mth_mirror_triangle_field.nas"
 .include "../nan16/mth_mirror_triangle_recover.nas"
 .include "../nan16/mth_mirror_triangle_poincare128.nas"
@@ -469,6 +470,9 @@ field_driver_main:
   MOVI r3,118
   CMP r2,r3
   JMP[EQ] @field_driver_shortlist_batch
+  MOVI r3,120
+  CMP r2,r3
+  JMP[EQ] @field_driver_mirror_rail_gradient
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -1983,6 +1987,34 @@ field_driver_full_field_255_85:
 ; Private candidate data leaves and NLL gates remain controller-owned.
 ; 114 args seed,epoch at 0x4001; triangles 0x390000[1530],
 ; boot flag 0x394000[3]. Repeated bootstrap cannot resample.
+; Opcode120: derive directed signed g[lo->hi] = S+ - S- by native
+; NaN16 arithmetic from BOTH independently stored mirror rails.
+; Source physical snapshot S+/S- interleaved at 0x340000[65280],
+; private staging at 0x350000[32640], published Hodge/curl gradients
+; at 0x3A0000[32640], report at 0x358000[4].
+; Caller must authenticate physical snapshot and epoch; source values
+; are not invented by the driver or reconstructed from a model output.
+; 0x4001 expected/current epoch. Results accepted,pair_count,HOT_count,reason.
+field_driver_mirror_rail_gradient:
+  MOVI r1,0
+  MOVHI r1,0x0034
+  MOVI r2,0
+  MOVHI r2,0x0035
+  MOVI r3,0
+  MOVHI r3,0x003A
+  MOVI r10,0x4001
+  LD r4,r10,0
+  LD r5,r10,1
+  MOVI r6,0x8000
+  MOVHI r6,0x0035
+  CALL @mth_mirror_rail_gradient
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  ST r4,r10,3
+  JMP @field_driver_return
+
 field_driver_mirror_triangle_boot:
   MOVI r10,0x4001
   LD r1,r10,0

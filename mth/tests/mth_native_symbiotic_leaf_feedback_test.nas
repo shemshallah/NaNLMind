@@ -18,6 +18,8 @@ slft_main:
   MOVI r13,1
   MOVI r9,0
   ST r9,r0,@slft_h
+  MOVI r9,1
+  ST r9,r0,@slft_stage
 slft_head_loop:
   LD r9,r0,@slft_h
   MOVI r10,0
@@ -65,6 +67,23 @@ slft_rule_set:
   JMP @slft_head_loop
 
 slft_trihead:
+  MOVI r14,2
+  ST r14,r0,@slft_stage
+  ; Initialize the same unique 255-member map BEFORE native trihead
+  ; preflight; zero-filled mapping would repeat head 0 three times.
+  MOVI r9,0
+slft_map_loop:
+  MOVI r10,255
+  CMP r9,r10
+  JMP[GE] @slft_native_trihead
+  MOVI r10,@slft_mapping
+  ADD r10,r10,r9
+  ST r9,r10,0
+  ADDI r9,r9,1
+  JMP @slft_map_loop
+slft_native_trihead:
+  MOVI r14,3
+  ST r14,r0,@slft_stage
   ; Native measured trihead0 (2 hot 1 cold), same source + generation.
   MOVI r1,0
   MOVI r2,@slft_mapping
@@ -83,18 +102,10 @@ slft_trihead:
   CMP r3,r13
   JMP[NE] @slft_fail
 
-  ; 255 unique member IDs (production mapping would be native hot-triad).
-  MOVI r9,0
-slft_map_loop:
-  MOVI r10,255
-  CMP r9,r10
-  JMP[GE] @slft_votes
-  MOVI r10,@slft_mapping
-  ADD r10,r10,r9
-  ST r9,r10,0
-  ADDI r9,r9,1
-  JMP @slft_map_loop
+  ; The same native head permutation was initialized before trihead use.
 slft_votes:
+  MOVI r14,4
+  ST r14,r0,@slft_stage
   MOVI r9,0
 slft_vote_loop:
   MOVI r10,85
@@ -124,6 +135,8 @@ slft_writer_set:
   ADDI r9,r9,1
   JMP @slft_permissions_loop
 slft_request:
+  MOVI r14,5
+  ST r14,r0,@slft_stage
   MOVI r10,@slft_req
   ST r0,r10,0
   MOVI r11,7
@@ -163,6 +176,8 @@ slft_request:
   ; Three independent head diagonal leaf descriptors.
   MOVI r9,0
 slft_test_head_records:
+  MOVI r14,6
+  ST r14,r0,@slft_stage
   MOVI r10,3
   CMP r9,r10
   JMP[GE] @slft_test_triad_records
@@ -201,6 +216,8 @@ slft_test_head_records:
   ADDI r9,r9,1
   JMP @slft_test_head_records
 slft_test_triad_records:
+  MOVI r14,7
+  ST r14,r0,@slft_stage
   MOVI r10,@slft_output
   MOVI r11,36
   ADD r10,r10,r11
@@ -243,6 +260,8 @@ slft_test_triad_records:
   CMP r11,r12
   JMP[NE] @slft_fail
 
+  MOVI r14,8
+  ST r14,r0,@slft_stage
   ; Stale native generation MUST leave output record intact.
   MOVI r10,@slft_req
   MOVI r11,8
@@ -260,6 +279,8 @@ slft_test_triad_records:
   LD r10,r0,@slft_output
   CMP r10,r11
   JMP[NE] @slft_fail
+  MOVI r14,9
+  ST r14,r0,@slft_stage
   ; Restore generation and deny meta: output also remains unchanged.
   MOVI r10,@slft_req
   MOVI r11,7
@@ -278,6 +299,12 @@ slft_test_triad_records:
   CALL @slft_puts
   HALT
 slft_fail:
+  ; Print native stage (1..9) and last guest result r4 before FAIL.
+  LD r5,r0,@slft_stage
+  ADDI r5,r5,48
+  PUTC r5
+  ADDI r5,r4,48
+  PUTC r5
   MOVI r1,@slft_bad
   CALL @slft_puts
   HALT
@@ -297,6 +324,10 @@ slft_puts_byte:
   JMP[NE] @slft_puts_byte
   ADD r1,r1,r13
   JMP @slft_puts_word
+slft_h:
+  .word 0
+slft_stage:
+  .word 0
 slft_pass:
 .str "MTH NATIVE SYMBIOTIC LEAF FEEDBACK PASS\n"
 slft_bad:
