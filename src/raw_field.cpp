@@ -659,6 +659,64 @@ bool RawFieldVM::native_full_field_255_85(
 
 // Typed NaN16 ABI for physical palindromic anchors and the existing
 // C(256,2) dual-rail mirror field. ALL curvature/geometry/recovery is guest.
+bool RawFieldVM::native_mirror_pair_rail_gradient(
+    const std::array<float,65280>& rails,
+    std::uint32_t expected_epoch,std::uint32_t current_epoch,
+    std::array<float,32640>& gradients,
+    std::uint32_t& hot_pairs,std::uint32_t& cold_pairs,
+    std::uint32_t& flat_pairs,bool& accepted,std::uint8_t& reason) {
+    gradients.fill(0.0f);
+    hot_pairs=0u;cold_pairs=0u;flat_pairs=0u;
+    accepted=false;reason=0u;
+    if(!vm_)return fail("native mirror rails: VM unavailable");
+    // Only ABI transport of independently stored, authenticated physical
+    // S+/S- rails. Native opcode118 performs ALL float32 subtraction,
+    // VOID checks, signed pair classification and candidate publication.
+    constexpr std::uint32_t kRails=0x00340000u;
+    constexpr std::uint32_t kFlows=0x003A0000u;
+    constexpr std::uint32_t kReport=0x00358000u;
+    for(unsigned i=0;i<rails.size();++i){
+        const float value=rails[i];
+        if(!std::isfinite(value)||std::fabs(value)>8.0f)
+            return fail("native mirror rails: nonfinite/out-of-bounds sourced rail");
+        std::uint32_t bits=0u;
+        std::memcpy(&bits,&value,sizeof(bits));
+        if(!write_word(kRails+i,bits))
+            return fail("native mirror rails: physical dual-rail transport failure");
+    }
+    if(!write_word(kProposalBase,expected_epoch)||
+       !write_word(kProposalBase+1,current_epoch)||
+       !write_word(kCommandBase,118u)||!run_command())
+        return fail("native mirror rails: guest measurement failed: "+error_);
+    const auto ok=read_word(kResultBase),count=read_word(kResultBase+1);
+    const auto hot=read_word(kResultBase+2),code=read_word(kResultBase+3);
+    if(ok==0u){
+        if(count||hot||code<1u||code>3u)
+            return fail("native mirror rails: malformed native refusal");
+        reason=static_cast<std::uint8_t>(code);
+        return true;
+    }
+    if(ok!=1u||count!=32640u||code!=0u||hot>32640u)
+        return fail("native mirror rails: invalid whole-pair native count");
+    const auto hot_actual=read_word(kReport);
+    const auto cold_actual=read_word(kReport+1);
+    const auto flat_actual=read_word(kReport+2);
+    const auto epoch=read_word(kReport+3);
+    if(hot_actual!=hot||epoch!=expected_epoch||
+       hot_actual+cold_actual+flat_actual!=32640u)
+        return fail("native mirror rails: inconsistent guest HOT/COLD/FLAT report");
+    for(unsigned i=0;i<32640u;++i){
+        const auto word=read_word(kFlows+i);
+        float value=0.0f;
+        std::memcpy(&value,&word,sizeof(value));
+        if(!std::isfinite(value)||std::fabs(value)>8.0f)
+            return fail("native mirror rails: invalid published native gradient");
+        gradients[i]=value;
+    }
+    hot_pairs=hot_actual;cold_pairs=cold_actual;flat_pairs=flat_actual;
+    accepted=true;return true;
+}
+
 bool RawFieldVM::native_mirror_triangle_boot(
     std::uint32_t seed,std::uint32_t epoch,bool& accepted,
     std::uint8_t& reason) {
