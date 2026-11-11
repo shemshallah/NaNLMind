@@ -298,10 +298,17 @@ sp_return:
   LD r15,r0,@sp_link
   RET
 
-sp_link: .word 0
-sp_request: .word 0
-sp_a: .word 0
-sp_b: .word 0
-sp_offset: .word 0
-sp_count: .word 0
-sp_approved: .word 0
+sp_link:
+  .word 0
+sp_request:
+  .word 0
+sp_a:
+  .word 0
+sp_b:
+  .word 0
+sp_offset:
+  .word 0
+sp_count:
+  .word 0
+sp_approved:
+  .word 0
