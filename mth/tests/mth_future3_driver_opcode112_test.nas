@@ -84,6 +84,11 @@ f112_step:
   MOVHI r8,0x003E
   MOVI r11,54321
   ST r11,r8,0
+  ; The loop exits at generated_count=3 (all steps executed). Replay
+  ; horizon 3 by explicitly selecting the prior two generated words.
+  MOVI r8,0x4002
+  MOVI r11,2
+  ST r11,r8,0
   CALL @field_driver_main
   LD r10,r0,0x4010
   CMP r10,r13
