@@ -82,6 +82,8 @@ FIXTURES = (
             1_000_000, "MTH TRIANGLE CONTRAST PASS"),
     Fixture("global_hodge", "mth/tests/mth_global_hodge256_native_test.nas",
             3_000_000, "MTH GLOBAL HODGE256 PASS"),
+    Fixture("geometric_trail_field", "mth/tests/mth_geometric_field_train_test.nas",
+            7_000_000, "MTH GEOMETRIC FIELD TRAIN PASS"),
     Fixture("ht256_arena", "mth/tests/mth_hypertensor256_mirror_arena_native_test.nas",
             10_000_000, "MTH HYPERTENSOR256 MIRROR ARENA PASS"),
     Fixture("ht256_dual", "mth/tests/mth_hypertensor256_mirror_dual_native_test.nas",
