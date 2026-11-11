@@ -2190,6 +2190,8 @@ bool RawFieldVM::meta_attention(
         !write_word(kProposalBase + 1, static_cast<std::uint32_t>(dim)) ||
         !write_word(kCommandBase, 102)) return fail("cannot write meta command");
     if (!run_command()) return false;
+    if ((read_word(kResultBase) & 1u) == 0)
+        return fail("native MC0 attention rejected invalid or uncommitted slots");
     out.resize(dim);
     for (std::size_t i = 0; i < dim; ++i) {
         const std::uint32_t bits = read_word(0x343000u + static_cast<std::uint32_t>(i));
