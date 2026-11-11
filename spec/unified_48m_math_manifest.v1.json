@@ -1,0 +1,234 @@
+{
+  "schema": "nanlm.unified-48m-math/1",
+  "version": 1,
+  "canonical_branch": "main",
+  "source_archive": "palindromic_language_R27_48M_INDEPENDENT_GUTENBERG_FULL.zip",
+  "frozen_base_sha256": "299a91daf65c8e66fe3489940371d262afef18dd2ef6fef61947ac14c62bb717",
+  "frozen_overlay_sha256": "62bf1e5defbb8224d795db16a8e6959cc9aa3d7fed8a63346c4cee205a1bea04",
+  "no_separate_models": true,
+  "chart": "one authoritative NaN16 8MiB root plus external candidate/active 128MiB tensor",
+  "credit_order": [
+    "CFT",
+    "TRAIL",
+    "HOLO",
+    "RING",
+    "LEAF",
+    "TCA",
+    "FLUX"
+  ],
+  "credit_channels": [
+    {
+      "id": "CFT",
+      "formula": "native circulation / local cycle-flux error credit",
+      "kernel": "mth/nan16/mth_cft_credit.nas",
+      "feedback": "mth_credit_bundle -> candidate tensor",
+      "tests": [
+        "mth/tests/mth_cft_credit_test.nas",
+        "tests/test_native48m_feedback.cpp"
+      ]
+    },
+    {
+      "id": "TRAIL",
+      "formula": "c = delta_plus * e_plus - delta_minus * e_minus; two-rail TD eligibility",
+      "kernel": "mth/nan16/mth_trail_credit.nas",
+      "feedback": "mth_credit_bundle; geometric batch field 43/85",
+      "tests": [
+        "mth/tests/mth_trail_credit_test.nas",
+        "mth/tests/mth_geometric_field_train_test.nas"
+      ]
+    },
+    {
+      "id": "HOLO",
+      "formula": "h=wrap(sum theta_edges); defect=1-cos(h)",
+      "kernel": "mth/nan16/mth_holo_credit.nas",
+      "feedback": "mth_credit_bundle",
+      "tests": [
+        "mth/tests/mth_credit_suite_test.nas",
+        "tests/test_raw_field.cpp"
+      ]
+    },
+    {
+      "id": "RING",
+      "formula": "shifted angular correlation on 255 head ring",
+      "kernel": "mth/nan16/mth_ring_credit.nas",
+      "feedback": "mth_credit_bundle",
+      "tests": [
+        "mth/tests/mth_credit_suite_test.nas",
+        "tests/test_raw_field.cpp"
+      ]
+    },
+    {
+      "id": "LEAF",
+      "formula": "support = popcount(row_bits & leaf_mask); support*counter",
+      "kernel": "mth/nan16/mth_leaf_credit.nas",
+      "feedback": "mth_credit_bundle; exact candidate leaf",
+      "tests": [
+        "mth/tests/mth_credit_suite_test.nas",
+        "tests/test_raw_field.cpp"
+      ]
+    },
+    {
+      "id": "TCA",
+      "formula": "local_log_probability minus leave-one-out peer mean",
+      "kernel": "mth/nan16/mth_tca_credit.nas",
+      "feedback": "frozen 48M exact-word score difference enters native TCA",
+      "tests": [
+        "mth/tests/mth_credit_suite_test.nas",
+        "tests/test_native48m_feedback.cpp"
+      ]
+    },
+    {
+      "id": "FLUX",
+      "formula": "J=w*(phi_v-phi_u); credit is local signed divergence-flow product",
+      "kernel": "mth/nan16/mth_flux_credit.nas",
+      "feedback": "mth_credit_bundle",
+      "tests": [
+        "mth/tests/mth_credit_suite_test.nas",
+        "tests/test_native48m_feedback.cpp"
+      ]
+    }
+  ],
+  "stages": [
+    {
+      "id": "frozen48m",
+      "owner": "original R27 checkpoint + exact R24 trie",
+      "main_sources": [
+        "tools/decoder48m_candidate.py"
+      ],
+      "math": "43M base + 5M contextual overlay; exact whole-word probability P0, pair-context and OOV spelling kept frozen",
+      "tests": [
+        "tests/test_decoder48m_candidate.py"
+      ],
+      "claim": "existing trained model; no newly trained language checkpoint"
+    },
+    {
+      "id": "phase",
+      "owner": "NaN16",
+      "main_sources": [
+        "mth/nan16/mth_phase_encode.nas"
+      ],
+      "math": "8 complex Q16 lanes; theta=2*pi*((257*b+8192*p) mod 65536)/65536; native lookup table [0x3E00,0x4000)",
+      "tests": [
+        "mth/tests/mth_phase_encode_test.nas",
+        "tools/verify_native_memory_map.py"
+      ],
+      "claim": "native measured"
+    },
+    {
+      "id": "head geometry",
+      "owner": "NaN16",
+      "main_sources": [
+        "mth/nan16/mth_phase_pq.nas",
+        "mth/nan16/mth_pq_train.nas",
+        "mth/nan16/mth_pq_residual.nas",
+        "mth/nan16/mth_geometry.nas"
+      ],
+      "math": "PQ/residual/spectral/geometric observations carried as signed Q16",
+      "tests": [
+        "mth/tests/mth_phase_pq_test.nas",
+        "mth/tests/mth_vector_matrix_test.nas"
+      ],
+      "claim": "native measured"
+    },
+    {
+      "id": "triheads",
+      "owner": "NaN16",
+      "main_sources": [
+        "mth/nan16/mth_meta_trihead.nas",
+        "mth/nan16/mth_triad_vote.nas",
+        "mth/nan16/mth_field_vote.nas"
+      ],
+      "math": "255 candidate heads in 85 exact 3-member partitions; 2/3 per triad; >=43/85 field",
+      "tests": [
+        "mth/tests/mth_meta_trihead_test.nas",
+        "mth/tests/mth_triad_vote_test.nas"
+      ],
+      "claim": "three-member credit loop regression repaired"
+    },
+    {
+      "id": "hypertensor",
+      "owner": "full candidate/active storage",
+      "main_sources": [
+        "mth/nan16/mth_hypertensor256_mirror_dual_map.nas",
+        "include/nanlm/dual_tensor_arena.hpp"
+      ],
+      "math": "T[h,a,b] and T[h,b,a] independent; 256^3 float32 per bank; 64 MiB active + 64 MiB candidate",
+      "tests": [
+        "mth/tests/mth_hypertensor256_mirror_dual_native_test.nas",
+        "tests/test_dual_tensor_arena.cpp"
+      ],
+      "claim": "candidate authorized; no active write without gate"
+    },
+    {
+      "id": "global Hodge",
+      "owner": "NaN16",
+      "main_sources": [
+        "mth/nan16/mth_global_hodge256_f32.nas",
+        "mth/nan16/mth_global_hodge256_q16.nas"
+      ],
+      "math": "divergence=B1*f; curl=B2^T*f for oriented flow; tensor directions need not be antisymmetric",
+      "tests": [
+        "mth/tests/mth_global_hodge256_native_test.nas",
+        "tests/test_native48m_feedback.cpp"
+      ],
+      "claim": "requires actual sourced oriented faces for production"
+    },
+    {
+      "id": "MC0 meta",
+      "owner": "NaN16",
+      "main_sources": [
+        "mth/nan16/mth_meta_attention16_f32.nas",
+        "include/nanlm/native48m_feedback.hpp"
+      ],
+      "math": "20D guest feature: 16 phase+field+head credit+Hodge divergence+curl; <=16 masked committed slots, alpha=softmax(q dot k / sqrt(20))",
+      "tests": [
+        "tests/test_native48m_feedback.cpp",
+        "tests/test_meta_attention_source.py"
+      ],
+      "claim": "masked future slots rejected"
+    },
+    {
+      "id": "credit bundle",
+      "owner": "NaN16",
+      "main_sources": [
+        "mth/nan16/mth_credit_bundle.nas",
+        "mth/nan16/mth_credit_combine.nas",
+        "mth/nan16/mth_geometric_trail_field.nas"
+      ],
+      "math": "7 Q16 signed native channel credits combined under guest coefficients; 255-head geometric TRAIL 2/3 and 43/85 gate",
+      "tests": [
+        "mth/tests/mth_credit_suite_test.nas",
+        "mth/tests/mth_geometric_field_train_test.nas",
+        "tests/test_native48m_feedback.cpp"
+      ],
+      "claim": "native fixture integration, not independently validated language improvement"
+    },
+    {
+      "id": "feedback and decoder readout",
+      "owner": "NaN16 + original R25 emitter",
+      "main_sources": [
+        "include/nanlm/native48m_feedback_json.hpp",
+        "tools/nanlm48m_native_emit.cpp",
+        "tools/decoder48m_candidate.py"
+      ],
+      "math": "Z=1+sum_{w in S}P0(w|c)(exp(delta(w,c))-1); Pcandidate=P0 exp(delta)/Z; exact-word NLL gate",
+      "tests": [
+        "tests/test_decoder48m_candidate.py",
+        "tests/test_native48m_feedback.cpp"
+      ],
+      "claim": "candidate-only; fitted development and independent held-out gains not established"
+    }
+  ],
+  "branch_reconciliation_files": [
+    "spec/branch_reconciliation/architecture_clocked.v1.json",
+    "spec/branch_reconciliation/hermes_native_math.v1.json",
+    "spec/branch_reconciliation/addresses_readiness.v1.json",
+    "spec/branch_reconciliation/intake_learning_spectral.v1.json"
+  ],
+  "gates": {
+    "candidate_write": "explicit per-head capability, all 255 eligible, no void255",
+    "native_commit": "triad 2/3 field 43/85; versioned generation",
+    "tensor_promotion": "frozen SHA pair + actual writes + native global/meta + disjoint exact-word NLL improvement; no automatic unreviewed promotion",
+    "quality_claim": "no demonstrated held-out improvement from integrated feedback yet"
+  }
+}
