@@ -57,9 +57,10 @@ inline NativeHeadLeafStage stage_native_head_leaf_candidate(
     return {measured.head,1u,
             std::size_t(fresh_vector)+std::size_t(fresh_rule),arena.generation()};
 }
-// One dynamically mapped 3-head triangle stages a SIGNED credit gradient
-// on T[h,a,b], native Poincare depth on reverse T[h,b,a], a typed 128D
-// TRIHEAD vector leaf plus a typed HYPEREDGE relation record. No scalar
+// One dynamically mapped 3-head triangle stages SIGNED credit gradient in
+// T[h,a,a], native Poincare depth in T[h,b,b], preserving existing numerical
+// T[h,a,b] and T[h,b,a] head/temporal measurements. The directed pair carries
+// a typed 128D TRIHEAD vector leaf and oriented HYPEREDGE relation record. No scalar
 // numerical operation runs on the host; 2/3 and 3/3 votes are guest-owned.
 inline NativeHeadLeafStage stage_native_triad_leaf_candidate(
     DualTensor256Arena& arena,const NativeTrihead128Receipt& triad,
@@ -112,8 +113,10 @@ inline NativeHeadLeafStage stage_native_triad_leaf_candidate(
     append_raw(triad.radial_distance);
     const bool fresh_vec=arena.attach_candidate_leaf(h,h,a,b,vec);
     const bool fresh_edge=arena.attach_candidate_leaf(h,h,b,a,edge);
-    arena.stage_native_value(h,h,a,b,triad.candidate_credit_gradient);
-    arena.stage_native_value(h,h,b,a,triad.radial_distance);
+    // Dedicated typed numerical slots: do not erase preexisting CFT,
+    // temporal or seven-credit values at the oriented triangle coordinates.
+    arena.stage_native_value(h,h,a,a,triad.candidate_credit_gradient);
+    arena.stage_native_value(h,h,b,b,triad.radial_distance);
     return {static_cast<std::uint8_t>(h),2u,
             std::size_t(fresh_vec)+std::size_t(fresh_edge),arena.generation()};
 }
