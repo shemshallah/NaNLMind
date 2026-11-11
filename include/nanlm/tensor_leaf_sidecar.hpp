@@ -19,6 +19,9 @@ enum class TensorLeafKind : std::uint8_t {
     CorpusEvidence=6,
     BooleanTruthTable=7,
     TemporalContext=8,
+    MirrorTriangleCurl=9,        // 32 native U32 words + orientation byte
+    MirrorTrianglePoincare128=10, // 128 native F32 coordinates
+    MirrorTriangleRepair=11,      // candidate ghat,g observed,residual,epoch
 };
 struct TensorDataLeaf {
     TensorLeafKind kind=TensorLeafKind::CorpusEvidence;
@@ -45,10 +48,15 @@ inline bool valid_tensor_leaf_payload(const TensorDataLeaf& leaf) {
     if(!valid_tensor_leaf_sha256(leaf.source_sha256) ||
        leaf.payload.empty()||leaf.payload.size()>65536u)return false;
     const unsigned k=static_cast<unsigned>(leaf.kind);
-    if(k<1u||k>8u)return false;
+    if(k<1u||k>11u)return false;
     if((leaf.kind==TensorLeafKind::HeadVector128 ||
-        leaf.kind==TensorLeafKind::TriheadVector128) &&
+        leaf.kind==TensorLeafKind::TriheadVector128 ||
+        leaf.kind==TensorLeafKind::MirrorTrianglePoincare128) &&
        leaf.payload.size()!=128u*sizeof(float))return false;
+    if(leaf.kind==TensorLeafKind::MirrorTriangleCurl &&
+       leaf.payload.size()!=32u*sizeof(std::uint32_t)+1u)return false;
+    if(leaf.kind==TensorLeafKind::MirrorTriangleRepair &&
+       leaf.payload.size()!=4u*sizeof(std::uint32_t))return false;
     if(leaf.kind==TensorLeafKind::BooleanTruthTable &&
        leaf.payload.size()!=2u)return false;
     return true;
