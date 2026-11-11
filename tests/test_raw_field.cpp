@@ -43,6 +43,50 @@ int main() {
     CHECK_EQ(before, 2);
     CHECK_EQ(after, 4);
 
+    // Reconciled seven-method credit ABI. Each call must reach a real NaN16
+    // kernel: these opcodes previously collided with decoder readout or had
+    // no guest-dispatch entry, returning stale result registers.
+    {
+        std::array<std::int32_t, 4> cft_out{};
+        CHECK(vm.cft(0,0,0,65536,39321,cft_out));
+        CHECK_EQ(cft_out[3],13107);
+        std::array<std::int32_t, 3> trail_out{};
+        CHECK(vm.trail(0x8000,0x6666,0x4CCC,0x3333,0x1999,
+                       0x1999,0x3333,0x0CCC,0x051E,0xE666,0xCCCC,
+                       trail_out));
+        std::array<std::int32_t, 2> holo_out{};
+        CHECK(vm.holo({0,0,0},holo_out));
+        CHECK_EQ(holo_out[0],0);
+        std::int32_t ring_score=0;
+        CHECK(vm.ring(phases,0,ring_score));
+        CHECK(ring_score>=65000);
+        std::array<std::int32_t, 2> leaf_out{};
+        CHECK(vm.leaf(0xFu,0x3u,100,leaf_out));
+        CHECK_EQ(leaf_out[0],2);
+        CHECK_EQ(leaf_out[1],200);
+        std::int32_t adv=0;
+        CHECK(vm.tca(100,50,50,adv));
+        CHECK_EQ(adv,50);
+        std::array<std::int32_t, 3> flux_out{};
+        CHECK(vm.flux(0,65536,32768,0,flux_out));
+        CHECK_EQ(flux_out[0],32768);
+        CHECK_EQ(flux_out[2],16384);
+        const std::array<std::int32_t, 7> guest_credit={
+            cft_out[3],trail_out[2],holo_out[1],ring_score,
+            leaf_out[1],adv,flux_out[2]};
+        const std::array<std::int32_t, 7> coefficients={
+            8192,8192,8192,8192,8192,8192,8192};
+        std::int32_t combined=0;
+        CHECK(vm.combine_credits(guest_credit,coefficients,combined));
+        std::int32_t expected=0;
+        for(std::size_t i=0;i<7;++i)
+            expected += static_cast<std::int32_t>(
+                (static_cast<std::int64_t>(guest_credit[i])*
+                 coefficients[i])>>16);
+        CHECK_EQ(combined,expected);
+        CHECK(!vm.ring(phases,255,ring_score));
+    }
+
     // Chart bridge: the guest decision changes only the proposer's mask and
     // updates the chart's integer credit fields.
     Universe universe;
