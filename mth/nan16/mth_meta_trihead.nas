@@ -76,6 +76,9 @@ mth_meta_trihead_observe:
   MOVI r10,0x0100
   MOVHI r10,0x0022
   ADD r10,r10,r7
+  ; Only the three members of this selected triad receive credit.
+  ; r9 was 85 for the modulo above and must not become a loop bound.
+  MOVI r9,3
   MOVI r8,0
 mth_mt_credit_loop:
   CMP r8,r9
