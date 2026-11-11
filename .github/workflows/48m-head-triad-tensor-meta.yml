@@ -4,6 +4,11 @@ on:
     branches: [main]
     paths:
       - 'include/nanlm/dual_tensor_arena.hpp'
+      - 'include/nanlm/native48m_feedback.hpp'
+      - 'tests/test_native48m_feedback.cpp'
+      - 'mth/nan16/mth_meta_trihead.nas'
+      - 'src/raw_field.cpp'
+      - 'Makefile'
       - 'tools/decoder48m_candidate.py'
       - 'tests/test_dual_tensor_arena.cpp'
       - 'tests/test_decoder48m_candidate.py'
@@ -13,6 +18,11 @@ on:
   pull_request:
     paths:
       - 'include/nanlm/dual_tensor_arena.hpp'
+      - 'include/nanlm/native48m_feedback.hpp'
+      - 'tests/test_native48m_feedback.cpp'
+      - 'mth/nan16/mth_meta_trihead.nas'
+      - 'src/raw_field.cpp'
+      - 'Makefile'
       - 'tools/decoder48m_candidate.py'
       - 'tests/test_dual_tensor_arena.cpp'
       - 'tests/test_decoder48m_candidate.py'
@@ -28,6 +38,10 @@ jobs:
         run: |
           g++ -std=c++20 -O2 -Wall -Wextra -pedantic -Iinclude tests/test_dual_tensor_arena.cpp -o /tmp/test_dual_tensor_arena
           /tmp/test_dual_tensor_arena
+      - name: Test real NaN16 phase-trihead-Hodge-MC0 dual tensor feedback
+        run: |
+          make -j2 build/test_native48m_feedback
+          ./build/test_native48m_feedback
       - name: Test exact frozen 48M candidate math and MC0 masking contract
         run: |
           python3 -m unittest discover -s tests -p test_decoder48m_candidate.py -v
