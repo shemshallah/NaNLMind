@@ -2188,7 +2188,7 @@ bool RawFieldVM::meta_attention(
             return fail("cannot write meta mask");
     if (!write_word(kProposalBase + 0, static_cast<std::uint32_t>(slots)) ||
         !write_word(kProposalBase + 1, static_cast<std::uint32_t>(dim)) ||
-        !write_word(kCommandBase, 104)) return fail("cannot write meta command");
+        !write_word(kCommandBase, 102)) return fail("cannot write meta command");
     if (!run_command()) return false;
     out.resize(dim);
     for (std::size_t i = 0; i < dim; ++i) {
