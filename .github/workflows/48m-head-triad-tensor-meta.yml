@@ -5,6 +5,9 @@ on:
     paths:
       - 'include/nanlm/dual_tensor_arena.hpp'
       - 'include/nanlm/native48m_feedback.hpp'
+      - 'include/nanlm/native_mirror_triangle_leaf_feedback.hpp'
+      - 'include/nanlm/tensor_leaf_sidecar.hpp'
+      - 'tests/test_native_mirror_triangle_field.cpp'
       - 'tests/test_native48m_feedback.cpp'
       - 'include/nanlm/native48m_feedback_json.hpp'
       - 'tools/nanlm48m_native_emit.cpp'
@@ -30,6 +33,9 @@ on:
     paths:
       - 'include/nanlm/dual_tensor_arena.hpp'
       - 'include/nanlm/native48m_feedback.hpp'
+      - 'include/nanlm/native_mirror_triangle_leaf_feedback.hpp'
+      - 'include/nanlm/tensor_leaf_sidecar.hpp'
+      - 'tests/test_native_mirror_triangle_field.cpp'
       - 'tests/test_native48m_feedback.cpp'
       - 'include/nanlm/native48m_feedback_json.hpp'
       - 'tools/nanlm48m_native_emit.cpp'
@@ -67,6 +73,10 @@ jobs:
           make -j2 build/test_native48m_feedback
           python3 tools/verify_native_memory_map.py build/field_driver.nan
           ./build/test_native48m_feedback
+      - name: Verify real NaN16 palindrome/mirror curl -> Poincare -> typed tensor candidate
+        run: |
+          make -j2 build/test_native_mirror_triangle_field
+          ./build/test_native_mirror_triangle_field
       - name: Emit original-decoder candidate from real native corpus windows
         run: |
           make -j2 build/nanlm48m-native-emit
