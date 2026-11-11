@@ -65,6 +65,19 @@ slft_rule_set:
   JMP @slft_head_loop
 
 slft_trihead:
+  ; Initialize the same unique 255-member map BEFORE native trihead
+  ; preflight; zero-filled mapping would repeat head 0 three times.
+  MOVI r9,0
+slft_map_loop:
+  MOVI r10,255
+  CMP r9,r10
+  JMP[GE] @slft_native_trihead
+  MOVI r10,@slft_mapping
+  ADD r10,r10,r9
+  ST r9,r10,0
+  ADDI r9,r9,1
+  JMP @slft_map_loop
+slft_native_trihead:
   ; Native measured trihead0 (2 hot 1 cold), same source + generation.
   MOVI r1,0
   MOVI r2,@slft_mapping
@@ -83,17 +96,7 @@ slft_trihead:
   CMP r3,r13
   JMP[NE] @slft_fail
 
-  ; 255 unique member IDs (production mapping would be native hot-triad).
-  MOVI r9,0
-slft_map_loop:
-  MOVI r10,255
-  CMP r9,r10
-  JMP[GE] @slft_votes
-  MOVI r10,@slft_mapping
-  ADD r10,r10,r9
-  ST r9,r10,0
-  ADDI r9,r9,1
-  JMP @slft_map_loop
+  ; The same native head permutation was initialized before trihead use.
 slft_votes:
   MOVI r9,0
 slft_vote_loop:
