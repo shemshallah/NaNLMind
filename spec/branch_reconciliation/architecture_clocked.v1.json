@@ -1,0 +1,457 @@
+{
+  "schema": "nanlm.branch-reconciliation/1",
+  "snapshot_date": "2026-11-11",
+  "canonical_target": "main",
+  "cohort": "architecture_and_clocked",
+  "rule": "Preserve all unique source until reviewed; a branch ref is not a model instance.",
+  "branches": [
+    {
+      "branch": "architecture",
+      "status": "review_required",
+      "ahead_by": 1,
+      "behind_by": 586,
+      "changed_files": [
+        {
+          "path": "docs/82_ARCHITECTURE_REQUIREMENTS.md",
+          "status": "added"
+        },
+        {
+          "path": "scripts/build_arch.sh",
+          "status": "added"
+        }
+      ],
+      "notes": "Divergent historical source; do not merge over newer canonical main. Resolve unique functionality file by file."
+    },
+    {
+      "branch": "clocked-hackathon",
+      "status": "review_required",
+      "ahead_by": 8,
+      "behind_by": 609,
+      "changed_files": [
+        {
+          "path": "integrations/clocked/client.py",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/clocked_experience.py",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/demo.py",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/demo_samples.jsonl",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/gateway.py",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/protocol.schema.json",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/requirements.txt",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/test_client.py",
+          "status": "added"
+        }
+      ],
+      "notes": "Divergent historical source; do not merge over newer canonical main. Resolve unique functionality file by file."
+    },
+    {
+      "branch": "clocked-nannet-consumer-mainline",
+      "status": "review_required",
+      "ahead_by": 4,
+      "behind_by": 471,
+      "changed_files": [
+        {
+          "path": ".github/workflows/clocked-nannet-bridge.yml",
+          "status": "added"
+        },
+        {
+          "path": "docs/73_CLOCKED_NANNET_BRIDGE.md",
+          "status": "added"
+        },
+        {
+          "path": "runner/clocked_observation_consumer.py",
+          "status": "added"
+        },
+        {
+          "path": "runner/test_clocked_observation_consumer.py",
+          "status": "added"
+        }
+      ],
+      "notes": "Divergent historical source; do not merge over newer canonical main. Resolve unique functionality file by file."
+    },
+    {
+      "branch": "clocked-native-demo-mainline",
+      "status": "review_required",
+      "ahead_by": 31,
+      "behind_by": 469,
+      "changed_files": [
+        {
+          "path": ".github/workflows/clocked-adapter.yml",
+          "status": "added"
+        },
+        {
+          "path": "Makefile",
+          "status": "modified"
+        },
+        {
+          "path": "README.md",
+          "status": "modified"
+        },
+        {
+          "path": "docs/72_CANONICAL_TRAINING_UNIVERSE.md",
+          "status": "added"
+        },
+        {
+          "path": "include/nanlm/endpoint_evidence.hpp",
+          "status": "added"
+        },
+        {
+          "path": "include/nanlm/learning_mesh.hpp",
+          "status": "modified"
+        },
+        {
+          "path": "integrations/clocked/README.md",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/client.py",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/clocked_experience.py",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/demo.py",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/demo_samples.jsonl",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/endpoint-observation.schema.json",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/endpoint_client.py",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/gateway.py",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/native_demo.cpp",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/protocol.schema.json",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/requirements.txt",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/test_client.py",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/test_clocked_experience.py",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/test_demo.py",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/test_endpoint_client.py",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/test_gateway.py",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/training_endpoints.json",
+          "status": "added"
+        },
+        {
+          "path": "specs/CLOCKED_CHAINABLE_TRAINING.md",
+          "status": "added"
+        },
+        {
+          "path": "src/endpoint_evidence.cpp",
+          "status": "added"
+        },
+        {
+          "path": "src/learning_mesh.cpp",
+          "status": "modified"
+        },
+        {
+          "path": "tests/test_endpoint_evidence.cpp",
+          "status": "added"
+        },
+        {
+          "path": "tests/test_learning_mesh.cpp",
+          "status": "modified"
+        }
+      ],
+      "notes": "Divergent historical source; do not merge over newer canonical main. Resolve unique functionality file by file."
+    },
+    {
+      "branch": "clocked-universe",
+      "status": "review_required",
+      "ahead_by": 75,
+      "behind_by": 664,
+      "changed_files": [
+        {
+          "path": ".github/workflows/clocked-adapter.yml",
+          "status": "added"
+        },
+        {
+          "path": "Makefile",
+          "status": "modified"
+        },
+        {
+          "path": "README.md",
+          "status": "modified"
+        },
+        {
+          "path": "docs/72_CANONICAL_TRAINING_UNIVERSE.md",
+          "status": "added"
+        },
+        {
+          "path": "include/nanlm/endpoint_evidence.hpp",
+          "status": "added"
+        },
+        {
+          "path": "include/nanlm/learning_mesh.hpp",
+          "status": "modified"
+        },
+        {
+          "path": "integrations/clocked/README.md",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/client.py",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/clocked_experience.py",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/demo.py",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/demo_samples.jsonl",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/endpoint-observation.schema.json",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/endpoint_client.py",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/gateway.py",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/native_demo.cpp",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/protocol.schema.json",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/requirements.txt",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/test_client.py",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/test_clocked_experience.py",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/test_demo.py",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/test_endpoint_client.py",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/test_gateway.py",
+          "status": "added"
+        },
+        {
+          "path": "integrations/clocked/training_endpoints.json",
+          "status": "added"
+        },
+        {
+          "path": "runner/training_merge.py",
+          "status": "modified"
+        },
+        {
+          "path": "specs/CLOCKED_CHAINABLE_TRAINING.md",
+          "status": "added"
+        },
+        {
+          "path": "src/endpoint_evidence.cpp",
+          "status": "added"
+        },
+        {
+          "path": "src/learning_mesh.cpp",
+          "status": "modified"
+        },
+        {
+          "path": "tests/test_endpoint_evidence.cpp",
+          "status": "added"
+        },
+        {
+          "path": "tests/test_learning_mesh.cpp",
+          "status": "modified"
+        }
+      ],
+      "notes": "Divergent historical source; do not merge over newer canonical main. Resolve unique functionality file by file."
+    },
+    {
+      "branch": "clocked-universe-nannet",
+      "status": "review_required",
+      "ahead_by": 117,
+      "behind_by": 661,
+      "changed_files": [
+        {
+          "path": ".github/workflows/clocked-nannet-bridge.yml",
+          "status": "added"
+        },
+        {
+          "path": ".github/workflows/nannet-consume.yml",
+          "status": "added"
+        },
+        {
+          "path": ".github/workflows/nannet-universal.yml",
+          "status": "added"
+        },
+        {
+          "path": ".github/workflows/ring.yml",
+          "status": "modified"
+        },
+        {
+          "path": "Dockerfile",
+          "status": "added"
+        },
+        {
+          "path": "docs/33_BOOTSTRAP_ROUTER.md",
+          "status": "modified"
+        },
+        {
+          "path": "docs/73_CLOCKED_NANNET_BRIDGE.md",
+          "status": "added"
+        },
+        {
+          "path": "integrations/nannet/Procfile",
+          "status": "added"
+        },
+        {
+          "path": "integrations/nannet/README.md",
+          "status": "added"
+        },
+        {
+          "path": "integrations/nannet/portal.html",
+          "status": "added"
+        },
+        {
+          "path": "integrations/nannet/requirements.txt",
+          "status": "added"
+        },
+        {
+          "path": "integrations/nannet/server.py",
+          "status": "added"
+        },
+        {
+          "path": "integrations/nannet/test_server.py",
+          "status": "added"
+        },
+        {
+          "path": "integrations/nannet/training_merge.py",
+          "status": "added"
+        },
+        {
+          "path": "runner/clocked_observation_consumer.py",
+          "status": "added"
+        },
+        {
+          "path": "runner/nannet_consumer.py",
+          "status": "added"
+        },
+        {
+          "path": "runner/test_clocked_observation_consumer.py",
+          "status": "added"
+        },
+        {
+          "path": "runner/test_nannet_consumer.py",
+          "status": "added"
+        }
+      ],
+      "notes": "Divergent historical source; do not merge over newer canonical main. Resolve unique functionality file by file."
+    },
+    {
+      "branch": "docs/topology-head-roles-not-hw-ports",
+      "status": "review_required",
+      "ahead_by": 1,
+      "behind_by": 200,
+      "changed_files": [
+        {
+          "path": "README.md",
+          "status": "modified"
+        }
+      ],
+      "notes": "Divergent historical source; do not merge over newer canonical main. Resolve unique functionality file by file."
+    },
+    {
+      "branch": "feat/cross-repo-nan-contract-drift-audit",
+      "status": "review_required",
+      "ahead_by": 6,
+      "behind_by": 201,
+      "changed_files": [
+        {
+          "path": ".github/workflows/nan-cross-repo-contracts.yml",
+          "status": "added"
+        },
+        {
+          "path": "docs/CROSS_REPOSITORY_DRIFT_AUDIT.md",
+          "status": "added"
+        },
+        {
+          "path": "integration/cross_repo_drift.py",
+          "status": "added"
+        },
+        {
+          "path": "tests/test_cross_repo_drift.py",
+          "status": "added"
+        }
+      ],
+      "notes": "Divergent historical source; do not merge over newer canonical main. Resolve unique functionality file by file."
+    }
+  ]
+}
