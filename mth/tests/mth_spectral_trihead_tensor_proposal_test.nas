@@ -219,16 +219,23 @@ sp_test_bad:
 .str "MTH SPECTRAL TRIHEAD TENSOR PROPOSAL FAIL\n"
 
 .org 30000
-sp_test_request: .word 0,0,0,0,0,0,0,0,0,0,0,0
+sp_test_request:
+  .word 0,0,0,0,0,0,0,0,0,0,0,0
 .org 31000
-sp_test_spectral: .word 0
+sp_test_spectral:
+  .word 0
 .org 32100
-sp_test_votes: .word 0
+sp_test_votes:
+  .word 0
 .org 32300
-sp_test_pairs: .word 0
+sp_test_pairs:
+  .word 0
 .org 33000
-sp_test_permissions: .word 0
+sp_test_permissions:
+  .word 0
 .org 34000
-sp_test_scratch: .word 0
+sp_test_scratch:
+  .word 0
 .org 36000
-sp_test_output: .word 0
+sp_test_output:
+  .word 0
