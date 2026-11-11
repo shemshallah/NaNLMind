@@ -1,0 +1,38 @@
+name: Native six-word temporal attention and Poincare geometry
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mth/nan16/mth_six_context_poincare_attention.nas'
+      - 'mth/tests/mth_six_context_poincare_attention_test.nas'
+      - 'mth/nan16/mth_q16_sin_cos.nas'
+      - 'mth/nan16/mth_meta_attention16_f32.nas'
+      - '.github/workflows/native-six-context-poincare.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native-architecture:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: shemshallah/NaN0S
+          ref: main
+          path: nan0s
+      - name: Build raw NaN16 VM
+        run: make -s -C nan0s/aarch64/android nan_cli
+      - name: Assemble and execute native masked temporal context and Poincare
+        shell: bash
+        run: |
+          set -euo pipefail
+          awk -f nan0s/tools/nmk.awk -v CMD=emit mth/tests/mth_six_context_poincare_attention_test.nas > /tmp/context6-poincare.nan
+          nan0s/aarch64/android/nan_cli --img /tmp/context6-poincare.nan --steps 6000000 --serial > /tmp/context6-poincare.log 2>&1
+          cat /tmp/context6-poincare.log
+          grep -q '^MTH SIX CONTEXT POINCARE ATTENTION PASS' /tmp/context6-poincare.log
