@@ -874,6 +874,44 @@ int main() {
         std::array<std::int32_t, 2> torient{};
         CHECK(vm.read_triangle_model(tstats, torient));
         CHECK_EQ(tstats[2], 1);
+
+        // The negative bank is a separate distribution.  A positive-like
+        // shape must score above a negative-like shape, and the negative
+        // bank must remain independently inspectable.
+        std::array<std::int32_t, 3> nsides = {300, 310, 305};
+        std::int32_t ncount = 0;
+        CHECK(vm.triangle_model_observe_negative(nsides, 305, 20000, -1,
+                                                 ncount));
+        CHECK_EQ(ncount, 1);
+        std::int32_t contrast_pos = 0, contrast_neg = 0;
+        CHECK(vm.triangle_model_score_contrastive(tsides, 105, 50000,
+                                                  contrast_pos));
+        CHECK(vm.triangle_model_score_contrastive(nsides, 305, 20000,
+                                                  contrast_neg));
+        CHECK(contrast_pos > 60000);
+        CHECK(contrast_neg < 5000);
+        std::array<std::int32_t, 3> nstats{};
+        std::array<std::int32_t, 2> norient{};
+        CHECK(vm.read_triangle_model_negative(nstats, norient));
+        CHECK_EQ(nstats[2], 1);
+
+        // With no negative examples yet, contrastive scoring falls back to
+        // the positive-only shape score rather than returning a fake zero.
+        CHECK(vm.triangle_model_reset());
+        CHECK(vm.triangle_model_observe(tsides, 105, 50000, 1, tcount));
+        std::int32_t fallback = 0;
+        CHECK(vm.triangle_model_score_contrastive(tsides, 105, 50000,
+                                                  fallback));
+        CHECK(fallback > 60000);
+
+        // A negative-only bank cannot produce a positive contrastive score.
+        CHECK(vm.triangle_model_reset());
+        CHECK(vm.triangle_model_observe_negative(nsides, 305, 20000, -1,
+                                                 ncount));
+        std::int32_t no_positive = -1;
+        CHECK(vm.triangle_model_score_contrastive(tsides, 105, 50000,
+                                                  no_positive));
+        CHECK_EQ(no_positive, 0);
     }
 
     return test_done("raw NaN16 field VM bridge");

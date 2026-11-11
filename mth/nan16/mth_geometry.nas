@@ -499,5 +499,7 @@ mth_g_osum:
   .word 0
 mth_g_side:
   .word 0
+  .word 0
+  .word 0
 mth_g_energy:
   .word 0
