@@ -488,6 +488,9 @@ mpt_project:
   CALL @mpt_print
   HALT
 mpt_fail:
+  MOVI r8,48
+  ADD r8,r8,r4
+  PUTC r8
   LD r8,r0,@mpt_stage
   MOVI r11,48
   ADD r8,r8,r11
