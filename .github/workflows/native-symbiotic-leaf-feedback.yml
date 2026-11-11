@@ -32,6 +32,9 @@ jobs:
         run: |
           set -euo pipefail
           awk -f nan0s/tools/nmk.awk -v CMD=emit mth/tests/mth_native_symbiotic_leaf_feedback_test.nas > /tmp/symbiotic.nan
-          nan0s/aarch64/android/nan_cli --img /tmp/symbiotic.nan --steps 25000000 --serial > /tmp/symbiotic.log 2>&1
+          if ! nan0s/aarch64/android/nan_cli --img /tmp/symbiotic.nan --steps 25000000 --serial > /tmp/symbiotic.log 2>&1; then
+            cat /tmp/symbiotic.log
+            exit 1
+          fi
           cat /tmp/symbiotic.log
           grep -q '^MTH NATIVE SYMBIOTIC LEAF FEEDBACK PASS' /tmp/symbiotic.log
