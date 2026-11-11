@@ -59,6 +59,16 @@ public:
         if(h>=255)throw std::out_of_range("void writer");
         authority_[h]=granted;
     }
+    // A coordinator may explicitly authorize ALL 255 trainable heads
+    // to propose candidate writes for the current epoch. This does not
+    // grant direct active-bank writes or authorize void255. Revocable.
+    void set_all_candidate_writer_permissions(bool granted) noexcept {
+        authority_.fill(granted);
+    }
+    bool candidate_writer_allowed(unsigned h) const {
+        if(h>=255)throw std::out_of_range("void writer");
+        return authority_[h];
+    }
     float active(unsigned h,unsigned a,unsigned b)const {
         return active_.at(index(h,a,b));
     }
