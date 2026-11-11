@@ -121,6 +121,8 @@ JMP @field_driver_entry
 .include "../nan16/mth_six_context_poincare_attention.nas"
 .include "../nan16/mth_hyperedge_poincare128_curl.nas"
 .include "../nan16/mth_context6_window_stream.nas"
+.include "../nan16/mth_head16_poincare_vector.nas"
+.include "../nan16/mth_triad_hotcold_poincare128.nas"
 
 field_driver_entry:
   MOVI r13,1
@@ -425,6 +427,12 @@ field_driver_main:
   MOVI r3,109
   CMP r2,r3
   JMP[EQ] @field_driver_stream_context6
+  MOVI r3,110
+  CMP r2,r3
+  JMP[EQ] @field_driver_head16_poincare
+  MOVI r3,111
+  CMP r2,r3
+  JMP[EQ] @field_driver_triad_hotcold_poincare
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -1753,6 +1761,46 @@ field_driver_stream_context6:
   MOVHI r2,0x003E
   CALL @mth_six_context_poincare_attention
 field_driver_stream_context6_result:
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  ST r4,r10,3
+  JMP @field_driver_return
+
+; Opcode110: independent raw NaN16 16-Boolean head measurement,
+; per-head 128D source scratch 0x3B0000+h*256, projected 0x3F0000+h*256.
+; Host writes h to 0x4001. The source vector, actual Hodge curl, writer
+; capability, truth mask and epoch reside entirely in that head's scratch.
+; Result 0x4010: accepted,head,hotvote,reason. No tensor write here.
+field_driver_head16_poincare:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  CALL @mth_head16_poincare_measure
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  ST r4,r10,3
+  JMP @field_driver_return
+
+; Opcode111: 85 trihead vector scratch arenas, sourced 128D head vectors,
+; 2/3 HOT/COLD, 3/3 HOT and COLD unanimity, and signed native 7-credit
+; x Hodge-curl eligibility proposals.
+; Args 0x4001: t, curl F32, expected_gen, current_gen, credit Q16.
+; Mapping 85x3 U32 at 0x3E7000. Native triad scratch is 0x3E8000..3EE900.
+; Result 0x4010: accepted,hot_count,cold_count,reason.
+; The source must have passed Hodge/provenance; no automatic tensor promotion.
+field_driver_triad_hotcold_poincare:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  MOVI r2,0x7000
+  MOVHI r2,0x003E
+  LD r3,r10,1
+  LD r4,r10,2
+  LD r5,r10,3
+  LD r6,r10,4
+  CALL @mth_triad_hotcold_poincare128
   MOVI r10,0x4010
   ST r1,r10,0
   ST r2,r10,1
