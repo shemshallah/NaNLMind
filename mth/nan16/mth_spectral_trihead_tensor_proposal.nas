@@ -218,8 +218,10 @@ sp_stage_map:
   ST r2,r0,@sp_a
   ST r3,r0,@sp_b
   ADD r1,r9,r0
+  ST r9,r0,@sp_index
   MOVI r8,1
   CALL @mth_hypertensor256_mirror_dual_map
+  LD r9,r0,@sp_index
   CMP r1,r13
   JMP[NE] @sp_bad_map
   ST r6,r0,@sp_offset
@@ -311,4 +313,6 @@ sp_offset:
 sp_count:
   .word 0
 sp_approved:
+  .word 0
+sp_index:
   .word 0
