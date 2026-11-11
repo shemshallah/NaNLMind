@@ -1417,18 +1417,14 @@ field_driver_global_hodge:
   MOVHI r2,0x0036
   MOVI r10,0x4001
   LD r3,r10,0
-  MOVI r4,0x0000
+  MOVI r4,0x9000
   MOVHI r4,0x0036
-  ADDI r4,r4,36864
-  MOVI r5,0x0000
+  MOVI r5,0x9400
   MOVHI r5,0x0036
-  ADDI r5,r5,37888
-  MOVI r6,0x0000
+  MOVI r6,0xA000
   MOVHI r6,0x0036
-  ADDI r6,r6,40960
-  MOVI r7,0x0000
+  MOVI r7,0xB000
   MOVHI r7,0x0036
-  ADDI r7,r7,45056
   CALL @mth_global_hodge256_f32
   MOVI r10,0x4010
   ST r1,r10,0

@@ -857,6 +857,22 @@ This makes the field a geometric gate as well as a vote count.
 The existing released phase bank is the earlier D64/128-component bank. The
 new 256-component codebook is released separately under the same release tag.
 
+### NaNROUTER corpus and void255 alignment
+
+The NaNROUTER corpus releases now expose per-book batches for sentences,
+paragraphs and short stories. Their complete and batch tags are mapped in
+`spec/nannet_corpus_routes.v1.json`; downloads must verify `SHA256SUMS.parts`
+and use a document/book-disjoint split.
+
+The newer NaNROUTER attention contract reserves mathematical head **255 as
+void/zero** and treats the 255 active heads as 0..254. NaNLMind's current slot is
+therefore a **separate field register with sentinel -1**, not head 255. The
+NaNLMind 43/85 field head remains an aggregate role, not an incidence endpoint.
+`spec/void255_active_head_math.v1.json` and
+`spec/nanrouter_integration.v1.json` record the cross-repository mapping.
+`mth_global_hodge256_f32.nas` rejects nonzero pair flow incident to head 255 and
+rejects any simplicial face containing it.
+
 ### Source-disjoint relation corpus and calibration
 
 `N16TRI/1` is the provenance-bound WordNet 3.1 relation corpus. It contains

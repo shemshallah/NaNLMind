@@ -1,0 +1,31 @@
+{
+  "schema": "nanlm.nannet-corpus-routes/1",
+  "source_repository": "shemshallah/NaNROUTER",
+  "source_commit": "5f4b211",
+  "license": "Project Gutenberg public-domain source texts; see corpus LICENSE.txt",
+  "categories": {
+    "sentences": {
+      "complete_tag": "corpora-sentences",
+      "batch_tag_pattern": "corpora-sentences-{0001..}",
+      "book_batch_size": 1000,
+      "manifest": "corpora/sentences/MANIFEST.json",
+      "batches": "corpora/sentences/BATCHES.json"
+    },
+    "paragraphs": {
+      "complete_tag": "corpora-paragraphs",
+      "batch_tag_pattern": "corpora-paragraphs-{0001..}",
+      "book_batch_size": 1000,
+      "manifest": "corpora/paragraphs/MANIFEST.json",
+      "batches": "corpora/paragraphs/BATCHES.json"
+    },
+    "short_stories": {
+      "complete_tag": "corpora-short-stories",
+      "batch_tag_pattern": "corpora-short-stories-{0001..}",
+      "book_batch_size": 1000,
+      "manifest": "corpora/short_stories/MANIFEST.json",
+      "batches": "corpora/short_stories/BATCHES.json"
+    }
+  },
+  "intake": "download one tagged batch, verify SHA256SUMS.parts, expand per-book .txt, feed stream-train/ngram-train/phase-codebook without copying into a repository",
+  "split_policy": "document/book-disjoint; do not reuse the old random-line split"
+}

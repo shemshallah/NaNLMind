@@ -1928,10 +1928,6 @@ bool RawFieldVM::field_perturb(
 }
 
 
-std::uint32_t RawFieldVM::debug_word(std::uint32_t index) {
-    return read_word(index);
-}
-
 bool RawFieldVM::global_hodge(
     const std::array<float, 32640>& pair_flows,
     const std::vector<std::array<std::uint32_t, 3>>& triangles,
@@ -1944,8 +1940,7 @@ bool RawFieldVM::global_hodge(
     };
     for (std::size_t i = 0; i < pair_flows.size(); ++i)
         if (!wf(0x360000u + static_cast<std::uint32_t>(i), pair_flows[i]))
-            return fail("cannot write global hodge flows at " +
-                        std::to_string(i));
+            return fail("cannot write global hodge flows");
     for (std::size_t t = 0; t < triangles.size(); ++t)
         for (std::size_t k = 0; k < 3; ++k)
             if (!write_word(0x368000u + static_cast<std::uint32_t>(t * 3 + k),

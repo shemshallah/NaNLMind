@@ -1,0 +1,42 @@
+{
+  "schema": "nanlm.nanrouter-integration/1",
+  "source_branch": "origin/design/head-trihead-global-meta-attention-v1-20261110",
+  "source_commit": "50b83e9",
+  "source_contract": "docs/HEAD_TRIHEAD_GLOBAL_META_ATTENTION_V1.md",
+  "void255": {
+    "physical_heads": 256,
+    "active_math_heads": [
+      0,
+      254
+    ],
+    "void_head": 255,
+    "void_pair_flow": "signed_zero_only",
+    "void_in_faces": false,
+    "current_slot": "separate field register, sentinel -1"
+  },
+  "stages": [
+    "head",
+    "hypertensor_16x16x16",
+    "simplicial_trihead",
+    "global_spectral_geometry",
+    "global_focus",
+    "return"
+  ],
+  "nanlmind_mapping": {
+    "head": "raw phase vectors + 255 head credits",
+    "hypertensor": "vector matrix candidate rows / triangle triples",
+    "simplicial": "mth_shape_field + 85 triads",
+    "global_spectral_geometry": "mth_global_hodge256_f32 + path/triangle geometry",
+    "global_focus": "43/85 shape/closure gate",
+    "return": "next word/context via head255-void current field register"
+  },
+  "meta_policy": {
+    "owner": "Overbootstrap MC0",
+    "deferred": true
+  },
+  "evidence": {
+    "trained": false,
+    "transformer_parity": false,
+    "geometry_benefit": false
+  }
+}
