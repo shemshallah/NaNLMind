@@ -90,6 +90,30 @@ struct NativeTrihead128Receipt {
     float radius=0.0f,radial_distance=0.0f,signed_curl_feedback=0.0f;
     float candidate_credit_gradient=0.0f;
 };
+// Full FIELD: 255 privately scratched heads and 85 128D triheads in ONE
+// canonical NaN16 VM. Each supplied source must be independently authenticated
+// by caller; no invented host vector/gradient/curl or synthetic 84 votes.
+struct NativeFullFieldHeadSource {
+    std::array<float,128> sourced_vector{};
+    std::uint16_t truth_mask=0,candidate_xor_patch=0;
+    std::uint32_t boolean_a=0,boolean_b=0;
+    bool candidate_writer_lease=false;
+    std::array<std::uint8_t,3> sourced_oriented_hyperedge{};
+    float sourced_native_hodge_curl=0.0f;
+    std::uint16_t phase_turns=0;
+};
+struct NativeFullField128Receipt {
+    bool accepted=false,field_hot=false;
+    std::uint8_t rejection_reason=0;
+    std::uint16_t head_count=0,triad_count=0,hot_heads=0;
+    std::uint16_t hot_majority_triads=0,cold_majority_triads=0;
+    std::uint16_t unanimous_hot=0,unanimous_cold=0;
+    std::uint32_t source_generation=0;
+    std::array<std::uint8_t,255> mapping{};
+    std::array<std::uint8_t,85> native_vote_masks{};
+    std::array<NativeHead16Receipt,255> heads{};
+    std::array<NativeTrihead128Receipt,85> triheads{};
+};
 struct NativeHyperedge128Receipt {
     bool accepted=false;
     std::uint8_t rejection_reason=0;
@@ -274,6 +298,17 @@ public:
         float native_hodge_curl,std::int32_t native_seven_credit_q16,
         std::uint32_t expected_generation,std::uint32_t current_generation,
         NativeTrihead128Receipt& receipt);
+    // Native opcode113: one measurement pass for ALL 255 heads and ALL
+    // 85 128D triheads. Inputs are externally sourced NaN16 observation
+    // frames; exact 2/3 field masks and HOT/COLD gradients originate in guest.
+    // It does not grant candidate leases or commit a tensor/model update.
+    bool native_full_field_255_85(
+        const std::array<NativeFullFieldHeadSource,255>& head_sources,
+        const std::array<std::uint8_t,255>& mapping,
+        const std::array<float,85>& sourced_trihead_hodge_curls,
+        const std::array<std::int32_t,85>& sourced_seven_credits_q16,
+        std::uint32_t expected_epoch, std::uint32_t current_epoch,
+        NativeFullField128Receipt& receipt);
     bool native_hyperedge128_depth(
         const std::array<float,128>& sourced_vector,
         const std::array<std::uint8_t,3>& ordered_hyperedge,
