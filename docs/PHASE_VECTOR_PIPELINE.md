@@ -65,6 +65,7 @@ Field-driver commands:
 | 98 | `mth_shape_field_gate` | 43/85 count gated by shape and closure |
 | 99 | `mth_global_hodge256_f32` | B1 divergence + B2^T curl from 32,640 float flows |
 | 100 | `mth_global_hodge256_q16` | Q16 matrix-flows adapter for the same Hodge path |
+| 101 | `mth_triangle_flow_build` | semantic triangles -> oriented 32,640-pair flows |
 | 93 | `mth_tri_model_observe_negative` | accumulate negative-shape stats |
 | 94 | `mth_tri_model_score_contrast` | positive-vs-negative shape score |
 | 72 | `mth_leaf_verify` | reconstruct codebook+residual, L1 accept/reject |
@@ -848,13 +849,19 @@ and their raw endpoint closure. The temporal structural field and the semantic
 shape field are reported separately:
 
 ```text
-field_hot          temporal S+/S-/head-255 field
+field_hot          temporal S+/S-/separate-current-field
 shape_field_hot    semantic triangle-shape field
 current_field_first/last anchors
 head255_closure    endpoint distance
 ```
 
 This makes the field a geometric gate as well as a vote count.
+
+`stream-train` now builds oriented pair flows from the first 16 observed semantic
+triads and runs the native global Hodge path. The output includes `hodge_ok`,
+`hodge_divergence_l1`, `hodge_curl_l1`, and
+`global_field_hot = shape_field_hot && hodge_ok`. On the Alice probe the Hodge
+path is valid with divergence L1 0 and curl L1 54.
 
 The existing released phase bank is the earlier D64/128-component bank. The
 new 256-component codebook is released separately under the same release tag.
