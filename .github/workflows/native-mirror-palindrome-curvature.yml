@@ -1,0 +1,36 @@
+name: NaN16 mirror-pair palindrome triangle curvature and recovery
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mth/nan16/mth_mirror_triangle_*.nas'
+      - 'mth/tests/mth_mirror_triangle_field_test.nas'
+      - 'mth/drivers/field_driver.nas'
+      - '.github/workflows/native-mirror-palindrome-curvature.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mirror-pair-native:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: shemshallah/NaN0S
+          ref: main
+          path: nan0s
+      - run: make -s -C nan0s/aarch64/android nan_cli
+      - name: Execute 510 physical palindromic/mirror triangles and native Poincare recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          awk -f nan0s/tools/nmk.awk -v CMD=emit mth/tests/mth_mirror_triangle_field_test.nas > /tmp/mirror_triangles.nan
+          nan0s/aarch64/android/nan_cli --img /tmp/mirror_triangles.nan --steps 25000000 --serial > /tmp/mirror_triangles.log 2>&1
+          cat /tmp/mirror_triangles.log
+          grep -q '^MTH MIRROR PALINDROME TRIANGLE CURL RECOVERY POINCARE PASS' /tmp/mirror_triangles.log
