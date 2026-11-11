@@ -88,6 +88,8 @@ FIXTURES = (
             10_000_000, "MTH HYPERTENSOR256 MIRROR ARENA PASS"),
     Fixture("ht256_dual", "mth/tests/mth_hypertensor256_mirror_dual_native_test.nas",
             3_000_000, "MTH FULL 128M MIRROR DUAL BANK PASS"),
+    Fixture("spectral_tensor_proposal", "mth/tests/mth_spectral_trihead_tensor_proposal_test.nas",
+            12_000_000, "MTH SPECTRAL TRIHEAD TENSOR PROPOSAL PASS"),
     Fixture("leaf_hash", "mth/tests/mth_leaf_hash_test.nas", 200_000,
             "MTH LEAF HASH PASS"),
     Fixture("dual_gate", "mth/tests/mth_dual_gate_test.nas", 200_000,
