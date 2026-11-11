@@ -509,6 +509,10 @@ mpt_debug_digit:
   MOVI r8,48
   ADD r8,r8,r4
   PUTC r8
+  ; Guest-only failure discriminator after canonical pair index and reason.
+  LD r8,r0,@mrg_fail_site
+  ADDI r8,r8,48
+  PUTC r8
   LD r8,r0,@mpt_stage
   MOVI r11,48
   ADD r8,r8,r11

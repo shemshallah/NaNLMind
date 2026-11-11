@@ -46,6 +46,9 @@ mth_mirror_rail_gradient:
   ST r0,r0,@mrg_hot
   ST r0,r0,@mrg_cold
   ST r0,r0,@mrg_flat
+  ; 1 first rail, 2 reverse rail, 3 VOID gate, 4 derived gradient,
+  ; 5 pair-count gate, 6 publication, 7 success. Always testable in guest.
+  ST r0,r0,@mrg_fail_site
 mrg_row:
   LD r8,r0,@mrg_u
   MOVI r10,255
@@ -64,14 +67,20 @@ mrg_column:
   ADD r10,r10,r11
   LD r8,r10,0     ; S+ W[lo->hi]
   LD r9,r10,1     ; S- W[hi->lo]
+  MOVI r14,1
+  ST r14,r0,@mrg_fail_site
   ADD r11,r8,r0
   CALL @mrg_bound_f32
   CMP r12,r0
   JMP[NE] @mrg_bad_source
+  MOVI r14,2
+  ST r14,r0,@mrg_fail_site
   ADD r11,r9,r0
   CALL @mrg_bound_f32
   CMP r12,r0
   JMP[NE] @mrg_bad_source
+  MOVI r14,3
+  ST r14,r0,@mrg_fail_site
   LD r10,r0,@mrg_v
   MOVI r11,255
   CMP r10,r11
@@ -81,6 +90,8 @@ mrg_column:
   FCMP r9,r0
   JMP[NE] @mrg_bad_source
 mrg_active:
+  MOVI r14,4
+  ST r14,r0,@mrg_fail_site
   FSUB r10,r8,r9
   ADD r11,r10,r0
   CALL @mrg_bound_f32
@@ -121,10 +132,14 @@ mrg_next_row:
   JMP @mrg_row
 
 mrg_publish_begin:
+  MOVI r14,5
+  ST r14,r0,@mrg_fail_site
   LD r9,r0,@mrg_pair_index
   MOVI r10,32640
   CMP r9,r10
   JMP[NE] @mrg_bad_source
+  MOVI r14,6
+  ST r14,r0,@mrg_fail_site
   MOVI r8,0
 mrg_publish:
   MOVI r9,32640
@@ -139,6 +154,8 @@ mrg_publish:
   ADDI r8,r8,1
   JMP @mrg_publish
 mrg_publish_report:
+  MOVI r14,7
+  ST r14,r0,@mrg_fail_site
   LD r10,r0,@mrg_report
   LD r11,r0,@mrg_hot
   ST r11,r10,0
@@ -214,4 +231,6 @@ mrg_hot:
 mrg_cold:
   .word 0
 mrg_flat:
+  .word 0
+mrg_fail_site:
   .word 0
