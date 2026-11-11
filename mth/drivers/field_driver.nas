@@ -116,6 +116,7 @@ JMP @field_driver_entry
 .include "../nan16/mth_tca_credit.nas"
 .include "../nan16/mth_flux_credit.nas"
 .include "../nan16/mth_credit_bundle.nas"
+.include "../nan16/mth_geometric_trail_field.nas"
 
 field_driver_entry:
   MOVI r13,1
@@ -246,6 +247,9 @@ field_driver_main:
   MOVI r3,39
   CMP r2,r3
   JMP[EQ] @field_driver_flux
+  MOVI r3,41
+  CMP r2,r3
+  JMP[EQ] @field_driver_geometric_trail_field
   MOVI r3,50
   CMP r2,r3
   JMP[EQ] @field_driver_context_encode
@@ -842,6 +846,12 @@ field_driver_credit_field:
   MOVI r10,0x4010
   ST r1,r10,0
   ST r2,r10,1
+  JMP @field_driver_return
+
+field_driver_geometric_trail_field:
+  ; Kernel stages all 255 signed two-rail credits and gates 85 triads.
+  ; Writes result words 0x4010..0x4013 itself; no host formula.
+  CALL @mth_geometric_trail_field
   JMP @field_driver_return
 
 field_driver_holo:
