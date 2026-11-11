@@ -1,0 +1,36 @@
+name: NaN16 HOT/COLD trihead Poincare128 gradients
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mth/nan16/mth_triad_hotcold_poincare128.nas'
+      - 'mth/nan16/mth_head16_poincare_vector.nas'
+      - 'mth/tests/mth_triad_hotcold_poincare128_test.nas'
+      - '.github/workflows/native-triad-hotcold-vector.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native-triangle-vector:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: shemshallah/NaN0S
+          ref: main
+          path: nan0s
+      - run: make -s -C nan0s/aarch64/android nan_cli
+      - name: Execute real head and 128D trihead hot/cold gradient circuits
+        shell: bash
+        run: |
+          set -euo pipefail
+          awk -f nan0s/tools/nmk.awk -v CMD=emit mth/tests/mth_triad_hotcold_poincare128_test.nas > /tmp/hotcold.nan
+          nan0s/aarch64/android/nan_cli --img /tmp/hotcold.nan --steps 20000000 --serial > /tmp/hotcold.log 2>&1
+          cat /tmp/hotcold.log
+          grep -q '^MTH TRIAD HOTCOLD POINCARE128 PASS' /tmp/hotcold.log
