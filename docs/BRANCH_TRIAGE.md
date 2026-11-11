@@ -1,6 +1,6 @@
 # Branch triage — 2026-11-11
 
-Canonical: `main` at `0caaf99`.
+Canonical: `main` (branch head at the time of this audit).
 
 Do not merge a branch wholesale. A branch survives only if its commits map to a canonical stage in `docs/UNIFIED_SYSTEM.md`. Tag archived branches before deletion.
 
