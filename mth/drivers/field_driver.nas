@@ -125,6 +125,10 @@ JMP @field_driver_entry
 .include "../nan16/mth_head16_poincare_vector.nas"
 .include "../nan16/mth_triad_hotcold_poincare128.nas"
 .include "../nan16/mth_full_field_head_triad_measure.nas"
+.include "../nan16/mth_mirror_triangle_boot.nas"
+.include "../nan16/mth_mirror_triangle_field.nas"
+.include "../nan16/mth_mirror_triangle_recover.nas"
+.include "../nan16/mth_mirror_triangle_poincare128.nas"
 
 field_driver_entry:
   MOVI r13,1
@@ -441,6 +445,18 @@ field_driver_main:
   MOVI r3,113
   CMP r2,r3
   JMP[EQ] @field_driver_full_field_255_85
+  MOVI r3,114
+  CMP r2,r3
+  JMP[EQ] @field_driver_mirror_triangle_boot
+  MOVI r3,115
+  CMP r2,r3
+  JMP[EQ] @field_driver_mirror_triangle_measure
+  MOVI r3,116
+  CMP r2,r3
+  JMP[EQ] @field_driver_mirror_triangle_poincare
+  MOVI r3,117
+  CMP r2,r3
+  JMP[EQ] @field_driver_mirror_triangle_recover
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -1887,6 +1903,132 @@ field_driver_full_field_255_85:
   MOVI r7,0xF100
   MOVHI r7,0x003E
   CALL @mth_full_field_head_triad_measure
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  ST r4,r10,3
+  JMP @field_driver_return
+
+; Opcodes 114..117 are the SAME raw NaN16/NaN0S state space, not
+; a second model or substitute C++ curvature calculator. At boot, seed
+; freezes selected 255 local+255 long palindromic anchor triangles.
+; All directed edge inputs are sourced mirror-pair float32 gradients.
+; Private candidate data leaves and NLL gates remain controller-owned.
+; 114 args seed,epoch at 0x4001; triangles 0x390000[1530],
+; boot flag 0x394000[3]. Repeated bootstrap cannot resample.
+field_driver_mirror_triangle_boot:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  MOVI r3,0
+  MOVHI r3,0x0039
+  MOVI r4,0x4000
+  MOVHI r4,0x0039
+  CALL @mth_mirror_triangle_boot
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  JMP @field_driver_return
+
+; 115 args count[1..510], expected_epoch, current_epoch.
+; INPUT signed canonical mirror rail at 0x3A0000[32640], immutable
+; frozen triangle table at 0x390000; NaN16 stages records 0x380000
+; and only publishes after validation to 0x360000[510*32].
+field_driver_mirror_triangle_measure:
+  MOVI r1,0
+  MOVHI r1,0x003A
+  MOVI r2,0
+  MOVHI r2,0x0039
+  MOVI r10,0x4001
+  LD r3,r10,0
+  LD r6,r10,1
+  LD r7,r10,2
+  MOVI r4,0
+  MOVHI r4,0x0038
+  MOVI r5,0
+  MOVHI r5,0x0036
+  CALL @mth_mirror_triangle_field
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  ST r4,r10,3
+  JMP @field_driver_return
+
+; 116 args triangle[0..509],source_epoch. Requires native head16
+; measurements already in separate scratch (from opcode113 or 110).
+; Project sample's measured loop curl with same 128D Poincare guest.
+; Destination vector 0x371000[128], record source 0x360000[t*32].
+field_driver_mirror_triangle_poincare:
+  MOVI r10,0x4001
+  LD r9,r10,0
+  MOVI r11,510
+  CMP r9,r11
+  JMP[GE] @field_driver_mirror_projection_invalid
+  CMPS r9,r0
+  JMP[LT] @field_driver_mirror_projection_invalid
+  MOVI r10,0
+  MOVHI r10,0x0036
+  SHL r9,r9,5
+  ADD r1,r10,r9
+  MOVI r2,0
+  MOVHI r2,0x003F
+  MOVI r3,0
+  MOVHI r3,0x0037
+  MOVI r4,0x1000
+  MOVHI r4,0x0037
+  MOVI r5,0x2000
+  MOVHI r5,0x0037
+  MOVI r6,0x3000
+  MOVHI r6,0x0037
+  MOVI r10,0x4002
+  LD r7,r10,0
+  CALL @mth_mirror_triangle_poincare128
+  JMP @field_driver_mirror_projection_publish
+field_driver_mirror_projection_invalid:
+  MOVI r1,0
+  MOVI r2,0
+  MOVI r3,0
+  MOVI r4,1
+field_driver_mirror_projection_publish:
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  ST r4,r10,3
+  JMP @field_driver_return
+
+; 117 args triangle[0..509],source_epoch; repairs one corrupted
+; oriented mirror edge using RECORDED nonzero curl plus other 2 edges.
+; Candidate repair 0x374000[4]; ACTIVE rails untouched.
+field_driver_mirror_triangle_recover:
+  MOVI r10,0x4001
+  LD r9,r10,0
+  MOVI r11,510
+  CMP r9,r11
+  JMP[GE] @field_driver_mirror_recover_invalid
+  CMPS r9,r0
+  JMP[LT] @field_driver_mirror_recover_invalid
+  MOVI r1,0
+  MOVHI r1,0x0036
+  SHL r9,r9,5
+  ADD r1,r1,r9
+  MOVI r2,0
+  MOVHI r2,0x003A
+  MOVI r10,0x4002
+  LD r3,r10,0
+  MOVI r4,0x4000
+  MOVHI r4,0x0037
+  CALL @mth_mirror_triangle_recover
+  JMP @field_driver_mirror_recover_publish
+field_driver_mirror_recover_invalid:
+  MOVI r1,0
+  MOVI r2,0
+  MOVI r3,0
+  MOVI r4,1
+field_driver_mirror_recover_publish:
   MOVI r10,0x4010
   ST r1,r10,0
   ST r2,r10,1
