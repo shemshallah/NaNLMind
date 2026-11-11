@@ -114,6 +114,34 @@ struct NativeFullField128Receipt {
     std::array<NativeHead16Receipt,255> heads{};
     std::array<NativeTrihead128Receipt,85> triheads{};
 };
+// One sampled discrete-curl triangle on the actual NaN16 palindrome anchors
+// and paired mirror rails. Native guest computes all f32 gradients, masks,
+// 16-bit physical addresses, recovery and Poincare; host transports receipts.
+struct NativeMirrorTriangleReceipt {
+    bool measured=false,projected=false;
+    std::uint16_t sample_index=0;
+    std::array<std::uint8_t,3> anchors{};
+    std::uint8_t family=0,hot_mask=0,cold_mask=0;
+    std::uint8_t hot_count=0,cold_count=0;
+    std::int32_t majority_sign=0;
+    bool unanimous_hot=false,unanimous_cold=false;
+    float loop_curl=0.0f;
+    std::array<float,3> directed_edges{};
+    float native_reconstruction=0.0f,native_residual=0.0f;
+    std::array<std::uint16_t,3> palindrome_addresses{};
+    std::array<std::uint16_t,6> directed_mirror_addresses{};
+    std::uint32_t source_generation=0;
+    float poincare_radius=0.0f,poincare_depth=0.0f;
+    float signed_curl_radial_feedback=0.0f;
+    std::array<float,128> poincare_vector{};
+    std::array<std::uint32_t,32> native_record_words{};
+};
+struct NativeMirrorTriangleRecoveryReceipt {
+    bool accepted=false;
+    std::uint8_t rejection_reason=0;
+    float reconstructed_edge=0.0f,current_edge=0.0f,residual=0.0f;
+    std::uint32_t source_generation=0;
+};
 struct NativeHyperedge128Receipt {
     bool accepted=false;
     std::uint8_t rejection_reason=0;
@@ -309,6 +337,28 @@ public:
         const std::array<std::int32_t,85>& sourced_seven_credits_q16,
         std::uint32_t expected_epoch, std::uint32_t current_epoch,
         NativeFullField128Receipt& receipt);
+    // Guest opcode114 freezes 255 local and 255 seeded long-distance
+    // mirror triangles. A second call rejects silent topology resampling.
+    bool native_mirror_triangle_boot(std::uint32_t seed,
+        std::uint32_t epoch,bool& accepted,std::uint8_t& reason);
+    // Guest opcode115 reads 32,640 canonical directed S+/S- pair
+    // gradients, records HOT/COLD and oriented triangle curls for 510
+    // samples. No host Hodge/trig/mirror maths or active write.
+    bool native_mirror_triangle_measure(
+        const std::array<float,32640>& sourced_pair_flows,
+        std::uint32_t expected_epoch,std::uint32_t current_epoch,
+        std::vector<NativeMirrorTriangleReceipt>& measured,
+        std::uint16_t& hot_majority,bool& accepted,std::uint8_t& reason);
+    // Guest opcode116 couples selected measured loop curl to SAME
+    // 128D Poincare hyperedge kernel and existing private head vectors.
+    bool native_mirror_triangle_project(std::uint16_t sample_index,
+        std::uint32_t source_epoch,NativeMirrorTriangleReceipt& receipt);
+    // Guest opcode117 returns candidate repair from RETAINED nonzero
+    // L and the other two current edges, never updates ACTIVE mirror rails.
+    bool native_mirror_triangle_recover(std::uint16_t sample_index,
+        std::uint32_t epoch,
+        const std::array<float,32640>& current_sourced_pair_flows,
+        NativeMirrorTriangleRecoveryReceipt& receipt);
     bool native_hyperedge128_depth(
         const std::array<float,128>& sourced_vector,
         const std::array<std::uint8_t,3>& ordered_hyperedge,
