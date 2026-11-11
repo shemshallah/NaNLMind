@@ -170,7 +170,7 @@ cherry-picked. `docs/BRANCH_TRIAGE.md` is the decision list.
 
 ## Guest driver budget and restored context routes
 
-The raw field driver is capped at **0x100000 words** (1,048,576 emitted words) by the code/data boundary; the phase table moved to `[0x395000,0x395200)`, and the VM default is now 16M words.
+The raw field driver is capped at **0x100000 words** (1,048,576 emitted words) by the code/data boundary; the phase table moved to `[0x395000,0x395200)`, and the VM default is now 16M words (128 MiB). 255 resident 1 MiB pages require a paged external arena; attempting a flat 512 MiB/1 GiB VM has repeatedly OOM-restarted this device.
 Adding code past that boundary silently corrupts dispatch/state; the Makefile
 now rejects an over-budget image. To make room for the canonical routes, the
 unused `mth_context_hash` and `mth_context_batch` includes were removed from
