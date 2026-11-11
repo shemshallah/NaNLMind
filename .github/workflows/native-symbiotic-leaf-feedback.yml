@@ -1,0 +1,37 @@
+name: Native symbiotic head trihead global meta leaf feedback
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mth/nan16/mth_native_symbiotic_leaf_feedback.nas'
+      - 'mth/tests/mth_native_symbiotic_leaf_feedback_test.nas'
+      - 'mth/nan16/mth_head16_poincare_vector.nas'
+      - 'mth/nan16/mth_triad_hotcold_poincare128.nas'
+      - '.github/workflows/native-symbiotic-leaf-feedback.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  authentic-native-loop:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: shemshallah/NaN0S
+          ref: main
+          path: nan0s
+      - run: make -s -C nan0s/aarch64/android nan_cli
+      - name: All numeric and candidate address math stays in real NaN16
+        shell: bash
+        run: |
+          set -euo pipefail
+          awk -f nan0s/tools/nmk.awk -v CMD=emit mth/tests/mth_native_symbiotic_leaf_feedback_test.nas > /tmp/symbiotic.nan
+          nan0s/aarch64/android/nan_cli --img /tmp/symbiotic.nan --steps 25000000 --serial > /tmp/symbiotic.log 2>&1
+          cat /tmp/symbiotic.log
+          grep -q '^MTH NATIVE SYMBIOTIC LEAF FEEDBACK PASS' /tmp/symbiotic.log
