@@ -48,7 +48,8 @@ slf_check_ptrs:
   MOVI r10,10
   CMP r9,r10
   JMP[GE] @slf_header
-  LD r11,r1,r9
+  ADD r12,r1,r9
+  LD r11,r12,0
   CMP r11,r0
   JMP[EQ] @slf_bad_contract
   ADDI r9,r9,1
