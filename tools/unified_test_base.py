@@ -35,20 +35,47 @@ def run(name: str, cmd: list[str], timeout: int = 900) -> dict:
 
 
 def parse_context(result: dict) -> dict:
-    metrics: dict[str, float] = {}
+    out: dict[str, object] = {}
     for line in result["output"].splitlines():
-        if line.startswith("ctx_full_eval "):
-            for key in ("samples", "loss", "accuracy", "seconds"):
+        if line.startswith("ctx_epoch "):
+            for key, name in (("samples", "train_samples"),
+                              ("train_loss", "train_loss"),
+                              ("train_accuracy", "train_accuracy_percent"),
+                              ("seconds", "train_seconds")):
                 m = re.search(rf"\b{key}=([0-9.]+)", line)
                 if m:
-                    metrics[key] = float(m.group(1))
-        if line.startswith("context_guest_backoff "):
+                    out[name] = float(m.group(1))
+        elif line.startswith("ctx_full_eval "):
+            for key, name in (("samples", "eval_samples"),
+                              ("loss", "eval_loss"),
+                              ("accuracy", "eval_accuracy_percent"),
+                              ("seconds", "eval_seconds")):
+                m = re.search(rf"\b{key}=([0-9.]+)", line)
+                if m:
+                    out[name] = float(m.group(1))
+        elif line.startswith("context_guest_backoff "):
             for key in ("exact", "fallback", "threshold", "unique"):
                 m = re.search(rf"\b{key}=(\d+)", line)
                 if m:
-                    metrics[key] = int(m.group(1))
-    return metrics
+                    out[key] = int(m.group(1))
+    return out
 
+def run_context_model(name: str, fraction: float, lines: int,
+                      label: str) -> tuple[dict, dict]:
+    result = run(name, [
+        str(BUILD / "nanlm-universal"), "context-train",
+        "state/wordnet_corpus.txt", str(lines), "1", "100000", "11456",
+        "4", "0.1", "1", str(fraction),
+    ])
+    metrics = parse_context(result)
+    metrics.update({
+        "label": label,
+        "line_window": lines,
+        "train_fraction": fraction,
+        "same_corpus": fraction >= 1.0,
+        "note": "line-window-only diagnostic; full-corpus values are in spec/context_model.v1.json",
+    })
+    return result, metrics
 
 def parse_stream(result: dict, prefix: Path) -> dict:
     path = prefix.with_suffix(".json")
@@ -106,16 +133,17 @@ def main() -> int:
     results.append(run("verify", [str(BUILD / "nanlm-universal"), "verify"],
                        timeout=300))
 
-    context_metrics = {}
+    context_models: dict[str, dict] = {}
+    context_results: dict[str, dict] = {}
     if not args.skip_context and (ROOT / "state/wordnet_corpus.txt").is_file():
-        context = run("context_model_canonical", [
-            str(BUILD / "nanlm-universal"), "context-train",
-            "state/wordnet_corpus.txt", "2000", "1", "100000", "11456",
-            "4", "0.1", "1", "1",
-        ])
-        context_metrics = parse_context(context)
-        context["metrics"] = context_metrics
-        results.append(context)
+        for key, fraction, label in (
+                ("same_corpus_2000", 1.0, "same-corpus line window"),
+                ("heldout_2000", 0.8, "random 80/20 held-out line window")):
+            result, metrics = run_context_model(
+                f"context_{key}", fraction, 2000, label)
+            context_results[key] = result
+            context_models[key] = metrics
+            results.append(result)
 
     stream_metrics = {}
     if not args.skip_stream and (ROOT / "data/alice_excerpt.txt").is_file():
@@ -142,14 +170,32 @@ def main() -> int:
             "missing": missing,
             "status": "green" if not failed else "red",
         },
-        "context_model": context_metrics,
+        "accuracy_definitions": {
+            "train_accuracy_percent": "online accuracy over the shuffled training window during that epoch",
+            "eval_accuracy_percent": "post-epoch accuracy on the evaluation indices",
+            "same_corpus": "train and eval use the same rows; this is not generalization",
+            "heldout": "random 80/20 within the same line window; still window-limited",
+            "canonical_full_corpus_reference": "spec/context_model.v1.json; 73.7821 same-corpus / 66.8894 held-out"
+        },
+        "canonical_full_corpus_reference": {
+            "source": "spec/context_model.v1.json",
+            "same_corpus_accuracy_percent": 73.7821,
+            "heldout_80_20_accuracy_percent": 66.8894,
+            "same_corpus_epochs": 3,
+            "heldout_epochs": 5,
+            "note": "not run in this quick invocation"
+        },
+        "context_models": context_models,
         "stream_metrics": stream_metrics,
     }
     args.out.write_text(json.dumps(report, indent=2) + "\n")
     print(f"unified_test_base status={report['summary']['status']} "
           f"passed={passed}/{len(results)} out={args.out}")
-    print(f"context_accuracy={context_metrics.get('accuracy')} "
-          f"stream_curl={stream_metrics.get('hodge_curl_l1')} "
+    for key, metrics in context_models.items():
+        print(f"{key} train_accuracy={metrics.get('train_accuracy_percent')} "
+              f"eval_accuracy={metrics.get('eval_accuracy_percent')} "
+              f"split={metrics.get('label')}")
+    print(f"stream_curl={stream_metrics.get('hodge_curl_l1')} "
           f"six_radius={stream_metrics.get('six_context_radius')}")
     for name in failed:
         print(f"FAILED {name}")

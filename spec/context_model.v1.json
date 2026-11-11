@@ -19,7 +19,10 @@
     "samples": 117454,
     "same_corpus_accuracy_percent": 73.7821,
     "loss": 1.9346,
-    "wall_seconds": 35.24
+    "wall_seconds": 35.24,
+    "heldout_80_20_accuracy_percent": 66.8894,
+    "heldout_80_20_epochs": 5,
+    "note": "73.7821 is same-corpus next-byte accuracy; 66.8894 is random 80/20 held-out. Neither is semantic accuracy."
   },
   "class_bridge": {
     "head": "high*16+low",
@@ -64,5 +67,22 @@
     "44": "mth_context_copy",
     "45": "mth_triad_score",
     "46": "mth_six_context_poincare_attention"
+  },
+  "line_window_diagnostics": {
+    "window_lines": 2000,
+    "same_corpus": {
+      "epochs": 1,
+      "train_accuracy_percent": 57.15,
+      "eval_accuracy_percent": 92.1,
+      "eval_samples": 2000
+    },
+    "heldout_80_20": {
+      "epochs": 1,
+      "train_samples": 1600,
+      "train_accuracy_percent": 54.875,
+      "eval_samples": 400,
+      "eval_accuracy_percent": 64.0
+    },
+    "note": "The 2000-line window is easier than the full corpus; these are diagnostics, not generalization."
   }
 }
