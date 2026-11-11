@@ -206,6 +206,17 @@ public:
     // Six slots are ordered [-3,-2,-1,+1,+2,+3].
     // task0 strictly rejects future words; task1 is for MASKED INFILL only.
     // Native opcode107 does ALL CORDIC/attention/Poincare arithmetic.
+    // One native fused request: actual stream IDs -> no-target-read six-slot
+    // selection -> Q16 CORDIC -> masked MC0 -> Poincare NOW disk.
+    // In mode0 target_index MUST equal source.size().
+    // In mode1 source[target_index] is never read by the guest.
+    bool native_stream6_attention(
+        const std::vector<std::uint32_t>& source_word_ids,
+        std::uint32_t target_index, std::uint8_t task,
+        std::uint32_t masked_query_anchor,
+        std::uint32_t expected_generation,
+        std::uint32_t current_generation,
+        NativeContext6Receipt& receipt);
     bool native_context6_attention(
         std::uint32_t observed_anchor,
         const std::array<std::uint32_t,6>& neighbors,
