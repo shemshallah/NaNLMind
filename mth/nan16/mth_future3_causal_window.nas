@@ -154,13 +154,23 @@ f3_return:
   MOVI r13,1
   LD r15,r0,@f3_link
   RET
-f3_link:      .word 0
-f3_observed:  .word 0
-f3_count:     .word 0
-f3_generated: .word 0
-f3_gcount:    .word 0
-f3_epoch:     .word 0
-f3_output:    .word 0
-f3_mask:      .word 0
-f3_bits:      .word 1,2,4
-f3_request:   .word 0,0,0,0,0,0,0,0,0,0,0,0
+f3_link:
+  .word 0
+f3_observed:
+  .word 0
+f3_count:
+  .word 0
+f3_generated:
+  .word 0
+f3_gcount:
+  .word 0
+f3_epoch:
+  .word 0
+f3_output:
+  .word 0
+f3_mask:
+  .word 0
+f3_bits:
+  .word 1,2,4
+f3_request:
+  .word 0,0,0,0,0,0,0,0,0,0,0,0
