@@ -1,0 +1,35 @@
+name: NaN16 private Boolean16 trigonometric Poincare heads
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mth/nan16/mth_head16_poincare_vector.nas'
+      - 'mth/tests/mth_head16_poincare_vector_test.nas'
+      - '.github/workflows/native-head16-private-vector.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate-heads:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: shemshallah/NaN0S
+          ref: main
+          path: nan0s
+      - run: make -s -C nan0s/aarch64/android nan_cli
+      - name: Check independently scratched 16 Boolean heads and Poincare geometry
+        shell: bash
+        run: |
+          set -euo pipefail
+          awk -f nan0s/tools/nmk.awk -v CMD=emit mth/tests/mth_head16_poincare_vector_test.nas > /tmp/head16-vector.nan
+          nan0s/aarch64/android/nan_cli --img /tmp/head16-vector.nan --steps 5000000 --serial > /tmp/head16-vector.log 2>&1
+          cat /tmp/head16-vector.log
+          grep -q '^MTH HEAD16 PRIVATE POINCARE VECTOR PASS' /tmp/head16-vector.log
