@@ -80,3 +80,105 @@ The native seven-credit bundle has the stable Q16.16 channel order **CFT, TRAIL,
 **Native program memory repair:** Guest instruction growth crossed the old 512-word phase-table position at 0x3000 and corrupted later tests. The lookup table was relocated to `[0x3E00,0x4000)`, with a new emitted-image word-count guard that rejects overlapping future program growth. The full CI build returned green after that repair.
 
 **Current verification distinction:** GitHub CI has exercised real native phase, cumulative trihead, Hodge, masked MC0, tensor candidate storage, normalized decoder receipt, all seven native credit channels and rollback without promoting the frozen 48M decoder. A sample `bird` score changed under one candidate, but that is not source-disjoint language-model improvement. The 33 historical divergent branches are inventoried file-by-file in four manifests, with their unique commits retained until reviewed. End-to-end automated Hodge evidence ingestion, canonical chart journaling, disjoint development and held-out evaluation, and production promotion remain open and must not be claimed completed.
+
+
+## Native closed-loop layering — six-word stream, hottriheads, Poincare128 and signed curl (2026-11-11)
+
+The same **48M decoder and one 128MiB dual tensor** now have an extended,
+direct-`main` native mathematical path. No new neural decoder, checkpoint,
+model instance or hothead state authority was created.
+
+### Stage-by-stage executable interface
+
+1. **Stream intake/temporal NOW.** Native `mth_context6_window_stream.nas`
+   selects exactly three preceding and three following word positions. Task 0
+   is strictly causal next-token prediction: `target_index==observed_count`,
+   only past words exist, and all future mask bits/payloads are zero. Task 1
+   is masked infilling: `target_index<observed_count`, the center word is
+   NEVER read by the guest, and the query anchor is an explicit mask symbol.
+   The physical `255` point is a VOID/NOW reference; it cannot own candidate
+   tensor writes or be registered as a separate learner. Opcode **109**
+   fuses this native window builder with native trig/attention/geometry.
+2. **Trigonometric attended vector.** Existing NaN16 16-iteration CORDIC
+   (`mth_q16_sin_cos.nas`) computes content+position phasors, and the
+   existing masked MC0 `mth_meta_attention16_f32.nas` computes real
+   content-dependent softmax over six slots with `D=2`. New
+   `mth_six_context_poincare_attention.nas` projects the resulting vector
+   into a genuine open 2D Poincare disk and measures
+   `d(0,p)=ln((1+||p||)/(1-||p||))`. Direct opcode **107** accepts an
+   already-selected 6-slot request; **109** accepts the original word
+   stream. Neither path can see future words during task0.
+3. **Hothead -> hottrihead.** Existing native `mth_hot_trihead.nas`
+   scans the SAME 255 trainable head credits and returns a permutation of all
+   255 heads grouped into 85 dynamically hot-first triheads. The 48M
+   `Native48MFeedbackBridge::measure_and_stage` now records this genuine
+   guest measurement as `native_hot`, alongside original trihead votes.
+   Optional `stage_native_hottrihead_feedback` requires native hot
+   `>=43` triads, actual Hodge evidence and committed-history MC0
+   readout; it stages only authorized CANDIDATE writes. It does NOT silently
+   remap the committed root chart or grant write authority to all heads.
+4. **Global Hodge/curl and MC0.** The existing signed oriented face
+   `curl=B2^T f` and head divergence remain native. They enter the
+   existing 20D MC0 committed-history context (`curl[0]` in component19,
+   divergence for the current head in component18). The new temporal
+   `NativeContext6Receipt` is carried through the same C++ VM wrapper,
+   which does no trigonometry or attention mathematics.
+5. **True 128D hyperbolic hyperedge.** New
+   `mth_hyperedge_poincare128_curl.nas` maps a sourced 128D vector
+   `v` to `p=v/(1+||v||_2)`, measures exact radial Poincare
+   distance `d(0,p)=ln((1+r)/(1-r))`, and produces
+   signed oriented `curl*r` feedback for a distinct valid ordered
+   hyperedge (h,a,b). Opcode **108** exposes this through the SAME
+   field driver. Hodge-curl reversal flips signed feedback without altering
+   radial depth, and rotations of a fixed-norm source preserve depth.
+   This is real hyperbolic geometry, not proof that trained semantic
+   abstractions already correspond to geometric depth.
+6. **Mirrored candidate feedback.** The bridge stages temporal
+   `(x,y)` in independent directed lanes
+   `T[h,a,b]`/`T[h,b,a]`. The native 128D hyperedge places
+   `curl*r` and radial depth in the *different* mirror pair
+   `T[h,a,h]`/`T[h,h,a]`, so temporal and hyperedge evidence do
+   not erase one another. All four are CANDIDATE-bank values; the
+   original 48M decoder and 64MiB active bank are untouched.
+   Actual tensor-bank promotion still requires writer lease, generation,
+   >=43 accepted triheads, global+meta approval, matching checkpoint
+   digests, and a strict disjoint real whole-word development NLL reduction.
+   Before that promotion, this is a **measured reversible proposal loop**,
+   not enduring neural learning.
+
+### Verified code and test responsibilities
+
+- Native source: `mth/nan16/mth_context6_window_stream.nas`,
+  `mth/nan16/mth_six_context_poincare_attention.nas`,
+  `mth/nan16/mth_hyperedge_poincare128_curl.nas`.
+- Native driver: opcodes **107** (selected window), **108** (128D ball/curl)
+  and **109** (source stream to masked attention); original 106 weighted
+  spectral candidate proposal remains available.
+- C++ ABI-only adapter: `include/nanlm/raw_field.hpp`,
+  `src/raw_field.cpp`, `include/nanlm/native48m_feedback.hpp`.
+- Native fixtures: `mth_six_context_poincare_attention_test.nas`,
+  `mth_context6_driver_opcode107_test.nas`,
+  `mth_hyperedge_poincare128_curl_test.nas`,
+  `mth_context6_window_stream_test.nas`,
+  `mth_context6_stream_driver_opcode109_test.nas`; all included in
+  `tools/run_nan16_fixtures.py` for the canonical NaN0S preflight.
+- Actual source-target mutation must NOT change the mask/infill geometry.
+  Signed curl reversal changes its own directional feedback but not norm
+  or Poincare depth. Stale generations, nonfinite vectors and VOID writers
+  reject before side effects. C++ parity test confirms independent mirror
+  pairs and unchanged active tensor.
+
+Dedicated verified cross-platform workflow evidence:
+- https://github.com/shemshallah/NaNLMind/actions/runs/43067112924
+  (six-context trig and 2D disk, Linux x86-64 and ARM64).
+- https://github.com/shemshallah/NaNLMind/actions/runs/43068489130
+  (128D hyperedge/curl, Linux x86-64 and ARM64).
+- https://github.com/shemshallah/NaNLMind/actions/runs/43070091534
+  (strict source-window target isolation, Linux x86-64 and ARM64).
+
+Important remaining work: the production NANNET HW5:0 Gutenberg stream,
+authenticated versioned evidence into all 255 heads, source-trained
+128D hyperedge vectors, a genuinely novel whole-word development/held-out
+quality gain, durable atomic multi-node promotion, and final merge/difference
+closure of all historical branches. CI regression fixtures are not training
+outcome evidence. Keep development on `main` only.
