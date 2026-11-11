@@ -2764,7 +2764,7 @@ bool RawFieldVM::combine_credits(const std::array<std::int32_t, 7>& credits,
             return fail("cannot write credit-combine args");
         }
     }
-    if (!write_word(kCommandBase, 25)) {
+    if (!write_word(kCommandBase, 31)) {
         return fail("cannot write credit-combine command");
     }
     if (!run_command()) return false;
@@ -2839,7 +2839,7 @@ bool RawFieldVM::combined_trunk_credit(
         !write_word(kProposalBase + 1, best_wrong) ||
         !write_word(kProposalBase + 2, static_cast<std::uint32_t>(base_lr_q16)) ||
         !write_word(kProposalBase + 3, static_cast<std::uint32_t>(threshold_q16)) ||
-        !write_word(kCommandBase, 26)) {
+        !write_word(kCommandBase, 32)) {
         return fail("cannot write combined-credit command");
     }
     if (!run_command()) return false;
@@ -2865,7 +2865,7 @@ bool RawFieldVM::combined_trunk_credit_all(
         !write_word(kProposalBase + 1, best_wrong) ||
         !write_word(kProposalBase + 2, static_cast<std::uint32_t>(base_lr_q16)) ||
         !write_word(kProposalBase + 3, static_cast<std::uint32_t>(threshold_q16)) ||
-        !write_word(kCommandBase, 27)) {
+        !write_word(kCommandBase, 33)) {
         return fail("cannot write combined-all command");
     }
     if (!run_command()) return false;
@@ -2916,7 +2916,7 @@ bool RawFieldVM::combined_trunk_credit_wide(
         !write_word(kProposalBase + 1, best_wrong) ||
         !write_word(kProposalBase + 2, static_cast<std::uint32_t>(base_lr_q16)) ||
         !write_word(kProposalBase + 3, static_cast<std::uint32_t>(threshold_q16)) ||
-        !write_word(kCommandBase, 28)) {
+        !write_word(kCommandBase, 34)) {
         return fail("cannot write combined-wide command");
     }
     if (!run_command()) return false;
