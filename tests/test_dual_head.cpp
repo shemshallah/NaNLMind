@@ -99,5 +99,32 @@ int main() {
         CHECK(std::fabs(q16_curl[0] - 3.0f) < 1e-5f);
     }
 
+    // 256^3 canonical mirrored arena addressing.
+    {
+        Tensor256Address a{};
+        CHECK(vm.tensor256_address(0, 0, 0, a));
+        CHECK(a.valid);
+        CHECK_EQ(a.cell, 0u);
+        CHECK_EQ(a.lane, 0u);
+        CHECK_EQ(a.byte_offset, 0u);
+        CHECK(vm.tensor256_address(0, 0, 1, a));
+        CHECK(a.valid);
+        CHECK_EQ(a.cell, 256u);
+        CHECK_EQ(a.lane, 0u);
+        CHECK_EQ(a.byte_offset, 1024u);
+        CHECK(vm.tensor256_address(0, 1, 0, a));
+        CHECK(a.valid);
+        CHECK_EQ(a.cell, 256u);
+        CHECK_EQ(a.lane, 1u);
+        CHECK_EQ(a.byte_offset, 1028u);
+        CHECK(vm.tensor256_address(255, 0, 1, a));
+        CHECK(!a.valid);
+        CHECK(vm.tensor256_dual_address(0, 0, 1, 1, a));
+        CHECK(a.valid);
+        CHECK_EQ(a.byte_offset, 67108864u + 1024u);
+        CHECK(vm.tensor256_dual_address(0, 0, 1, 2, a));
+        CHECK(!a.valid);
+    }
+
     return test_done("dual-head self-modification");
 }

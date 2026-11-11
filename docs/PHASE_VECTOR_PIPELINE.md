@@ -65,6 +65,8 @@ Field-driver commands:
 | 98 | `mth_shape_field_gate` | 43/85 count gated by shape and closure |
 | 99 | `mth_global_hodge256_f32` | B1 divergence + B2^T curl from 32,640 float flows |
 | 100 | `mth_global_hodge256_q16` | Q16 matrix-flows adapter for the same Hodge path |
+| 104 | `mth_hypertensor256_mirror_arena_map` | 256³ 64 MiB external-arena address |
+| 105 | `mth_hypertensor256_mirror_dual_map` | active/candidate 128 MiB dual-bank address |
 | 101 | `mth_triangle_flow_build` | semantic triangles -> oriented 32,640-pair flows |
 | 102 | `mth_meta_attention16_f32` | masked softmax attention over 16 committed slots |
 | 93 | `mth_tri_model_observe_negative` | accumulate negative-shape stats |
@@ -880,6 +882,15 @@ therefore a **separate field register with sentinel -1**, not head 255. The
 NaNLMind 43/85 field head remains an aggregate role, not an incidence endpoint.
 `spec/void255_active_head_math.v1.json` and
 `spec/nanrouter_integration.v1.json` record the cross-repository mapping.
+`mth_hypertensor256_mirror_arena_map.nas` resolves the new full 256³ tensor
+arena without touching the canonical 8 MiB root. Each `h` bank is 256 KiB;
+mirror pairs retain two independently directed float32 values, not an imposed
+antisymmetry. The dual mapper adds the active/candidate 64 MiB bank offset.
+Coordinates on any axis equal to 255 are rejected as semantic void, not
+aliased to 254. `RawFieldVM::tensor256_address` and
+`tensor256_dual_address` expose the native resolver; phase Hodge remains the
+current canonical pair-flow consumer.
+
 `mth_global_hodge256_f32.nas` rejects nonzero pair flow incident to head 255 and
 rejects any simplicial face containing it. The Q16 adapter
 `mth_global_hodge256_q16.nas` converts the 32,640 vector-code matrix cells in

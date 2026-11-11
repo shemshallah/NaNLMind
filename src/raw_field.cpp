@@ -1961,6 +1961,39 @@ bool RawFieldVM::global_hodge_q16(
     return true;
 }
 
+
+bool RawFieldVM::tensor256_address(std::uint8_t h, std::uint8_t a,
+                                   std::uint8_t b, Tensor256Address& out) {
+    if (!write_word(kProposalBase + 0, h) ||
+        !write_word(kProposalBase + 1, a) ||
+        !write_word(kProposalBase + 2, b) ||
+        !write_word(kCommandBase, 104))
+        return fail("cannot write tensor256 address command");
+    if (!run_command()) return false;
+    out.valid = (read_word(kResultBase) & 1u) != 0;
+    out.cell = read_word(kResultBase + 1);
+    out.lane = static_cast<std::uint8_t>(read_word(kResultBase + 2) & 1u);
+    out.byte_offset = read_word(kResultBase + 3);
+    return true;
+}
+
+bool RawFieldVM::tensor256_dual_address(std::uint8_t h, std::uint8_t a,
+                                        std::uint8_t b, std::uint8_t bank,
+                                        Tensor256Address& out) {
+    if (!write_word(kProposalBase + 0, h) ||
+        !write_word(kProposalBase + 1, a) ||
+        !write_word(kProposalBase + 2, b) ||
+        !write_word(kProposalBase + 3, bank) ||
+        !write_word(kCommandBase, 105))
+        return fail("cannot write tensor256 dual address command");
+    if (!run_command()) return false;
+    out.valid = (read_word(kResultBase) & 1u) != 0;
+    out.cell = read_word(kResultBase + 1);
+    out.lane = static_cast<std::uint8_t>(read_word(kResultBase + 2) & 1u);
+    out.byte_offset = read_word(kResultBase + 3);
+    return true;
+}
+
 bool RawFieldVM::global_hodge(
     const std::array<float, 32640>& pair_flows,
     const std::vector<std::array<std::uint32_t, 3>>& triangles,
@@ -2067,9 +2100,11 @@ bool RawFieldVM::triangle_model_score_contrastive(
 bool RawFieldVM::read_triangle_model(
     std::array<std::int32_t, 3>& shape_stats,
     std::array<std::int32_t, 2>& orientation_counts) {
-    for (std::size_t i = 0; i < 3; ++i)
-        shape_stats[i] = static_cast<std::int32_t>(
-            read_word(0x2E0200u + static_cast<std::uint32_t>(i)));
+    shape_stats[0] = static_cast<std::int32_t>(
+        read_word(0x2E0200u) / 256u);
+    shape_stats[1] = static_cast<std::int32_t>(
+        read_word(0x2E0201u) / 256u);
+    shape_stats[2] = static_cast<std::int32_t>(read_word(0x2E0202u));
     for (std::size_t i = 0; i < 2; ++i)
         orientation_counts[i] = static_cast<std::int32_t>(
             read_word(0x2E0203u + static_cast<std::uint32_t>(i)));
@@ -2079,9 +2114,11 @@ bool RawFieldVM::read_triangle_model(
 bool RawFieldVM::read_triangle_model_negative(
     std::array<std::int32_t, 3>& shape_stats,
     std::array<std::int32_t, 2>& orientation_counts) {
-    for (std::size_t i = 0; i < 3; ++i)
-        shape_stats[i] = static_cast<std::int32_t>(
-            read_word(0x2E0210u + static_cast<std::uint32_t>(i)));
+    shape_stats[0] = static_cast<std::int32_t>(
+        read_word(0x2E0210u) / 256u);
+    shape_stats[1] = static_cast<std::int32_t>(
+        read_word(0x2E0211u) / 256u);
+    shape_stats[2] = static_cast<std::int32_t>(read_word(0x2E0212u));
     for (std::size_t i = 0; i < 2; ++i)
         orientation_counts[i] = static_cast<std::int32_t>(
             read_word(0x2E0213u + static_cast<std::uint32_t>(i)));
@@ -2151,7 +2188,7 @@ bool RawFieldVM::meta_attention(
             return fail("cannot write meta mask");
     if (!write_word(kProposalBase + 0, static_cast<std::uint32_t>(slots)) ||
         !write_word(kProposalBase + 1, static_cast<std::uint32_t>(dim)) ||
-        !write_word(kCommandBase, 102)) return fail("cannot write meta command");
+        !write_word(kCommandBase, 104)) return fail("cannot write meta command");
     if (!run_command()) return false;
     out.resize(dim);
     for (std::size_t i = 0; i < dim; ++i) {

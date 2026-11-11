@@ -81,6 +81,8 @@ JMP @field_driver_entry
 .include "../nan16/mth_geometry.nas"
 .include "../nan16/mth_triangle_model.nas"
 .include "../nan16/mth_global_hodge256_f32.nas"
+.include "../nan16/mth_hypertensor256_mirror_arena_map.nas"
+.include "../nan16/mth_hypertensor256_mirror_dual_map.nas"
 .include "../nan16/mth_triangle_flow.nas"
 .include "../nan16/mth_meta_attention16_f32.nas"
 .include "../nan16/mth_global_hodge256_q16.nas"
@@ -368,6 +370,12 @@ field_driver_main:
   MOVI r3,102
   CMP r2,r3
   JMP[EQ] @field_driver_meta_attention
+  MOVI r3,104
+  CMP r2,r3
+  JMP[EQ] @field_driver_hypertensor256_map
+  MOVI r3,105
+  CMP r2,r3
+  JMP[EQ] @field_driver_hypertensor256_dual_map
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -1481,6 +1489,32 @@ field_driver_meta_attention:
   CALL @mth_meta_attention16_f32
   MOVI r10,0x4010
   ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_hypertensor256_map:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  CALL @mth_hypertensor256_mirror_arena_map
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r4,r10,1
+  ST r5,r10,2
+  ST r6,r10,3
+  JMP @field_driver_return
+field_driver_hypertensor256_dual_map:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r8,r10,3
+  CALL @mth_hypertensor256_mirror_dual_map
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r4,r10,1
+  ST r5,r10,2
+  ST r6,r10,3
   JMP @field_driver_return
 
 field_driver_context_encode:

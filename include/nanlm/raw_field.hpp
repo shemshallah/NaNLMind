@@ -35,6 +35,13 @@ struct RawProposalResult {
     std::uint8_t candidate_rule = 0;
 };
 
+struct Tensor256Address {
+    bool valid = false;
+    std::uint32_t cell = 0;
+    std::uint8_t lane = 0;
+    std::uint32_t byte_offset = 0;
+};
+
 struct DualProposalResult {
     RawProposalResult fast;
     RawProposalResult slow;
@@ -518,6 +525,11 @@ public:
         const std::vector<std::array<std::uint32_t, 3>>& triangles,
         std::array<float, 256>& divergence,
         std::array<float, 16>& curl);
+    bool tensor256_address(std::uint8_t h, std::uint8_t a, std::uint8_t b,
+                           Tensor256Address& out);
+    bool tensor256_dual_address(std::uint8_t h, std::uint8_t a,
+                                std::uint8_t b, std::uint8_t bank,
+                                Tensor256Address& out);
     bool build_triangle_flow(
         const std::array<std::array<std::uint32_t, 3>, 16>& triads,
         std::size_t triad_count);

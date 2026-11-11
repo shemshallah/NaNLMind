@@ -1,7 +1,13 @@
 ; Raw NaN16 triangle-shape model.
 ;
 ; Stats at 0x2E0200:
-;   [tightness_sum, area_sum, count, positive_orientation, negative_orientation]
+;   [tightness_mean_q8, area_mean_q8, count,
+;    positive_orientation, negative_orientation]
+;
+; The banks keep Q8 running means rather than 32-bit sums.  A full N16TRI
+; train pass has more than 100k rows; tightness/area sums overflow int32 long
+; before that and silently corrupt every score.  Q8 means stay bounded, and
+; rounded division removes the large freeze bias of integer Q0 means.
 ;
 ; observe: r1=side0,r2=side1,r3=side2,r4=area,r5=tightness,r6=orientation
 ; score:   r1=side0,r2=side1,r3=side2,r4=area,r5=tightness -> r1=score Q16
@@ -25,21 +31,52 @@ mth_tm_reset_done:
   MOVI r1,0
   RET
 
+; r5=value, r11=old count, r12=new count, r13=mean_q8 address.
+; Updates the Q8 mean in place.  Division is rounded to nearest so a large
+; stream does not drift toward its first observations.
+mth_tri_mean_q8_add:
+  SHL r14,r5,8
+  CMP r11,r0
+  JMP[NE] @mth_tm_mean_update
+  ST r14,r13,0
+  RET
+mth_tm_mean_update:
+  LD r7,r13,0
+  SUB r1,r14,r7
+  CMPS r1,r0
+  JMP[GE] @mth_tm_mean_abs
+  SUB r1,r0,r1
+mth_tm_mean_abs:
+  DIV r8,r1,r12
+  MOD r9,r1,r12
+  SHL r9,r9,1
+  CMP r9,r12
+  JMP[LT] @mth_tm_mean_rounded
+  ADDI r8,r8,1
+mth_tm_mean_rounded:
+  CMP r14,r7
+  JMP[GE] @mth_tm_mean_inc
+  SUB r7,r7,r8
+  ST r7,r13,0
+  RET
+mth_tm_mean_inc:
+  ADD r7,r7,r8
+  ST r7,r13,0
+  RET
+
 mth_tri_model_observe:
+  ; NaN16 CALL has no stack: save the caller's r15 before the helper calls.
+  ADD r3,r15,r0
   MOVI r10,0x0200
   MOVHI r10,0x002E
-  ; tightness sum
-  LD r11,r10,0
-  ADD r11,r11,r5
-  ST r11,r10,0
-  ; area sum
-  LD r11,r10,1
-  ADD r11,r11,r4
-  ST r11,r10,1
-  ; count
   LD r11,r10,2
-  ADDI r11,r11,1
-  ST r11,r10,2
+  ADDI r12,r11,1
+  ADDI r13,r10,0
+  CALL @mth_tri_mean_q8_add
+  ADD r5,r4,r0
+  ADDI r13,r10,1
+  CALL @mth_tri_mean_q8_add
+  ST r12,r10,2
   ; orientation is signed: negative orientation is a real class.
   CMPS r6,r0
   JMP[EQ] @mth_tm_obs_done
@@ -54,31 +91,34 @@ mth_tm_obs_pos:
   ST r11,r10,3
 mth_tm_obs_done:
   LD r1,r10,2
+  ADD r15,r3,r0
   RET
 
 mth_tri_model_score:
-  ; mean tightness/area
+  ; stored Q8 means: tightness at [0], area at [1]
   MOVI r10,0x0200
   MOVHI r10,0x002E
   LD r6,r10,2
   CMP r6,r0
   JMP[EQ] @mth_tm_score_empty
   LD r7,r10,0
-  DIV r7,r7,r6
   LD r8,r10,1
-  DIV r8,r8,r6
-  ; deviation tightness
-  SUB r9,r5,r7
+  ; deviation tightness (query and mean in Q8, then back to Q0)
+  SHL r9,r5,8
+  SUB r9,r9,r7
   CMPS r9,r0
   JMP[GE] @mth_tm_dt_abs
   SUB r9,r0,r9
 mth_tm_dt_abs:
+  SHR r9,r9,8
   ; deviation area
-  SUB r11,r4,r8
+  SHL r11,r4,8
+  SUB r11,r11,r8
   CMPS r11,r0
   JMP[GE] @mth_tm_da_abs
   SUB r11,r0,r11
 mth_tm_da_abs:
+  SHR r11,r11,8
   ; score = 65536 / (1 + dt + da)
   ADD r12,r9,r11
   ADDI r12,r12,1
@@ -93,17 +133,17 @@ mth_tm_score_empty:
 ; Negative-shape observer. ABI mirrors mth_tri_model_observe, but accumulates
 ; the negative bank at 0x2E0210.
 mth_tri_model_observe_negative:
+  ADD r3,r15,r0
   MOVI r10,0x0210
   MOVHI r10,0x002E
-  LD r11,r10,0
-  ADD r11,r11,r5
-  ST r11,r10,0
-  LD r11,r10,1
-  ADD r11,r11,r4
-  ST r11,r10,1
   LD r11,r10,2
-  ADDI r11,r11,1
-  ST r11,r10,2
+  ADDI r12,r11,1
+  ADDI r13,r10,0
+  CALL @mth_tri_mean_q8_add
+  ADD r5,r4,r0
+  ADDI r13,r10,1
+  CALL @mth_tri_mean_q8_add
+  ST r12,r10,2
   CMPS r6,r0
   JMP[EQ] @mth_tmn_obs_done
   JMP[GT] @mth_tmn_obs_pos
@@ -117,6 +157,7 @@ mth_tmn_obs_pos:
   ST r11,r10,3
 mth_tmn_obs_done:
   LD r1,r10,2
+  ADD r15,r3,r0
   RET
 
 ; Contrastive shape score: closer to positive shape than negative shape.
@@ -134,18 +175,18 @@ mth_tri_model_score_contrast:
   CMP r7,r0
   JMP[EQ] @mth_tmc_no_negative
 
-  ; positive means
+  ; positive Q8 means
   LD r8,r10,0
-  DIV r8,r8,r6
   LD r9,r10,1
-  DIV r9,r9,r6
   ; positive deviation
-  SUB r12,r5,r8
+  SHL r12,r5,8
+  SUB r12,r12,r8
   CMPS r12,r0
   JMP[GE] @mth_tmc_pd_t
   SUB r12,r0,r12
 mth_tmc_pd_t:
-  SUB r13,r4,r9
+  SHL r13,r4,8
+  SUB r13,r13,r9
   CMPS r13,r0
   JMP[GE] @mth_tmc_pd_a
   SUB r13,r0,r13
@@ -153,17 +194,17 @@ mth_tmc_pd_a:
   ADD r12,r12,r13
   SHR r12,r12,8
 
-  ; negative means
+  ; negative Q8 means
   LD r8,r11,0
-  DIV r8,r8,r7
   LD r9,r11,1
-  DIV r9,r9,r7
-  SUB r13,r5,r8
+  SHL r13,r5,8
+  SUB r13,r13,r8
   CMPS r13,r0
   JMP[GE] @mth_tmc_nd_t
   SUB r13,r0,r13
 mth_tmc_nd_t:
-  SUB r14,r4,r9
+  SHL r14,r4,8
+  SUB r14,r14,r9
   CMPS r14,r0
   JMP[GE] @mth_tmc_nd_a
   SUB r14,r0,r14

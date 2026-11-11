@@ -3090,6 +3090,11 @@ void tri_read_bank(RawFieldVM& vm, TriBank& bank) {
     vm.read_triangle_model(bank.positive_shape, bank.positive_orientation);
     vm.read_triangle_model_negative(bank.negative_shape,
                                     bank.negative_orientation);
+    // Raw banks are Q8 means.  Keep the persisted bank JSON/TSV in Q0 units.
+    bank.positive_shape[0] /= 256;
+    bank.positive_shape[1] /= 256;
+    bank.negative_shape[0] /= 256;
+    bank.negative_shape[1] /= 256;
 }
 
 template <typename ScoreFn>
@@ -3310,17 +3315,22 @@ std::string tri_file_sha256(const std::string& path) {
 int triangle_contrast_train_cli(int argc, char** argv) {
     if (argc < 3) {
         std::cerr << "usage: nanlm-universal triangle-contrast-train RECORDS"
-                     " [PREFIX] [MAX_ROWS]\n";
+                     " [PREFIX] [MAX_ROWS] [EPOCHS]\n";
         return 2;
     }
     const std::string records_path = argv[2];
     std::string prefix = "state/triangle_contrast";
-    std::size_t max_rows = 0;
+    std::size_t max_rows = 0, epochs = 1;
     try {
         if (argc > 3) prefix = argv[3];
         if (argc > 4) max_rows = static_cast<std::size_t>(std::stoull(argv[4]));
+        if (argc > 5) epochs = static_cast<std::size_t>(std::stoull(argv[5]));
     } catch (...) {
         std::cerr << "invalid numeric argument\n";
+        return 2;
+    }
+    if (epochs < 1 || epochs > 100) {
+        std::cerr << "epochs must be 1..100\n";
         return 2;
     }
     std::ifstream records(records_path, std::ios::binary);
@@ -3463,27 +3473,30 @@ int triangle_contrast_train_cli(int argc, char** argv) {
             return 7;
         }
         std::size_t positive = 0, negative = 0;
-        for (const TriFeature& feature : features) {
-            if (feature.split != kTriTrain || feature.relation != r) continue;
-            std::int32_t count = 0;
-            if (tri_positive_label(feature.label)) {
-                if (!vm.triangle_model_observe(feature.sides, feature.area,
-                                               feature.tightness,
-                                               feature.orientation, count)) {
-                    std::cerr << "positive observe failed: " << vm.error()
-                              << "\n";
-                    return 7;
+        for (std::size_t epoch = 0; epoch < epochs; ++epoch) {
+            for (const TriFeature& feature : features) {
+                if (feature.split != kTriTrain || feature.relation != r)
+                    continue;
+                std::int32_t count = 0;
+                if (tri_positive_label(feature.label)) {
+                    if (!vm.triangle_model_observe(
+                            feature.sides, feature.area, feature.tightness,
+                            feature.orientation, count)) {
+                        std::cerr << "positive observe failed: " << vm.error()
+                                  << "\n";
+                        return 7;
+                    }
+                    if (epoch == 0) ++positive;
+                } else {
+                    if (!vm.triangle_model_observe_negative(
+                            feature.sides, feature.area, feature.tightness,
+                            feature.orientation, count)) {
+                        std::cerr << "negative observe failed: " << vm.error()
+                                  << "\n";
+                        return 7;
+                    }
+                    if (epoch == 0) ++negative;
                 }
-                ++positive;
-            } else {
-                if (!vm.triangle_model_observe_negative(
-                        feature.sides, feature.area, feature.tightness,
-                        feature.orientation, count)) {
-                    std::cerr << "negative observe failed: " << vm.error()
-                              << "\n";
-                    return 7;
-                }
-                ++negative;
             }
         }
         relation_train_positive[r] = positive;
@@ -3512,27 +3525,29 @@ int triangle_contrast_train_cli(int argc, char** argv) {
         return 7;
     }
     std::size_t global_positive = 0, global_negative = 0;
-    for (const TriFeature& feature : features) {
-        if (feature.split != kTriTrain) continue;
-        std::int32_t count = 0;
-        if (tri_positive_label(feature.label)) {
-            if (!vm.triangle_model_observe(feature.sides, feature.area,
-                                           feature.tightness,
-                                           feature.orientation, count)) {
-                std::cerr << "global positive observe failed: " << vm.error()
-                          << "\n";
-                return 7;
+    for (std::size_t epoch = 0; epoch < epochs; ++epoch) {
+        for (const TriFeature& feature : features) {
+            if (feature.split != kTriTrain) continue;
+            std::int32_t count = 0;
+            if (tri_positive_label(feature.label)) {
+                if (!vm.triangle_model_observe(
+                        feature.sides, feature.area, feature.tightness,
+                        feature.orientation, count)) {
+                    std::cerr << "global positive observe failed: "
+                              << vm.error() << "\n";
+                    return 7;
+                }
+                if (epoch == 0) ++global_positive;
+            } else {
+                if (!vm.triangle_model_observe_negative(
+                        feature.sides, feature.area, feature.tightness,
+                        feature.orientation, count)) {
+                    std::cerr << "global negative observe failed: "
+                              << vm.error() << "\n";
+                    return 7;
+                }
+                if (epoch == 0) ++global_negative;
             }
-            ++global_positive;
-        } else {
-            if (!vm.triangle_model_observe_negative(
-                    feature.sides, feature.area, feature.tightness,
-                    feature.orientation, count)) {
-                std::cerr << "global negative observe failed: " << vm.error()
-                          << "\n";
-                return 7;
-            }
-            ++global_negative;
         }
     }
     tri_read_bank(vm, global_bank);
@@ -3640,9 +3655,9 @@ int triangle_contrast_train_cli(int argc, char** argv) {
             std::cerr << "cannot write banks\n";
             return 4;
         }
-        banks << "model\tpos_tight_sum\tpos_area_sum\tpos_count\t"
+        banks << "model\tpos_tight_mean\tpos_area_mean\tpos_count\t"
                  "pos_orient_positive\tpos_orient_negative\t"
-                 "neg_tight_sum\tneg_area_sum\tneg_count\t"
+                 "neg_tight_mean\tneg_area_mean\tneg_count\t"
                  "neg_orient_positive\tneg_orient_negative\n";
         for (std::size_t r = 0; r < kTriRelationCount; ++r) {
             const TriBank& bank = relation_banks[r];
@@ -3683,6 +3698,9 @@ int triangle_contrast_train_cli(int argc, char** argv) {
                 << "  \"records_sha256\": \"" << tri_file_sha256(records_path)
                 << "\",\n"
                 << "  \"rows\": " << features.size() << ",\n"
+                << "  \"epochs\": " << epochs << ",\n"
+                << "  \"bank_statistic\": \"running_mean\",\n"
+                << "  \"positive_classes\": [\"positive\", \"inverse\"],\n"
                 << "  \"splits\": {\"train\": " << split_counts[0]
                 << ", \"valid\": " << split_counts[1]
                 << ", \"test\": " << split_counts[2] << "},\n"
@@ -3741,6 +3759,8 @@ int triangle_contrast_train_cli(int argc, char** argv) {
         metrics << "\n  },\n"
                 << "  \"notes\": [\n"
                 << "    \"raw scores are shape-bank contrastive scores, not calibrated probabilities\",\n"
+                << "    \"banks store running means; observation counts are not 32-bit sums\",\n"
+                << "    \"inverse rows are positive training rows, not negatives\",\n"
                 << "    \"threshold is selected on valid by balanced accuracy; test metrics are held out\",\n"
                 << "    \"per-relation banks are sequential snapshots; the global bank is the production model\",\n"
                 << "    \"train scores are in-sample diagnostics and must not be used for calibration\"\n"
@@ -3749,6 +3769,7 @@ int triangle_contrast_train_cli(int argc, char** argv) {
     }
 
     std::cout << "triangle_contrast_train rows=" << features.size()
+              << " epochs=" << epochs
               << " valid=" << global_valid.size() << " test=" << global_test.size()
               << " global_threshold=" << global_threshold
               << " global_test_auc=" << std::fixed << std::setprecision(6)

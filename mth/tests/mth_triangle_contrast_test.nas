@@ -113,6 +113,61 @@ mth_tc_main:
   CMP r1,r0
   JMP[NE] @mth_tc_fail
 
+  ; Q8 running means stay bounded over repeated observations:
+  ; tightness 10000/20000/30000 -> 20000; area 10/20/30 -> 20.
+  CALL @mth_tri_model_reset
+  MOVI r4,10
+  MOVI r5,10000
+  MOVI r6,1
+  CALL @mth_tri_model_observe
+  MOVI r4,20
+  MOVI r5,20000
+  CALL @mth_tri_model_observe
+  MOVI r4,30
+  MOVI r5,30000
+  CALL @mth_tri_model_observe
+  MOVI r10,0x0200
+  MOVHI r10,0x002E
+  LD r11,r10,0
+  MOVI r12,20000
+  SHL r12,r12,8
+  CMP r11,r12
+  JMP[NE] @mth_tc_fail
+  LD r11,r10,1
+  MOVI r12,20
+  SHL r12,r12,8
+  CMP r11,r12
+  JMP[NE] @mth_tc_fail
+  LD r11,r10,2
+  MOVI r12,3
+  CMP r11,r12
+  JMP[NE] @mth_tc_fail
+
+  ; Decreasing observations require signed mean deltas.
+  CALL @mth_tri_model_reset
+  MOVI r4,30
+  MOVI r5,30000
+  MOVI r6,1
+  CALL @mth_tri_model_observe
+  MOVI r4,20
+  MOVI r5,20000
+  CALL @mth_tri_model_observe
+  MOVI r4,10
+  MOVI r5,10000
+  CALL @mth_tri_model_observe
+  MOVI r10,0x0200
+  MOVHI r10,0x002E
+  LD r11,r10,0
+  MOVI r12,20000
+  SHL r12,r12,8
+  CMP r11,r12
+  JMP[NE] @mth_tc_fail
+  LD r11,r10,1
+  MOVI r12,20
+  SHL r12,r12,8
+  CMP r11,r12
+  JMP[NE] @mth_tc_fail
+
   MOVI r1,@mth_tc_pass
   CALL @mth_tc_puts
   HALT
