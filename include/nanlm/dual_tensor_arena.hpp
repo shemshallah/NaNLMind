@@ -2,6 +2,7 @@
 // NaN16 computes all vector/model arithmetic; this host stores admitted guest values.
 // It never mutates the original frozen 48M language decoder.
 #pragma once
+#include "nanlm/tensor_leaf_sidecar.hpp"
 #include <array>
 #include <cmath>
 #include <cstddef>
@@ -11,6 +12,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <unordered_map>
 
 namespace nanlm {
 struct TensorMetaGate {
@@ -25,6 +27,7 @@ struct TensorGateResult {
     std::uint32_t accepted_triads=0;
     std::uint64_t generation=0;
     std::size_t candidate_writes=0;
+    std::size_t candidate_leaf_writes=0;
     double nll_improvement=0.0;
 };
 class DualTensor256Arena {
@@ -79,7 +82,9 @@ public:
     void begin_candidate() {
         if(open_)throw std::logic_error("candidate already open");
         candidate_=active_; // 64MiB complete copy; no sparse substitute.
-        writes_=0;open_=true;
+        candidate_leaves_=active_leaves_; // same directed-index identity
+        candidate_leaf_bytes_=active_leaf_bytes_;
+        writes_=0;leaf_writes_=0;open_=true;
     }
     // Native guest calculates the VALUE. Controller enforces admission only.
     void stage_native_value(unsigned proposer,unsigned h,unsigned a,unsigned b,float native_value) {
@@ -90,13 +95,58 @@ public:
         candidate_.at(index(h,a,b))=native_value;
         ++writes_;
     }
+    // Typed payloads are CHILD leaves linked by this same directed tensor
+    // index. They never replace the float32 scalar with unsafe metadata.
+    // Host stores bytes only; all vector math and truth gates remain native.
+    static constexpr std::size_t kMaxLeafSidecarBytes=8u*1024u*1024u;
+    bool attach_candidate_leaf(unsigned proposer,unsigned h,unsigned a,unsigned b,
+                               const TensorDataLeaf& leaf) {
+        if(!open_)throw std::logic_error("candidate leaf requires open bank");
+        if(proposer>=255 || !authority_[proposer])
+            throw std::logic_error("candidate leaf writer not authorized");
+        if(!valid_tensor_leaf_payload(leaf))
+            throw std::invalid_argument("invalid typed leaf, digest, or payload");
+        if(leaf.source_generation!=generation_)
+            throw std::logic_error("candidate leaf generation stale");
+        const auto key=index(h,a,b); // same physical orientation as tensor
+        auto& entries=candidate_leaves_[key];
+        for(const auto& existing:entries) {
+            if(existing.kind==leaf.kind &&
+               existing.logical_leaf_id==leaf.logical_leaf_id &&
+               existing.source_generation==leaf.source_generation) {
+                if(existing==leaf)return false; // exact replay is a no-op
+                throw std::logic_error("conflicting candidate leaf identity");
+            }
+        }
+        if(entries.size()>=16u ||
+           leaf.payload.size()>kMaxLeafSidecarBytes-candidate_leaf_bytes_)
+            throw std::length_error("candidate data leaf quota exceeded");
+        entries.push_back(leaf);
+        candidate_leaf_bytes_+=leaf.payload.size();
+        ++leaf_writes_;
+        return true;
+    }
+    const std::vector<TensorDataLeaf>& active_leaves(
+            unsigned h,unsigned a,unsigned b)const {
+        static const std::vector<TensorDataLeaf> empty{};
+        const auto it=active_leaves_.find(index(h,a,b));
+        return it==active_leaves_.end()?empty:it->second;
+    }
+    const std::vector<TensorDataLeaf>& candidate_leaves(
+            unsigned h,unsigned a,unsigned b)const {
+        if(!open_)throw std::logic_error("candidate closed");
+        static const std::vector<TensorDataLeaf> empty{};
+        const auto it=candidate_leaves_.find(index(h,a,b));
+        return it==candidate_leaves_.end()?empty:it->second;
+    }
     // Single-writer, externally leased transaction; not a concurrent storage API.
     TensorGateResult decide(const TensorMetaGate& gate) {
         if(!open_)throw std::logic_error("no candidate");
         TensorGateResult result{};
         result.generation=generation_;result.candidate_writes=writes_;
+        result.candidate_leaf_writes=leaf_writes_;
         for(auto bits:gate.triad_votes){
-            if(bits>7){open_=false;return result;}
+            if(bits>7){abort_candidate();return result;}
             const unsigned n=(bits&1u)+((bits>>1u)&1u)+((bits>>2u)&1u);
             if(n>=2u)++result.accepted_triads;
         }
@@ -109,16 +159,25 @@ public:
             && gate.global_approved && gate.meta_approved && writes_>0;
         if(accepted){
             active_.swap(candidate_);
+            active_leaves_.swap(candidate_leaves_);
+            active_leaf_bytes_=candidate_leaf_bytes_;
             result.promoted=true;result.generation=++generation_;
         }
-        open_=false;writes_=0;
+        abort_candidate();
         return result;
     }
-    void abort_candidate()noexcept{open_=false;writes_=0;}
+    void abort_candidate()noexcept{
+        open_=false;writes_=0;leaf_writes_=0;
+        candidate_leaves_.clear();candidate_leaf_bytes_=0;
+    }
     bool candidate_open()const noexcept{return open_;}
     std::uint64_t generation()const noexcept{return generation_;}
 private:
     std::vector<float> active_,candidate_;
+    std::unordered_map<std::size_t,std::vector<TensorDataLeaf>>
+        active_leaves_,candidate_leaves_;
+    std::size_t active_leaf_bytes_=0,candidate_leaf_bytes_=0;
+    std::size_t leaf_writes_=0;
     std::array<bool,255> authority_{};
     std::string base_sha256_,overlay_sha256_;
     std::uint64_t generation_=0;
