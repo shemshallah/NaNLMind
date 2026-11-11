@@ -352,6 +352,19 @@ mpt_seed_head:
   CALL @mth_head16_poincare_measure
   CMP r1,r13
   JMP[NE] @mpt_fail
+  ; Require guest vector-bank stamp, not a host or scratch-only claim.
+  LD r9,r0,@mpt_index
+  MOVI r8,0
+  MOVHI r8,0x003F
+  SHL r10,r9,8
+  ADD r8,r8,r10
+  LD r10,r8,133
+  MOVI r11,7
+  CMP r10,r11
+  JMP[NE] @mpt_fail
+  LD r10,r8,147
+  CMP r10,r13
+  JMP[NE] @mpt_fail
   LD r9,r0,@mpt_index
   ADDI r9,r9,1
   ST r9,r0,@mpt_index
