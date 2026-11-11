@@ -74,6 +74,9 @@ $(BUILD)/test_native48m_feedback: tests/test_native48m_feedback.cpp include/nanl
 $(BUILD)/credit-ablation: tools/credit_ablation.cpp $(LIB) $(NAN0S_LIB) $(FIELD_DRIVER) | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
+$(BUILD)/nanlm48m-native-batch: tools/nanlm48m_native_batch.cpp include/nanlm/raw_field.hpp $(LIB) $(NAN0S_LIB) $(FIELD_DRIVER) | $(BUILD)
+	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
+
 $(BUILD)/nanlm48m-native-emit: tools/nanlm48m_native_emit.cpp include/nanlm/native48m_feedback_json.hpp include/nanlm/native48m_feedback.hpp include/nanlm/dual_tensor_arena.hpp $(LIB) $(NAN0S_LIB) $(FIELD_DRIVER) | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
@@ -250,5 +253,5 @@ dual-head-test: $(BUILD)/test_dual_head
 	./$(BUILD)/test_dual_head
 
 
-unified-test-base: $(CLI) $(FIELD_DRIVER) $(BUILD)/test_raw_field $(BUILD)/test_context_backoff $(BUILD)/test_context_route $(BUILD)/test_native48m_feedback $(BUILD)/test_dual_tensor_arena $(BUILD)/credit-ablation
+unified-test-base: $(CLI) $(FIELD_DRIVER) $(BUILD)/test_raw_field $(BUILD)/test_context_backoff $(BUILD)/test_context_route $(BUILD)/test_native48m_feedback $(BUILD)/test_dual_tensor_arena $(BUILD)/credit-ablation $(BUILD)/nanlm48m-native-batch
 	python3 tools/unified_test_base.py

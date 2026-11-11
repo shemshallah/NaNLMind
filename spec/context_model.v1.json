@@ -68,7 +68,8 @@
     "45": "mth_triad_score",
     "107": "native_context6_attention",
     "108": "native_hyperedge128_depth",
-    "109": "native_stream6_attention"
+    "109": "native_stream6_attention",
+    "112": "mth_shortlist_batch_proposal"
   },
   "line_window_diagnostics": {
     "window_lines": 2000,
@@ -86,5 +87,13 @@
       "eval_accuracy_percent": 64.0
     },
     "note": "The 2000-line window is easier than the full corpus; these are diagnostics, not generalization."
+  },
+  "closed_loop": {
+    "native_stream": "109",
+    "native_hyperedge128": "108",
+    "native_shortlist_batch": "112",
+    "decoder": "frozen 48M exact normalization",
+    "scheduler": "tools/decoder48m_future3.py --native-batch",
+    "promotion": "blocked until disjoint precommitted NLL gate"
   }
 }

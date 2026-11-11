@@ -1024,5 +1024,22 @@ int main() {
                          triad_score));
     CHECK_EQ(triad_score, 5);
 
+    // Single native batch ABI for an entire shortlist.
+    {
+        const std::array<std::uint32_t, 6> ctx = {11, 12, 13, 14, 15, 16};
+        std::vector<std::uint32_t> candidates = {21, 22, 23, 24};
+        std::vector<NativeShortlistCandidate> batch;
+        std::size_t accepted = 0;
+        CHECK(vm.native_shortlist_batch(ctx, 0x3Fu, 1, 0, 0,
+                                        candidates, batch, accepted));
+        CHECK_EQ(accepted, candidates.size());
+        CHECK_EQ(batch.size(), candidates.size());
+        for (const auto& item : batch) {
+            CHECK(item.accepted);
+            CHECK(item.radius >= 0.0f && item.radius < 1.0f);
+            CHECK(item.radial_distance >= 0.0f);
+        }
+    }
+
     return test_done("raw NaN16 field VM bridge");
 }

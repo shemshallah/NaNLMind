@@ -11,10 +11,10 @@
       "runner": "tools/run_nan16_fixtures.py",
       "raw_driver": "mth/drivers/field_driver.nas",
       "counts": {
-        "sources": 81,
+        "sources": 82,
         "fixtures": 44,
         "direct_fixture_sources": 48,
-        "driver_included_sources": 80,
+        "driver_included_sources": 81,
         "uncovered_sources": 0
       }
     },

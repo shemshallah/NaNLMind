@@ -150,6 +150,13 @@ struct NativeHyperedge128Receipt {
     std::int32_t orientation=0;
     std::uint8_t now_head=255;
 };
+struct NativeShortlistCandidate {
+    float poincare_x=0.0f;
+    float poincare_y=0.0f;
+    float radius=0.0f;
+    float radial_distance=0.0f;
+    bool accepted=false;
+};
 struct DualProposalResult {
     RawProposalResult fast;
     RawProposalResult slow;
@@ -359,6 +366,13 @@ public:
         std::uint32_t epoch,
         const std::array<float,32640>& current_sourced_pair_flows,
         NativeMirrorTriangleRecoveryReceipt& receipt);
+    bool native_shortlist_batch(
+        const std::array<std::uint32_t,6>& context_words,
+        std::uint8_t valid_mask, std::uint8_t task,
+        std::uint32_t expected_generation, std::uint32_t current_generation,
+        const std::vector<std::uint32_t>& candidate_word_ids,
+        std::vector<NativeShortlistCandidate>& out,
+        std::size_t& accepted);
     bool native_hyperedge128_depth(
         const std::array<float,128>& sourced_vector,
         const std::array<std::uint8_t,3>& ordered_hyperedge,

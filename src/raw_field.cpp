@@ -456,6 +456,62 @@ bool RawFieldVM::native_triad_hotcold_vector(
     receipt.radius=radius;receipt.radial_distance=depth;
     receipt.signed_curl_feedback=curl;
     receipt.candidate_credit_gradient=gradient;
+bool RawFieldVM::native_shortlist_batch(
+    const std::array<std::uint32_t,6>& context_words,
+    std::uint8_t valid_mask, std::uint8_t task,
+    std::uint32_t expected_generation, std::uint32_t current_generation,
+    const std::vector<std::uint32_t>& candidate_word_ids,
+    std::vector<NativeShortlistCandidate>& out, std::size_t& accepted) {
+    if (!vm_) return fail("native shortlist: VM not loaded");
+    if (candidate_word_ids.empty() || candidate_word_ids.size() > 64u)
+        return fail("native shortlist: candidate count outside 1..64");
+    for (std::uint32_t word : candidate_word_ids)
+        if (word == 0u) return fail("native shortlist: zero candidate word");
+    constexpr std::uint32_t kRequest = 0x003E7000u;
+    constexpr std::uint32_t kOutput = 0x003E7400u;
+    if (!write_word(kRequest, static_cast<std::uint32_t>(candidate_word_ids.size())))
+        return fail("native shortlist: request count");
+    for (std::size_t i = 0; i < context_words.size(); ++i)
+        if (!write_word(kRequest + 1u + static_cast<std::uint32_t>(i),
+                        context_words[i]))
+            return fail("native shortlist: context");
+    if (!write_word(kRequest + 7u, valid_mask) ||
+        !write_word(kRequest + 8u, task) ||
+        !write_word(kRequest + 9u, expected_generation) ||
+        !write_word(kRequest + 10u, current_generation) ||
+        !write_word(kRequest + 11u, 255u))
+        return fail("native shortlist: metadata");
+    for (std::size_t i = 0; i < candidate_word_ids.size(); ++i)
+        if (!write_word(kRequest + 12u + static_cast<std::uint32_t>(i),
+                        candidate_word_ids[i]))
+            return fail("native shortlist: candidates");
+    if (!write_word(kProposalBase + 0u, kRequest) ||
+        !write_word(kProposalBase + 1u, kOutput) ||
+        !write_word(kCommandBase, 118u))
+        return fail("native shortlist: command");
+    if (!run_command()) return false;
+    accepted = read_word(kResultBase + 0u);
+    if (accepted > candidate_word_ids.size())
+        return fail("native shortlist: accepted count overflow");
+    out.assign(candidate_word_ids.size(), NativeShortlistCandidate{});
+    for (std::size_t i = 0; i < candidate_word_ids.size(); ++i) {
+        const std::uint32_t base = kOutput + static_cast<std::uint32_t>(i * 4u);
+        auto as_float = [&](std::uint32_t offset) {
+            const std::uint32_t bits = read_word(base + offset);
+            float value = 0.0f;
+            std::memcpy(&value, &bits, sizeof(value));
+            return value;
+        };
+        out[i].poincare_x = as_float(0);
+        out[i].poincare_y = as_float(1);
+        out[i].radius = as_float(2);
+        out[i].radial_distance = as_float(3);
+        out[i].accepted =
+            std::isfinite(out[i].poincare_x) && std::isfinite(out[i].poincare_y) &&
+            std::isfinite(out[i].radius) && std::isfinite(out[i].radial_distance) &&
+            out[i].radius >= 0.0f && out[i].radius < 1.0f &&
+            out[i].radial_distance >= 0.0f;
+    }
     return true;
 }
 

@@ -189,7 +189,7 @@ def main()->None:
     parser.add_argument("--native-guest",type=Path,
                         help="existing NaN16 opcode112 observer (measure only)")
     parser.add_argument("--native-batch",type=Path,
-                        help="native opcode112 shortlist candidate batch (candidate-only)")
+                        help="native opcode118 shortlist candidate batch (candidate-only)")
     parser.add_argument("--output",type=Path)
     args=parser.parse_args()
     words=[x.strip() for x in args.wordlist.read_text().splitlines() if x.strip()]
@@ -201,7 +201,7 @@ def main()->None:
                   if args.native_guest is not None else None)
     result=future_three_rollout(frozen_r25_emitter(args.archive_root),
                                 args.context,words,native_remeasure=observer)
-    result["native_batch_abi"]=("opcode112" if args.native_batch is not None
+    result["native_batch_abi"]=("opcode118" if args.native_batch is not None
                                 else "disabled")
     if args.native_guest is not None:
         if len(native_receipts)!=3:

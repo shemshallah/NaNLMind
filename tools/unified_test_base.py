@@ -10,6 +10,7 @@ import argparse
 import json
 import re
 import subprocess
+import tempfile
 import time
 from pathlib import Path
 
@@ -135,6 +136,26 @@ def main() -> int:
             if line.startswith("{"):
                 credit["metrics"] = json.loads(line)
         results.append(credit)
+    if (BUILD / "nanlm48m-native-batch").is_file():
+        with tempfile.TemporaryDirectory(prefix="unified-batch-") as tmp:
+            tmp_path = Path(tmp)
+            (tmp_path / "previous.txt").write_text("a quiet morning")
+            (tmp_path / "current.txt").write_text("the bright river reflects light")
+            (tmp_path / "words.txt").write_text("bird\nsky\nriver\n")
+            out = tmp_path / "batch.json"
+            batch = run("native_batch_abi", [
+                str(BUILD / "nanlm48m-native-batch"),
+                str(tmp_path / "previous.txt"), str(tmp_path / "current.txt"),
+                "the bright river", str(tmp_path / "words.txt"), str(out),
+            ])
+            if out.is_file():
+                receipt = json.loads(out.read_text())
+                batch["metrics"] = {
+                    "candidate_count": receipt.get("candidate_count"),
+                    "accepted": receipt.get("accepted"),
+                    "native_log_weights": receipt.get("native_log_weights"),
+                }
+            results.append(batch)
     results.append(run("verify", [str(BUILD / "nanlm-universal"), "verify"],
                        timeout=300))
 

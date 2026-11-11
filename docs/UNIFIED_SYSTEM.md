@@ -187,8 +187,58 @@ Restored raw commands:
 | 107 | `mth_context6_window_stream` selected window | six-slot target-safe trig attention |
 | 108 | `mth_hyperedge_poincare128_curl` | 128D Poincare hyperedge depth + signed curl |
 | 109 | `mth_context6_window_stream` fused | source stream -> six-slot attention -> Poincare NOW |
+| 118 | `mth_shortlist_batch_proposal` | one native call for an entire candidate shortlist |
 
 These are the kernel-level paths removed by the earlier ABI-conflict merge.
 They are now reachable and covered by focused tests. CLI exposure for the
 `backoffjoint` and `induction` routes is the next integration step; the raw
 commands and bridges are already present.
+
+
+## Unified test base
+
+`make unified-test-base` runs one report covering native fixtures, context
+backoff/route, six-context Poincare, hyperedge128, 48M native feedback,
+128MiB dual tensor, seven-credit ablation, native batch shortlist and build
+verification:
+
+```text
+state/benchmarks/unified_test_base.json
+```
+
+Metric scopes are explicit:
+
+- `train_accuracy_percent`: online training window for one epoch;
+- `eval_accuracy_percent`: post-epoch evaluation on the selected split;
+- `same_corpus`: diagnostic only, never generalization;
+- `heldout`: held-out rows in the selected line window;
+- `canonical_full_corpus_reference`: 73.7821 same-corpus / 66.8894 held-out.
+
+Deterministic regression metrics are expected to repeat. A changed value means
+that path changed or regressed. Closed-loop learning metrics come from
+`baseline_nll`, `candidate_nll`, `nll_delta` and per-horizon probabilities in
+`tools/decoder48m_future3.py`.
+
+## Closed generation loop
+
+The intended single path is now expressed as one feedback loop:
+
+```text
+generated prefix
+  -> native stream6 (opcode 109)
+  -> trig attention + Poincare NOW(255)
+  -> hothead -> hottrihead -> field
+  -> Hodge divergence/curl
+  -> MC0 committed meta
+  -> 128D hyperedge Poincare/curl (opcode 108)
+  -> native shortlist batch (opcode 112)
+  -> frozen 48M exact normalization
+  -> choose next word
+  -> append and remeasure
+```
+
+`tools/decoder48m_future3.py --native-batch build/nanlm48m-native-batch`
+implements the sequencing adapter. It never passes gold future words and
+remeasures the native guest at every generated prefix. The frozen decoder
+remains the whole-word probability model; candidate tensor promotion remains
+blocked until a disjoint precommitted NLL gate passes.
