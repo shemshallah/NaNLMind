@@ -100,6 +100,8 @@ FIXTURES = (
             6_000_000, "MTH POINCARE128 HODGE CURL HYPEREDGE PASS"),
     Fixture("context6_stream", "mth/tests/mth_context6_window_stream_test.nas",
             3_000_000, "MTH CONTEXT6 STREAM TARGET ISOLATION PASS"),
+    Fixture("future3_causal", "mth/tests/mth_future3_causal_window_test.nas",
+            12_000_000, "MTH FUTURE3 NATIVE CAUSAL PREFIX PASS"),
     Fixture("context6_stream_opcode109", "mth/tests/mth_context6_stream_driver_opcode109_test.nas",
             12_000_000, "MTH 48M STREAM CONTEXT6 OPCODE109 PASS"),
     Fixture("leaf_hash", "mth/tests/mth_leaf_hash_test.nas", 200_000,
