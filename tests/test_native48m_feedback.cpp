@@ -95,6 +95,40 @@ int main(){
     assert(arena.candidate(7,2,3)==seven.staged_tensor_value);
     assert(arena.candidate(7,3,2)==0.0f);
     assert(arena.active(7,2,3)==0.0f);
+    // Full native LOOP: 6-slot angular attention with masked future ->
+    // 2D Poincare disk -> same earlier Hodge/curl and committed MC0 ->
+    // independent mirror lanes of this one 128MiB candidate tensor.
+    std::array<std::uint32_t,6> causal_words={100,500,900,0,0,0};
+    nanlm::NativeContext6Receipt temporal{};
+    assert(vm.native_context6_attention(
+        8192,causal_words,7,0,42,42,temporal));
+    assert(temporal.accepted && temporal.valid_count==3);
+    assert(temporal.task==0 && temporal.mask==7 && temporal.now_head==255);
+    assert(std::isfinite(temporal.radial_distance) &&
+           temporal.radial_distance>=0 && temporal.radius<1);
+    assert(bridge.stage_native_temporal_poincare_feedback(second,temporal)==2);
+    assert(arena.candidate(7,2,3)==temporal.poincare_x);
+    assert(arena.candidate(7,3,2)==temporal.poincare_y);
+    assert(arena.active(7,2,3)==0.0f);
+    assert(arena.active(7,3,2)==0.0f);
+    // An unmasked future word cannot be carried into an online prediction,
+    // regardless of the Hodge/MC0 response or permission to stage.
+    auto forbidden_words=causal_words;
+    forbidden_words[3]=32768;
+    nanlm::NativeContext6Receipt forbidden{};
+    assert(vm.native_context6_attention(
+        8192,forbidden_words,15,0,42,42,forbidden));
+    assert(!forbidden.accepted && forbidden.reason==2);
+    bool forbidden_stage=false;
+    try { bridge.stage_native_temporal_poincare_feedback(second,forbidden); }
+    catch(const std::logic_error&) { forbidden_stage=true; }
+    assert(forbidden_stage);
+    assert(arena.candidate(7,3,2)==temporal.poincare_y);
+    // A stale generation similarly cannot enter the feedback loop.
+    nanlm::NativeContext6Receipt stale_ctx{};
+    assert(vm.native_context6_attention(
+        8192,causal_words,7,0,42,41,stale_ctx));
+    assert(!stale_ctx.accepted && stale_ctx.reason==3);
     bridge.commit_context(second);
     assert(bridge.history_size()==2u);
     // The spectral path also runs through the SAME loaded native driver, not
