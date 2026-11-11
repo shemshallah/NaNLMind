@@ -120,6 +120,7 @@ JMP @field_driver_entry
 .include "../nan16/mth_spectral_trihead_tensor_proposal.nas"
 .include "../nan16/mth_six_context_poincare_attention.nas"
 .include "../nan16/mth_hyperedge_poincare128_curl.nas"
+.include "../nan16/mth_context6_window_stream.nas"
 
 field_driver_entry:
   MOVI r13,1
@@ -421,6 +422,9 @@ field_driver_main:
   MOVI r3,108
   CMP r2,r3
   JMP[EQ] @field_driver_hyperedge_poincare128
+  MOVI r3,109
+  CMP r2,r3
+  JMP[EQ] @field_driver_stream_context6
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -1711,6 +1715,44 @@ field_driver_hyperedge_poincare128:
   MOVI r4,0x5500
   MOVHI r4,0x003E
   CALL @mth_hyperedge_poincare128_curl
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  ST r4,r10,3
+  JMP @field_driver_return
+
+; Opcode109: REAL CORPUS STREAM -> 3-past+3-future target-free window
+; -> existing trig/MC0/Poincare attention. NO host attention or window math.
+; Guest source IDs 0x3E6000[up to4096]. Inputs at 0x4001:
+; [count,target_index,task,masked_query_anchor,expected_gen,current_gen].
+; The builder rejects causal prediction with center!=count and NEVER reads
+; a target token for infilling. It directly writes request 0x3E4000 for
+; opcode107 and then runs exactly the SAME guest attention kernel.
+; Result 0x4010..13 accepted, number of valid slots, task, error code.
+; Full context/Poincare record remains at 0x3E4100[8].
+field_driver_stream_context6:
+  MOVI r1,0x6000
+  MOVHI r1,0x003E
+  MOVI r10,0x4001
+  LD r2,r10,0
+  LD r3,r10,1
+  LD r4,r10,2
+  LD r5,r10,3
+  LD r6,r10,4
+  LD r7,r10,5
+  MOVI r8,0x4000
+  MOVHI r8,0x003E
+  CALL @mth_context6_window_stream
+  MOVI r13,1
+  CMP r1,r13
+  JMP[NE] @field_driver_stream_context6_result
+  MOVI r1,0x4000
+  MOVHI r1,0x003E
+  MOVI r2,0x4100
+  MOVHI r2,0x003E
+  CALL @mth_six_context_poincare_attention
+field_driver_stream_context6_result:
   MOVI r10,0x4010
   ST r1,r10,0
   ST r2,r10,1
