@@ -12,6 +12,9 @@ on:
       - 'mth/nan16/mth_phase_encode.nas'
       - 'mth/drivers/field_driver.nas'
       - 'tools/verify_native_memory_map.py'
+      - 'tools/check_unified_48m_manifest.py'
+      - 'spec/unified_48m_math_manifest.v1.json'
+      - 'spec/branch_reconciliation/**'
       - 'src/raw_field.cpp'
       - 'Makefile'
       - 'tools/decoder48m_candidate.py'
@@ -31,6 +34,9 @@ on:
       - 'mth/nan16/mth_phase_encode.nas'
       - 'mth/drivers/field_driver.nas'
       - 'tools/verify_native_memory_map.py'
+      - 'tools/check_unified_48m_manifest.py'
+      - 'spec/unified_48m_math_manifest.v1.json'
+      - 'spec/branch_reconciliation/**'
       - 'src/raw_field.cpp'
       - 'Makefile'
       - 'tools/decoder48m_candidate.py'
@@ -44,6 +50,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Verify all seven credit channels and full 33-branch inventory
+        run: python3 tools/check_unified_48m_manifest.py
       - name: Test full mirrored 128MiB active/candidate tensor and gates
         run: |
           g++ -std=c++20 -O2 -Wall -Wextra -pedantic -Iinclude tests/test_dual_tensor_arena.cpp -o /tmp/test_dual_tensor_arena
