@@ -118,7 +118,7 @@ def main() -> int:
                        ["python3", "tools/run_nan16_fixtures.py"]))
     for name in ("test_raw_field", "test_context_backoff",
                  "test_context_route", "test_native48m_feedback",
-                 "test_dual_tensor_arena"):
+                 "test_dual_tensor_arena", "test_head_page_arena"):
         path = BUILD / name
         if path.is_file():
             results.append(run(name, [str(path)]))

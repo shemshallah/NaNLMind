@@ -204,9 +204,9 @@ static void dispset(nan_vm *v, uint32_t x) {
   v->dirty++; v->frame++;
 }
 
-int nan_run(nan_vm *v, uint32_t max_steps) {
+int nan_run(nan_vm *v, uint64_t max_steps) {
   uint32_t *r = v->r; uint64_t *mem = v->mem;
-  uint32_t pc = v->pc; uint32_t done = 0;
+  uint32_t pc = v->pc; uint64_t done = 0;
   int rc = NAN_BUDGET;
 #define SETK(z, l) (v->k = 2 * (int)(z) + (int)(l))
 #define LEAVE(code) do { rc = (code); goto out; } while (0)

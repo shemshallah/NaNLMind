@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstring>
 #include <cmath>
+#include <cstdlib>
 #include <numeric>
 #include <fstream>
 #include <iterator>
@@ -27,7 +28,19 @@ constexpr std::uint32_t kContextBackoffTableWords = 32768u * 3u;
 constexpr std::uint32_t kContextBackoffHist = 0x58000;
 constexpr std::uint32_t kContextBackoffHistWords = 4096u;
 constexpr std::uint32_t kContextBackoffCommand = 40; // separate from context-class opcode 30
-constexpr std::uint32_t kMaxSteps = 200'000'000;
+std::uint64_t command_step_budget() {
+    static const std::uint64_t budget = []() -> std::uint64_t {
+        const char* text = std::getenv("NANLM_STEP_BUDGET");
+        if (!text || !*text) return 4'000'000'000ull;
+        try {
+            const std::uint64_t value = std::stoull(text);
+            return value == 0 ? 4'000'000'000ull : value;
+        } catch (...) {
+            return 4'000'000'000ull;
+        }
+    }();
+    return budget;
+}
 constexpr std::uint32_t kContextTableBase = 0x100000;
 constexpr std::uint32_t kContextWordsPerBucket = 272;
 constexpr std::uint32_t kGuestWordCount = 0x400000;
@@ -1114,7 +1127,7 @@ bool RawFieldVM::run_command() {
     if (!vm_) return fail("raw field VM is not loaded");
     nan_set_pc(vm_, 0);
     nan_set_reg(vm_, 13, 1);
-    const int rc = nan_run(vm_, kMaxSteps);
+    const int rc = nan_run(vm_, command_step_budget());
     if (rc != NAN_HALTED) {
         return fail("raw field driver did not halt: " +
                     std::string(nan_strerror(rc)));

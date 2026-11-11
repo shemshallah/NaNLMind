@@ -72,7 +72,7 @@ int    nan_restore_state(nan_vm *v, const uint8_t *buf, size_t len);
 /* 25 lines of UTF-8 (CP437 mapped), '\n' terminated; trim = strip trailing blanks. Returns bytes. */
 size_t nan_text_utf8(const nan_vm *v, char *buf, size_t cap, int trim);
 
-int  nan_run(nan_vm *v, uint32_t max_steps);
+int  nan_run(nan_vm *v, uint64_t max_steps);
 void nan_set_time_ms(nan_vm *v, uint32_t ms);       /* TICK source        */
 uint64_t nan_steps(const nan_vm *v);
 const char *nan_trap_text(const nan_vm *v);         /* "" or "!O006C"     */
