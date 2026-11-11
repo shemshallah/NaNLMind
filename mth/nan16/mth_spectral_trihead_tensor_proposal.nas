@@ -185,8 +185,9 @@ sp_stage_loop:
   DIV r10,r9,r8
   MUL r11,r10,r8
   SUB r11,r9,r11
-  MOVI r12,1
-  SHL r12,r12,r11
+  MOVI r12,@sp_member_bits
+  ADD r12,r12,r11
+  LD r12,r12,0
   LD r1,r0,@sp_request
   LD r1,r1,1
   ADD r1,r1,r10
@@ -316,3 +317,5 @@ sp_approved:
   .word 0
 sp_index:
   .word 0
+sp_member_bits:
+  .word 1,2,4
