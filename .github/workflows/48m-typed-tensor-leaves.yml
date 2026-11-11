@@ -1,0 +1,26 @@
+name: Typed tensor data leaf transactional parity
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'include/nanlm/tensor_leaf_sidecar.hpp'
+      - 'include/nanlm/dual_tensor_arena.hpp'
+      - 'tests/test_tensor_leaf_sidecar.cpp'
+      - '.github/workflows/48m-typed-tensor-leaves.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  leaf-sidecar:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile test in original C++20 hybrid context
+        run: g++ -O2 -std=c++20 -Wall -Wextra -Werror -Iinclude tests/test_tensor_leaf_sidecar.cpp -o /tmp/test-tensor-leaves
+      - name: Verify native-tensor ABI storage and typed leaf transactional semantics
+        run: /tmp/test-tensor-leaves
