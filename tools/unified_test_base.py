@@ -126,6 +126,9 @@ def main() -> int:
     if (ROOT / "tests/test_decoder48m_candidate.py").is_file():
         results.append(run("decoder48m_candidate",
                            ["python3", "tests/test_decoder48m_candidate.py"]))
+    if (ROOT / "tests/test_decoder48m_future3.py").is_file():
+        results.append(run("decoder48m_future3",
+                           ["python3", "tests/test_decoder48m_future3.py"]))
     if (BUILD / "credit-ablation").is_file():
         credit = run("credit_ablation", [str(BUILD / "credit-ablation")])
         for line in credit["output"].splitlines():
@@ -178,6 +181,17 @@ def main() -> int:
             "same_corpus": "train and eval use the same rows; this is not generalization",
             "heldout": "random 80/20 within the same line window; still window-limited",
             "canonical_full_corpus_reference": "spec/context_model.v1.json; 73.7821 same-corpus / 66.8894 held-out"
+        },
+        "metric_semantics": {
+            "regression_metrics_are_deterministic": True,
+            "why_values_repeat": "fixed corpus slice, fixed seed, no model candidate promotion",
+            "learning_metrics_that_must_change": [
+                "baseline vs candidate NLL on generated prefixes",
+                "per-horizon probability delta",
+                "trihead acceptance",
+                "tensor candidate promotion"
+            ],
+            "closed_loop_requires": "frozen 48M exact decoder plus native emit callback"
         },
         "canonical_full_corpus_reference": {
             "source": "spec/context_model.v1.json",

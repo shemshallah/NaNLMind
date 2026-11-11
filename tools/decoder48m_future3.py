@@ -16,6 +16,7 @@ import argparse
 import hashlib
 import json
 import math
+import tempfile
 import subprocess
 from pathlib import Path
 from collections.abc import Callable, Mapping, Sequence
@@ -130,6 +131,56 @@ def native_guest_remeasure(guest_executable: Path, observed_context: str,
         return {} # No unvalidated word-logit modifications!
     return observe
 
+def native_batch_remeasure(
+    batch_binary: Path,
+    candidate_words: Sequence[str],
+    timeout: int=180,
+) -> Callable[[str,int,tuple[str,...]],Mapping[str,float]]:
+    """One native opcode112 batch proposal for the entire shortlist.
+
+    This is the production path: the guest evaluates every candidate through
+    six-slot CORDIC attention and Poincare geometry in one ABI call.  The host
+    only transports text/IDs and parses the typed receipt.
+    """
+    batch_binary=batch_binary.resolve()
+    if not batch_binary.is_file():
+        raise FileNotFoundError(f"native batch emitter missing: {batch_binary}")
+    def callback(prefix: str, horizon: int,
+                 generated: tuple[str,...]) -> Mapping[str,float]:
+        words=prefix.split()
+        if not words:
+            raise ValueError("native batch requires nonempty context")
+        current=words[-1]
+        previous=words[-2] if len(words)>=2 else current
+        if len(previous.encode())>64 or len(current.encode())>64:
+            raise ValueError("native batch windows must be 1..64 bytes")
+        with tempfile.TemporaryDirectory(prefix="nanlm-native-batch-loop-") as tmp:
+            tmp_path=Path(tmp)
+            (tmp_path/"previous.txt").write_text(previous,encoding="utf-8")
+            (tmp_path/"current.txt").write_text(current,encoding="utf-8")
+            (tmp_path/"words.txt").write_text(
+                "\n".join(candidate_words)+"\n",encoding="utf-8")
+            out=tmp_path/"batch.json"
+            proc=subprocess.run(
+                [str(batch_binary),str(tmp_path/"previous.txt"),
+                 str(tmp_path/"current.txt"),prefix,
+                 str(tmp_path/"words.txt"),str(out)],
+                cwd=batch_binary.parents[1],text=True,capture_output=True,
+                timeout=timeout)
+            if proc.returncode!=0:
+                raise RuntimeError(
+                    "native batch failed: "+
+                    (proc.stderr.strip() or proc.stdout.strip()))
+            receipt=json.loads(out.read_text())
+            if receipt.get("context")!=prefix:
+                raise RuntimeError("native batch context mismatch")
+            native=receipt.get("native_log_weights")
+            if not isinstance(native,dict) or set(native)!=set(candidate_words):
+                raise RuntimeError("native batch returned a mismatched shortlist")
+            return {word:float(native[word]) for word in candidate_words}
+    return callback
+
+
 def main()->None:
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--archive-root",type=Path,required=True)
@@ -137,14 +188,21 @@ def main()->None:
     parser.add_argument("--wordlist",type=Path,required=True)
     parser.add_argument("--native-guest",type=Path,
                         help="existing NaN16 opcode112 observer (measure only)")
+    parser.add_argument("--native-batch",type=Path,
+                        help="native opcode112 shortlist candidate batch (candidate-only)")
     parser.add_argument("--output",type=Path)
     args=parser.parse_args()
     words=[x.strip() for x in args.wordlist.read_text().splitlines() if x.strip()]
     native_receipts: list[dict]=[]
-    observer=(native_guest_remeasure(args.native_guest,args.context,native_receipts)
-              if args.native_guest is not None else None)
+    if args.native_batch is not None:
+        observer=native_batch_remeasure(args.native_batch,words)
+    else:
+        observer=(native_guest_remeasure(args.native_guest,args.context,native_receipts)
+                  if args.native_guest is not None else None)
     result=future_three_rollout(frozen_r25_emitter(args.archive_root),
                                 args.context,words,native_remeasure=observer)
+    result["native_batch_abi"]=("opcode112" if args.native_batch is not None
+                                else "disabled")
     if args.native_guest is not None:
         if len(native_receipts)!=3:
             raise RuntimeError("NaN16 observer omitted a future-word horizon")
