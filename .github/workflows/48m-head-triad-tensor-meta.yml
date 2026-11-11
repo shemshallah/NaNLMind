@@ -9,6 +9,9 @@ on:
       - 'include/nanlm/native48m_feedback_json.hpp'
       - 'tools/nanlm48m_native_emit.cpp'
       - 'mth/nan16/mth_meta_trihead.nas'
+      - 'mth/nan16/mth_phase_encode.nas'
+      - 'mth/drivers/field_driver.nas'
+      - 'tools/verify_native_memory_map.py'
       - 'src/raw_field.cpp'
       - 'Makefile'
       - 'tools/decoder48m_candidate.py'
@@ -25,6 +28,9 @@ on:
       - 'include/nanlm/native48m_feedback_json.hpp'
       - 'tools/nanlm48m_native_emit.cpp'
       - 'mth/nan16/mth_meta_trihead.nas'
+      - 'mth/nan16/mth_phase_encode.nas'
+      - 'mth/drivers/field_driver.nas'
+      - 'tools/verify_native_memory_map.py'
       - 'src/raw_field.cpp'
       - 'Makefile'
       - 'tools/decoder48m_candidate.py'
@@ -45,6 +51,7 @@ jobs:
       - name: Test real NaN16 phase-trihead-Hodge-MC0 dual tensor feedback
         run: |
           make -j2 build/test_native48m_feedback
+          python3 tools/verify_native_memory_map.py build/field_driver.nan
           ./build/test_native48m_feedback
       - name: Emit original-decoder candidate from real native corpus windows
         run: |
