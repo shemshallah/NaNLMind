@@ -490,9 +490,10 @@ mpt_project:
 mpt_fail:
   ; Diagnostics: failed rail source pair index in four hex digits.
   LD r9,r0,@mrg_pair_index
-  MOVI r8,12
+  MOVI r8,4
 mpt_debug_pair_hex:
-  SHR r10,r9,r8
+  SHR r10,r9,12
+  SHL r9,r9,4
   MOVI r11,15
   BOOL.8 r10,r10,r11
   MOVI r11,9
@@ -502,9 +503,9 @@ mpt_debug_pair_hex:
 mpt_debug_digit:
   ADDI r10,r10,48
   PUTC r10
-  SUBI r8,r8,4
-  CMPS r8,r0
-  JMP[GE] @mpt_debug_pair_hex
+  SUBI r8,r8,1
+  CMP r8,r0
+  JMP[GT] @mpt_debug_pair_hex
   MOVI r8,48
   ADD r8,r8,r4
   PUTC r8
