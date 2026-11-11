@@ -208,9 +208,14 @@ def main() -> int:
     print(f"unified_test_base status={report['summary']['status']} "
           f"passed={passed}/{len(results)} out={args.out}")
     for key, metrics in context_models.items():
-        print(f"{key} train_accuracy={metrics.get('train_accuracy_percent')} "
-              f"eval_accuracy={metrics.get('eval_accuracy_percent')} "
-              f"split={metrics.get('label')}")
+        if metrics.get("same_corpus"):
+            print(f"{key} train_accuracy={metrics.get('train_accuracy_percent')} "
+                  f"eval_accuracy={metrics.get('eval_accuracy_percent')} "
+                  "DIAGNOSTIC_ONLY same rows, NOT generalization")
+        else:
+            print(f"{key} train_accuracy={metrics.get('train_accuracy_percent')} "
+                  f"heldout_accuracy={metrics.get('eval_accuracy_percent')} "
+                  f"split={metrics.get('label')}")
     print(f"stream_curl={stream_metrics.get('hodge_curl_l1')} "
           f"six_radius={stream_metrics.get('six_context_radius')}")
     for name in failed:
