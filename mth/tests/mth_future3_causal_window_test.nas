@@ -209,11 +209,18 @@ f3t_pass:
 .str "MTH FUTURE3 NATIVE CAUSAL PREFIX PASS\n"
 f3t_fail:
 .str "MTH FUTURE3 NATIVE CAUSAL PREFIX FAIL\n"
-f3t_g: .word 0
-f3t_expected: .word 33,44,55,44,55,66,55,66,77
+f3t_g:
+  .word 0
+f3t_expected:
+  .word 33,44,55,44,55,66,55,66,77
 .org 30000
-f3t_words: .word 0,0,0,0,0
-f3t_generated: .word 0,0,0
-f3t_request: .word 0,0,0,0,0,0,0,0,0,0,0,0
-f3t_second: .word 0,0,0,0,0,0,0,0,0,0,0,0
-f3t_mathout: .word 0,0,0,0,0,0,0,0
+f3t_words:
+  .word 0,0,0,0,0
+f3t_generated:
+  .word 0,0,0
+f3t_request:
+  .word 0,0,0,0,0,0,0,0,0,0,0,0
+f3t_second:
+  .word 0,0,0,0,0,0,0,0,0,0,0,0
+f3t_mathout:
+  .word 0,0,0,0,0,0,0,0
