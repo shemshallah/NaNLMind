@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <cmath>
 #include <numeric>
 #include <fstream>
 #include <iterator>
@@ -75,6 +76,78 @@ RawFieldVM::RawFieldVM(const std::string& driver_image) {
 
 RawFieldVM::~RawFieldVM() {
     if (vm_) nan_destroy(vm_);
+}
+
+bool RawFieldVM::native_context6_attention(
+    std::uint32_t observed_anchor,
+    const std::array<std::uint32_t,6>& neighbors,
+    std::uint8_t valid_mask, std::uint8_t task,
+    std::uint32_t expected_generation, std::uint32_t current_generation,
+    NativeContext6Receipt& receipt) {
+    receipt = {};
+    if (!vm_) return fail("native context6: VM is not loaded");
+    // This is a typed ABI transport, not a new host-side embedding or
+    // numerical attention. The guest performs the entire calculation.
+    constexpr std::uint32_t kRequest=0x003E4000u;
+    constexpr std::uint32_t kOutput=0x003E4100u;
+    if (!write_word(kRequest+0,observed_anchor))
+        return fail("native context6: cannot write anchor");
+    for (std::uint32_t i=0;i<6;++i) {
+        if (!write_word(kRequest+1+i,neighbors[i]))
+            return fail("native context6: cannot write slot");
+    }
+    if (!write_word(kRequest+7,valid_mask) ||
+        !write_word(kRequest+8,task) ||
+        !write_word(kRequest+9,expected_generation) ||
+        !write_word(kRequest+10,current_generation) ||
+        !write_word(kRequest+11,255u) ||
+        !write_word(kCommandBase,107u))
+        return fail("native context6: cannot write command");
+    if (!run_command()) return false;
+    const auto accepted=read_word(kResultBase+0);
+    const auto count=read_word(kResultBase+1);
+    const auto guest_task=read_word(kResultBase+2);
+    const auto reason=read_word(kResultBase+3);
+    if (accepted==0u) {
+        if (count!=0u||guest_task!=0u||reason<1u||reason>4u)
+            return fail("native context6: malformed guest rejection");
+        receipt.reason=static_cast<std::uint8_t>(reason);
+        return true;
+    }
+    if (accepted!=1u||count==0u||count>6u||guest_task!=task||reason!=0u)
+        return fail("native context6: malformed guest approval");
+    const auto mask=read_word(kOutput+4);
+    const auto task_out=read_word(kOutput+5);
+    const auto now_head=read_word(kOutput+6);
+    const auto anchor_out=read_word(kOutput+7);
+    if (mask!=valid_mask||task_out!=task||now_head!=255u||
+        anchor_out!=observed_anchor)
+        return fail("native context6: mismatched output identity");
+    auto read_f32=[&](std::uint32_t i) {
+        const std::uint32_t bits=read_word(kOutput+i);
+        float value=0.0f;
+        static_assert(sizeof(float)==sizeof(std::uint32_t));
+        std::memcpy(&value,&bits,sizeof(value));
+        return value;
+    };
+    const float x=read_f32(0),y=read_f32(1);
+    const float radial=read_f32(2),distance=read_f32(3);
+    // Boundary validation, not replacement numerical model mathematics.
+    if (!(std::isfinite(x)&&std::isfinite(y)&&std::isfinite(radial)&&
+          std::isfinite(distance)) || radial<0.0f || radial>=1.0f ||
+          distance<0.0f)
+        return fail("native context6: malformed Poincare ball receipt");
+    receipt.accepted=true;
+    receipt.valid_count=static_cast<std::uint8_t>(count);
+    receipt.task=static_cast<std::uint8_t>(task_out);
+    receipt.mask=static_cast<std::uint8_t>(mask);
+    receipt.now_head=static_cast<std::uint8_t>(now_head);
+    receipt.observed_anchor=anchor_out;
+    receipt.poincare_x=x;
+    receipt.poincare_y=y;
+    receipt.radius=radial;
+    receipt.radial_distance=distance;
+    return true;
 }
 
 bool RawFieldVM::native_spectral_tensor_propose(
