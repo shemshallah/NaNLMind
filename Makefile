@@ -70,6 +70,9 @@ $(BUILD)/test_native48m_feedback: tests/test_native48m_feedback.cpp include/nanl
 $(BUILD)/nanlm48m-native-emit: tools/nanlm48m_native_emit.cpp include/nanlm/native48m_feedback_json.hpp include/nanlm/native48m_feedback.hpp include/nanlm/dual_tensor_arena.hpp $(LIB) $(NAN0S_LIB) $(FIELD_DRIVER) | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
+$(BUILD)/nanlm48m-native-future3-measure: tools/nanlm48m_native_future3_measure.cpp include/nanlm/raw_field.hpp $(LIB) $(NAN0S_LIB) $(FIELD_DRIVER) | $(BUILD)
+	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
+
 $(BUILD)/test_raw_contextual: tests/test_raw_contextual.cpp $(LIB) $(NAN0S_LIB) $(FIELD_DRIVER) | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
