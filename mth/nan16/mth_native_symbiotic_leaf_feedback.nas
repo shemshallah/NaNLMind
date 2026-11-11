@@ -138,6 +138,7 @@ slf_check_quorum:
   JMP[NE] @slf_bad_votes
 
 slf_check_members:
+  ST r0,r0,@slf_member_vote
   ; Confirm all 255 map IDs are a UNIQUE permutation, not just 3 heads.
   MOVI r10,0x6000
   MOVHI r10,0x003C
@@ -266,7 +267,6 @@ slf_triad_meta:
   LD r12,r0,@slf_hot
   CMP r11,r12
   JMP[NE] @slf_bad_math
-  LD r11,r10,6
   MOVI r12,3
   LD r11,r10,6
   LD r9,r0,@slf_hot
@@ -302,7 +302,6 @@ slf_stage_loop:
   CMP r9,r10
   JMP[GE] @slf_publish
   ST r9,r0,@slf_index
-  CMP r9,r3
   ; first 3 are head diagonals; last two are distinct trihead scalars
   MOVI r10,3
   CMP r9,r10
