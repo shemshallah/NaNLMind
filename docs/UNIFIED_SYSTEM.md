@@ -242,3 +242,19 @@ implements the sequencing adapter. It never passes gold future words and
 remeasures the native guest at every generated prefix. The frozen decoder
 remains the whole-word probability model; candidate tensor promotion remains
 blocked until a disjoint precommitted NLL gate passes.
+
+
+## Head page loader
+
+`include/nanlm/head_page_arena.hpp` owns 255 × 1 MiB pages as a demand-paged
+anonymous mapping. `include/nanlm/head_page_loader.hpp` loads a page into one
+of **16 guest slots** at `0x00800000 + slot*0x00040000`.
+
+Sixteen is the chosen optimum: it is a power of two, matches the 16-slot meta
+batch, fits the remaining 128 MiB guest window, and avoids a flat 255 MiB/1 GiB
+VM that OOMs this device. Each 1 MiB page expands to 2 MiB of guest storage
+because a NaN word is 8 bytes. LRU eviction replaces the least recently used
+slot.
+
+`NANLM_STEP_BUDGET` sets the 64-bit native command budget; default
+`4,000,000,000`.

@@ -281,6 +281,14 @@ public:
 
     bool ready() const { return vm_ != nullptr; }
     const std::string& error() const { return error_; }
+    // Raw payload-word transport for host-side paged stores.  This writes the
+    // 32-bit guest payload; it does not run guest mathematics.
+    bool write_payload_word(std::uint32_t index, std::uint32_t payload) {
+        return write_word(index, payload);
+    }
+    std::uint32_t read_payload_word(std::uint32_t index) const {
+        return read_word(index);
+    }
 
     // Host transports authenticated observations/leases into the raw guest.
     // No spectral arithmetic, quorum scoring or mirror offsets happen here.

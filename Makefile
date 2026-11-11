@@ -68,6 +68,9 @@ $(BUILD)/test_dual_head: tests/test_dual_head.cpp $(LIB) $(NAN0S_LIB) $(FIELD_DR
 $(BUILD)/test_head_page_arena: tests/test_head_page_arena.cpp include/nanlm/head_page_arena.hpp | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS) $(LDLIBS)
 
+$(BUILD)/test_head_page_loader: tests/test_head_page_loader.cpp include/nanlm/head_page_loader.hpp include/nanlm/head_page_arena.hpp $(LIB) $(NAN0S_LIB) $(FIELD_DRIVER) | $(BUILD)
+	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
+
 $(BUILD)/test_dual_tensor_arena: tests/test_dual_tensor_arena.cpp include/nanlm/dual_tensor_arena.hpp | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS) $(LDLIBS)
 
@@ -256,5 +259,5 @@ dual-head-test: $(BUILD)/test_dual_head
 	./$(BUILD)/test_dual_head
 
 
-unified-test-base: $(CLI) $(FIELD_DRIVER) $(BUILD)/test_raw_field $(BUILD)/test_context_backoff $(BUILD)/test_context_route $(BUILD)/test_native48m_feedback $(BUILD)/test_dual_tensor_arena $(BUILD)/test_head_page_arena $(BUILD)/credit-ablation $(BUILD)/nanlm48m-native-batch
+unified-test-base: $(CLI) $(FIELD_DRIVER) $(BUILD)/test_raw_field $(BUILD)/test_context_backoff $(BUILD)/test_context_route $(BUILD)/test_native48m_feedback $(BUILD)/test_dual_tensor_arena $(BUILD)/test_head_page_arena $(BUILD)/test_head_page_loader $(BUILD)/credit-ablation $(BUILD)/nanlm48m-native-batch
 	python3 tools/unified_test_base.py
