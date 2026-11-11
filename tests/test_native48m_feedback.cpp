@@ -118,9 +118,12 @@ int main(){
     // 2D Poincare disk -> same earlier Hodge/curl and committed MC0 ->
     // independent mirror lanes of this one 128MiB candidate tensor.
     std::array<std::uint32_t,6> causal_words={100,500,900,0,0,0};
+    const std::vector<std::uint32_t> actual_observed_stream={100,500,900};
     nanlm::NativeContext6Receipt temporal{};
-    assert(vm.native_context6_attention(
-        8192,causal_words,7,0,42,42,temporal));
+    // Actual source position/window selection is now native (opcode109).
+    assert(vm.native_stream6_attention(
+        actual_observed_stream,3,0,0,42,42,temporal));
+    assert(temporal.observed_anchor==900);
     assert(temporal.accepted && temporal.valid_count==3);
     assert(temporal.task==0 && temporal.mask==7 && temporal.now_head==255);
     assert(std::isfinite(temporal.radial_distance) &&
@@ -148,6 +151,27 @@ int main(){
     assert(vm.native_context6_attention(
         8192,causal_words,7,0,42,41,stale_ctx));
     assert(!stale_ctx.accepted && stale_ctx.reason==3);
+    // Masked infill must be bit-identical when ONLY target identity changes.
+    std::vector<std::uint32_t> infill_stream={10,20,30,40,50,60,70};
+    nanlm::NativeContext6Receipt infill_before{};
+    assert(vm.native_stream6_attention(
+        infill_stream,3,1,8192,42,42,infill_before));
+    assert(infill_before.accepted && infill_before.valid_count==6);
+    assert(infill_before.mask==63 && infill_before.now_head==255);
+    infill_stream[3]=12345; // the prohibited target token itself
+    nanlm::NativeContext6Receipt infill_after{};
+    assert(vm.native_stream6_attention(
+        infill_stream,3,1,8192,42,42,infill_after));
+    assert(infill_after.accepted);
+    assert(infill_after.poincare_x==infill_before.poincare_x);
+    assert(infill_after.poincare_y==infill_before.poincare_y);
+    assert(infill_after.radius==infill_before.radius);
+    assert(infill_after.radial_distance==infill_before.radial_distance);
+    // Incorrect online mode targeting an observed token is denied in guest.
+    nanlm::NativeContext6Receipt forbidden_stream{};
+    assert(vm.native_stream6_attention(
+        infill_stream,3,0,0,42,42,forbidden_stream));
+    assert(!forbidden_stream.accepted && forbidden_stream.reason==1);
     // Native 128D hyperedge abstract-depth layer consumes the SAME Hodge
     // curl already measured for these oriented faces (curl[0] == 3).
     // A sourced 128-dimensional graph-vector fixture is transported,
