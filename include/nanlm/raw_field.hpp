@@ -62,7 +62,7 @@ struct NativeContext6Receipt {
     std::uint8_t valid_count=0, task=0, reason=0;
     float poincare_x=0.0f,poincare_y=0.0f;
     float radius=0.0f, radial_distance=0.0f;
-    std::uint8_t mask=0,now_head=255;
+    std::uint8_t mask=0,now_head=255,horizon=0;
     std::uint32_t observed_anchor=0;
 };
 
@@ -238,6 +238,15 @@ public:
         std::uint32_t masked_query_anchor,
         std::uint32_t expected_generation,
         std::uint32_t current_generation,
+        NativeContext6Receipt& receipt);
+    // Native opcode112, one fresh causal horizon at a time. The caller
+    // passes only its earlier decoder-generated words, never gold future.
+    // All temporal selection, trig/attention/Poincare mathematics is guest.
+    bool native_future3_causal_attention(
+        const std::vector<std::uint32_t>& observed_word_ids,
+        const std::array<std::uint32_t,3>& generated_prefix,
+        std::uint8_t generated_count,
+        std::uint32_t expected_generation, std::uint32_t current_generation,
         NativeContext6Receipt& receipt);
     bool native_context6_attention(
         std::uint32_t observed_anchor,
