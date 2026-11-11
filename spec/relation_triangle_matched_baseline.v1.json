@@ -1,0 +1,67 @@
+{
+  "schema": "nanlm.relation-triangle-matched-baseline/1",
+  "scores": "state/relation_triangle/contrast.scores.tsv",
+  "rows": {
+    "train": 115184,
+    "valid": 14333,
+    "test": 14229
+  },
+  "positive_rate": {
+    "train": 0.2615988331712738,
+    "valid": 0.2620526058745552,
+    "test": 0.26115679246609036
+  },
+  "test_metrics": {
+    "constant_majority": {
+      "n": 14229,
+      "positives": 3716,
+      "auc": 0.5,
+      "balanced_accuracy": 0.5,
+      "precision": 0.26115679246609036,
+      "recall": 1.0,
+      "f1": 0.41415436054611315,
+      "threshold": 0.0
+    },
+    "source_prior": {
+      "n": 14229,
+      "positives": 3716,
+      "auc": 0.6379103958326443,
+      "balanced_accuracy": 0.7084764959104914,
+      "precision": 0.4576824034334764,
+      "recall": 0.7174381054897739,
+      "f1": 0.5588512734514202,
+      "threshold": 0.9155413138017853
+    },
+    "deterministic_random": {
+      "n": 14229,
+      "positives": 3716,
+      "auc": 0.5032182718674106,
+      "balanced_accuracy": 0.49836515137289145,
+      "precision": 0.2604788157994109,
+      "recall": 0.9281485468245425,
+      "f1": 0.4067936545379489,
+      "threshold": 0.0656914645805955
+    },
+    "shape_only": {
+      "n": 14229,
+      "positives": 3716,
+      "auc": 0.6486479602833214,
+      "balanced_accuracy": 0.6250804785545642,
+      "precision": 0.32600075528700906,
+      "recall": 0.9292249730893434,
+      "f1": 0.48266703941850714,
+      "threshold": 3.0517578125e-05
+    },
+    "raw_global_model": {
+      "n": 14229,
+      "positives": 3716,
+      "auc": 0.5658931732171876,
+      "balanced_accuracy": 0.5979976531183853,
+      "precision": 0.31165540540540543,
+      "recall": 0.893702906350915,
+      "f1": 0.46214862232118015,
+      "threshold": 0.3905487060546875
+    }
+  },
+  "note": "all baselines use the same train/valid/test split and valid-selected threshold"
+}

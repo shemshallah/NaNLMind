@@ -2308,7 +2308,7 @@ int stream_train_cli(int argc, char** argv) {
     }
     std::string carry;
     std::vector<std::int32_t> sample_bank;
-    constexpr std::size_t kSampleLimit = 1024;
+    constexpr std::size_t kSampleLimit = 512;
     constexpr std::size_t kMaxWordsPerLine = 4096;
     std::size_t lines = 0, bytes_seen = 0, words_total = 0, subwords_total = 0;
     std::size_t contexts_total = 0;
@@ -2326,6 +2326,7 @@ int stream_train_cli(int argc, char** argv) {
     std::int32_t word_field_value = 0;
     std::size_t word_field_hot_heads = 0, word_field_hot_triads = 0;
     std::vector<std::int32_t> first_head255_vector, last_head255_vector;
+    std::vector<std::vector<std::int32_t>> meta_history;
     std::int32_t first_head255_word = 0, last_head255_word = 0;
     bool word_field_hot = false;
     std::array<std::int32_t, 3> word_tri_sides{};
@@ -2434,6 +2435,8 @@ int stream_train_cli(int argc, char** argv) {
             }
             last_head255_vector = word_vectors.back();
             last_head255_word = head255[0];
+            if (meta_history.size() >= 16) meta_history.erase(meta_history.begin());
+            meta_history.push_back(word_vectors.back());
         }
         if (word_vectors.size() >= 2) {
             std::vector<std::int32_t> wbank;
@@ -2590,7 +2593,7 @@ int stream_train_cli(int argc, char** argv) {
     std::size_t codebook_codewords = 0;
     if (sample_bank.size() >= 64 * 256) {
         const std::size_t samples = sample_bank.size() / 256;
-        codebook_codewords = std::min<std::size_t>(samples, 32);
+        codebook_codewords = std::min<std::size_t>(samples, 16);
         std::vector<std::int32_t> codebook;
         if (!vm.pq_train(sample_bank, samples, 256, codebook_codewords, 1,
                          codebook)) {
@@ -2669,6 +2672,51 @@ int stream_train_cli(int argc, char** argv) {
             hodge_curl_l1 += value < 0.0f ? -value : value;
     }
     const bool global_field_hot = shape_field_hot && hodge_ok;
+    bool meta_attention_ok = false;
+    float meta_context_energy = 0.0f;
+    std::uint16_t meta_field_hot_heads = 0, meta_field_hot_triads = 0;
+    bool meta_field_hot = false;
+    if (!meta_history.empty()) {
+        std::vector<float> q(256, 0.0f), keys, values;
+        std::vector<std::uint32_t> mask;
+        for (std::size_t i = 0; i < 256; ++i)
+            q[i] = static_cast<float>(meta_history.back()[i]) / 65536.0f;
+        for (const auto& slot : meta_history) {
+            for (std::int32_t value : slot) {
+                keys.push_back(static_cast<float>(value) / 65536.0f);
+                values.push_back(static_cast<float>(value) / 65536.0f);
+            }
+            mask.push_back(1);
+        }
+        std::vector<float> meta_out;
+        if (!vm.meta_attention(q, keys, values, mask, meta_history.size(), 256,
+                               meta_out)) {
+            std::cerr << "meta attention failed: " << vm.error() << "\n";
+            return 7;
+        }
+        meta_attention_ok = true;
+        for (float value : meta_out) meta_context_energy += value < 0 ? -value : value;
+        std::vector<std::int32_t> meta_q16;
+        meta_q16.reserve(256);
+        for (float value : meta_out)
+            meta_q16.push_back(static_cast<std::int32_t>(value * 65536.0f));
+        std::vector<std::int32_t> mcredits, mvotes;
+        std::int32_t mfield = 0;
+        if (!vm.field_perturb(meta_q16, 256, mcredits, mvotes, mfield)) {
+            std::cerr << "meta field perturb failed: " << vm.error() << "\n";
+            return 7;
+        }
+        std::array<std::int32_t, kTriadMemberCount> mc{};
+        std::copy(mcredits.begin(), mcredits.end(), mc.begin());
+        HotTriheadResult mhot;
+        if (!vm.hot_triheads(mc, 0, mhot)) {
+            std::cerr << "meta hot trihead failed: " << vm.error() << "\n";
+            return 7;
+        }
+        meta_field_hot_heads = mhot.hot_heads;
+        meta_field_hot_triads = mhot.hot_triads;
+        meta_field_hot = mhot.field_hot;
+    }
     const std::size_t geometry_samples = sample_bank.size() / 256;
     std::int32_t path_length = 0, path_closure = 0, path_turn = 0;
     std::int32_t path_curvature = 0;
@@ -2798,9 +2846,9 @@ int stream_train_cli(int argc, char** argv) {
                  << ", \"field_hot_heads\": " << word_field_hot_heads
                  << ", \"field_hot_triads\": " << word_field_hot_triads
                  << ", \"field_hot\": " << (word_field_hot ? "true" : "false")
-                 << ", \"shape_count\": " << triangle_shape[2]
-                 << ", \"shape_tightness_sum\": " << triangle_shape[0]
-                 << ", \"shape_area_sum\": " << triangle_shape[1]
+                 << ", \"shape_count\": " << word_triangle_count
+                 << ", \"shape_tightness_sum\": " << word_tri_tight_sum
+                 << ", \"shape_area_sum\": " << word_tri_area_sum
                  << ", \"shape_positive\": " << triangle_orient_counts[0]
                  << ", \"shape_negative\": " << triangle_orient_counts[1]
                  << ", \"contrastive_triangles\": "
@@ -2825,6 +2873,11 @@ int stream_train_cli(int argc, char** argv) {
                  << ", \"hodge_divergence_l1\": " << hodge_divergence_l1
                  << ", \"hodge_curl_l1\": " << hodge_curl_l1
                  << ", \"global_field_hot\": " << (global_field_hot ? "true" : "false")
+                 << ", \"meta_attention_ok\": " << (meta_attention_ok ? "true" : "false")
+                 << ", \"meta_context_energy\": " << meta_context_energy
+                 << ", \"meta_field_hot_heads\": " << meta_field_hot_heads
+                 << ", \"meta_field_hot_triads\": " << meta_field_hot_triads
+                 << ", \"meta_field_hot\": " << (meta_field_hot ? "true" : "false")
                  << ", \"current_field_first_word\": " << first_head255_word
                  << ", \"current_field_last_word\": " << last_head255_word
                  << ", \"current_field_closure\": " << head255_closure

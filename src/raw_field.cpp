@@ -2123,6 +2123,44 @@ bool RawFieldVM::global_hodge_from_triads(
     return true;
 }
 
+bool RawFieldVM::meta_attention(
+    const std::vector<float>& query, const std::vector<float>& keys,
+    const std::vector<float>& values,
+    const std::vector<std::uint32_t>& mask, std::size_t slots,
+    std::size_t dim, std::vector<float>& out) {
+    if (slots == 0 || slots > 16 || dim == 0 || dim > 256 ||
+        query.size() < dim || keys.size() < slots * dim ||
+        values.size() < slots * dim || mask.size() < slots)
+        return fail("meta attention bounds invalid");
+    for (std::size_t i = 0; i < dim; ++i) {
+        std::uint32_t bits = 0;
+        std::memcpy(&bits, &query[i], sizeof(bits));
+        if (!write_word(0x340000u + static_cast<std::uint32_t>(i), bits))
+            return fail("cannot write meta query");
+    }
+    for (std::size_t i = 0; i < slots * dim; ++i) {
+        std::uint32_t kb = 0, vb = 0;
+        std::memcpy(&kb, &keys[i], sizeof(kb));
+        std::memcpy(&vb, &values[i], sizeof(vb));
+        if (!write_word(0x340800u + static_cast<std::uint32_t>(i), kb) ||
+            !write_word(0x341800u + static_cast<std::uint32_t>(i), vb))
+            return fail("cannot write meta keys/values");
+    }
+    for (std::size_t i = 0; i < slots; ++i)
+        if (!write_word(0x342800u + static_cast<std::uint32_t>(i), mask[i]))
+            return fail("cannot write meta mask");
+    if (!write_word(kProposalBase + 0, static_cast<std::uint32_t>(slots)) ||
+        !write_word(kProposalBase + 1, static_cast<std::uint32_t>(dim)) ||
+        !write_word(kCommandBase, 102)) return fail("cannot write meta command");
+    if (!run_command()) return false;
+    out.resize(dim);
+    for (std::size_t i = 0; i < dim; ++i) {
+        const std::uint32_t bits = read_word(0x343000u + static_cast<std::uint32_t>(i));
+        std::memcpy(&out[i], &bits, sizeof(bits));
+    }
+    return true;
+}
+
 bool RawFieldVM::shape_field_reset() {
     if (!write_word(kCommandBase, 96)) return fail("cannot write shape field reset");
     return run_command();

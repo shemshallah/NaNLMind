@@ -860,6 +860,18 @@ int main() {
     CHECK_EQ(matrix_hot.hot_heads, 3u);
     CHECK_EQ(matrix_hot.hot_triads, 1u);
     CHECK(!matrix_hot.field_hot);
+    // MC0-compatible meta attention over committed slots.
+    {
+        std::vector<float> q = {1.0f, 0.0f};
+        std::vector<float> k = {2.0f, 0.0f, 0.0f, 1.0f};
+        std::vector<float> v = {1.0f, 0.0f, 0.0f, 1.0f};
+        std::vector<std::uint32_t> mask = {1, 1};
+        std::vector<float> out;
+        CHECK(vm.meta_attention(q, k, v, mask, 2, 2, out));
+        CHECK_EQ(out.size(), 2u);
+        CHECK(out[0] > out[1]);
+    }
+
     // Semantic triangle flow -> global Hodge.
     {
         std::array<std::array<std::uint32_t, 3>, 16> triads{};

@@ -496,6 +496,12 @@ public:
     bool phase_hyperbolic(const std::vector<std::int32_t>& phase_vector,
                           std::size_t lanes, std::int32_t& mean_energy,
                           std::int32_t& radial);
+    bool meta_attention(const std::vector<float>& query,
+                        const std::vector<float>& keys,
+                        const std::vector<float>& values,
+                        const std::vector<std::uint32_t>& mask,
+                        std::size_t slots, std::size_t dim,
+                        std::vector<float>& out);
     bool shape_field_reset();
     bool shape_field_observe(std::uint32_t triad, std::int32_t tightness,
                              std::int32_t orientation, std::int32_t area);
