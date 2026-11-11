@@ -35,4 +35,31 @@ class TestCandidate(unittest.TestCase):
             def score(self,context,word):return {"probability":.8}
         with self.assertRaises(ValueError):
             m.FiniteCandidateDistribution(Bad(),"",{"a":1.,"b":1.})
+    def test_native_receipt_requires_guest_meta_and_committed_past(self):
+        req={"schema":"nanlm.48m-native-feedback/1",
+             "base_sha256":m.EXPECTED_BASE,"overlay_sha256":m.EXPECTED_OVERLAY,
+             "native_evidence":{"meta_available":True,"candidate_staged":True,
+                 "automatic_promotion":False,"committed_history_slots":1,
+                 "native_observed_contexts":4,"accepted_triads":1,
+                 "proposer":3,"h":7,"a":2,"b":3}}
+        self.assertTrue(m.validate_native_receipt(req))
+        req["native_evidence"]["committed_history_slots"]=0
+        with self.assertRaises(ValueError):m.validate_native_receipt(req)
+        req["native_evidence"]["committed_history_slots"]=1
+        req["native_evidence"]["h"]=255
+        with self.assertRaises(ValueError):m.validate_native_receipt(req)
+        req["native_evidence"]["h"]=7
+        req["native_evidence"]["automatic_promotion"]=True
+        with self.assertRaises(ValueError):m.validate_native_receipt(req)
+    def test_panel_exact_nll_never_promotes(self):
+        old=Frozen48MFixture()
+        rows=[{"context":"x","target":"b","native_log_weights":{"b":.5}},
+              {"context":"y","target":"outofvocab","native_log_weights":{}}]
+        result=m.evaluate_candidate_panel(old,rows)
+        self.assertEqual(result["positions"],2)
+        self.assertGreater(result["nll_improvement"],0)
+        self.assertFalse(result["tensor_promotion_allowed"])
+        rows[1]["native_log_weights"]={"a":2.0}
+        worse=m.evaluate_candidate_panel(old,rows)
+        self.assertLess(worse["nll_improvement"],result["nll_improvement"])
 if __name__=="__main__":unittest.main()
