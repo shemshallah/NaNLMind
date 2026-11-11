@@ -150,6 +150,75 @@ bool RawFieldVM::native_context6_attention(
     return true;
 }
 
+bool RawFieldVM::native_stream6_attention(
+    const std::vector<std::uint32_t>& source_word_ids,
+    std::uint32_t target_index, std::uint8_t task,
+    std::uint32_t masked_query_anchor,
+    std::uint32_t expected_generation,
+    std::uint32_t current_generation,
+    NativeContext6Receipt& receipt) {
+    receipt={};
+    if (!vm_) return fail("native stream6: VM unavailable");
+    if (source_word_ids.empty()||source_word_ids.size()>4096u)
+        return fail("native stream6: source count out of physical bounds");
+    constexpr std::uint32_t source_base=0x003E6000u;
+    constexpr std::uint32_t output_base=0x003E4100u;
+    for (std::uint32_t i=0;i<source_word_ids.size();++i)
+        if (!write_word(source_base+i,source_word_ids[i]))
+            return fail("native stream6: source transport failed");
+    const std::array<std::uint32_t,6> args={
+        static_cast<std::uint32_t>(source_word_ids.size()),
+        target_index,task,masked_query_anchor,
+        expected_generation,current_generation};
+    for (std::uint32_t i=0;i<args.size();++i)
+        if (!write_word(kProposalBase+i,args[i]))
+            return fail("native stream6: command transport failed");
+    if (!write_word(kCommandBase,109u) || !run_command())
+        return fail("native stream6: fused NaN16 dispatch failed: "+error_);
+    const auto accepted=read_word(kResultBase+0);
+    const auto count=read_word(kResultBase+1);
+    const auto actual_task=read_word(kResultBase+2);
+    const auto reason=read_word(kResultBase+3);
+    if (accepted==0u) {
+        if(count!=0u||actual_task!=0u||reason<1u||reason>4u)
+            return fail("native stream6: malformed rejection receipt");
+        receipt.reason=static_cast<std::uint8_t>(reason);
+        return true;
+    }
+    if(accepted!=1u||count==0u||count>6u||
+       actual_task!=task||reason!=0u)
+        return fail("native stream6: malformed approved receipt");
+    const auto mask=read_word(output_base+4);
+    const auto mode=read_word(output_base+5);
+    const auto now=read_word(output_base+6);
+    const auto anchor=read_word(output_base+7);
+    if (mask==0u||mask>63u||mode!=task||now!=255u||anchor==0u||
+        (task==0u&&(mask&0x38u)!=0u))
+        return fail("native stream6: future/VOID/anchor mismatch");
+    const auto decode=[&](std::uint32_t d){
+        std::uint32_t bits=read_word(output_base+d);
+        float result=0.0f;
+        static_assert(sizeof(float)==4);
+        std::memcpy(&result,&bits,sizeof(bits));
+        return result;
+    };
+    const float x=decode(0),y=decode(1),r=decode(2),depth=decode(3);
+    if (!(std::isfinite(x)&&std::isfinite(y)&&std::isfinite(r)&&
+          std::isfinite(depth))||r<0.0f||r>=1.0f||depth<0.0f)
+        return fail("native stream6: malformed Poincare output");
+    receipt.accepted=true;
+    receipt.valid_count=static_cast<std::uint8_t>(count);
+    receipt.task=static_cast<std::uint8_t>(mode);
+    receipt.mask=static_cast<std::uint8_t>(mask);
+    receipt.now_head=static_cast<std::uint8_t>(now);
+    receipt.observed_anchor=anchor;
+    receipt.poincare_x=x;
+    receipt.poincare_y=y;
+    receipt.radius=r;
+    receipt.radial_distance=depth;
+    return true;
+}
+
 bool RawFieldVM::native_hyperedge128_depth(
     const std::array<float,128>& sourced_vector,
     const std::array<std::uint8_t,3>& ordered_hyperedge,
