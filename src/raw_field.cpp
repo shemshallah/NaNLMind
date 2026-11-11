@@ -150,6 +150,85 @@ bool RawFieldVM::native_context6_attention(
     return true;
 }
 
+bool RawFieldVM::native_hyperedge128_depth(
+    const std::array<float,128>& sourced_vector,
+    const std::array<std::uint8_t,3>& ordered_hyperedge,
+    float native_hodge_curl, std::uint32_t expected_generation,
+    std::uint32_t current_generation,
+    NativeHyperedge128Receipt& receipt) {
+    receipt = {};
+    if (!vm_) return fail("native hyperedge128: VM not loaded");
+    constexpr std::uint32_t source_base=0x003E5000u;
+    constexpr std::uint32_t output_base=0x003E5200u;
+    constexpr std::uint32_t record_base=0x003E5400u;
+    constexpr std::uint32_t meta_base=0x003E5500u;
+    auto as_bits=[](float value) {
+        std::uint32_t bits=0;
+        static_assert(sizeof(bits)==sizeof(value));
+        std::memcpy(&bits,&value,sizeof(bits));
+        return bits;
+    };
+    auto as_float=[](std::uint32_t bits) {
+        float value=0.0f;
+        std::memcpy(&value,&bits,sizeof(bits));
+        return value;
+    };
+    // Transport all 128 observed source components into guest-owned math.
+    // The caller must verify provenance and that these belong to the same
+    // admitted Hodge/topology/epoch. The guest only validates numeric shape.
+    for (std::uint32_t d=0;d<128u;++d)
+        if (!write_word(source_base+d,as_bits(sourced_vector[d])))
+            return fail("native hyperedge128: input transport failed");
+    const std::array<std::uint32_t,8> record={
+        ordered_hyperedge[0],ordered_hyperedge[1],ordered_hyperedge[2],
+        as_bits(native_hodge_curl),expected_generation,current_generation,
+        255u,1u};
+    for (std::uint32_t i=0;i<record.size();++i)
+        if (!write_word(record_base+i,record[i]))
+            return fail("native hyperedge128: evidence transport failed");
+    if (!write_word(kCommandBase,108u) || !run_command())
+        return fail("native hyperedge128: guest dispatch failed: "+error_);
+    const auto accepted=read_word(kResultBase);
+    const auto count=read_word(kResultBase+1);
+    const auto sign=read_word(kResultBase+2);
+    const auto reason=read_word(kResultBase+3);
+    if (accepted==0u) {
+        if (count!=0u||sign!=0u||reason<1u||reason>4u)
+            return fail("native hyperedge128: malformed guest rejection");
+        receipt.rejection_reason=static_cast<std::uint8_t>(reason);
+        return true;
+    }
+    if (accepted!=1u||count!=128u||reason!=0u)
+        return fail("native hyperedge128: malformed guest approval");
+    const auto orientation=static_cast<std::int32_t>(sign);
+    const auto orientation_meta=static_cast<std::int32_t>(read_word(meta_base+3));
+    const auto now=read_word(meta_base+4);
+    if ((orientation!=-1&&orientation!=0&&orientation!=1) ||
+        orientation_meta!=orientation || now!=255u)
+        return fail("native hyperedge128: orientation/VOID identity drift");
+    const float radius=as_float(read_word(meta_base+0));
+    const float depth=as_float(read_word(meta_base+1));
+    const float feedback=as_float(read_word(meta_base+2));
+    if (!std::isfinite(radius)||!std::isfinite(depth)||
+        !std::isfinite(feedback)||radius<0||radius>=1||
+        depth<0||std::fabs(feedback)>8.0f)
+        return fail("native hyperedge128: nonfinite or nonball measurement");
+    // Validation only; Poincare and curl math happened inside NaN16.
+    for (std::uint32_t d=0;d<128u;++d) {
+        const float value=as_float(read_word(output_base+d));
+        if (!std::isfinite(value)||std::fabs(value)>=1.0f)
+            return fail("native hyperedge128: invalid projected component");
+        receipt.poincare_vector[d]=value;
+    }
+    receipt.accepted=true;
+    receipt.radius=radius;
+    receipt.radial_distance=depth;
+    receipt.signed_curl_feedback=feedback;
+    receipt.orientation=orientation;
+    receipt.now_head=static_cast<std::uint8_t>(now);
+    return true;
+}
+
 bool RawFieldVM::native_spectral_tensor_propose(
     const std::array<std::int64_t,256>& spectral_q16_i64,
     const std::array<std::uint8_t,85>& trihead_masks,
