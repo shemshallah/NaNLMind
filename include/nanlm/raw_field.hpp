@@ -68,6 +68,28 @@ struct NativeContext6Receipt {
 
 // Real 128-dimensional guest Poincare-ball hyperedge projection, with
 // signed oriented Hodge-curl feedback. No host numerical reconstruction.
+// Per-head independent 16-Boolean/phasor/128D measurement from opcode110.
+struct NativeHead16Receipt {
+    bool accepted=false;
+    std::uint8_t head=255,hot_vote=0,rejection_reason=0,rule=0;
+    std::uint16_t candidate_truth_mask=0;
+    std::uint32_t source_generation=0;
+    std::array<float,128> poincare_vector{};
+    float radius=0.0f,radial_distance=0.0f,signed_curl_feedback=0.0f;
+    std::int32_t phase_cos_q16=0,phase_sin_q16=0;
+};
+// Per-triad measurement from three independently measured head vectors.
+struct NativeTrihead128Receipt {
+    bool accepted=false;
+    std::uint8_t triad=255,hot_count=0,cold_count=0,rejection_reason=0;
+    std::array<std::uint8_t,3> members{};
+    bool unanimous_hot=false,unanimous_cold=false;
+    std::int32_t majority_sign=0,source_seven_credit_q16=0;
+    std::uint32_t source_generation=0;
+    std::array<float,128> poincare_vector{};
+    float radius=0.0f,radial_distance=0.0f,signed_curl_feedback=0.0f;
+    float candidate_credit_gradient=0.0f;
+};
 struct NativeHyperedge128Receipt {
     bool accepted=false;
     std::uint8_t rejection_reason=0;
@@ -225,6 +247,24 @@ public:
         NativeContext6Receipt& receipt);
     // Native opcode108: full 128D ball, actual Hodge curl supplied by
     // the already verified global Hodge result; host only transports.
+    // Each head carries independent scratch, 16 operator mask, CORDIC
+    // phase and measured 128D vector. Source/provenance must be verified
+    // upstream; the host only writes/reads the raw guest ABI.
+    bool native_head16_vector(
+        std::uint8_t head,const std::array<float,128>& source_vector,
+        std::uint16_t learned_truth_mask,std::uint16_t xor_candidate_patch,
+        std::uint32_t bool_operand_a,std::uint32_t bool_operand_b,
+        bool authorized_candidate_writer,
+        const std::array<std::uint8_t,3>& sourced_oriented_hyperedge,
+        float native_hodge_curl,std::uint16_t phase_turns,
+        std::uint32_t expected_generation,std::uint32_t current_generation,
+        NativeHead16Receipt& receipt);
+    // One 85x3 global permutation, but independent trihead VECTOR scratch.
+    bool native_triad_hotcold_vector(
+        std::uint8_t triad,const std::array<std::uint8_t,255>& mapping,
+        float native_hodge_curl,std::int32_t native_seven_credit_q16,
+        std::uint32_t expected_generation,std::uint32_t current_generation,
+        NativeTrihead128Receipt& receipt);
     bool native_hyperedge128_depth(
         const std::array<float,128>& sourced_vector,
         const std::array<std::uint8_t,3>& ordered_hyperedge,
