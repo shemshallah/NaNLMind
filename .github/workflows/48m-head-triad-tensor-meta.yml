@@ -6,6 +6,8 @@ on:
       - 'include/nanlm/dual_tensor_arena.hpp'
       - 'include/nanlm/native48m_feedback.hpp'
       - 'tests/test_native48m_feedback.cpp'
+      - 'include/nanlm/native48m_feedback_json.hpp'
+      - 'tools/nanlm48m_native_emit.cpp'
       - 'mth/nan16/mth_meta_trihead.nas'
       - 'src/raw_field.cpp'
       - 'Makefile'
@@ -20,6 +22,8 @@ on:
       - 'include/nanlm/dual_tensor_arena.hpp'
       - 'include/nanlm/native48m_feedback.hpp'
       - 'tests/test_native48m_feedback.cpp'
+      - 'include/nanlm/native48m_feedback_json.hpp'
+      - 'tools/nanlm48m_native_emit.cpp'
       - 'mth/nan16/mth_meta_trihead.nas'
       - 'src/raw_field.cpp'
       - 'Makefile'
@@ -42,6 +46,22 @@ jobs:
         run: |
           make -j2 build/test_native48m_feedback
           ./build/test_native48m_feedback
+      - name: Emit original-decoder candidate from real native corpus windows
+        run: |
+          make -j2 build/nanlm48m-native-emit
+          printf 'the bright river reflects the light and gentle sky' > /tmp/native48m-past.txt
+          printf 'a quiet bird moves above the river as clouds drift' > /tmp/native48m-current.txt
+          ./build/nanlm48m-native-emit /tmp/native48m-past.txt /tmp/native48m-current.txt 'the bright river' bird /tmp/native48m-candidate.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          request=json.loads(Path('/tmp/native48m-candidate.json').read_text())
+          assert request['schema']=='nanlm.48m-native-feedback/1'
+          assert request['query_words']==['bird']
+          assert request['native_evidence']['committed_history_slots']==1
+          assert request['native_evidence']['candidate_staged'] is True
+          assert request['native_evidence']['automatic_promotion'] is False
+          PY
       - name: Test exact frozen 48M candidate math and MC0 masking contract
         run: |
           python3 -m unittest discover -s tests -p test_decoder48m_candidate.py -v
