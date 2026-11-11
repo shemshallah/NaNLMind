@@ -124,6 +124,7 @@ JMP @field_driver_entry
 .include "../nan16/mth_future3_causal_window.nas"
 .include "../nan16/mth_head16_poincare_vector.nas"
 .include "../nan16/mth_triad_hotcold_poincare128.nas"
+.include "../nan16/mth_full_field_head_triad_measure.nas"
 
 field_driver_entry:
   MOVI r13,1
@@ -437,6 +438,9 @@ field_driver_main:
   MOVI r3,112
   CMP r2,r3
   JMP[EQ] @field_driver_future3_causal
+  MOVI r3,113
+  CMP r2,r3
+  JMP[EQ] @field_driver_full_field_255_85
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -1847,6 +1851,42 @@ field_driver_triad_hotcold_poincare:
   LD r5,r10,3
   LD r6,r10,4
   CALL @mth_triad_hotcold_poincare128
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  ST r4,r10,3
+  JMP @field_driver_return
+
+; Opcode113: source-derived WHOLE-FIELD native NaN16 head->trihead
+; measurement, no supplied/synthetic 85 vote masks.
+; All 255 head SOURCE 128D F32 vectors, Boolean masks, epoch/lease,
+; actual source Hodge curl and relation anchors must already be present
+; in independent head slabs 0x3B0000+h*256 (caller-provenanced).
+; 85 sourced Hodge curls F32 at 0x3EF600 and native seven-credit Q16 at
+; 0x3EF700; mapping 85x3 at 0x3E7000, 255 unique heads.
+; Native guest computes all 255 head Poincare vectors and 85 triad vectors,
+; with native HOT/COLD gradients in separate triad scratch slabs.
+; Command args 0x4001[0..1] expected and observed generation.
+; Results: 0x4010[0..3] accepted,hot_quorum_count,head_count,reason.
+; Votes 0x3EF000[85], report 0x3EF100[10]; only written if ALL
+; head and trihead measurements succeed. Global/meta and tensor promotion
+; are separate authenticated gates; no direct active bank writes.
+field_driver_full_field_255_85:
+  MOVI r1,0x7000
+  MOVHI r1,0x003E
+  MOVI r2,0xF600
+  MOVHI r2,0x003E
+  MOVI r3,0xF700
+  MOVHI r3,0x003E
+  MOVI r10,0x4001
+  LD r4,r10,0
+  LD r5,r10,1
+  MOVI r6,0xF000
+  MOVHI r6,0x003E
+  MOVI r7,0xF100
+  MOVHI r7,0x003E
+  CALL @mth_full_field_head_triad_measure
   MOVI r10,0x4010
   ST r1,r10,0
   ST r2,r10,1
