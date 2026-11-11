@@ -87,6 +87,16 @@ int main() {
         CHECK(hodge_ok);
         CHECK(std::fabs(curl[0] - 3.0f) < 1e-5f);
         for (float value : divergence) CHECK(std::fabs(value) < 1e-6f);
+
+        std::vector<std::int32_t> q16_flows(32640, 0);
+        q16_flows[0] = 65536;
+        q16_flows[255] = 65536;
+        q16_flows[1] = -65536;
+        std::array<float, 256> q16_divergence{};
+        std::array<float, 16> q16_curl{};
+        CHECK(vm.global_hodge_q16(q16_flows, faces, q16_divergence,
+                                  q16_curl));
+        CHECK(std::fabs(q16_curl[0] - 3.0f) < 1e-5f);
     }
 
     return test_done("dual-head self-modification");

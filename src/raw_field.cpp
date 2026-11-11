@@ -1928,6 +1928,39 @@ bool RawFieldVM::field_perturb(
 }
 
 
+
+bool RawFieldVM::global_hodge_q16(
+    const std::vector<std::int32_t>& pair_flows_q16,
+    const std::vector<std::array<std::uint32_t, 3>>& triangles,
+    std::array<float, 256>& divergence, std::array<float, 16>& curl) {
+    if (pair_flows_q16.size() != 32640 || triangles.size() > 16)
+        return fail("global hodge q16 bounds invalid");
+    for (std::size_t i = 0; i < pair_flows_q16.size(); ++i)
+        if (!write_word(0x360000u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(pair_flows_q16[i])))
+            return fail("cannot write global hodge q16 flows");
+    for (std::size_t t = 0; t < triangles.size(); ++t)
+        for (std::size_t k = 0; k < 3; ++k)
+            if (!write_word(0x368000u + static_cast<std::uint32_t>(t * 3 + k),
+                            triangles[t][k]))
+                return fail("cannot write global hodge q16 triangles");
+    if (!write_word(kProposalBase + 0, static_cast<std::uint32_t>(triangles.size())) ||
+        !write_word(kCommandBase, 100))
+        return fail("cannot write global hodge q16 command");
+    if (!run_command()) return false;
+    if ((read_word(kResultBase) & 1u) == 0)
+        return fail("global hodge q16 rejected");
+    for (std::size_t i = 0; i < divergence.size(); ++i) {
+        const std::uint32_t bits = read_word(0x369000u + static_cast<std::uint32_t>(i));
+        std::memcpy(&divergence[i], &bits, sizeof(bits));
+    }
+    for (std::size_t i = 0; i < curl.size(); ++i) {
+        const std::uint32_t bits = read_word(0x369400u + static_cast<std::uint32_t>(i));
+        std::memcpy(&curl[i], &bits, sizeof(bits));
+    }
+    return true;
+}
+
 bool RawFieldVM::global_hodge(
     const std::array<float, 32640>& pair_flows,
     const std::vector<std::array<std::uint32_t, 3>>& triangles,
@@ -2055,8 +2088,43 @@ bool RawFieldVM::read_triangle_model_negative(
     return true;
 }
 
+bool RawFieldVM::build_triangle_flow(
+    const std::array<std::array<std::uint32_t, 3>, 16>& triads,
+    std::size_t triad_count) {
+    if (triad_count > 16) return fail("triangle flow count invalid");
+    for (std::size_t t = 0; t < 16; ++t)
+        for (std::size_t j = 0; j < 3; ++j)
+            if (!write_word(0x368000u + static_cast<std::uint32_t>(t * 3 + j),
+                            triads[t][j]))
+                return fail("cannot write triangle flow triads");
+    if (!write_word(kProposalBase, static_cast<std::uint32_t>(triad_count)) ||
+        !write_word(kCommandBase, 101)) return fail("cannot write triangle flow cmd");
+    if (!run_command()) return false;
+    return (read_word(kResultBase) & 1u) != 0;
+}
+
+bool RawFieldVM::global_hodge_from_triads(
+    const std::array<std::array<std::uint32_t, 3>, 16>& triads,
+    std::size_t triad_count, std::vector<float>& divergence,
+    std::vector<float>& curl) {
+    if (!build_triangle_flow(triads, triad_count)) return false;
+    if (!write_word(kProposalBase, static_cast<std::uint32_t>(triad_count)) ||
+        !write_word(kCommandBase, 99)) return fail("cannot write hodge from triads");
+    if (!run_command()) return false;
+    divergence.resize(256); curl.resize(16);
+    for (std::size_t i = 0; i < divergence.size(); ++i) {
+        const std::uint32_t bits = read_word(0x369000u + static_cast<std::uint32_t>(i));
+        std::memcpy(&divergence[i], &bits, sizeof(bits));
+    }
+    for (std::size_t i = 0; i < curl.size(); ++i) {
+        const std::uint32_t bits = read_word(0x369400u + static_cast<std::uint32_t>(i));
+        std::memcpy(&curl[i], &bits, sizeof(bits));
+    }
+    return true;
+}
+
 bool RawFieldVM::shape_field_reset() {
-    if (!write_word(kCommandBase, 99)) return fail("cannot write shape field reset");
+    if (!write_word(kCommandBase, 96)) return fail("cannot write shape field reset");
     return run_command();
 }
 

@@ -507,6 +507,18 @@ public:
         const std::vector<std::array<std::uint32_t, 3>>& triangles,
         std::array<float, 256>& divergence,
         std::array<float, 16>& curl);
+    bool global_hodge_q16(
+        const std::vector<std::int32_t>& pair_flows_q16,
+        const std::vector<std::array<std::uint32_t, 3>>& triangles,
+        std::array<float, 256>& divergence,
+        std::array<float, 16>& curl);
+    bool build_triangle_flow(
+        const std::array<std::array<std::uint32_t, 3>, 16>& triads,
+        std::size_t triad_count);
+    bool global_hodge_from_triads(
+        const std::array<std::array<std::uint32_t, 3>, 16>& triads,
+        std::size_t triad_count, std::vector<float>& divergence,
+        std::vector<float>& curl);
     bool triangle_model_reset();
     bool triangle_model_observe(const std::array<std::int32_t, 3>& sides,
                                 std::int32_t area, std::int32_t tightness,

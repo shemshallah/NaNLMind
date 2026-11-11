@@ -916,6 +916,9 @@ int phase_ingest_cli(int argc, char** argv) {
     std::uint16_t field_hot_heads = 0;
     std::uint16_t field_hot_triads = 0;
     bool field_accept = false;
+    bool hodge_ok = false;
+    double hodge_divergence_l1 = 0.0;
+    double hodge_curl_l1 = 0.0;
     if (!samples.empty()) {
         pipeline_dim = std::min<std::size_t>(dim * 2, 256);
         pq_codewords = std::min<std::size_t>(samples.size(), 32);
@@ -1053,6 +1056,30 @@ int phase_ingest_cli(int argc, char** argv) {
         field_hot_heads = hot_result.hot_heads;
         field_hot_triads = hot_result.hot_triads;
         field_accept = hot_result.field_hot;
+
+        // Global 256-head Hodge over the Q16 vector-code matrix. The first 16
+        // mapped triads are admitted as oriented faces.
+        if (matrix_cells.size() == 32640) {
+            std::vector<std::array<std::uint32_t, 3>> faces;
+            const std::size_t face_count =
+                std::min<std::size_t>(16, hot_result.members.size() / 3);
+            for (std::size_t f = 0; f < face_count; ++f) {
+                faces.push_back({hot_result.members[f * 3],
+                                 hot_result.members[f * 3 + 1],
+                                 hot_result.members[f * 3 + 2]});
+            }
+            std::array<float, 256> divergence{};
+            std::array<float, 16> curl{};
+            if (!vm.global_hodge_q16(matrix_cells, faces, divergence, curl)) {
+                std::cerr << "global hodge failed: " << vm.error() << "\n";
+                return 7;
+            }
+            hodge_ok = true;
+            for (float value : divergence)
+                hodge_divergence_l1 += std::fabs(value);
+            for (float value : curl)
+                hodge_curl_l1 += std::fabs(value);
+        }
         {
             std::ofstream triads(output_prefix + ".triads.bin",
                                  std::ios::binary);
@@ -2301,6 +2328,8 @@ int stream_train_cli(int argc, char** argv) {
     std::array<std::int32_t, 3> word_tri_sides{};
     std::int32_t word_tri_area = 0, word_tri_tight = 0;
     std::vector<std::array<std::int32_t, 7>> word_triangle_records;
+    std::array<std::array<std::uint32_t, 3>, 16> hodge_triads{};
+    std::size_t hodge_triad_count = 0;
     std::string line;
     while (std::getline(in, line)) {
         if (!line.empty() && line.back() == '\r') line.pop_back();
@@ -2470,6 +2499,12 @@ int stream_train_cli(int argc, char** argv) {
                 std::cerr << "shape field observe failed: " << vm.error() << "\n";
                 return 7;
             }
+            if (hodge_triad_count < hodge_triads.size()) {
+                hodge_triads[hodge_triad_count++] = {
+                    static_cast<std::uint32_t>(triad_index * 3),
+                    static_cast<std::uint32_t>(triad_index * 3 + 1),
+                    static_cast<std::uint32_t>(triad_index * 3 + 2)};
+            }
             ++word_triangle_count;
             word_tri_area_sum += area;
             word_tri_tight_sum += tight;
@@ -2615,6 +2650,22 @@ int stream_train_cli(int argc, char** argv) {
             return 7;
         }
     }
+    bool hodge_ok = false;
+    float hodge_divergence_l1 = 0.0f, hodge_curl_l1 = 0.0f;
+    if (hodge_triad_count > 0) {
+        std::vector<float> divergence, curl;
+        if (!vm.global_hodge_from_triads(hodge_triads, hodge_triad_count,
+                                          divergence, curl)) {
+            std::cerr << "stream hodge failed: " << vm.error() << "\n";
+            return 7;
+        }
+        hodge_ok = true;
+        for (float value : divergence)
+            hodge_divergence_l1 += value < 0.0f ? -value : value;
+        for (float value : curl)
+            hodge_curl_l1 += value < 0.0f ? -value : value;
+    }
+    const bool global_field_hot = shape_field_hot && hodge_ok;
     const std::size_t geometry_samples = sample_bank.size() / 256;
     std::int32_t path_length = 0, path_closure = 0, path_turn = 0;
     std::int32_t path_curvature = 0;
@@ -2767,6 +2818,10 @@ int stream_train_cli(int argc, char** argv) {
                  << ", \"shape_field_hot\": "
                  << (shape_field_hot ? "true" : "false")
                  << ", \"shape_field_mean\": " << shape_field_mean
+                 << ", \"hodge_ok\": " << (hodge_ok ? "true" : "false")
+                 << ", \"hodge_divergence_l1\": " << hodge_divergence_l1
+                 << ", \"hodge_curl_l1\": " << hodge_curl_l1
+                 << ", \"global_field_hot\": " << (global_field_hot ? "true" : "false")
                  << ", \"current_field_first_word\": " << first_head255_word
                  << ", \"current_field_last_word\": " << last_head255_word
                  << ", \"current_field_closure\": " << head255_closure
@@ -2783,6 +2838,7 @@ int stream_train_cli(int argc, char** argv) {
               << " codebook_words=" << codebook_words
               << " accepted_triads=" << accepted
               << " field_hot=" << (field_accepted ? "true" : "false")
+              << " global_field_hot=" << (global_field_hot ? "true" : "false")
               << " output=" << output_prefix << "\n";
     return 0;
 }

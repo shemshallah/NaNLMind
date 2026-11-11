@@ -63,6 +63,8 @@ Field-driver commands:
 | 96 | `mth_tri_field_reset` | clear shape-gated field tables |
 | 97 | `mth_tri_field_observe` | bind a triangle to a triad and quality |
 | 98 | `mth_shape_field_gate` | 43/85 count gated by shape and closure |
+| 99 | `mth_global_hodge256_f32` | B1 divergence + B2^T curl from 32,640 float flows |
+| 100 | `mth_global_hodge256_q16` | Q16 matrix-flows adapter for the same Hodge path |
 | 93 | `mth_tri_model_observe_negative` | accumulate negative-shape stats |
 | 94 | `mth_tri_model_score_contrast` | positive-vs-negative shape score |
 | 72 | `mth_leaf_verify` | reconstruct codebook+residual, L1 accept/reject |
@@ -871,7 +873,11 @@ NaNLMind 43/85 field head remains an aggregate role, not an incidence endpoint.
 `spec/void255_active_head_math.v1.json` and
 `spec/nanrouter_integration.v1.json` record the cross-repository mapping.
 `mth_global_hodge256_f32.nas` rejects nonzero pair flow incident to head 255 and
-rejects any simplicial face containing it.
+rejects any simplicial face containing it. The Q16 adapter
+`mth_global_hodge256_q16.nas` converts the 32,640 vector-code matrix cells in
+guest memory, admits the first 16 hot triads as oriented faces, and publishes
+divergence/curl. `phase-ingest` now runs that path after matrix credits and
+records `hodge_ok`, `hodge_divergence_l1` and `hodge_curl_l1` in its manifest.
 
 ### Source-disjoint relation corpus and calibration
 

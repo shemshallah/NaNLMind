@@ -81,6 +81,8 @@ JMP @field_driver_entry
 .include "../nan16/mth_geometry.nas"
 .include "../nan16/mth_triangle_model.nas"
 .include "../nan16/mth_global_hodge256_f32.nas"
+.include "../nan16/mth_triangle_flow.nas"
+.include "../nan16/mth_global_hodge256_q16.nas"
 .include "../nan16/mth_phase_geometry.nas"
 .include "../nan16/mth_shape_field.nas"
 .include "../nan16/mth_dual_gate.nas"
@@ -356,6 +358,12 @@ field_driver_main:
   MOVI r3,99
   CMP r2,r3
   JMP[EQ] @field_driver_global_hodge
+  MOVI r3,100
+  CMP r2,r3
+  JMP[EQ] @field_driver_global_hodge_q16
+  MOVI r3,101
+  CMP r2,r3
+  JMP[EQ] @field_driver_triangle_flow
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -1429,6 +1437,27 @@ field_driver_global_hodge:
   MOVI r10,0x4010
   ST r1,r10,0
   ST r9,r10,1
+  JMP @field_driver_return
+
+field_driver_global_hodge_q16:
+  CALL @mth_global_hodge256_q16
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r9,r10,1
+  JMP @field_driver_return
+
+field_driver_triangle_flow:
+  MOVI r10,0x4001
+  LD r2,r10,0
+  MOVI r1,0x8000
+  MOVHI r1,0x0036
+  MOVI r3,0x0000
+  MOVHI r3,0x0036
+  MOVI r4,0x0000
+  MOVHI r4,0x3F80
+  CALL @mth_triangle_flow_build
+  MOVI r10,0x4010
+  ST r1,r10,0
   JMP @field_driver_return
 
 field_driver_context_encode:

@@ -860,6 +860,17 @@ int main() {
     CHECK_EQ(matrix_hot.hot_heads, 3u);
     CHECK_EQ(matrix_hot.hot_triads, 1u);
     CHECK(!matrix_hot.field_hot);
+    // Semantic triangle flow -> global Hodge.
+    {
+        std::array<std::array<std::uint32_t, 3>, 16> triads{};
+        triads[0] = {0, 1, 2};
+        std::vector<float> divergence, curl;
+        CHECK(vm.global_hodge_from_triads(triads, 1, divergence, curl));
+        CHECK_EQ(divergence.size(), 256u);
+        CHECK_EQ(curl.size(), 16u);
+        CHECK(curl[0] != 0.0f);
+    }
+
     // Triangle-shape model is independent of the matrix/field state.
     {
         std::array<std::int32_t, 3> tsides = {100, 110, 105};

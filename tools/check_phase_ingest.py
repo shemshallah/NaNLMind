@@ -79,6 +79,13 @@ def main() -> int:
     if len(triads) != 255:
         print("vector triad size mismatch", file=sys.stderr)
         return 1
+    if not bool(pipeline.get("hodge_ok", False)):
+        print("global Hodge did not publish", file=sys.stderr)
+        return 1
+    if float(pipeline.get("hodge_divergence_l1", -1)) < 0 or \
+       float(pipeline.get("hodge_curl_l1", -1)) < 0:
+        print("global Hodge metric is negative", file=sys.stderr)
+        return 1
     hot_heads = int(pipeline.get("hot_heads", 0))
     hot_triads = int(pipeline.get("hot_triads", 0))
     if hot_triads != hot_heads // 3:
@@ -97,7 +104,9 @@ def main() -> int:
         f"matrix_updates={pipeline.get('matrix_updates')} "
         f"probe_head={pipeline.get('probe_head')} "
         f"hot_heads={hot_heads} hot_triads={hot_triads} "
-        f"field_hot={str(field_hot).lower()}"
+        f"field_hot={str(field_hot).lower()} "
+        f"hodge_div_l1={pipeline.get('hodge_divergence_l1')} "
+        f"hodge_curl_l1={pipeline.get('hodge_curl_l1')}"
     )
     return 0
 
