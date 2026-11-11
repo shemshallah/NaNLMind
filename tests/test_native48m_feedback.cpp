@@ -199,6 +199,56 @@ int main(){
         second,sourced_hyper_vector,0,1);
     assert(!stale_hyper.accepted && stale_hyper.rejection_reason==2);
     assert(arena.candidate(7,2,7)==hyper.signed_curl_feedback);
+    // CAUSAL 48M+NaN16 FUTURE3: three distinct horizon leaves at one
+    // directed mirrored hypertensor coordinate, sourced from the SAME
+    // native Hodge/trihead/MC0 measurement with per-horizon Poincare math.
+    // 66/77 stand in for the original frozen decoder's OWN earlier choices;
+    // slot2 is ungenerated poison and must never influence horizon3.
+    const std::vector<std::uint32_t> future3_observed={100,500,900};
+    std::array<std::uint32_t,3> future3_generated={66,77,12345};
+    const std::string future3_sha(64,'c'); // fixture digest, not attestation
+    std::array<nanlm::NativeContext6Receipt,3> native_horizon{};
+    const std::array<std::uint32_t,3> horizon_anchors={900,66,77};
+    for(unsigned g=0;g<3u;++g){
+        const bool staged_horizon=bridge.measure_stage_native_future3_horizon(
+            second,future3_observed,future3_generated,
+            static_cast<std::uint8_t>(g),42,42,0,50000,future3_sha,
+            native_horizon[g]);
+        assert(staged_horizon && native_horizon[g].accepted);
+        assert(native_horizon[g].horizon==g+1);
+        assert(native_horizon[g].mask==7 && native_horizon[g].now_head==255);
+        assert(native_horizon[g].observed_anchor==horizon_anchors[g]);
+        assert(arena.candidate(7,2,3)==native_horizon[g].poincare_x);
+        assert(arena.candidate(7,3,2)==native_horizon[g].poincare_y);
+        const auto& leaves=arena.candidate_leaves(7,2,3);
+        assert(leaves.size()==g+1u);
+        const auto& leaf=leaves.back();
+        assert(leaf.kind==nanlm::TensorLeafKind::TemporalContext);
+        assert(leaf.logical_leaf_id==50000u+g);
+        assert(leaf.source_generation==0 && leaf.source_sha256==future3_sha);
+        assert(leaf.payload.size()==48u);
+        assert(leaf.payload[0]=='N' && leaf.payload[1]=='F');
+        assert(leaf.payload[2]=='3' && leaf.payload[3]=='1');
+        assert(leaf.payload[4]==g+1 && leaf.payload[5]==7);
+        assert(leaf.payload[6]==255 && leaf.payload[7]==3);
+        assert(arena.active_leaves(7,2,3).empty());
+    }
+    future3_generated[2]=54321;
+    nanlm::NativeContext6Receipt ungenerated_poison{};
+    assert(vm.native_future3_causal_attention(
+        future3_observed,future3_generated,2,42,42,ungenerated_poison));
+    assert(ungenerated_poison.accepted && ungenerated_poison.horizon==3);
+    assert(ungenerated_poison.poincare_x==native_horizon[2].poincare_x);
+    assert(ungenerated_poison.poincare_y==native_horizon[2].poincare_y);
+    assert(ungenerated_poison.radial_distance==native_horizon[2].radial_distance);
+    nanlm::NativeContext6Receipt old_source_epoch{};
+    assert(!bridge.measure_stage_native_future3_horizon(
+        second,future3_observed,future3_generated,2,
+        42,41,0,50000,future3_sha,old_source_epoch));
+    assert(!old_source_epoch.accepted && old_source_epoch.reason==2);
+    assert(arena.candidate_leaves(7,2,3).size()==3u);
+    assert(arena.active(7,2,3)==0.0f);
+    assert(arena.active_leaves(7,2,3).empty());
     bridge.commit_context(second);
     assert(bridge.history_size()==2u);
     // The spectral path also runs through the SAME loaded native driver, not
