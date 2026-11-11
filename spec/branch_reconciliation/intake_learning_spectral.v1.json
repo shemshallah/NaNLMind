@@ -1,0 +1,349 @@
+{
+  "schema": "nanlm.branch-reconciliation/1",
+  "snapshot_date": "2026-11-11",
+  "canonical_target": "main",
+  "cohort": "intake_learning_spectral",
+  "branches": [
+    {
+      "branch": "nannet-universal-intake",
+      "status": "review_required",
+      "ahead_by": 111,
+      "behind_by": 664,
+      "changed_files": [
+        {
+          "path": ".github/workflows/nannet-consume.yml",
+          "status": "added"
+        },
+        {
+          "path": ".github/workflows/nannet-universal.yml",
+          "status": "added"
+        },
+        {
+          "path": ".github/workflows/ring.yml",
+          "status": "modified"
+        },
+        {
+          "path": "Dockerfile",
+          "status": "added"
+        },
+        {
+          "path": "docs/33_BOOTSTRAP_ROUTER.md",
+          "status": "modified"
+        },
+        {
+          "path": "integrations/nannet/Procfile",
+          "status": "added"
+        },
+        {
+          "path": "integrations/nannet/README.md",
+          "status": "added"
+        },
+        {
+          "path": "integrations/nannet/portal.html",
+          "status": "added"
+        },
+        {
+          "path": "integrations/nannet/requirements.txt",
+          "status": "added"
+        },
+        {
+          "path": "integrations/nannet/server.py",
+          "status": "added"
+        },
+        {
+          "path": "integrations/nannet/test_server.py",
+          "status": "added"
+        },
+        {
+          "path": "integrations/nannet/training_merge.py",
+          "status": "added"
+        },
+        {
+          "path": "runner/nannet_consumer.py",
+          "status": "added"
+        },
+        {
+          "path": "runner/test_nannet_consumer.py",
+          "status": "added"
+        }
+      ],
+      "notes": "Unique source retained in historical ref; reconcile runner, relation resolution, CSR and training changes against canonical current main."
+    },
+    {
+      "branch": "rawroute-mounted-shards-api",
+      "status": "review_required",
+      "ahead_by": 20,
+      "behind_by": 477,
+      "changed_files": [
+        {
+          "path": "Makefile",
+          "status": "modified"
+        },
+        {
+          "path": "config/rawroute.koyeb.env.example",
+          "status": "added"
+        },
+        {
+          "path": "config/rawroute.mounts.koyeb.example.json",
+          "status": "added"
+        },
+        {
+          "path": "docs/37_NAN_RAWROUTE_FOUR_TIER_STORAGE.md",
+          "status": "modified"
+        },
+        {
+          "path": "nanlmind_nannet/rawroute_store.py",
+          "status": "modified"
+        },
+        {
+          "path": "runner/training_merge.py",
+          "status": "modified"
+        },
+        {
+          "path": "tests/test_rawroute_api.py",
+          "status": "added"
+        },
+        {
+          "path": "tests/test_rawroute_store.py",
+          "status": "modified"
+        }
+      ],
+      "notes": "Unique source retained in historical ref; reconcile runner, relation resolution, CSR and training changes against canonical current main."
+    },
+    {
+      "branch": "resolution-aware-conversation-learning",
+      "status": "review_required",
+      "ahead_by": 40,
+      "behind_by": 565,
+      "changed_files": [
+        {
+          "path": ".github/workflows/ci.yml",
+          "status": "modified"
+        },
+        {
+          "path": "Makefile",
+          "status": "modified"
+        },
+        {
+          "path": "docs/82_RESOLUTION_AWARE_TRAINING.md",
+          "status": "added"
+        },
+        {
+          "path": "include/nanlm/head.hpp",
+          "status": "modified"
+        },
+        {
+          "path": "include/nanlm/relation_train.hpp",
+          "status": "added"
+        },
+        {
+          "path": "runner/logic_curriculum.py",
+          "status": "modified"
+        },
+        {
+          "path": "runner/logic_local_ring.py",
+          "status": "modified"
+        },
+        {
+          "path": "src/head.cpp",
+          "status": "modified"
+        },
+        {
+          "path": "src/main.cpp",
+          "status": "modified"
+        },
+        {
+          "path": "src/relation_train.cpp",
+          "status": "added"
+        },
+        {
+          "path": "tests/test_heads.cpp",
+          "status": "modified"
+        },
+        {
+          "path": "tests/test_logic_local_ring.py",
+          "status": "modified"
+        },
+        {
+          "path": "tests/test_relation_train.cpp",
+          "status": "added"
+        }
+      ],
+      "notes": "Unique source retained in historical ref; reconcile runner, relation resolution, CSR and training changes against canonical current main."
+    },
+    {
+      "branch": "resolution-aware-relation-training-rebased",
+      "status": "review_required",
+      "ahead_by": 14,
+      "behind_by": 478,
+      "changed_files": [
+        {
+          "path": ".github/workflows/ci.yml",
+          "status": "modified"
+        },
+        {
+          "path": "Makefile",
+          "status": "modified"
+        },
+        {
+          "path": "docs/82_RESOLUTION_AWARE_TRAINING.md",
+          "status": "added"
+        },
+        {
+          "path": "include/nanlm/head.hpp",
+          "status": "modified"
+        },
+        {
+          "path": "include/nanlm/relation_train.hpp",
+          "status": "added"
+        },
+        {
+          "path": "runner/logic_curriculum.py",
+          "status": "modified"
+        },
+        {
+          "path": "runner/logic_local_ring.py",
+          "status": "modified"
+        },
+        {
+          "path": "src/head.cpp",
+          "status": "modified"
+        },
+        {
+          "path": "src/main.cpp",
+          "status": "modified"
+        },
+        {
+          "path": "src/relation_train.cpp",
+          "status": "added"
+        },
+        {
+          "path": "tests/test_heads.cpp",
+          "status": "modified"
+        },
+        {
+          "path": "tests/test_logic_local_ring.py",
+          "status": "modified"
+        },
+        {
+          "path": "tests/test_relation_train.cpp",
+          "status": "added"
+        }
+      ],
+      "notes": "Unique source retained in historical ref; reconcile runner, relation resolution, CSR and training changes against canonical current main."
+    },
+    {
+      "branch": "router-ring-runner-client",
+      "status": "review_required",
+      "ahead_by": 7,
+      "behind_by": 470,
+      "changed_files": [
+        {
+          "path": "Makefile",
+          "status": "modified"
+        },
+        {
+          "path": "docs/38_NAN_VOLUME_ADDRESSES.md",
+          "status": "modified"
+        },
+        {
+          "path": "runner/nanlm_worker.py",
+          "status": "modified"
+        },
+        {
+          "path": "runner/router_ring_client.py",
+          "status": "added"
+        },
+        {
+          "path": "tests/test_router_ring_client.py",
+          "status": "added"
+        }
+      ],
+      "notes": "Unique source retained in historical ref; reconcile runner, relation resolution, CSR and training changes against canonical current main."
+    },
+    {
+      "branch": "rss/preflight-required-status-v1",
+      "status": "review_required",
+      "ahead_by": 2,
+      "behind_by": 235,
+      "changed_files": [
+        {
+          "path": "runner/nanlm_worker.py",
+          "status": "modified"
+        },
+        {
+          "path": "tests/test_rss_sparse_capability.py",
+          "status": "modified"
+        }
+      ],
+      "notes": "Unique source retained in historical ref; reconcile runner, relation resolution, CSR and training changes against canonical current main."
+    },
+    {
+      "branch": "rss/weighted-csr-v2-mainline",
+      "status": "review_required",
+      "ahead_by": 4,
+      "behind_by": 236,
+      "changed_files": [
+        {
+          "path": "docs/GRAPH_SPECTRAL_FOUNDATION.md",
+          "status": "modified"
+        },
+        {
+          "path": "runner/nanlm_worker.py",
+          "status": "modified"
+        },
+        {
+          "path": "runner/relational_spectral.py",
+          "status": "modified"
+        },
+        {
+          "path": "tests/test_rss_sparse_capability.py",
+          "status": "modified"
+        }
+      ],
+      "notes": "Unique source retained in historical ref; reconcile runner, relation resolution, CSR and training changes against canonical current main."
+    },
+    {
+      "branch": "rss-weighted-csr-v2",
+      "status": "review_required",
+      "ahead_by": 4,
+      "behind_by": 264,
+      "changed_files": [
+        {
+          "path": "docs/GRAPH_SPECTRAL_FOUNDATION.md",
+          "status": "modified"
+        },
+        {
+          "path": "runner/nanlm_worker.py",
+          "status": "modified"
+        },
+        {
+          "path": "runner/relational_spectral.py",
+          "status": "modified"
+        },
+        {
+          "path": "tests/test_rss_sparse_capability.py",
+          "status": "modified"
+        }
+      ],
+      "notes": "Unique source retained in historical ref; reconcile runner, relation resolution, CSR and training changes against canonical current main."
+    },
+    {
+      "branch": "training-modes-live-learning",
+      "status": "review_required",
+      "ahead_by": 2,
+      "behind_by": 565,
+      "changed_files": [
+        {
+          "path": "docs/82_TRAINING_MODES_AND_CONVERSATIONAL_LEARNING.md",
+          "status": "added"
+        },
+        {
+          "path": "src/main.cpp",
+          "status": "modified"
+        }
+      ],
+      "notes": "Unique source retained in historical ref; reconcile runner, relation resolution, CSR and training changes against canonical current main."
+    }
+  ]
+}
