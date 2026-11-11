@@ -117,6 +117,7 @@ JMP @field_driver_entry
 .include "../nan16/mth_flux_credit.nas"
 .include "../nan16/mth_credit_bundle.nas"
 .include "../nan16/mth_geometric_trail_field.nas"
+.include "../nan16/mth_spectral_trihead_tensor_proposal.nas"
 
 field_driver_entry:
   MOVI r13,1
@@ -409,6 +410,9 @@ field_driver_main:
   MOVI r3,105
   CMP r2,r3
   JMP[EQ] @field_driver_hypertensor256_dual_map
+  MOVI r3,106
+  CMP r2,r3
+  JMP[EQ] @field_driver_spectral_tensor_proposal
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -1611,6 +1615,56 @@ field_driver_hypertensor256_dual_map:
   ST r4,r10,1
   ST r5,r10,2
   ST r6,r10,3
+  JMP @field_driver_return
+
+; Opcode 106: exact NaN16 spectral-to-tensor transaction proposal.
+; All request buffers are disjoint 32-bit guest WORD spans in a dedicated
+; private region (0x003D0000..0x003D200B):
+; spectral_i64 at 3D0000 (512 words), trihead masks at 3D0400 (85),
+; oriented pair coordinates at 3D0500 (510), candidate writer lease
+; bits at 3D0800 (255), scratch records at 3D0A00 (1275), output
+; records at 3D1000 (1275), request at 3D2000 (12).
+; 0x4001/2: expected/current generation; 0x4003/4: global/meta approval.
+; 0x4010..13: success, accepted triads, staged records, rejection reason.
+; Every output offset is for the 64MiB CANDIDATE bank; no tensor write.
+field_driver_spectral_tensor_proposal:
+  MOVI r1,0x2000
+  MOVHI r1,0x003D
+  MOVI r10,0
+  MOVHI r10,0x003D
+  ST r10,r1,0
+  MOVI r10,0x0400
+  MOVHI r10,0x003D
+  ST r10,r1,1
+  MOVI r10,0x0500
+  MOVHI r10,0x003D
+  ST r10,r1,2
+  MOVI r10,0x0800
+  MOVHI r10,0x003D
+  ST r10,r1,3
+  MOVI r10,0x0A00
+  MOVHI r10,0x003D
+  ST r10,r1,4
+  MOVI r10,0x1000
+  MOVHI r10,0x003D
+  ST r10,r1,5
+  MOVI r10,0x4001
+  LD r11,r10,0
+  ST r11,r1,6
+  LD r11,r10,1
+  ST r11,r1,7
+  LD r11,r10,2
+  ST r11,r1,8
+  LD r11,r10,3
+  ST r11,r1,9
+  ST r0,r1,10
+  ST r0,r1,11
+  CALL @mth_spectral_trihead_tensor_proposal
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  ST r4,r10,3
   JMP @field_driver_return
 
 field_driver_context_encode:
