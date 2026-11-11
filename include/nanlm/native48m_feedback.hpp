@@ -313,6 +313,55 @@ public:
         return 2;
     }
 
+    // Hodge curl -> 128D native Poincare hyperedge depth -> a separate
+    // physical mirror pair in the same 128MiB candidate arena. The
+    // temporal phase at (a,b) remains intact: (h,a) and (a,h) encode
+    // native signed curvature feedback and native radial distance.
+    // Only the controller can promote after *real* held-out 48M NLL.
+    NativeHyperedge128Receipt stage_native_hyperedge128_feedback(
+        const Native48MFeedbackReceipt& head,
+        const std::array<float,128>& sourced_native_vector,
+        std::uint32_t expected_generation,
+        std::uint32_t current_generation) {
+        if (!head.native_measured || !head.meta_available ||
+            !head.has_admitted_faces || !head.candidate_staged ||
+            !arena_.candidate_open() || !std::isfinite(head.curl[0]))
+            throw std::logic_error("hyperedge must have native Hodge and MC0 evidence");
+        if (head.h>=255 || head.a>=255 || head.b>=255 ||
+            head.h==head.a || head.h==head.b || head.a==head.b ||
+            head.proposer>=255 || !arena_.candidate_writer_allowed(head.proposer) ||
+            static_cast<std::uint64_t>(expected_generation)!=arena_.generation())
+            throw std::logic_error("invalid hyperedge identity or stale owner epoch");
+        NativeHyperedge128Receipt result{};
+        const std::array<std::uint8_t,3> edge={head.h,head.a,head.b};
+        if (!vm_.native_hyperedge128_depth(
+                sourced_native_vector,edge,head.curl[0],
+                expected_generation,current_generation,result))
+            throw std::runtime_error("native Poincare128 guest: "+vm_.error());
+        if (!result.accepted || result.now_head!=255)
+            return result;
+        if (!std::isfinite(result.signed_curl_feedback) ||
+            !std::isfinite(result.radial_distance) ||
+            std::fabs(result.signed_curl_feedback)>8.0f ||
+            result.radial_distance>8.0f)
+            throw std::logic_error("out-of-contract hyperedge feedback");
+        Tensor256Address direction{},reverse{};
+        if (!vm_.tensor256_dual_address(head.h,head.a,head.h,1,direction) ||
+            !vm_.tensor256_dual_address(head.h,head.h,head.a,1,reverse) ||
+            !direction.valid || !reverse.valid ||
+            direction.byte_offset!=DualTensor256Arena::byte_offset(
+                head.h,head.a,head.h,1) ||
+            reverse.byte_offset!=DualTensor256Arena::byte_offset(
+                head.h,head.h,head.a,1) ||
+            direction.byte_offset==reverse.byte_offset)
+            throw std::logic_error("native hyperedge mirror map mismatch");
+        arena_.stage_native_value(head.proposer,head.h,head.a,head.h,
+                                  result.signed_curl_feedback);
+        arena_.stage_native_value(head.proposer,head.h,head.h,head.a,
+                                  result.radial_distance);
+        return result;
+    }
+
     // Caller commits only sourced past context. Not a 48M model-weight commit.
     void commit_context(const Native48MFeedbackReceipt& receipt){
         if(!receipt.native_measured)throw std::invalid_argument("not guest measured");
