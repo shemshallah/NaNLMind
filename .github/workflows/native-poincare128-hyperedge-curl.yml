@@ -1,0 +1,36 @@
+name: Native 128D Poincare hyperedge and Hodge curl
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mth/nan16/mth_hyperedge_poincare128_curl.nas'
+      - 'mth/tests/mth_hyperedge_poincare128_curl_test.nas'
+      - '.github/workflows/native-poincare128-hyperedge-curl.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native-128d:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: shemshallah/NaN0S
+          ref: main
+          path: nan0s
+      - name: Build canonical native NaN16 interpreter
+        run: make -s -C nan0s/aarch64/android nan_cli
+      - name: Execute true 128-dimensional Poincare projection and curl fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          awk -f nan0s/tools/nmk.awk -v CMD=emit mth/tests/mth_hyperedge_poincare128_curl_test.nas > /tmp/hyperedge-poincare128.nan
+          nan0s/aarch64/android/nan_cli --img /tmp/hyperedge-poincare128.nan --steps 6000000 --serial > /tmp/hyperedge-poincare128.log 2>&1
+          cat /tmp/hyperedge-poincare128.log
+          grep -q '^MTH POINCARE128 HODGE CURL HYPEREDGE PASS' /tmp/hyperedge-poincare128.log
