@@ -48,6 +48,31 @@ int main(){
     assert(arena.candidate(7,3,2)==0.0f); // opposite mirror is independent
     assert(second.accepted_triads<=85);
     assert(second.native_observed_contexts==4u);
+    // Every one of the 255 heads (including head 0) can be leased to write
+    // its OWN candidate coordinate. The mirror direction remains untouched.
+    arena.set_all_candidate_writer_permissions(true);
+    auto triads=nanlm::Native48MFeedbackBridge::canonical_triheads();
+    assert(arena.candidate_writer_allowed(0));
+    assert(arena.candidate_writer_allowed(254));
+    std::size_t actual_nonzero=0;
+    for(auto c:second.head_credits)if(c!=0)++actual_nonzero;
+    const auto staged=bridge.stage_all_trihead_candidate_credits(second,triads);
+    assert(staged==actual_nonzero);
+    assert(staged<=255);
+    for(std::size_t t=0;t<85;++t)for(std::size_t k=0;k<3;++k){
+        const unsigned head=triads[t][k], a=triads[t][(k+1)%3], b=triads[t][(k+2)%3];
+        const float expected=static_cast<float>(second.head_credits[head])/65536.0f;
+        if(second.head_credits[head]!=0)
+            assert(arena.candidate(head,a,b)==expected);
+        assert(arena.active(head,a,b)==0.0f);
+        assert(arena.candidate(head,b,a)==0.0f);
+    }
+    auto malformed=triads;
+    malformed[84][2]=3;  // duplicate 3, absent head 254
+    bool invalid_mapping=false;
+    try{bridge.stage_all_trihead_candidate_credits(second,malformed);}
+    catch(const std::invalid_argument&){invalid_mapping=true;}
+    assert(invalid_mapping);
     bridge.commit_context(second);
     assert(bridge.history_size()==2u);
     // This is a real native calculation but not a held-out quality gate:
