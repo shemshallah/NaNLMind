@@ -1,5 +1,13 @@
 # NaNLMind branch consolidation audit
 
+## 2026-11-11 operational update — audited, not blindly merged
+
+- The GitHub Actions guarded [retirement run](https://github.com/shemshallah/NaNLMind/actions/runs/43037819399) **deleted all 11 fully ancestor-only refs** listed in the historical snapshot below, after rechecking current tips and ancestry. The subsequent branch listing verified **34 branch refs total**: `main` plus **33 diverged refs** with unique commits. No commit on `main` was force-pushed or removed.
+- Four full changed-file reconciliation snapshots preserve the exact comparison inventory for **all 33** divergent refs: [architecture/CLOCKED](../spec/branch_reconciliation/architecture_clocked.v1.json), [HERMES/native math](../spec/branch_reconciliation/hermes_native_math.v1.json), [addresses/readiness](../spec/branch_reconciliation/addresses_readiness.v1.json), and [intake/learning/spectral](../spec/branch_reconciliation/intake_learning_spectral.v1.json). These are **review ledgers**, not a claim that all 33 were merged.
+- From PR #43, native seven-credit guest dispatch and tests were reconciled into `main`; the branch's separate 8D trainer binary has **not** been substituted for the frozen 48M decoder. From `feat/v2-geometric-trail-field-credit`, the 255-head two-rail TRAIL kernel and stale-generation/43-of-85 fixture were ported to noncolliding command **41**. Their original refs remain recoverable pending whole-branch review.
+- The executable image grew across its former phase table at 0x3000. The phase table was relocated to [0x3E00,0x4000), with a build-time layout guard; the full repository CI returned to green. The native 48M candidate loop, 7 kernels, tests and math contracts are inventoried in [unified_48m_math_manifest.v1.json](../spec/unified_48m_math_manifest.v1.json).
+- End-state remains **one canonical development branch** but **not yet one Git ref**. We will not delete the 33 divergent refs until unique code is integrated or explicitly superseded with evidence. Independent held-out language gains and journaled tensor promotion remain open research and engineering gates.
+
 Audited 2026-11-10 against repository `shemshallah/NaNLMind`, default branch `main`.
 
 - **Canonical integration branch**: `main`. The unified 48M language math, 128 MiB tensor controller, and frozen decoder candidate tests are committed directly to `main` without starting a new model or experimental branch.
@@ -32,4 +40,4 @@ Use GitHub's Branches page, or the guarded script `scripts/retire_fully_merged_b
 ### Interpretation of completion
 
 - Done: single canonical active integration target `main`, no new feature branch generated, eight tested/CI-wired integration changes committed to main, and an explicit remaining-branches audit.
-- Not done: deleting GitHub's 44 old branch refs, landing carefully reviewed unique code from all 33 diverged refs, end-to-end native candidate meta learning / new held-out language improvement. Do not label those finished.
+- Updated 2026-11-11: the 11 ancestor-only legacy refs were deleted with a guarded CI workflow; 33 divergent refs remain for per-file resolution. End-to-end validated native candidate meta learning and fresh held-out language improvement are not yet established. Do not label those finished.
