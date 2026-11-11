@@ -129,6 +129,32 @@ int main(){
     assert(vm.native_context6_attention(
         8192,causal_words,7,0,42,41,stale_ctx));
     assert(!stale_ctx.accepted && stale_ctx.reason==3);
+    // Native 128D hyperedge abstract-depth layer consumes the SAME Hodge
+    // curl already measured for these oriented faces (curl[0] == 3).
+    // A sourced 128-dimensional graph-vector fixture is transported,
+    // not evaluated numerically by C++. No trained semantics are asserted.
+    std::array<float,128> sourced_hyper_vector{};
+    sourced_hyper_vector[0]=1.0f;
+    sourced_hyper_vector[127]=0.5f;
+    const auto hyper=bridge.stage_native_hyperedge128_feedback(
+        second,sourced_hyper_vector,0,0);
+    assert(hyper.accepted && hyper.now_head==255);
+    assert(hyper.orientation==1);
+    assert(hyper.radius>0.0f && hyper.radius<1.0f);
+    assert(hyper.radial_distance>0.0f);
+    assert(hyper.signed_curl_feedback>0.0f);
+    // Hyperedge curl/depth are in a SEPARATE directed mirror cell from
+    // the temporal context, preserving both contributions in one arena.
+    assert(arena.candidate(7,2,7)==hyper.signed_curl_feedback);
+    assert(arena.candidate(7,7,2)==hyper.radial_distance);
+    assert(arena.candidate(7,2,3)==temporal.poincare_x);
+    assert(arena.candidate(7,3,2)==temporal.poincare_y);
+    assert(arena.active(7,2,7)==0.0f);
+    assert(arena.active(7,7,2)==0.0f);
+    const auto stale_hyper=bridge.stage_native_hyperedge128_feedback(
+        second,sourced_hyper_vector,0,1);
+    assert(!stale_hyper.accepted && stale_hyper.rejection_reason==2);
+    assert(arena.candidate(7,2,7)==hyper.signed_curl_feedback);
     bridge.commit_context(second);
     assert(bridge.history_size()==2u);
     // The spectral path also runs through the SAME loaded native driver, not
