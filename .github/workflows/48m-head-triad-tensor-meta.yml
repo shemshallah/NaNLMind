@@ -61,6 +61,7 @@ jobs:
           assert request['native_evidence']['committed_history_slots']==1
           assert request['native_evidence']['candidate_staged'] is True
           assert request['native_evidence']['automatic_promotion'] is False
+          print('native48m_candidate_receipt='+json.dumps(request,sort_keys=True))
           PY
       - name: Test exact frozen 48M candidate math and MC0 masking contract
         run: |
