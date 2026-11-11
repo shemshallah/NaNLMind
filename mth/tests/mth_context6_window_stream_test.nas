@@ -116,7 +116,7 @@ win6_test_main:
 
   ; Change the actual target word in the *source*; selected context MUST
   ; remain exactly bit-identical for masked infill at this position.
-  MOVI r11,913331
+  MOVI r11,12345
   ST r11,r0,@win6_words+3
   MOVI r1,@win6_words
   MOVI r2,7
