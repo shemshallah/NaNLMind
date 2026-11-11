@@ -18,10 +18,16 @@ main:
   ; Verify that a single native three-word observation credits precisely
   ; its selected three heads, not the next 82 heads or another triad.
   CALL @mth_meta_trihead_reset
+  MOVI r14,1
+  CMP r13,r14
+  JMP[NE] @mth_mt_test_fail
   MOVI r1,100
   MOVI r2,200
   MOVI r3,300
   CALL @mth_meta_trihead_observe
+  MOVI r14,1
+  CMP r13,r14
+  JMP[NE] @mth_mt_test_fail
   MOVI r5,3
   MUL r6,r1,r5       ; first credited head
   ADDI r7,r6,3       ; exclusive upper bound
@@ -50,10 +56,16 @@ mth_mt_credit_exact_next:
   JMP[LT] @mth_mt_credit_exact_loop
   ; Continue the original multi-context fixture after a clean reset.
   CALL @mth_meta_trihead_reset
+  MOVI r14,1
+  CMP r13,r14
+  JMP[NE] @mth_mt_test_fail
   MOVI r1,0x0000
   MOVHI r1,0x0002
   MOVI r2,4
   CALL @mth_meta_trihead_observe_batch
+  MOVI r14,1
+  CMP r13,r14
+  JMP[NE] @mth_mt_test_fail
   MOVI r12,4
   CMP r1,r12
   JMP[NE] @mth_mt_test_fail

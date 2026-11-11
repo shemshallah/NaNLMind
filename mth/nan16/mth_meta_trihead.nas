@@ -45,6 +45,8 @@ mth_mt_reset_credits:
   CMP r11,r12
   JMP[LT] @mth_mt_reset_credits
   MOVI r1,85
+  ; r13 is the shared NaN16 unity / gate sentinel, not a scratch pointer.
+  MOVI r13,1
   RET
 
 ; r1=w0,r2=w1,r3=w2 -> r1=triad, r2=context hash
@@ -98,6 +100,8 @@ mth_mt_observe_done:
   LD r2,r12,0
   MOVI r12,@mth_mt_link
   LD r15,r12,0
+  ; Q16 credit accumulation used r13=65536; restore the native ABI.
+  MOVI r13,1
   RET
 
 ; r1=word IDs, r2=count -> r1=contexts observed
@@ -161,6 +165,7 @@ mth_mt_batch_done:
   LD r1,r12,0
   MOVI r12,@mth_mt_batch_link
   LD r15,r12,0
+  MOVI r13,1
   RET
 
 mth_mt_link:
