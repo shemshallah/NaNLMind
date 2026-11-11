@@ -19,6 +19,11 @@ branches=(
   rss-sparse-capability-contract
 )
 git rev-parse --is-inside-work-tree >/dev/null
+origin_url="$(git remote get-url "$remote")"
+case "$origin_url" in
+  https://github.com/shemshallah/NaNLMind|https://github.com/shemshallah/NaNLMind.git|git@github.com:shemshallah/NaNLMind.git|ssh://git@github.com/shemshallah/NaNLMind.git) ;;
+  *) echo "REFUSED: origin must be shemshallah/NaNLMind, got $origin_url" >&2; exit 1 ;;
+esac
 git fetch --prune "$remote" '+refs/heads/*:refs/remotes/origin/*'
 head_ref="refs/remotes/${remote}/${target}"
 git rev-parse --verify "$head_ref" >/dev/null
