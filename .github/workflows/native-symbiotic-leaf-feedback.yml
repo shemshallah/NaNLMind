@@ -6,6 +6,11 @@ on:
       - 'mth/nan16/mth_native_symbiotic_leaf_feedback.nas'
       - 'mth/tests/mth_native_symbiotic_leaf_feedback_test.nas'
       - 'mth/nan16/mth_head16_poincare_vector.nas'
+      - 'mth/nan16/mth_bool_dynamic.nas'
+      - 'mth/nan16/mth_q16_sin_cos.nas'
+      - 'mth/nan16/mth_hyperedge_poincare128_curl.nas'
+      - 'mth/nan16/mth_hypertensor256_mirror_arena_map.nas'
+      - 'mth/nan16/mth_hypertensor256_mirror_dual_map.nas'
       - 'mth/nan16/mth_triad_hotcold_poincare128.nas'
       - '.github/workflows/native-symbiotic-leaf-feedback.yml'
   workflow_dispatch:

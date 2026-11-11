@@ -5,6 +5,9 @@ on:
     paths:
       - 'mth/nan16/mth_triad_hotcold_poincare128.nas'
       - 'mth/nan16/mth_head16_poincare_vector.nas'
+      - 'mth/nan16/mth_bool_dynamic.nas'
+      - 'mth/nan16/mth_q16_sin_cos.nas'
+      - 'mth/nan16/mth_hyperedge_poincare128_curl.nas'
       - 'mth/tests/mth_triad_hotcold_poincare128_test.nas'
       - '.github/workflows/native-triad-hotcold-vector.yml'
   workflow_dispatch:
