@@ -1,0 +1,52 @@
+name: NaN16 weighted CSR to 48M mirrored hypertensor
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mth/nan16/mth_spectral_trihead_tensor_proposal.nas'
+      - 'mth/nan16/mth_hypertensor256_mirror_arena_map.nas'
+      - 'mth/nan16/mth_hypertensor256_mirror_dual_map.nas'
+      - 'mth/tests/mth_weighted_csr_to_tensor_native_test.nas'
+      - '.github/workflows/48m-weighted-csr-to-hypertensor.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  weighted-csr-native-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout CANONICAL NaNROUTER weighted-CSR implementation
+        uses: actions/checkout@v4
+        with:
+          repository: shemshallah/NaNROUTER
+          ref: main
+          path: nanrouter
+      - name: Checkout canonical NaN0S VM toolchain
+        uses: actions/checkout@v4
+        with:
+          repository: shemshallah/NaN0S
+          ref: main
+          path: nan0s
+      - name: Reject source drift against existing native-verified RSS digest
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          from pathlib import Path
+          from runner.relational_spectral import SPARSE_WEIGHTED_GRAPH_LAPLACIAN_Q16_16_I64_V2_SHA256
+          source = Path("nanrouter/mth/nan16/mth_sparse_weighted_graph_laplacian_v2.nas")
+          digest = hashlib.sha256(source.read_bytes()).hexdigest()
+          print("canonical_weighted_csr_source_sha256", digest)
+          assert digest == SPARSE_WEIGHTED_GRAPH_LAPLACIAN_Q16_16_I64_V2_SHA256, "weighted native ABI/source drift"
+          PY
+      - name: Build NaN0S native NaN16 executor
+        run: make -s -C nan0s/aarch64/android nan_cli
+      - name: Execute real CSR math, quorum, candidate mirror-address pipeline
+        shell: bash
+        run: |
+          set -euo pipefail
+          awk -f nan0s/tools/nmk.awk -v CMD=emit mth/tests/mth_weighted_csr_to_tensor_native_test.nas > /tmp/nan16-weighted-tensor.nan
+          nan0s/aarch64/android/nan_cli --img /tmp/nan16-weighted-tensor.nan --steps 12000000 --serial > /tmp/nan16-weighted-tensor.log 2>&1
+          cat /tmp/nan16-weighted-tensor.log
+          grep -q '^MTH WEIGHTED CSR TO MIRRORED TENSOR PASS' /tmp/nan16-weighted-tensor.log
