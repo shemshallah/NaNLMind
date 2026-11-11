@@ -178,6 +178,54 @@ public:
         return {advantage,guest_combined,candidate_value};
     }
 
+    // Make every trihead member (all 255 eligible heads) an independent
+    // candidate tensor proposer when the coordinator grants the capability.
+    // The mapping may be the canonical triples or a runtime remap, but it
+    // must be a genuine partition of heads 0..254: no void255 or duplicates.
+    // Only one ordered mirror orientation is modified for each head; the
+    // reverse direction is NOT inferred from a single scalar credit.
+    static std::array<std::array<std::uint8_t,3>,85> canonical_triheads(){
+        std::array<std::array<std::uint8_t,3>,85> partition{};
+        for(std::size_t t=0;t<85;++t)
+            for(std::size_t k=0;k<3;++k)
+                partition[t][k]=static_cast<std::uint8_t>(3*t+k);
+        return partition;
+    }
+    std::size_t stage_all_trihead_candidate_credits(
+        const Native48MFeedbackReceipt& receipt,
+        const std::array<std::array<std::uint8_t,3>,85>& triheads){
+        if(!receipt.native_measured || !arena_.candidate_open())
+            throw std::logic_error("requires real native observation and candidate bank");
+        std::array<bool,255> seen{};
+        // Prevalidate the ENTIRE partition and every needed writer capability
+        // before applying the first write, so malformed remaps are atomic.
+        for(const auto& trio:triheads){
+            for(auto h:trio){
+                if(h>=255 || seen[h])
+                    throw std::invalid_argument("invalid/duplicated trihead member");
+                seen[h]=true;
+                if(receipt.head_credits[h]!=0 && !arena_.candidate_writer_allowed(h))
+                    throw std::logic_error("trihead member lacks candidate writer lease");
+            }
+        }
+        for(bool member:seen)
+            if(!member)throw std::invalid_argument("trihead mapping omitted head");
+        std::size_t writes=0;
+        for(const auto& trio:triheads){
+            for(std::size_t k=0;k<3;++k){
+                const unsigned h=trio[k];
+                const auto signed_credit=receipt.head_credits[h];
+                if(signed_credit==0)continue; // do not zero learned tensor.
+                const float native_q16_credit=
+                    static_cast<float>(signed_credit)/65536.0f;
+                arena_.stage_native_value(h,h,trio[(k+1)%3],
+                                          trio[(k+2)%3],native_q16_credit);
+                ++writes;
+            }
+        }
+        return writes;
+    }
+
     // Caller commits only sourced past context. Not a 48M model-weight commit.
     void commit_context(const Native48MFeedbackReceipt& receipt){
         if(!receipt.native_measured)throw std::invalid_argument("not guest measured");
