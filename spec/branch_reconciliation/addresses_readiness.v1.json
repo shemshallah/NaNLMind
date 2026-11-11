@@ -1,0 +1,256 @@
+{
+  "schema": "nanlm.branch-reconciliation/1",
+  "snapshot_date": "2026-11-11",
+  "canonical_target": "main",
+  "cohort": "nan_addresses_and_readiness",
+  "branches": [
+    {
+      "branch": "nan-rawroute-parser",
+      "status": "review_required",
+      "ahead_by": 15,
+      "behind_by": 477,
+      "changed_files": [
+        {
+          "path": "Makefile",
+          "status": "modified"
+        },
+        {
+          "path": "docs/37_NAN_RAWROUTE_FOUR_TIER_STORAGE.md",
+          "status": "modified"
+        },
+        {
+          "path": "nanlmind_nannet/rawroute.py",
+          "status": "added"
+        },
+        {
+          "path": "nanlmind_nannet/rawroute_store.py",
+          "status": "added"
+        },
+        {
+          "path": "tests/test_rawroute.py",
+          "status": "added"
+        },
+        {
+          "path": "tests/test_rawroute_store.py",
+          "status": "added"
+        }
+      ],
+      "notes": "Network/protocol evolution on historical branch. Compare with current router contract and keep functionality only after regression."
+    },
+    {
+      "branch": "nan-volume-addresses",
+      "status": "review_required",
+      "ahead_by": 32,
+      "behind_by": 476,
+      "changed_files": [
+        {
+          "path": "Makefile",
+          "status": "modified"
+        },
+        {
+          "path": "config/rawroute.koyeb.env.example",
+          "status": "added"
+        },
+        {
+          "path": "config/rawroute.mounts.koyeb.example.json",
+          "status": "added"
+        },
+        {
+          "path": "docs/37_NAN_RAWROUTE_FOUR_TIER_STORAGE.md",
+          "status": "modified"
+        },
+        {
+          "path": "docs/38_NAN_VOLUME_ADDRESSES.md",
+          "status": "added"
+        },
+        {
+          "path": "include/nanlm/volume_address.hpp",
+          "status": "added"
+        },
+        {
+          "path": "nanlmind_nannet/rawroute_store.py",
+          "status": "modified"
+        },
+        {
+          "path": "nanlmind_nannet/volume_address.py",
+          "status": "added"
+        },
+        {
+          "path": "runner/training_merge.py",
+          "status": "modified"
+        },
+        {
+          "path": "tests/test_rawroute_api.py",
+          "status": "added"
+        },
+        {
+          "path": "tests/test_rawroute_store.py",
+          "status": "modified"
+        },
+        {
+          "path": "tests/test_volume_address.cpp",
+          "status": "added"
+        }
+      ],
+      "notes": "Network/protocol evolution on historical branch. Compare with current router contract and keep functionality only after regression."
+    },
+    {
+      "branch": "nan-volume-addresses-final",
+      "status": "review_required",
+      "ahead_by": 8,
+      "behind_by": 473,
+      "changed_files": [
+        {
+          "path": "Makefile",
+          "status": "modified"
+        },
+        {
+          "path": "docs/38_NAN_VOLUME_ADDRESSES.md",
+          "status": "added"
+        },
+        {
+          "path": "include/nanlm/volume_address.hpp",
+          "status": "added"
+        },
+        {
+          "path": "nanlmind_nannet/rawroute_store.py",
+          "status": "modified"
+        },
+        {
+          "path": "nanlmind_nannet/volume_address.py",
+          "status": "added"
+        },
+        {
+          "path": "tests/test_rawroute_store.py",
+          "status": "modified"
+        },
+        {
+          "path": "tests/test_volume_address.cpp",
+          "status": "added"
+        }
+      ],
+      "notes": "Network/protocol evolution on historical branch. Compare with current router contract and keep functionality only after regression."
+    },
+    {
+      "branch": "nan-volume-addresses-mainline",
+      "status": "review_required",
+      "ahead_by": 13,
+      "behind_by": 475,
+      "changed_files": [
+        {
+          "path": "Makefile",
+          "status": "modified"
+        },
+        {
+          "path": "docs/38_NAN_VOLUME_ADDRESSES.md",
+          "status": "added"
+        },
+        {
+          "path": "include/nanlm/volume_address.hpp",
+          "status": "added"
+        },
+        {
+          "path": "nanlmind_nannet/rawroute_store.py",
+          "status": "modified"
+        },
+        {
+          "path": "nanlmind_nannet/volume_address.py",
+          "status": "added"
+        },
+        {
+          "path": "tests/test_rawroute_store.py",
+          "status": "modified"
+        },
+        {
+          "path": "tests/test_volume_address.cpp",
+          "status": "added"
+        }
+      ],
+      "notes": "Network/protocol evolution on historical branch. Compare with current router contract and keep functionality only after regression."
+    },
+    {
+      "branch": "nannet-demo-points-9-255",
+      "status": "review_required",
+      "ahead_by": 5,
+      "behind_by": 370,
+      "changed_files": [
+        {
+          "path": "integrations/nannet/README.md",
+          "status": "modified"
+        },
+        {
+          "path": "integrations/nannet/server.py",
+          "status": "modified"
+        },
+        {
+          "path": "integrations/nannet/test_server.py",
+          "status": "modified"
+        }
+      ],
+      "notes": "Network/protocol evolution on historical branch. Compare with current router contract and keep functionality only after regression."
+    },
+    {
+      "branch": "nannet-expired-lease-auth",
+      "status": "review_required",
+      "ahead_by": 3,
+      "behind_by": 369,
+      "changed_files": [
+        {
+          "path": "integrations/nannet/README.md",
+          "status": "modified"
+        },
+        {
+          "path": "integrations/nannet/server.py",
+          "status": "modified"
+        },
+        {
+          "path": "integrations/nannet/test_server.py",
+          "status": "modified"
+        }
+      ],
+      "notes": "Network/protocol evolution on historical branch. Compare with current router contract and keep functionality only after regression."
+    },
+    {
+      "branch": "nannet-koyeb-readiness",
+      "status": "review_required",
+      "ahead_by": 3,
+      "behind_by": 593,
+      "changed_files": [
+        {
+          "path": "docs/36_TRAINING_MERGE.md",
+          "status": "modified"
+        },
+        {
+          "path": "runner/training_merge.py",
+          "status": "modified"
+        },
+        {
+          "path": "tests/test_training_merge.py",
+          "status": "modified"
+        }
+      ],
+      "notes": "Network/protocol evolution on historical branch. Compare with current router contract and keep functionality only after regression."
+    },
+    {
+      "branch": "nannet-readiness-mainline",
+      "status": "review_required",
+      "ahead_by": 3,
+      "behind_by": 471,
+      "changed_files": [
+        {
+          "path": "docs/36_TRAINING_MERGE.md",
+          "status": "modified"
+        },
+        {
+          "path": "runner/training_merge.py",
+          "status": "modified"
+        },
+        {
+          "path": "tests/test_training_merge.py",
+          "status": "modified"
+        }
+      ],
+      "notes": "Network/protocol evolution on historical branch. Compare with current router contract and keep functionality only after regression."
+    }
+  ]
+}
