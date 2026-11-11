@@ -72,7 +72,7 @@ def main()->None:
     op=(ROOT/"src/raw_field.cpp").read_text()
     if "kContextBackoffCommand = 40;" not in op:
         raise AssertionError("context backoff dispatch is not isolated from opcode 30")
-    assert "0x3E00" in (ROOT/"mth/nan16/mth_phase_encode.nas").read_text()
+    assert "0x395000" in (ROOT/"mth/nan16/mth_phase_encode.nas").read_text()
     print("PASS unified 48M math manifest:",len(stages),"stages,",
           len(channels),"native credit methods,",KNOWN_BRANCHES,
           "divergent branches,","all source and test paths present")

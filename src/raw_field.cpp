@@ -2715,30 +2715,38 @@ bool RawFieldVM::tokenize(const std::string& text, std::size_t max_words,
                           std::vector<std::uint32_t>& subwords,
                           std::vector<std::uint32_t>& meta,
                           std::size_t& word_count, std::size_t& subword_count) {
-    if (text.empty() || text.size() > 0xFF00 || max_words == 0 ||
-        max_words > 4096) return fail("tokenizer bounds invalid");
+    constexpr std::uint32_t kTextBase = 0x00400000u;
+    constexpr std::uint32_t kWordsBase = 0x00500000u;
+    constexpr std::uint32_t kSubwordsBase = 0x00600000u;
+    constexpr std::uint32_t kMetaBase = 0x00700000u;
+    if (text.empty() || text.size() > 0x00100000u || max_words == 0 ||
+        max_words > 131072) return fail("tokenizer bounds invalid");
     for (std::size_t i = 0; i < text.size(); ++i)
-        if (!write_word(0x10000u + static_cast<std::uint32_t>(i),
+        if (!write_word(kTextBase + static_cast<std::uint32_t>(i),
                         static_cast<std::uint8_t>(text[i])))
             return fail("cannot write tokenizer text");
-    if (!write_word(kProposalBase + 0, static_cast<std::uint32_t>(text.size())) ||
-        !write_word(kProposalBase + 1, static_cast<std::uint32_t>(max_words)) ||
+    if (!write_word(kProposalBase + 0, kTextBase) ||
+        !write_word(kProposalBase + 1, static_cast<std::uint32_t>(text.size())) ||
+        !write_word(kProposalBase + 2, kWordsBase) ||
+        !write_word(kProposalBase + 3, kSubwordsBase) ||
+        !write_word(kProposalBase + 4, kMetaBase) ||
+        !write_word(kProposalBase + 5, static_cast<std::uint32_t>(max_words)) ||
         !write_word(kCommandBase, 74))
         return fail("cannot write tokenizer command");
     if (!run_command()) return false;
     word_count = read_word(kResultBase + 0);
     subword_count = read_word(kResultBase + 1);
-    if (word_count > max_words || subword_count > max_words * 8)
+    if (word_count > max_words || subword_count > max_words * 16u + 64u)
         return fail("tokenizer returned invalid counts");
     words.resize(word_count);
     for (std::size_t i = 0; i < words.size(); ++i)
-        words[i] = read_word(0x20000u + static_cast<std::uint32_t>(i));
+        words[i] = read_word(kWordsBase + static_cast<std::uint32_t>(i));
     subwords.resize(subword_count);
     for (std::size_t i = 0; i < subwords.size(); ++i)
-        subwords[i] = read_word(0x30000u + static_cast<std::uint32_t>(i));
+        subwords[i] = read_word(kSubwordsBase + static_cast<std::uint32_t>(i));
     meta.resize(word_count * 6);
     for (std::size_t i = 0; i < meta.size(); ++i)
-        meta[i] = read_word(0x40000u + static_cast<std::uint32_t>(i));
+        meta[i] = read_word(kMetaBase + static_cast<std::uint32_t>(i));
     return true;
 }
 

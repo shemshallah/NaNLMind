@@ -1405,17 +1405,15 @@ field_driver_ckpt_hash:
   JMP @field_driver_return
 
 field_driver_tokenize:
+  ; Proposal: text ptr, text bytes, words ptr, subwords ptr, meta ptr,
+  ; maximum words.  Buffers are host-selected dynamic guest regions.
   MOVI r10,0x4001
-  LD r2,r10,0
-  LD r6,r10,1
-  MOVI r1,0x0000
-  MOVHI r1,0x0001
-  MOVI r3,0x0000
-  MOVHI r3,0x0002
-  MOVI r4,0x0000
-  MOVHI r4,0x0003
-  MOVI r5,0x0000
-  MOVHI r5,0x0004
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r4,r10,3
+  LD r5,r10,4
+  LD r6,r10,5
   CALL @mth_tokenize
   MOVI r10,0x4010
   ST r1,r10,0

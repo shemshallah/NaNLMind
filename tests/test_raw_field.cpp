@@ -1041,5 +1041,16 @@ int main() {
         }
     }
 
+    // Tokenizer accepts more than the old 4096-word ABI limit.
+    {
+        std::string long_text;
+        for (int i = 0; i < 5000; ++i) long_text += "word ";
+        std::vector<std::uint32_t> lw, ls, lm;
+        std::size_t lwc = 0, lsc = 0;
+        CHECK(vm.tokenize(long_text, 5000, lw, ls, lm, lwc, lsc));
+        CHECK_EQ(lwc, 5000u);
+        CHECK_EQ(lm.size(), lwc * 6);
+    }
+
     return test_done("raw NaN16 field VM bridge");
 }

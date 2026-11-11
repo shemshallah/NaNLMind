@@ -314,9 +314,9 @@ mth_pb_out:
 mth_pb_i:
   .word 0
 
-; One-time raw phase lookup table. 256 Q16 cos/sin pairs at [0x3E00,0x4000).
+; One-time raw phase lookup table. 256 Q16 cos/sin pairs at [0x395000,0x395200).
 ; The full driver exceeds 0x3000 words; never overwrite executable code.
-; Build checks the 0x3E00 executable/data boundary.
+; Build checks the 0x100000 executable/data boundary.
 mth_phase_table_init:
   MOVI r12,@mth_pt_link
   ST r15,r12,0
@@ -330,7 +330,8 @@ mth_pt_loop:
   JMP[GE] @mth_pt_done
   MOVI r7,256
   MUL r1,r5,r7
-  MOVI r10,0x3E00
+  MOVI r10,0x5000
+  MOVHI r10,0x0039
   MOVI r11,2
   MUL r11,r5,r11
   ADD r11,r10,r11
@@ -401,8 +402,9 @@ mth_ptt_loop:
   SHL r6,r6,16
   SHR r6,r6,16
   SHR r6,r6,8
-  ; table at 0x3E00: cos, sin
-  MOVI r7,0x3E00
+  ; table at 0x395000: cos, sin
+  MOVI r7,0x5000
+  MOVHI r7,0x0039
   MOVI r8,2
   MUL r8,r6,r8
   ADD r7,r7,r8
