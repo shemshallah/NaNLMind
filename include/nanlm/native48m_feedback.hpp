@@ -178,6 +178,48 @@ public:
         return {advantage,guest_combined,candidate_value};
     }
 
+    struct SevenCreditFeedbackResult {
+        // Order: CFT, TRAIL, HOLO, RING, LEAF, TCA, FLUX.
+        std::array<std::int32_t,7> native_credits_q16{};
+        std::int32_t native_combined_q16=0;
+        float staged_tensor_value=0.0f;
+    };
+    // All seven paths MUST be evaluated by the existing NaN16 MTH guest.
+    // The caller supplies real CFT/TRAIL/HOLO/RING/LEAF/FLUX observations
+    // from the current native session; the TCA peer comparison is replaced
+    // with the ORIGINAL 48M exact-word decoder's scored log probabilities.
+    // None of these fixture/state arguments authorizes production promotion.
+    SevenCreditFeedbackResult stage_seven_credit_feedback(
+        const Native48MFeedbackReceipt& receipt,
+        CreditBundleState sourced_state,
+        std::int32_t baseline_log_probability_q16,
+        std::int32_t candidate_log_probability_q16,
+        const std::array<std::int32_t,7>& coefficients_q16) {
+        if(!receipt.native_measured||!receipt.meta_available||
+           !receipt.candidate_staged||!arena_.candidate_open())
+            throw std::logic_error("seven-credit update needs staged native candidate");
+        if(baseline_log_probability_q16>0 || candidate_log_probability_q16>0)
+            throw std::invalid_argument("exact-word log probability must be <= 0");
+        sourced_state.tca={
+            candidate_log_probability_q16,
+            baseline_log_probability_q16,
+            baseline_log_probability_q16};
+        SevenCreditFeedbackResult result;
+        if(!vm_.credit_bundle(sourced_state,result.native_credits_q16))
+            throw std::runtime_error("NaN16 seven-credit bundle: "+vm_.error());
+        if(!vm_.combine_credits(result.native_credits_q16,coefficients_q16,
+                                 result.native_combined_q16))
+            throw std::runtime_error("NaN16 seven-credit combine: "+vm_.error());
+        result.staged_tensor_value=
+            static_cast<float>(result.native_combined_q16)/65536.0f;
+        if(!std::isfinite(result.staged_tensor_value)||
+           std::fabs(result.staged_tensor_value)>8.0f)
+            throw std::invalid_argument("native seven-credit output exceeds safe candidate range");
+        arena_.stage_native_value(receipt.proposer,receipt.h,receipt.a,
+                                  receipt.b,result.staged_tensor_value);
+        return result;
+    }
+
     // Make every trihead member (all 255 eligible heads) an independent
     // candidate tensor proposer when the coordinator grants the capability.
     // The mapping may be the canonical triples or a runtime remap, but it
