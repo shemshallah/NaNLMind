@@ -4,6 +4,12 @@ on:
     branches: [main]
     paths:
       - 'tools/decoder48m_future3.py'
+      - 'tools/nanlm48m_native_future3_measure.cpp'
+      - 'mth/nan16/mth_future3_causal_window.nas'
+      - 'mth/drivers/field_driver.nas'
+      - 'include/nanlm/raw_field.hpp'
+      - 'src/raw_field.cpp'
+      - 'Makefile'
       - 'tools/decoder48m_candidate.py'
       - 'tests/test_decoder48m_future3.py'
       - '.github/workflows/48m-future3-causal.yml'
@@ -20,3 +26,26 @@ jobs:
           python-version: '3.11'
       - name: Three conditional horizons using frozen-emitter API
         run: python -m unittest discover -s tests -p test_decoder48m_future3.py -v
+      - name: Build and exercise REAL native NaN16 causal observer
+        run: |
+          make -j2 build/nanlm48m-native-future3-measure
+          python3 tools/verify_native_memory_map.py build/field_driver.nan
+          ./build/nanlm48m-native-future3-measure 'the river flows' - 0 > /tmp/future1.json
+          ./build/nanlm48m-native-future3-measure 'the river flows' alpha 1 > /tmp/future2.json
+          ./build/nanlm48m-native-future3-measure 'the river flows' 'alpha beta' 2 > /tmp/future3.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          for h in (1,2,3):
+              v=json.loads(Path(f"/tmp/future{h}.json").read_text())
+              assert v["schema"]=="nanlm.native-future3-measure/1"
+              assert v["horizon"]==h and v["generated_word_count"]==h-1
+              assert v["now_void_head"]==255 and 0<v["past_mask"]<=7
+              assert v["source_future_read"] is False
+              assert v["candidate_delta_available"] is False
+              assert v["has_admitted_hodge_faces"] is False
+              assert v["tensor_promoted"] is False
+              assert 0<=v["poincare_radius"]<1
+              print("native_future3_guest="+json.dumps(v,sort_keys=True))
+          PY
+
