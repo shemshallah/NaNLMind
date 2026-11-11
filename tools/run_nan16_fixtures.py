@@ -90,6 +90,8 @@ FIXTURES = (
             3_000_000, "MTH FULL 128M MIRROR DUAL BANK PASS"),
     Fixture("spectral_tensor_proposal", "mth/tests/mth_spectral_trihead_tensor_proposal_test.nas",
             12_000_000, "MTH SPECTRAL TRIHEAD TENSOR PROPOSAL PASS"),
+    Fixture("spectral_tensor_opcode106", "mth/tests/mth_spectral_tensor_driver_opcode_test.nas",
+            12_000_000, "MTH 48M SPECTRAL TENSOR OPCODE106 PASS"),
     Fixture("leaf_hash", "mth/tests/mth_leaf_hash_test.nas", 200_000,
             "MTH LEAF HASH PASS"),
     Fixture("dual_gate", "mth/tests/mth_dual_gate_test.nas", 200_000,
