@@ -22,6 +22,9 @@ on:
       - 'tests/test_decoder48m_candidate.py'
       - 'tests/test_meta_attention_source.py'
       - 'mth/nan16/mth_meta_attention16_f32.nas'
+      - 'mth/nan16/**'
+      - 'mth/drivers/**'
+      - 'mth/tests/**'
       - '.github/workflows/48m-head-triad-tensor-meta.yml'
   pull_request:
     paths:
@@ -44,6 +47,9 @@ on:
       - 'tests/test_decoder48m_candidate.py'
       - 'tests/test_meta_attention_source.py'
       - 'mth/nan16/mth_meta_attention16_f32.nas'
+      - 'mth/nan16/**'
+      - 'mth/drivers/**'
+      - 'mth/tests/**'
       - '.github/workflows/48m-head-triad-tensor-meta.yml'
 jobs:
   frozen-decoder-and-tensor:
