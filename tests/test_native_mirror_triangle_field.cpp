@@ -24,11 +24,42 @@ int main(){
     assert(vm.native_mirror_triangle_boot(42u,0,booted,reason));
     assert(!booted && reason==2); // same guest cannot resample at runtime
 
+    // Native field observation STARTS at the actual two directed
+    // physical mirror rails; no C++ mirror subtraction/curvature.
+    std::array<float,65280> mirror_rails{};
+    mirror_rails[0]=1.0f;       // W(0,1) forward=+1
+    mirror_rails[3]=3.0f;       // W(2,0) reverse=+3 => g(0,2)=-3
+    mirror_rails[510]=2.0f;     // W(1,2)=+2
+    mirror_rails[512]=2.0f;     // W(1,3)=+2
+    mirror_rails[1019]=1.0f;    // W(3,2)=+1 => g(2,3)=-1
+    mirror_rails[5011]=1.0f;    // W(11,10)=+1
+    mirror_rails[5501]=1.0f;    // W(12,11)=+1
+    mirror_rails[5012]=2.0f;    // W(10,12)=+2
     std::array<float,32640> pair_flows{};
-    pair_flows[0]=1.0f;pair_flows[1]=-3.0f;pair_flows[255]=2.0f;
-    pair_flows[256]=2.0f;pair_flows[509]=-1.0f;
-    pair_flows[2505]=-1.0f;pair_flows[2750]=-1.0f;
-    pair_flows[2506]=2.0f;
+    std::uint32_t hot_pairs=0,cold_pairs=0,flat_pairs=0;
+    bool rails_ok=false;std::uint8_t rail_reason=0;
+    assert(vm.native_mirror_pair_rail_gradient(
+        mirror_rails,0,0,pair_flows,hot_pairs,cold_pairs,flat_pairs,
+        rails_ok,rail_reason));
+    assert(rails_ok && rail_reason==0);
+    assert(pair_flows[0]==1.0f && pair_flows[1]==-3.0f &&
+           pair_flows[255]==2.0f && pair_flows[509]==-1.0f);
+    assert(hot_pairs==4u && cold_pairs==4u);
+    assert(hot_pairs+cold_pairs+flat_pairs==32640u);
+    // VOID255 has no trainable rail: native rejects its corruption.
+    auto invalid_rails=mirror_rails;
+    invalid_rails[508]=1.0f; // pair(0,255) S+ forbidden
+    std::array<float,32640> rejected_flows{};
+    bool invalid_accepted=true;rail_reason=0;
+    assert(vm.native_mirror_pair_rail_gradient(
+        invalid_rails,0,0,rejected_flows,hot_pairs,cold_pairs,flat_pairs,
+        invalid_accepted,rail_reason));
+    assert(!invalid_accepted && rail_reason==3);
+    // Restore original authenticated source in the guest before Hodge.
+    assert(vm.native_mirror_pair_rail_gradient(
+        mirror_rails,0,0,pair_flows,hot_pairs,cold_pairs,flat_pairs,
+        rails_ok,rail_reason));
+    assert(rails_ok && rail_reason==0);
     std::vector<NativeMirrorTriangleReceipt> triangles;
     std::uint16_t hot_field=0;
     bool measured=false;reason=0;
