@@ -184,7 +184,9 @@ tv_stale:
   MOVI r10,2
   CMP r4,r10
   JMP[NE] @tv_fail
-  LD r11,r0,0x003EE00A  ; trihead0 meta gradient at +10
+  MOVI r10,0xE00A
+  MOVHI r10,0x003E
+  LD r11,r10,0            ; trihead0 meta gradient at +10
   LD r10,r0,@tv_first_gradient
   CMP r11,r10
   JMP[NE] @tv_fail
