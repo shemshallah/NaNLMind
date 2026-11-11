@@ -80,6 +80,7 @@ JMP @field_driver_entry
 .include "../nan16/mth_ngram_train.nas"
 .include "../nan16/mth_geometry.nas"
 .include "../nan16/mth_triangle_model.nas"
+.include "../nan16/mth_phase_geometry.nas"
 .include "../nan16/mth_dual_gate.nas"
 .include "../nan16/mth_context_backoff.nas"
 .include "../nan16/mth_context_encode.nas"
@@ -332,6 +333,15 @@ field_driver_main:
   MOVI r3,92
   CMP r2,r3
   JMP[EQ] @field_driver_triangle_model_score
+  MOVI r3,93
+  CMP r2,r3
+  JMP[EQ] @field_driver_triangle_model_observe_negative
+  MOVI r3,94
+  CMP r2,r3
+  JMP[EQ] @field_driver_triangle_model_score_contrastive
+  MOVI r3,95
+  CMP r2,r3
+  JMP[EQ] @field_driver_phase_hyperbolic
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -1298,10 +1308,7 @@ field_driver_dual_gate:
 
 field_driver_triangle_model_reset:
   CALL @mth_tri_model_reset
-  MOVI r10,0x4010
-  ST r1,r10,0
   JMP @field_driver_return
-
 field_driver_triangle_model_observe:
   MOVI r10,0x4001
   LD r1,r10,0
@@ -1314,7 +1321,6 @@ field_driver_triangle_model_observe:
   MOVI r10,0x4010
   ST r1,r10,0
   JMP @field_driver_return
-
 field_driver_triangle_model_score:
   MOVI r10,0x4001
   LD r1,r10,0
@@ -1325,6 +1331,40 @@ field_driver_triangle_model_score:
   CALL @mth_tri_model_score
   MOVI r10,0x4010
   ST r1,r10,0
+  JMP @field_driver_return
+field_driver_triangle_model_observe_negative:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r4,r10,3
+  LD r5,r10,4
+  LD r6,r10,5
+  CALL @mth_tri_model_observe_negative
+  MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
+field_driver_triangle_model_score_contrastive:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r4,r10,3
+  LD r5,r10,4
+  CALL @mth_tri_model_score_contrast
+  MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_phase_hyperbolic:
+  MOVI r10,0x4001
+  LD r2,r10,0
+  MOVI r1,0x0000
+  MOVHI r1,0x0034
+  CALL @mth_phase_hyperbolic
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
   JMP @field_driver_return
 
 field_driver_context_encode:

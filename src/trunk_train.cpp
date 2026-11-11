@@ -2279,10 +2279,15 @@ int stream_train_cli(int argc, char** argv) {
     std::size_t contexts_total = 0;
     std::array<std::int32_t, 4> head255{};
     std::size_t word_vector_count = 0, word_triangle_count = 0;
+    std::size_t word_negative_triangle_count = 0;
+    std::int64_t word_negative_score_sum = 0;
+    std::int32_t word_negative_example_score = 0;
     std::int64_t word_tri_area_sum = 0, word_tri_tight_sum = 0;
     std::size_t word_tri_positive = 0, word_tri_negative = 0;
     std::int32_t word_path_length = 0, word_path_closure = 0;
     std::int32_t word_path_turn = 0, word_path_curvature = 0;
+    std::int32_t word_phase_energy = 0, word_phase_radial = 0;
+    std::uint32_t word_rotation_turn = 0;
     std::int32_t word_field_value = 0;
     std::size_t word_field_hot_heads = 0, word_field_hot_triads = 0;
     bool word_field_hot = false;
@@ -2356,6 +2361,8 @@ int stream_train_cli(int argc, char** argv) {
         std::vector<std::vector<std::int32_t>> word_vectors;
         const std::size_t word_geom_limit =
             std::min<std::size_t>(word_count, 32);
+        const std::uint32_t line_turn =
+            words.empty() ? 0u : (words[0] & 0xFFFFu);
         for (std::size_t wi = 0; wi < word_geom_limit; ++wi) {
             const std::size_t mbase = wi * 6;
             if (mbase + 5 >= meta.size()) break;
@@ -2373,7 +2380,12 @@ int stream_train_cli(int argc, char** argv) {
                 std::cerr << "word phase encode failed: " << vm.error() << "\n";
                 return 7;
             }
-            word_vectors.push_back(std::move(vector));
+            std::vector<std::int32_t> rotated;
+            if (!vm.phase_rotate(vector, line_turn, rotated)) {
+                std::cerr << "word phase rotation failed: " << vm.error() << "\n";
+                return 7;
+            }
+            word_vectors.push_back(std::move(rotated));
         }
         word_vector_count += word_vectors.size();
         if (word_vectors.size() >= 2) {
@@ -2388,6 +2400,12 @@ int stream_train_cli(int argc, char** argv) {
                 return 7;
             }
             std::vector<std::int32_t> last = word_vectors.back();
+            word_rotation_turn = line_turn;
+            if (!vm.phase_hyperbolic(last, 128, word_phase_energy,
+                                     word_phase_radial)) {
+                std::cerr << "word phase hyperbolic failed: " << vm.error() << "\n";
+                return 7;
+            }
             std::vector<std::int32_t> fcredits, fvotes;
             if (!vm.field_perturb(last, 256, fcredits, fvotes,
                                   word_field_value)) {
@@ -2438,6 +2456,44 @@ int stream_train_cli(int argc, char** argv) {
                 word_tri_sides = sides;
                 word_tri_area = area;
                 word_tri_tight = tight;
+            }
+
+            // Contrastive negative: three non-adjacent words from the same
+            // line. Raw geometry and the negative shape bank do the rest.
+            if (ti + 5 < word_vectors.size()) {
+                std::vector<std::int32_t> ntri;
+                ntri.insert(ntri.end(), word_vectors[ti + 3].begin(),
+                            word_vectors[ti + 3].end());
+                ntri.insert(ntri.end(), word_vectors[ti + 4].begin(),
+                            word_vectors[ti + 4].end());
+                ntri.insert(ntri.end(), word_vectors[ti + 5].begin(),
+                            word_vectors[ti + 5].end());
+                std::array<std::int32_t, 3> nsides{};
+                std::int32_t narea = 0, ntight = 0, norient = 0;
+                if (!vm.triangle_geometry(ntri, 256, nsides, narea, ntight,
+                                          norient)) {
+                    std::cerr << "negative triangle geometry failed: "
+                              << vm.error() << "\n";
+                    return 7;
+                }
+                std::int32_t negative_count = 0;
+                if (!vm.triangle_model_observe_negative(
+                        nsides, narea, ntight, norient, negative_count)) {
+                    std::cerr << "negative triangle observe failed: "
+                              << vm.error() << "\n";
+                    return 7;
+                }
+                std::int32_t negative_score = 0;
+                if (!vm.triangle_model_score_contrastive(
+                        nsides, narea, ntight, negative_score)) {
+                    std::cerr << "negative contrast score failed: "
+                              << vm.error() << "\n";
+                    return 7;
+                }
+                ++word_negative_triangle_count;
+                word_negative_score_sum += negative_score;
+                if (word_negative_triangle_count == 1)
+                    word_negative_example_score = negative_score;
             }
         }
         if (sample_bank.size() < kSampleLimit * 256 && line.size() >= 8) {
@@ -2632,6 +2688,9 @@ int stream_train_cli(int argc, char** argv) {
                  << ", \"path_closure\": " << word_path_closure
                  << ", \"path_turn\": " << word_path_turn
                  << ", \"path_curvature\": " << word_path_curvature
+                 << ", \"phase_energy\": " << word_phase_energy
+                 << ", \"phase_radial\": " << word_phase_radial
+                 << ", \"rotation_turn\": " << word_rotation_turn
                  << ", \"field_perturbation\": " << word_field_value
                  << ", \"field_hot_heads\": " << word_field_hot_heads
                  << ", \"field_hot_triads\": " << word_field_hot_triads
@@ -2641,6 +2700,12 @@ int stream_train_cli(int argc, char** argv) {
                  << ", \"shape_area_sum\": " << triangle_shape[1]
                  << ", \"shape_positive\": " << triangle_orient_counts[0]
                  << ", \"shape_negative\": " << triangle_orient_counts[1]
+                 << ", \"contrastive_triangles\": "
+                 << word_negative_triangle_count
+                 << ", \"contrastive_score_sum\": "
+                 << word_negative_score_sum
+                 << ", \"contrastive_example_score\": "
+                 << word_negative_example_score
                  << ", \"example_score\": " << triangle_shape_score
                  << ", \"triangle_records\": " << word_triangle_records.size()
                  << ", \"first_triangle_score\": "

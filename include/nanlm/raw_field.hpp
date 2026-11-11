@@ -493,6 +493,9 @@ public:
                        std::size_t dim, std::vector<std::int32_t>& credits,
                        std::vector<std::int32_t>& votes,
                        std::int32_t& field_value);
+    bool phase_hyperbolic(const std::vector<std::int32_t>& phase_vector,
+                          std::size_t lanes, std::int32_t& mean_energy,
+                          std::int32_t& radial);
     bool triangle_model_reset();
     bool triangle_model_observe(const std::array<std::int32_t, 3>& sides,
                                 std::int32_t area, std::int32_t tightness,
@@ -500,8 +503,17 @@ public:
     bool triangle_model_score(const std::array<std::int32_t, 3>& sides,
                               std::int32_t area, std::int32_t tightness,
                               std::int32_t& score);
+    bool triangle_model_observe_negative(
+        const std::array<std::int32_t, 3>& sides, std::int32_t area,
+        std::int32_t tightness, std::int32_t orientation, std::int32_t& count);
+    bool triangle_model_score_contrastive(
+        const std::array<std::int32_t, 3>& sides, std::int32_t area,
+        std::int32_t tightness, std::int32_t& score);
     bool read_triangle_model(std::array<std::int32_t, 3>& shape_stats,
                              std::array<std::int32_t, 2>& orientation_counts);
+    bool read_triangle_model_negative(
+        std::array<std::int32_t, 3>& shape_stats,
+        std::array<std::int32_t, 2>& orientation_counts);
     bool phase_rotate(const std::vector<std::int32_t>& in, std::uint32_t turn,
                       std::vector<std::int32_t>& out);
     bool pq_encode(const std::vector<std::int32_t>& query,

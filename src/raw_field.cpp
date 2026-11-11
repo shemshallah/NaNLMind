@@ -1961,6 +1961,38 @@ bool RawFieldVM::triangle_model_score(
     return true;
 }
 
+
+bool RawFieldVM::triangle_model_observe_negative(
+    const std::array<std::int32_t, 3>& sides, std::int32_t area,
+    std::int32_t tightness, std::int32_t orientation, std::int32_t& count) {
+    if (!write_word(kProposalBase + 0, static_cast<std::uint32_t>(sides[0])) ||
+        !write_word(kProposalBase + 1, static_cast<std::uint32_t>(sides[1])) ||
+        !write_word(kProposalBase + 2, static_cast<std::uint32_t>(sides[2])) ||
+        !write_word(kProposalBase + 3, static_cast<std::uint32_t>(area)) ||
+        !write_word(kProposalBase + 4, static_cast<std::uint32_t>(tightness)) ||
+        !write_word(kProposalBase + 5, static_cast<std::uint32_t>(orientation)) ||
+        !write_word(kCommandBase, 93))
+        return fail("cannot write triangle negative observe");
+    if (!run_command()) return false;
+    count = static_cast<std::int32_t>(read_word(kResultBase));
+    return true;
+}
+
+bool RawFieldVM::triangle_model_score_contrastive(
+    const std::array<std::int32_t, 3>& sides, std::int32_t area,
+    std::int32_t tightness, std::int32_t& score) {
+    if (!write_word(kProposalBase + 0, static_cast<std::uint32_t>(sides[0])) ||
+        !write_word(kProposalBase + 1, static_cast<std::uint32_t>(sides[1])) ||
+        !write_word(kProposalBase + 2, static_cast<std::uint32_t>(sides[2])) ||
+        !write_word(kProposalBase + 3, static_cast<std::uint32_t>(area)) ||
+        !write_word(kProposalBase + 4, static_cast<std::uint32_t>(tightness)) ||
+        !write_word(kCommandBase, 94))
+        return fail("cannot write triangle contrastive score");
+    if (!run_command()) return false;
+    score = static_cast<std::int32_t>(read_word(kResultBase));
+    return true;
+}
+
 bool RawFieldVM::read_triangle_model(
     std::array<std::int32_t, 3>& shape_stats,
     std::array<std::int32_t, 2>& orientation_counts) {
@@ -1970,6 +2002,35 @@ bool RawFieldVM::read_triangle_model(
     for (std::size_t i = 0; i < 2; ++i)
         orientation_counts[i] = static_cast<std::int32_t>(
             read_word(0x2E0203u + static_cast<std::uint32_t>(i)));
+    return true;
+}
+
+bool RawFieldVM::read_triangle_model_negative(
+    std::array<std::int32_t, 3>& shape_stats,
+    std::array<std::int32_t, 2>& orientation_counts) {
+    for (std::size_t i = 0; i < 3; ++i)
+        shape_stats[i] = static_cast<std::int32_t>(
+            read_word(0x2E0210u + static_cast<std::uint32_t>(i)));
+    for (std::size_t i = 0; i < 2; ++i)
+        orientation_counts[i] = static_cast<std::int32_t>(
+            read_word(0x2E0213u + static_cast<std::uint32_t>(i)));
+    return true;
+}
+
+bool RawFieldVM::phase_hyperbolic(
+    const std::vector<std::int32_t>& phase_vector, std::size_t lanes,
+    std::int32_t& mean_energy, std::int32_t& radial) {
+    if (lanes == 0 || lanes > 128 || phase_vector.size() < lanes * 2)
+        return fail("phase hyperbolic bounds invalid");
+    for (std::size_t i = 0; i < lanes * 2; ++i)
+        if (!write_word(0x340000u + static_cast<std::uint32_t>(i),
+                        static_cast<std::uint32_t>(phase_vector[i])))
+            return fail("cannot write phase vector");
+    if (!write_word(kProposalBase, static_cast<std::uint32_t>(lanes)) ||
+        !write_word(kCommandBase, 95)) return fail("cannot write phase hyperbolic");
+    if (!run_command()) return false;
+    mean_energy = static_cast<std::int32_t>(read_word(kResultBase));
+    radial = static_cast<std::int32_t>(read_word(kResultBase + 1));
     return true;
 }
 

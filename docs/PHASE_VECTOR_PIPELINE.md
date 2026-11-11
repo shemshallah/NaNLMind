@@ -60,6 +60,8 @@ Field-driver commands:
 | 90 | `mth_tri_model_reset` | clear semantic triangle shape stats |
 | 91 | `mth_tri_model_observe` | train tightness/area/orientation stats |
 | 92 | `mth_tri_model_score` | score a triangle against learned shape |
+| 93 | `mth_tri_model_observe_negative` | accumulate negative-shape stats |
+| 94 | `mth_tri_model_score_contrast` | positive-vs-negative shape score |
 | 72 | `mth_leaf_verify` | reconstruct codebook+residual, L1 accept/reject |
 | 73 | `mth_ckpt_hash` | raw FNV-1a checkpoint payload digest |
 | 87 | `mth_dual_gate` | fast head / slow head / medium field / slow coherence gate |
@@ -764,9 +766,55 @@ scored by `mth_tri_model_score`. A two-line smoke run produced 6 word vectors an
 2 scored triangles. This is the first raw shape prior; it currently trains on
 positive sentence triangles only.
 
-The raw model currently learns only positive sentence triangles; it is a
-shape prior, not a supervised truth classifier. A contrastive negative corpus
-is the next training step.
+The raw model now accumulates both direct positive sentence triangles and
+contrastive negative triangles in separate banks, and
+`mth_tri_model_score_contrast` returns a Q16 score favouring shapes close to
+the positive bank. `stream-train` constructs negatives from non-adjacent word
+vectors in the same line and reports `contrastive_triangles`,
+`contrastive_score_sum` and `contrastive_example_score`.
+
+This is still a shape prior, not a supervised semantic truth classifier; the
+next step is a source-disjoint positive/negative evaluation with calibrated
+thresholds.
+
+### Trig rotation + hyperbolic synergy
+
+Word phase vectors are rotated by the line turn derived from the first word ID.
+The triangle and path are then measured in that rotated frame. The hyperbolic
+measure uses the complex energy per lane:
+
+```text
+energy_lane = Q16(cos*cos) + Q16(sin*sin)
+mean_energy = sum(energy_lane) / lanes
+radial = mean_energy / (mean_energy + 65536)
+```
+
+A common phase rotation leaves `energy_lane` and therefore the hyperbolic
+radial position invariant. In the current stream output, a Alice probe gives:
+
+```text
+rotation_turn   47211
+phase_energy     4095
+phase_radial     3854
+```
+
+The rotation changes the phase frame used by the triangles while leaving the
+hyperbolic radius stable. This is the trig/rotation/hyperbolic coupling: rotation
+sets the gauge, energy sets the radial tree position.
+
+### Word-level triangle records
+
+`stream-train` writes every consecutive-word triangle to
+`PREFIX.triangles.bin`:
+
+```text
+[side0, side1, side2, area_proxy, tightness, orientation, shape_score]
+```
+
+The current smoke corpus produced 789 word vectors and 637 scored triangles.
+The triangle shape model learns positive/negative tightness and area banks in
+the guest and scores the first/last examples. The semantic layer is now using
+actual word spans and word phase vectors, not arbitrary sample vectors.
 
 The existing released phase bank is the earlier D64/128-component bank. The
 new 256-component codebook is released separately under the same release tag.
