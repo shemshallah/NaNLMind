@@ -65,8 +65,9 @@ mtp_check_heads:
   JMP[LT] @mtp_bad
   ; Existing independently measured 128D HEADs require native stamp and
   ; matching epoch. No guest head phase or Boolean rule is invented here.
-  MOVI r12,0
-  MOVHI r12,0x003B
+  ; Respect the caller's measured-head bank instead of assuming 0x3B0000.
+  ; Production keeps that address, while isolated guest tests may relocate it.
+  LD r12,r0,@mtp_heads
   SHL r10,r11,8
   ADD r12,r12,r10
   LD r10,r12,147
