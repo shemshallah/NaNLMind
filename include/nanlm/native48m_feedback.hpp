@@ -268,6 +268,51 @@ public:
         return writes;
     }
 
+    // Additional closed-loop path:
+    // Native six-position temporal attention -> Poincare disk (2D) ->
+    // the SAME candidate mirrored tensor. Existing global Hodge/curl,
+    // trihead votes and committed MC0 context must already be observed.
+    // The guest's two signed phasor coordinates occupy independent directed
+    // mirror lanes. Host does not compute trigonometry, attention or depth.
+    // Strict whole-word NLL and quorum still decide eventual promotion.
+    std::size_t stage_native_temporal_poincare_feedback(
+        const Native48MFeedbackReceipt& head,
+        const NativeContext6Receipt& temporal) {
+        if (!head.native_measured || !head.meta_available ||
+            !head.has_admitted_faces || !head.candidate_staged ||
+            !temporal.accepted || temporal.now_head!=255 ||
+            !arena_.candidate_open())
+            throw std::logic_error("requires Hodge and MC0 guest evidence and temporal NOW");
+        if (head.h>=255 || head.a>=255 || head.b>=255 ||
+            head.a==head.b || head.proposer>=255 ||
+            !arena_.candidate_writer_allowed(head.proposer))
+            throw std::logic_error("unauthorized mirror-lane feedback");
+        if (temporal.task==0 && (temporal.mask & 0x38u)!=0)
+            throw std::logic_error("future leakage in causal feedback");
+        if (!std::isfinite(temporal.poincare_x) ||
+            !std::isfinite(temporal.poincare_y) ||
+            !std::isfinite(temporal.radius) ||
+            !std::isfinite(temporal.radial_distance) ||
+            temporal.radius<0.0f || temporal.radius>=1.0f)
+            throw std::logic_error("invalid native Poincare output");
+        // Independent native address confirmations, both banks protected.
+        Tensor256Address fwd{},rev{};
+        if (!vm_.tensor256_dual_address(head.h,head.a,head.b,1,fwd) ||
+            !vm_.tensor256_dual_address(head.h,head.b,head.a,1,rev) ||
+            !fwd.valid || !rev.valid ||
+            fwd.byte_offset!=DualTensor256Arena::byte_offset(
+                head.h,head.a,head.b,1) ||
+            rev.byte_offset!=DualTensor256Arena::byte_offset(
+                head.h,head.b,head.a,1) ||
+            fwd.byte_offset==rev.byte_offset)
+            throw std::runtime_error("directed mirror mapping is inconsistent");
+        arena_.stage_native_value(head.proposer,head.h,head.a,head.b,
+                                  temporal.poincare_x);
+        arena_.stage_native_value(head.proposer,head.h,head.b,head.a,
+                                  temporal.poincare_y);
+        return 2;
+    }
+
     // Caller commits only sourced past context. Not a 48M model-weight commit.
     void commit_context(const Native48MFeedbackReceipt& receipt){
         if(!receipt.native_measured)throw std::invalid_argument("not guest measured");
