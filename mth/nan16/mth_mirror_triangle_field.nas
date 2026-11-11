@@ -317,30 +317,30 @@ mpf_pal_loop:
   ADDI r8,r8,1
   JMP @mpf_pal_loop
 mpf_pair_addresses:
-  MOVI r14,0
+  ST r0,r0,@mpf_pair_index
 mpf_pair_loop:
+  LD r14,r0,@mpf_pair_index
   MOVI r12,6
   CMP r14,r12
   JMP[GE] @mpf_record_epoch
+  SHL r12,r14,1
   MOVI r11,@mpf_edge_indices
-  ADD r11,r11,r14
+  ADD r11,r11,r12
   LD r8,r11,0
+  LD r9,r11,1
   LD r11,r0,@mpf_record
   ADD r8,r8,r11
   LD r8,r8,0
-  MOVI r11,@mpf_edge_indices
-  ADDI r11,r11,1
-  ADD r11,r11,r14
-  LD r9,r11,0
-  LD r11,r0,@mpf_record
   ADD r9,r9,r11
   LD r9,r9,0
   CALL @mpf_addr
   LD r11,r0,@mpf_record
   ADDI r11,r11,20
+  LD r14,r0,@mpf_pair_index
   ADD r11,r11,r14
   ST r10,r11,0
-  ADDI r14,r14,2
+  ADDI r14,r14,1
+  ST r14,r0,@mpf_pair_index
   JMP @mpf_pair_loop
 
 mpf_record_epoch:
@@ -516,6 +516,8 @@ mpf_hot_major:
 mpf_bits:
   .word 1,2,4
 mpf_edge_indices:
-  .word 0,1,1,2,2,0
+  .word 0,1,1,0,1,2,2,1,2,0,0,2
 mpf_v:
+  .word 0
+mpf_pair_index:
   .word 0
