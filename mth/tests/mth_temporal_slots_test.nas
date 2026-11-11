@@ -41,8 +41,7 @@ main:
   CMP r11,r12
   JMP[NE] @mth_ts_test_fail
   LD r11,r10,1
-  MOVI r12,0xFFFF
-  MOVHI r12,0xFFFF
+  MOVI r12,255
   CMP r11,r12
   JMP[NE] @mth_ts_test_fail
   CALL @mth_temporal_project

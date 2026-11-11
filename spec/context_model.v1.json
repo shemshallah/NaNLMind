@@ -1,0 +1,59 @@
+{
+  "schema": "nanlm.context-model/1",
+  "canonical_kernel": "mth_context_hier.nas",
+  "canonical_route": "mth_context_backoff.nas",
+  "driver_command": 30,
+  "context_class_command": 31,
+  "description": "16x16 high-nibble / conditional-low-nibble context memory over the last four bytes, with guest-owned exact k=4 / FNV k=3 backoff routing.",
+  "config": {
+    "buckets": 11456,
+    "exact_contexts": 10500,
+    "context_bytes": 4,
+    "fallback_bytes": 3,
+    "learning_rate": 0.1,
+    "epochs": 3,
+    "corpus": "state/wordnet_corpus.txt",
+    "corpus_sha256": "18e6dff10f4af298eab92748999decd893b89c1d7453b398ff17b485f1464716"
+  },
+  "measured": {
+    "samples": 117454,
+    "same_corpus_accuracy_percent": 73.7821,
+    "loss": 1.9346,
+    "wall_seconds": 35.24
+  },
+  "class_bridge": {
+    "head": "high*16+low",
+    "triad": "head/3",
+    "member": "head%3",
+    "field_head": 255,
+    "field_threshold": "43/85",
+    "command": 31
+  },
+  "classification": {
+    "canonical": [
+      "mth_context_hier",
+      "mth_context_backoff",
+      "mth_context_class"
+    ],
+    "auxiliary": [
+      "mth_context_batch",
+      "mth_context_hash",
+      "mth_context_copy"
+    ],
+    "contextual_encoder": [
+      "mth_context_encode",
+      "mth_context_encode24"
+    ],
+    "restored_raw_commands": {
+      "31": "mth_context_class",
+      "32": "mth_context_hier_joint",
+      "33": "mth_context_copy",
+      "34": "mth_triad_score"
+    },
+    "cli_pending": [
+      "backoffjoint",
+      "induction"
+    ]
+  },
+  "note": "73.7821% is same-corpus next-byte accuracy, not held-out language quality."
+}

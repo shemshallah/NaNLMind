@@ -256,6 +256,16 @@ mth_g_tri_tight:
   MOVHI r6,0x0001
   MUL r6,r4,r6
   DIV r6,r6,r5
+  ; stretch_q15 = (max-min)*32768/(max+1).  A high value means the
+  ; three points are strongly elongated and should not vote as one shape.
+  SUB r7,r5,r4
+  MOVI r8,0x8000
+  MOVHI r8,0x0000
+  MUL r7,r7,r8
+  ADDI r8,r5,1
+  DIV r7,r7,r8
+  MOVI r12,@mth_g_stretch
+  ST r7,r12,0
   ADD r5,r6,r0
   ; area proxy = min side scaled by tightness; r4 stays min side
   JMP @mth_g_tri_orientation
@@ -367,6 +377,8 @@ mth_g_orient_done_sum:
   JMP[GT] @mth_g_tri_orient_done
   MOVI r6,-1
 mth_g_tri_orient_done:
+  MOVI r12,@mth_g_stretch
+  LD r7,r12,0
   MOVI r12,@mth_g_tri_link
   LD r15,r12,0
   RET
@@ -502,4 +514,6 @@ mth_g_side:
   .word 0
   .word 0
 mth_g_energy:
+  .word 0
+mth_g_stretch:
   .word 0

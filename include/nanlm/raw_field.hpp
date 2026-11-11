@@ -374,6 +374,9 @@ public:
         bool global_approved, bool meta_approved,
         NativeSpectralTensorResult& result);
 
+    bool triad_score(std::uint16_t m0, std::uint16_t m1, std::uint16_t m2,
+                     std::uint32_t a, std::uint32_t b, bool target,
+                     std::int32_t& score);
     bool proposal(std::uint16_t current_mask, std::uint16_t patch,
                   const std::array<std::uint16_t, 3>& members,
                   std::uint32_t a, std::uint32_t b, bool target,
@@ -702,7 +705,8 @@ public:
     bool triangle_geometry(const std::vector<std::int32_t>& vectors,
                            std::size_t dim, std::array<std::int32_t, 3>& sides,
                            std::int32_t& area_proxy, std::int32_t& tightness,
-                           std::int32_t& orientation);
+                           std::int32_t& orientation,
+                           std::int32_t* stretch = nullptr);
     bool field_perturb(const std::vector<std::int32_t>& vector,
                        std::size_t dim, std::vector<std::int32_t>& credits,
                        std::vector<std::int32_t>& votes,
@@ -808,11 +812,29 @@ public:
     bool reset_context_readout(std::size_t buckets);
     bool load_context_readout(const std::string& path, std::size_t buckets);
     bool save_context_readout(const std::string& path, std::size_t buckets);
+    bool reset_context_copy(const std::vector<std::uint32_t>& exact_contexts,
+                            std::size_t buckets, std::size_t aux_buckets);
+    bool readout_context_copy(std::uint8_t target, float learning_rate,
+                              std::uint32_t context_key,
+                              std::size_t buckets, std::size_t exact_count,
+                              std::size_t aux_buckets, float gate_weight,
+                              bool& correct, float& loss,
+                              std::uint8_t& predicted_class);
     bool readout_context(std::uint8_t target, float learning_rate,
                          std::uint32_t bucket, std::size_t buckets,
                          bool& correct, float& loss,
                          std::uint8_t& predicted_high,
                          std::uint8_t& predicted_low);
+    bool readout_context_joint(std::uint8_t target, float learning_rate,
+                               std::uint32_t bucket, std::size_t buckets,
+                               bool& correct, float& loss,
+                               std::uint8_t& predicted_high,
+                               std::uint8_t& predicted_low);
+    bool set_context_high(std::size_t bucket, std::size_t high_class,
+                          float value, std::size_t buckets);
+    bool set_context_low(std::size_t bucket, std::size_t high_class,
+                         std::size_t low_class, float value,
+                         std::size_t buckets);
     // Multi-order raw route: the guest owns the exact k=4 hash table, its
     // frequency selection, and the k=3 fallback hash.
     bool reset_context_backoff();

@@ -802,7 +802,7 @@ int main() {
         std::array<std::int32_t, 4> head255{};
         CHECK(vm.read_temporal_slots(tw, pv, pc, fv, fc, current_words,
                                      head255, slots));
-        CHECK_EQ(head255[1], -1);
+        CHECK_EQ(head255[1], 255);
         CHECK_EQ(head255[0], static_cast<std::int32_t>(t_words.back()));
         CHECK_EQ(slots.size(), tw * 3);
         CHECK(vm.temporal_slots_project());
@@ -992,6 +992,37 @@ int main() {
                                                   no_positive));
         CHECK_EQ(no_positive, 0);
     }
+
+    // Raw context copy/induction route: guest resolves the exact-key map or
+    // fallback, hashes the 2-byte suffix, and combines both tables.
+    constexpr std::size_t copy_buckets = 8;
+    constexpr std::size_t copy_aux_buckets = 4;
+    const std::uint32_t exact_key = 0x41424344u;
+    std::vector<std::uint32_t> exact_keys{exact_key};
+    CHECK(vm.reset_context_readout(copy_buckets));
+    CHECK(vm.reset_context_copy(exact_keys, copy_buckets, copy_aux_buckets));
+    bool copy_correct = false;
+    float copy_loss = 0.0f;
+    std::uint8_t copy_predicted = 0;
+    for (int step = 0; step < 8; ++step) {
+        CHECK(vm.readout_context_copy(
+            0x41, 0.5f, exact_key, copy_buckets, exact_keys.size(),
+            copy_aux_buckets, 0.2f, copy_correct, copy_loss,
+            copy_predicted));
+        CHECK(copy_correct);
+        CHECK_EQ(copy_predicted, 0x41u);
+    }
+    CHECK(vm.readout_context_copy(
+        0x41, 0.0f, exact_key, copy_buckets, exact_keys.size(),
+        copy_aux_buckets, 0.2f, copy_correct, copy_loss, copy_predicted));
+    CHECK(copy_correct);
+    CHECK_EQ(copy_predicted, 0x41u);
+
+    // Triad score kernel: three correct members earn the majority bonus.
+    std::int32_t triad_score = 0;
+    CHECK(vm.triad_score(0xFFFFu, 0xFFFFu, 0xFFFFu, 0u, 1u, false,
+                         triad_score));
+    CHECK_EQ(triad_score, 5);
 
     return test_done("raw NaN16 field VM bridge");
 }

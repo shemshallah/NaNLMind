@@ -11,8 +11,9 @@
   "reserved_zero_void_head_index": 255,
   "void_incident_edge_flow": "signed_zero_only",
   "void_allowed_in_simplicial_faces": false,
-  "current_slot": "separate field register; sentinel -1",
+  "current_slot": "point 255 context register; not an incidence endpoint or face vertex",
   "root0_control_plane_policy": "preserve NANNET/BSR roles; math eligibility grants no writer permission",
   "nannet_root_remapped": false,
-  "overbootstrap_mc0_meta_enabled": false
+  "overbootstrap_mc0_meta_enabled": false,
+  "current_context_point": 255
 }

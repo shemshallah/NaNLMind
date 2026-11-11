@@ -11,7 +11,7 @@
 ;   0x231000  S- votes[85]
 ;   0x231100  S- head credits[255]
 ;   0x232000  current word per position
-;   0x233000  current field slot [word,-1,count,0] (head255 is void)
+;   0x233000  current-context slot [word,255,count,0] (255 is not an incidence endpoint)
 ;   0x234000  temporal slot records: [preceding_hash,current_word,future_hash]
 ;
 ; The raw project step merges S+ and S- into the standard meta-trihead tables
@@ -154,8 +154,7 @@ mth_ts_pre_ready:
   MOVI r9,0x3000
   MOVHI r9,0x0023
   ST r8,r9,0
-  MOVI r10,0xFFFF
-  MOVHI r10,0xFFFF
+  MOVI r10,255
   ST r10,r9,1
   ST r5,r9,2
   ST r0,r9,3

@@ -446,16 +446,18 @@ int context_train_cli(int argc, char** argv) {
                   << "backoff uses exact high-frequency 4-byte contexts plus a 3-byte fallback.\n"
                   << "backoffcopy routes unseen 3-byte contexts to a copy/unigram table.\n"
                   << "guestbackoff builds the exact/compact k=4 table and k=3 fallback route in the raw guest.\n"
+                  << "With no explicit route, 4-byte contexts select guestbackoff (the 70%+ path).\n"
                   << "eval=PATH uses a separate held-out corpus instead of a random line split.\n";
         return 2;
     }
     const std::string corpus_path = argv[2];
     std::size_t max_lines = 0, epochs = 3, report_every = 10000;
-    std::size_t buckets = 8192, context_bytes = 3, eval_every = 1;
-    float base_lr = 0.5f, train_fraction = 1.0f;
+    std::size_t buckets = 11456, context_bytes = 4, eval_every = 1;
+    float base_lr = 0.1f, train_fraction = 1.0f;
     bool backoff_mode = false;
     bool copy_backoff = false;
     bool guest_backoff = false;
+    bool route_explicit = false;
     std::size_t exact_limit_arg = 10500;
     std::size_t fallback_bytes = 3;
     std::string load_path;
@@ -472,6 +474,7 @@ int context_train_cli(int argc, char** argv) {
         if (argc > 10) train_fraction = std::stof(argv[10]);
         if (argc > 11) {
             const std::string route = argv[11];
+            route_explicit = true;
             backoff_mode = route == "backoff" || route == "backoffcopy" ||
                 route == "guestbackoff";
             copy_backoff = route == "backoffcopy";
@@ -494,6 +497,12 @@ int context_train_cli(int argc, char** argv) {
         std::cerr << "buckets 1..16384, context bytes 1..8, positive LR,"
                      " train fraction in (0,1] required\n";
         return 2;
+    }
+    // Canonical default: the measured 4-byte exact / 3-byte fallback
+    // context memory, with all routing in the raw guest.
+    if (!route_explicit && context_bytes == 4 && buckets >= 2) {
+        backoff_mode = true;
+        guest_backoff = true;
     }
     if (guest_backoff && (context_bytes != 4 || fallback_bytes != 3 ||
                           buckets < 2)) {
@@ -2163,8 +2172,8 @@ int temporal_tokenize_cli(int argc, char** argv) {
         manifest << "{\n  \"schema\": \"nanlm.temporal-tokenizer/1\",\n"
                  << "  \"preceding_context_words\": 3,\n"
                  << "  \"anticipatory_context_words\": 3,\n"
-                 << "  \"current_slot_head\": -1,\n"
-                 << "  \"head255_policy\": \"void; current slot is a separate field register\",\n"
+                 << "  \"current_slot_head\": 255,\n"
+                 << "  \"head255_policy\": \"current-context register 255; void for incidence/faces\",\n"
                  << "  \"phase_window_bytes\": 8,\n"
                  << "  \"lines\": " << lines_seen << ",\n"
                  << "  \"words\": " << total_words << ",\n"
@@ -2318,6 +2327,9 @@ int stream_train_cli(int argc, char** argv) {
     std::int64_t word_negative_score_sum = 0;
     std::int32_t word_negative_example_score = 0;
     std::int64_t word_tri_area_sum = 0, word_tri_tight_sum = 0;
+    std::int64_t word_tri_stretch_sum = 0;
+    std::size_t word_tri_stretched = 0;
+    constexpr std::int32_t kStretchThresholdQ15 = 24576;
     std::size_t word_tri_positive = 0, word_tri_negative = 0;
     std::int32_t word_path_length = 0, word_path_closure = 0;
     std::int32_t word_path_turn = 0, word_path_curvature = 0;
@@ -2326,6 +2338,11 @@ int stream_train_cli(int argc, char** argv) {
     std::int32_t word_field_value = 0;
     std::size_t word_field_hot_heads = 0, word_field_hot_triads = 0;
     std::vector<std::int32_t> first_head255_vector, last_head255_vector;
+    bool local_attention_ok = false;
+    double local_attention_energy = 0.0;
+    std::uint16_t local_attention_hot_heads = 0;
+    std::uint16_t local_attention_hot_triads = 0;
+    bool local_attention_field_hot = false;
     std::vector<std::vector<std::int32_t>> meta_history;
     std::int32_t first_head255_word = 0, last_head255_word = 0;
     bool word_field_hot = false;
@@ -2438,6 +2455,52 @@ int stream_train_cli(int argc, char** argv) {
             if (meta_history.size() >= 16) meta_history.erase(meta_history.begin());
             meta_history.push_back(word_vectors.back());
         }
+        // Attention level 1: local causal window (up to 3 back + current + 3 forward).
+        if (!word_vectors.empty()) {
+            const std::size_t local_slots =
+                std::min<std::size_t>(7, word_vectors.size());
+            const std::size_t local_begin = word_vectors.size() - local_slots;
+            std::vector<float> q(256, 0.0f), keys, values;
+            std::vector<std::uint32_t> mask;
+            for (std::size_t d = 0; d < 256; ++d)
+                q[d] = static_cast<float>(word_vectors.back()[d]) / 65536.0f;
+            for (std::size_t s = local_begin; s < word_vectors.size(); ++s) {
+                for (std::int32_t value : word_vectors[s]) {
+                    keys.push_back(static_cast<float>(value) / 65536.0f);
+                    values.push_back(static_cast<float>(value) / 65536.0f);
+                }
+                mask.push_back(1);
+            }
+            std::vector<float> local_out;
+            if (!vm.meta_attention(q, keys, values, mask, local_slots, 256,
+                                   local_out)) {
+                std::cerr << "local attention failed: " << vm.error() << "\n";
+                return 7;
+            }
+            local_attention_ok = true;
+            for (float value : local_out)
+                local_attention_energy += value < 0.0f ? -value : value;
+            std::vector<std::int32_t> local_q16;
+            local_q16.reserve(256);
+            for (float value : local_out)
+                local_q16.push_back(static_cast<std::int32_t>(value * 65536.0f));
+            std::vector<std::int32_t> lcredits, lvotes;
+            std::int32_t lfield = 0;
+            if (!vm.field_perturb(local_q16, 256, lcredits, lvotes, lfield)) {
+                std::cerr << "local attention field failed: " << vm.error() << "\n";
+                return 7;
+            }
+            std::array<std::int32_t, kTriadMemberCount> lc{};
+            std::copy(lcredits.begin(), lcredits.end(), lc.begin());
+            HotTriheadResult lhot;
+            if (!vm.hot_triheads(lc, 0, lhot)) {
+                std::cerr << "local attention trihead failed: " << vm.error() << "\n";
+                return 7;
+            }
+            local_attention_hot_heads = lhot.hot_heads;
+            local_attention_hot_triads = lhot.hot_triads;
+            local_attention_field_hot = lhot.field_hot;
+        }
         if (word_vectors.size() >= 2) {
             std::vector<std::int32_t> wbank;
             wbank.reserve(word_vectors.size() * 256);
@@ -2479,8 +2542,9 @@ int stream_train_cli(int argc, char** argv) {
             tri.insert(tri.end(), word_vectors[ti + 1].begin(), word_vectors[ti + 1].end());
             tri.insert(tri.end(), word_vectors[ti + 2].begin(), word_vectors[ti + 2].end());
             std::array<std::int32_t, 3> sides{};
-            std::int32_t area = 0, tight = 0, orient = 0;
-            if (!vm.triangle_geometry(tri, 256, sides, area, tight, orient)) {
+            std::int32_t area = 0, tight = 0, orient = 0, stretch = 0;
+            if (!vm.triangle_geometry(tri, 256, sides, area, tight, orient,
+                                      &stretch)) {
                 std::cerr << "word triangle failed: " << vm.error() << "\n";
                 return 7;
             }
@@ -2497,15 +2561,19 @@ int stream_train_cli(int argc, char** argv) {
             }
             word_triangle_records.push_back({sides[0], sides[1], sides[2],
                                              area, tight, orient, shape_score});
+            word_tri_stretch_sum += stretch;
+            const bool stretched = stretch > kStretchThresholdQ15;
+            if (stretched) ++word_tri_stretched;
             const std::size_t triad_index =
                 (ti + 2 < word_count && (ti + 2) * 6 + 2 < meta.size())
                     ? static_cast<std::uint32_t>(meta[(ti + 2) * 6 + 2] % 85)
                     : static_cast<std::uint32_t>(shape_score % 85);
-            if (!vm.shape_field_observe(triad_index, tight, orient, area)) {
+            if (!stretched &&
+                !vm.shape_field_observe(triad_index, tight, orient, area)) {
                 std::cerr << "shape field observe failed: " << vm.error() << "\n";
                 return 7;
             }
-            if (hodge_triad_count < hodge_triads.size()) {
+            if (!stretched && hodge_triad_count < hodge_triads.size()) {
                 hodge_triads[hodge_triad_count++] = {
                     static_cast<std::uint32_t>(triad_index * 3),
                     static_cast<std::uint32_t>(triad_index * 3 + 1),
@@ -2789,6 +2857,44 @@ int stream_train_cli(int argc, char** argv) {
         std::cerr << "stream hot trihead failed: " << vm.error() << "\n";
         return 7;
     }
+    bool credit_bundle_ok = false;
+    std::array<std::int32_t, 7> credit_values{};
+    {
+        CreditBundleState state;
+        const std::int32_t shape_error =
+            word_tri_tight > shape_field_mean
+                ? word_tri_tight - shape_field_mean
+                : shape_field_mean - word_tri_tight;
+        state.cft = {word_tri_sides[0], word_tri_sides[1], word_tri_sides[2],
+                     shape_error, 6553};
+        state.trail = {static_cast<std::int32_t>(word_path_length),
+                       static_cast<std::int32_t>(word_path_closure),
+                       static_cast<std::int32_t>(word_path_turn),
+                       word_path_curvature, hyper_mean, hyper_radial,
+                       word_tri_area_sum > 0 ? 32768 : 0,
+                       word_tri_tight_sum > 0 ? 32768 : 0,
+                       word_tri_positive > word_tri_negative ? 32768 : 0,
+                       32768, 32768};
+        state.holo = {word_phase_energy, word_phase_radial,
+                      static_cast<std::int32_t>(word_rotation_turn)};
+        state.ring_shift = static_cast<std::int32_t>(word_rotation_turn);
+        for (std::size_t i = 0; i < state.ring_phases.size(); ++i)
+            state.ring_phases[i] = static_cast<std::uint16_t>(
+                (i < head_credits.size() ? head_credits[i] : 0) & 0xFFFF);
+        state.leaf = {static_cast<std::int32_t>(word_path_length),
+                      static_cast<std::int32_t>(word_path_closure), 0};
+        state.tca = {static_cast<std::int32_t>(word_tri_area_sum),
+                     static_cast<std::int32_t>(word_tri_tight_sum),
+                     static_cast<std::int32_t>(word_tri_stretch_sum)};
+        state.flux = {field_value, word_field_value,
+                      static_cast<std::int32_t>(word_tri_positive),
+                      static_cast<std::int32_t>(word_tri_negative)};
+        credit_bundle_ok = vm.credit_bundle(state, credit_values);
+        if (!credit_bundle_ok) {
+            std::cerr << "credit bundle failed: " << vm.error() << "\n";
+            return 7;
+        }
+    }
     auto manifest = std::ofstream(output_prefix + ".json");
     if (manifest) {
         manifest << "{\n  \"schema\": \"nanlm.stream-train/1\",\n"
@@ -2800,8 +2906,8 @@ int stream_train_cli(int argc, char** argv) {
                  << "  \"phase_window_bytes\": 8,\n"
                  << "  \"preceding_context_words\": 3,\n"
                  << "  \"anticipatory_context_words\": 3,\n"
-                 << "  \"current_slot_head\": -1,\n"
-                 << "  \"head255_policy\": \"void; current slot is a separate field register\",\n"
+                 << "  \"current_slot_head\": 255,\n"
+                 << "  \"head255_policy\": \"current-context register 255; void for incidence/faces\",\n"
                  << "  \"current_word\": " << head255[0] << ",\n"
                  << "  \"current_slot\": " << head255[1] << ",\n"
                  << "  \"ngram_orders\": [1,2,3,4],\n"
@@ -2849,6 +2955,11 @@ int stream_train_cli(int argc, char** argv) {
                  << ", \"shape_count\": " << word_triangle_count
                  << ", \"shape_tightness_sum\": " << word_tri_tight_sum
                  << ", \"shape_area_sum\": " << word_tri_area_sum
+                 << ", \"triangle_stretch_sum\": " << word_tri_stretch_sum
+                 << ", \"triangle_stretched\": " << word_tri_stretched
+                 << ", \"triangle_stretch_threshold_q15\": " << kStretchThresholdQ15
+                 << ", \"credit_bundle_ok\": " << (credit_bundle_ok ? "true" : "false")
+                 << ", \"credit_bundle\": [" << credit_values[0] << "," << credit_values[1] << "," << credit_values[2] << "," << credit_values[3] << "," << credit_values[4] << "," << credit_values[5] << "," << credit_values[6] << "]"
                  << ", \"shape_positive\": " << triangle_orient_counts[0]
                  << ", \"shape_negative\": " << triangle_orient_counts[1]
                  << ", \"contrastive_triangles\": "
@@ -2878,6 +2989,12 @@ int stream_train_cli(int argc, char** argv) {
                  << ", \"meta_field_hot_heads\": " << meta_field_hot_heads
                  << ", \"meta_field_hot_triads\": " << meta_field_hot_triads
                  << ", \"meta_field_hot\": " << (meta_field_hot ? "true" : "false")
+                 << ", \"local_attention_ok\": " << (local_attention_ok ? "true" : "false")
+                 << ", \"local_attention_energy\": " << local_attention_energy
+                 << ", \"local_attention_hot_heads\": " << local_attention_hot_heads
+                 << ", \"local_attention_hot_triads\": " << local_attention_hot_triads
+                 << ", \"local_attention_field_hot\": " << (local_attention_field_hot ? "true" : "false")
+                 << ", \"attention_levels\": 3"
                  << ", \"current_field_first_word\": " << first_head255_word
                  << ", \"current_field_last_word\": " << last_head255_word
                  << ", \"current_field_closure\": " << head255_closure

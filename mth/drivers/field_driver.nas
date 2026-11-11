@@ -5,7 +5,7 @@
 ; Proposal args at 0x4001: current, patch, m0, m1, m2, a, b, target
 ;   results at 0x4010: votes, accepted, candidate mask, candidate rule
 ; Context readout: target/lr/bucket/buckets at 0x4001..0x4004; greedy
-;   command 25, joint head-pair routing command 30
+;   command 25, joint head-pair routing command 32, class bridge command 31
 ;   results at 0x4010: correct, loss, predicted high, predicted low
 ; Field vote: 85 masks at 0x5000, count 85 fixed
 ;   results at 0x4010: accepted count, field accepted
@@ -98,8 +98,6 @@ JMP @field_driver_entry
 .include "../nan16/mth_role_step24.nas"
 .include "../nan16/mth_role_step24k.nas"
 .include "../nan16/mth_sense_step24.nas"
-.include "../nan16/mth_context_hash.nas"
-.include "../nan16/mth_context_batch.nas"
 .include "../nan16/mth_context_copy.nas"
 .include "../nan16/mth_context_class.nas"
 .include "../nan16/mth_readout_hier.nas"
@@ -218,6 +216,15 @@ field_driver_main:
   MOVI r3,40
   CMP r2,r3
   JMP[EQ] @field_driver_context_backoff
+  MOVI r3,32
+  CMP r2,r3
+  JMP[EQ] @field_driver_readout_context_joint
+  MOVI r3,33
+  CMP r2,r3
+  JMP[EQ] @field_driver_context_copy
+  MOVI r3,34
+  CMP r2,r3
+  JMP[EQ] @field_driver_triad_score
   MOVI r3,27
   CMP r2,r3
   JMP[EQ] @field_driver_combined_all
@@ -227,7 +234,7 @@ field_driver_main:
   MOVI r3,29
   CMP r2,r3
   JMP[EQ] @field_driver_credit_bundle
-  MOVI r3,30
+  MOVI r3,31
   CMP r2,r3
   JMP[EQ] @field_driver_context_class
   ; Legacy credit opcodes 25..28 conflicted with decoder readout.
@@ -752,6 +759,19 @@ field_driver_ctxb_step:
   ST r6,r10,5
   JMP @field_driver_return
 
+field_driver_triad_score:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r6,r10,3
+  LD r7,r10,4
+  LD r8,r10,5
+  CALL @mth_triad_score
+  MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
+
 field_driver_field_commit:
   MOVI r10,0x4001
   LD r2,r10,0
@@ -1051,6 +1071,36 @@ field_driver_credit_bundle:
   CALL @mth_credit_bundle
   MOVI r10,0x4010
   ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_readout_context_joint:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r4,r10,3
+  CALL @mth_context_hier_joint
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  ST r4,r10,3
+  JMP @field_driver_return
+
+field_driver_context_copy:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r4,r10,3
+  LD r5,r10,4
+  LD r6,r10,5
+  LD r7,r10,6
+  CALL @mth_context_copy
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
   JMP @field_driver_return
 
 field_driver_context_class:
@@ -1454,6 +1504,7 @@ field_driver_geometry_triangle:
   ST r4,r10,3
   ST r5,r10,4
   ST r6,r10,5
+  ST r7,r10,6
   JMP @field_driver_return
 
 field_driver_geometry_field:

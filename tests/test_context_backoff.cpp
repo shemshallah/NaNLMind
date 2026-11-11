@@ -98,5 +98,29 @@ int main() {
         seen[step.bucket] = true;
     }
 
+    // Context-class bridge (command 31) must not collide with backoff (30).
+    ContextClassInput cls;
+    cls.direct = true;
+    cls.buckets = buckets;
+    cls.direct_high = 1;
+    cls.direct_low = 0;
+    std::array<std::int32_t, kTriadMemberCount> credits{};
+    credits.fill(0);
+    ContextClassResult mapped;
+    CHECK(vm.context_class_credit(cls, ContextCreditInput{}, credits, mapped));
+    CHECK_EQ(mapped.head, 16u);
+    CHECK_EQ(mapped.triad, 5u);
+    CHECK_EQ(mapped.member, 1u);
+    CHECK(!mapped.field_head);
+
+    cls.direct_high = 15;
+    cls.direct_low = 15;
+    ContextClassResult field;
+    CHECK(vm.context_class_credit(cls, ContextCreditInput{}, credits, field));
+    CHECK(field.field_head);
+    CHECK_EQ(field.head, 255u);
+    CHECK_EQ(field.triad, 0xFFFFu);
+    CHECK_EQ(field.member, 0xFFFFu);
+
     return test_done("raw context backoff route");
 }

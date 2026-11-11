@@ -50,6 +50,7 @@ $(NAN0S_LIB): $(NAN0S_OBJ)
 
 $(FIELD_DRIVER): mth/drivers/field_driver.nas $(wildcard mth/nan16/*.nas) $(NAN0S_NMK) | $(BUILD)
 	awk -f $(NAN0S_NMK) -v CMD=emit $< > $@.tmp
+	@test "$$(wc -l < $@.tmp)" -le 12288 || { echo "field driver exceeds 0x3000-word guest code budget"; rm -f $@.tmp; exit 1; }
 	mv $@.tmp $@
 
 $(CLI): $(BUILD)/main.o $(LIB) $(NAN0S_LIB) | $(FIELD_DRIVER)

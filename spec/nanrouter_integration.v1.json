@@ -12,7 +12,7 @@
     "void_head": 255,
     "void_pair_flow": "signed_zero_only",
     "void_in_faces": false,
-    "current_slot": "separate field register, sentinel -1"
+    "current_slot": "point 255 context register; not an incidence endpoint"
   },
   "stages": [
     "head",
@@ -28,7 +28,7 @@
     "simplicial": "mth_shape_field + 85 triads",
     "global_spectral_geometry": "mth_global_hodge256_f32 + path/triangle geometry",
     "global_focus": "43/85 shape/closure gate",
-    "return": "next word/context via head255-void current field register"
+    "return": "next word/context via point-255 context register; 255 remains void for incidence/faces"
   },
   "meta_policy": {
     "owner": "Overbootstrap MC0",

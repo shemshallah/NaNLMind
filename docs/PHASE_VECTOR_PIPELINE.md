@@ -368,7 +368,7 @@ them.
 ```text
 S+ preceding slot       3 preceding words
 S- anticipatory slot    3 following words
-C  current slot         separate field register (head 255 is void)
+C  current slot         point 255; context register, not an incidence endpoint
 ```
 
 For each word it stores:
@@ -379,7 +379,7 @@ For each word it stores:
 0x230100  S+ head credits
 0x231000  S- triad votes
 0x231100  S- head credits
-0x233000  current field slot [word,-1,index,0]
+0x233000  current-context slot [word,255,index,0]
 ```
 
 `mth_temporal_project` merges S+ and S- into the normal trihead tables, while
@@ -450,7 +450,7 @@ For the full temporally split register:
 This writes `.words.bin`, `.subwords.bin`, `.meta.bin`, `.slots.bin` and JSON.
 The slots file contains `[preceding_hash, current_word, anticipatory_hash]`
 triples. The JSON reports `preceding_context_words=3`,
-`anticipatory_context_words=3`, `current_slot_head=-1`, and the 43/85 field
+`anticipatory_context_words=3`, `current_slot_head=255`, and the 43/85 field
 state.
 
 The field result is a structural hook check, not a language-quality score;
