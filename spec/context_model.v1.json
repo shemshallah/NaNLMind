@@ -57,7 +57,7 @@
       "backoffjoint",
       "induction"
     ],
-    "six_context": "mth_six_context_poincare_attention (3 back, 3 forward, NOW=255)"
+    "six_context": "native_context6_attention / native_stream6_attention (3 back, 3 forward, NOW=255)"
   },
   "note": "73.7821% is same-corpus next-byte accuracy, not held-out language quality.",
   "restored_raw_commands": {
@@ -66,7 +66,9 @@
     "43": "mth_context_hier_joint",
     "44": "mth_context_copy",
     "45": "mth_triad_score",
-    "46": "mth_six_context_poincare_attention"
+    "107": "native_context6_attention",
+    "108": "native_hyperedge128_depth",
+    "109": "native_stream6_attention"
   },
   "line_window_diagnostics": {
     "window_lines": 2000,

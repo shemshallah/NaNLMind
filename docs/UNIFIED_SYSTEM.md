@@ -184,7 +184,9 @@ Restored raw commands:
 | 43 | `mth_context_hier_joint` | joint high/low head-pair readout |
 | 44 | `mth_context_copy` | copy/induction context route |
 | 45 | `mth_triad_score` | 2-of-3 triad objective with majority bonus |
-| 46 | `mth_six_context_poincare_attention` | 3 back + 3 forward + NOW=255 trig attention and Poincare projection |
+| 107 | `mth_context6_window_stream` selected window | six-slot target-safe trig attention |
+| 108 | `mth_hyperedge_poincare128_curl` | 128D Poincare hyperedge depth + signed curl |
+| 109 | `mth_context6_window_stream` fused | source stream -> six-slot attention -> Poincare NOW |
 
 These are the kernel-level paths removed by the earlier ABI-conflict merge.
 They are now reachable and covered by focused tests. CLI exposure for the

@@ -94,7 +94,9 @@ def parse_stream(result: dict, prefix: Path) -> dict:
     out = {k: word.get(k) for k in keys if k in word}
     for k in ("six_context_ok", "six_context_observations",
               "six_context_radius", "six_context_distance",
-              "six_context_now_head", "current_slot_head",
+              "six_context_now_head", "hyperedge128_ok",
+              "hyperedge128_radius", "hyperedge128_distance",
+              "hyperedge128_curl_feedback", "current_slot_head",
               "current_slot", "words", "temporal_contexts"):
         if k in data:
             out[k] = data[k]

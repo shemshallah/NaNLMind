@@ -119,7 +119,6 @@ JMP @field_driver_entry
 .include "../nan16/mth_credit_bundle.nas"
 .include "../nan16/mth_geometric_trail_field.nas"
 .include "../nan16/mth_spectral_trihead_tensor_proposal.nas"
-.include "../nan16/mth_six_context_poincare_attention.nas"
 .include "../nan16/mth_hyperedge_poincare128_curl.nas"
 .include "../nan16/mth_context6_window_stream.nas"
 .include "../nan16/mth_future3_causal_window.nas"
@@ -228,9 +227,6 @@ field_driver_main:
   MOVI r3,45
   CMP r2,r3
   JMP[EQ] @field_driver_triad_score
-  MOVI r3,46
-  CMP r2,r3
-  JMP[EQ] @field_driver_six_context
   MOVI r3,27
   CMP r2,r3
   JMP[EQ] @field_driver_combined_all
@@ -763,18 +759,6 @@ field_driver_ctxb_step:
   ST r4,r10,3
   ST r5,r10,4
   ST r6,r10,5
-  JMP @field_driver_return
-
-field_driver_six_context:
-  MOVI r10,0x4001
-  LD r1,r10,0
-  LD r2,r10,1
-  CALL @mth_six_context_poincare_attention
-  MOVI r10,0x4010
-  ST r1,r10,0
-  ST r2,r10,1
-  ST r3,r10,2
-  ST r4,r10,3
   JMP @field_driver_return
 
 field_driver_triad_score:

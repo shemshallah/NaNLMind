@@ -2345,6 +2345,10 @@ int stream_train_cli(int argc, char** argv) {
     std::uint16_t local_attention_hot_triads = 0;
     bool local_attention_field_hot = false;
     bool six_context_ok = false;
+    bool hyperedge128_ok = false;
+    double hyperedge128_radius = 0.0;
+    double hyperedge128_distance = 0.0;
+    double hyperedge128_curl_feedback = 0.0;
     std::size_t six_context_observations = 0;
     double six_context_radius_sum = 0.0;
     double six_context_distance_sum = 0.0;
@@ -2394,28 +2398,19 @@ int stream_train_cli(int argc, char** argv) {
             return 7;
         }
         if (word_count == 0) continue;
-        // Bidirectional six-neighbor context: 3 back, 3 forward, NOW=255.
+        // Fused native stream -> six-slot masked attention -> Poincare disk.
+        // Task 1 is masked infill; the target word is never read by the guest.
         {
-            const std::size_t now = word_count - 1;
-            std::array<std::uint32_t, 6> neighbor{};
-            std::uint32_t mask = 0;
-            for (std::size_t d = 1; d <= 3; ++d) {
-                if (now >= d) {
-                    neighbor[d - 1] = words[now - d];
-                    mask |= 1u << (d - 1);
-                }
-                if (now + d < word_count) {
-                    neighbor[3 + d - 1] = words[now + d];
-                    mask |= 1u << (3 + d - 1);
-                }
-            }
-            RawFieldVM::SixContextResult six;
-            if (vm.six_context_poincare(words[now], neighbor, mask, 1, 0, 0,
-                                        six)) {
+            const std::size_t target_index =
+                std::min<std::size_t>(3, word_count - 1);
+            NativeContext6Receipt six;
+            if (vm.native_stream6_attention(words, target_index, 1, 8192,
+                                            0, 0, six) &&
+                six.accepted) {
                 six_context_ok = true;
                 ++six_context_observations;
                 six_context_radius_sum += six.radius;
-                six_context_distance_sum += six.distance;
+                six_context_distance_sum += six.radial_distance;
             }
         }
         std::size_t contexts = 0;
@@ -2755,6 +2750,7 @@ int stream_train_cli(int argc, char** argv) {
     }
     bool hodge_ok = false;
     float hodge_divergence_l1 = 0.0f, hodge_curl_l1 = 0.0f;
+    float hodge_curl_signed = 0.0f;
     if (hodge_triad_count > 0) {
         std::vector<float> divergence, curl;
         if (!vm.global_hodge_from_triads(hodge_triads, hodge_triad_count,
@@ -2763,6 +2759,7 @@ int stream_train_cli(int argc, char** argv) {
             return 7;
         }
         hodge_ok = true;
+        if (!curl.empty()) hodge_curl_signed = curl[0];
         for (float value : divergence)
             hodge_divergence_l1 += value < 0.0f ? -value : value;
         for (float value : curl)
@@ -2924,6 +2921,26 @@ int stream_train_cli(int argc, char** argv) {
             return 7;
         }
     }
+    if (!last_head255_vector.empty()) {
+        std::array<float, 128> sourced{};
+        const auto& source = sample_bank.size() >= 128
+                                 ? sample_bank
+                                 : last_head255_vector;
+        const std::size_t source_base =
+            source.size() >= 128 ? source.size() - 128 : 0;
+        for (std::size_t d = 0; d < sourced.size() &&
+                                source_base + d < source.size(); ++d)
+            sourced[d] = static_cast<float>(source[source_base + d]) / 65536.0f;
+        NativeHyperedge128Receipt hyper;
+        if (vm.native_hyperedge128_depth(sourced, {0, 1, 2},
+                                         hodge_curl_signed, 0, 0, hyper) &&
+            hyper.accepted) {
+            hyperedge128_ok = true;
+            hyperedge128_radius = hyper.radius;
+            hyperedge128_distance = hyper.radial_distance;
+            hyperedge128_curl_feedback = hyper.signed_curl_feedback;
+        }
+    }
     auto manifest = std::ofstream(output_prefix + ".json");
     if (manifest) {
         manifest << "{\n  \"schema\": \"nanlm.stream-train/1\",\n"
@@ -2943,6 +2960,10 @@ int stream_train_cli(int argc, char** argv) {
                  << "  \"six_context_radius\": " << (six_context_observations ? six_context_radius_sum / six_context_observations : 0.0) << ",\n"
                  << "  \"six_context_distance\": " << (six_context_observations ? six_context_distance_sum / six_context_observations : 0.0) << ",\n"
                  << "  \"six_context_now_head\": 255,\n"
+                 << "  \"hyperedge128_ok\": " << (hyperedge128_ok ? "true" : "false") << ",\n"
+                 << "  \"hyperedge128_radius\": " << hyperedge128_radius << ",\n"
+                 << "  \"hyperedge128_distance\": " << hyperedge128_distance << ",\n"
+                 << "  \"hyperedge128_curl_feedback\": " << hyperedge128_curl_feedback << ",\n"
                  << "  \"ngram_orders\": [1,2,3,4],\n"
                  << "  \"ngram_top_k\": 64,\n"
                  << "  \"codebook_codewords\": " << codebook_codewords << ",\n"
