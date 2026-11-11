@@ -9,6 +9,8 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <cstring>
+#include <limits>
 #include <deque>
 #include <stdexcept>
 #include <string>
@@ -317,6 +319,97 @@ public:
         arena_.stage_native_value(head.proposer,head.h,head.b,head.a,
                                   temporal.poincare_y);
         return 2;
+    }
+
+    // Three-step causal prediction remains a SINGLE original frozen-48M
+    // decoder. A new guest measurement is required after EVERY generated
+    // word; the caller may pass only the decoder's own previous predictions.
+    // Native NaN16 opcode112 performs window selection, CORDIC, masked MC0,
+    // Poincare geometry; this transport stores ALL three snapshots as typed
+    // TemporalContext leaves at the SAME directed candidate tensor address.
+    // Tensor scalar x/y lanes show the most recent proposal, while uniquely
+    // keyed horizon leaves preserve earlier native observations. Real Hodge,
+    // 2/3 triad votes and committed-history MC0 must already have been
+    // sourced: fixture-only evidence never authorizes ACTIVE promotion.
+    bool measure_stage_native_future3_horizon(
+        const Native48MFeedbackReceipt& measured_field,
+        const std::vector<std::uint32_t>& observed_word_ids,
+        const std::array<std::uint32_t,3>& decoder_generated_prefix,
+        std::uint8_t generated_count,
+        std::uint32_t expected_source_epoch,
+        std::uint32_t actual_source_epoch,
+        std::uint64_t expected_tensor_generation,
+        std::uint64_t first_logical_leaf_id,
+        const std::string& source_sha256,
+        NativeContext6Receipt& horizon) {
+        horizon={};
+        if (!valid_tensor_leaf_sha256(source_sha256) ||
+            first_logical_leaf_id==0u ||
+            first_logical_leaf_id>std::numeric_limits<std::uint64_t>::max()-2u)
+            throw std::invalid_argument("future3 requires authenticated source digest and leaf ID range");
+        if (!arena_.candidate_open() ||
+            arena_.generation()!=expected_tensor_generation)
+            throw std::logic_error("future3 candidate generation stale or closed");
+        if (!measured_field.native_measured ||
+            !measured_field.has_admitted_faces ||
+            !measured_field.meta_available ||
+            !measured_field.candidate_staged ||
+            measured_field.proposer>=255u ||
+            !arena_.candidate_writer_allowed(measured_field.proposer))
+            throw std::logic_error("future3 requires sourced head/trihead Hodge and meta evidence");
+        if (!vm_.native_future3_causal_attention(
+                observed_word_ids,decoder_generated_prefix,generated_count,
+                expected_source_epoch,actual_source_epoch,horizon))
+            throw std::runtime_error("native future3 guest: "+vm_.error());
+        if (!horizon.accepted) return false; // guest denied; no candidate mutation
+        if (horizon.horizon!=generated_count+1u || horizon.task!=0u ||
+            horizon.now_head!=255u || horizon.mask==0u ||
+            (horizon.mask&0x38u)!=0u)
+            throw std::logic_error("native future3 horizon/cause contract violated");
+        TensorDataLeaf leaf{};
+        leaf.kind=TensorLeafKind::TemporalContext;
+        leaf.logical_leaf_id=first_logical_leaf_id+horizon.horizon-1u;
+        leaf.source_generation=expected_tensor_generation;
+        leaf.source_sha256=source_sha256;
+        // Transport the GUEST measurement without independently recomputing
+        // trig, hyperbolic depth, Hodge curl or MC0. Portable little-endian
+        // storage: 'NF31', horizon/mask/NOW/count, anchor, x/y/r/depth,
+        // native curl, divergence, MC0 credit, triad quorum, source epoch.
+        leaf.payload={'N','F','3','1',horizon.horizon,horizon.mask,
+                      horizon.now_head,horizon.valid_count};
+        const auto append_u32=[&](std::uint32_t word){
+            for(unsigned i=0;i<4u;++i)
+                leaf.payload.push_back(static_cast<std::uint8_t>(word>>(8u*i)));
+        };
+        const auto append_f32=[&](float native_word){
+            std::uint32_t bits=0u;
+            static_assert(sizeof(bits)==sizeof(native_word));
+            std::memcpy(&bits,&native_word,sizeof(bits));
+            append_u32(bits);
+        };
+        append_u32(horizon.observed_anchor);
+        append_f32(horizon.poincare_x);
+        append_f32(horizon.poincare_y);
+        append_f32(horizon.radius);
+        append_f32(horizon.radial_distance);
+        append_f32(measured_field.curl[0]);
+        append_f32(measured_field.divergence[measured_field.h]);
+        append_f32(measured_field.native_log_weight);
+        append_u32(measured_field.accepted_triads);
+        append_u32(expected_source_epoch);
+        // A failed data-leaf attach must also discard newly staged scalars,
+        // rather than leaving a candidate with incomplete provenance.
+        try {
+            stage_native_temporal_poincare_feedback(measured_field,horizon);
+            if(!arena_.attach_candidate_leaf(
+                   measured_field.proposer,measured_field.h,
+                   measured_field.a,measured_field.b,leaf))
+                throw std::logic_error("future3 duplicate horizon leaf identity");
+        } catch (...) {
+            arena_.abort_candidate(); // ACTIVE bank remains unchanged
+            throw;
+        }
+        return true;
     }
 
     // Allow the dynamic hottrihead map to propose from all 255 heads
