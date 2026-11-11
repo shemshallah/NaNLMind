@@ -1,0 +1,27 @@
+name: Retire verified fully merged legacy branches
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/retire_fully_merged_branches.sh'
+      - '.github/workflows/retire-merged-branches.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  retire-ancestor-only:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: nanlmind-verified-branch-retirement
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Verify and retire ancestor-only legacy branch refs
+        run: |
+          bash scripts/retire_fully_merged_branches.sh --dry-run
+          bash scripts/retire_fully_merged_branches.sh --execute
+          git fetch --prune origin
+          echo "Only refs with zero unique commits are eligible for deletion."
