@@ -1,0 +1,272 @@
+{
+  "schema": "nanlm.branch-reconciliation/1",
+  "snapshot_date": "2026-11-11",
+  "canonical_target": "main",
+  "cohort": "hermes_and_native_math",
+  "branches": [
+    {
+      "branch": "feat/hermes-n16t-dispatch-recovery-portal",
+      "status": "review_required",
+      "ahead_by": 7,
+      "behind_by": 229,
+      "changed_files": [
+        {
+          "path": "docs/HERMES_ROUTER_LEASE_INTEGRATION.md",
+          "status": "modified"
+        },
+        {
+          "path": "integration/hermes_cross_repo_smoke.py",
+          "status": "modified"
+        },
+        {
+          "path": "runner/hermes_router_delegate.py",
+          "status": "modified"
+        },
+        {
+          "path": "runner/training_merge.py",
+          "status": "modified"
+        },
+        {
+          "path": "tests/test_hermes_router_delegation.py",
+          "status": "modified"
+        }
+      ],
+      "notes": "Historical divergent source; retain until verified."
+    },
+    {
+      "branch": "feat/hermes-router-lease-delegation",
+      "status": "review_required",
+      "ahead_by": 21,
+      "behind_by": 230,
+      "changed_files": [
+        {
+          "path": ".github/workflows/hermes-cross-repo-smoke.yml",
+          "status": "added"
+        },
+        {
+          "path": ".github/workflows/hermes-portal-image.yml",
+          "status": "added"
+        },
+        {
+          "path": ".github/workflows/hermes-router-delegation.yml",
+          "status": "added"
+        },
+        {
+          "path": "deploy/training_merge/Dockerfile",
+          "status": "modified"
+        },
+        {
+          "path": "deploy/training_merge/start_portal.sh",
+          "status": "modified"
+        },
+        {
+          "path": "docs/HERMES_ROUTER_LEASE_INTEGRATION.md",
+          "status": "added"
+        },
+        {
+          "path": "integration/hermes_cross_repo_smoke.py",
+          "status": "added"
+        },
+        {
+          "path": "nanlmind_nannet/auth.py",
+          "status": "modified"
+        },
+        {
+          "path": "runner/hermes_router_delegate.py",
+          "status": "added"
+        },
+        {
+          "path": "runner/training_merge.py",
+          "status": "modified"
+        },
+        {
+          "path": "tests/test_hermes_router_delegation.py",
+          "status": "added"
+        }
+      ],
+      "notes": "Historical divergent source; retain until verified."
+    },
+    {
+      "branch": "feat/v2-geometric-trail-field-credit",
+      "status": "partially_ported_remaining_diff_review_required",
+      "ahead_by": 2,
+      "behind_by": 172,
+      "changed_files": [
+        {
+          "path": "docs/GEOMETRIC_CREDIT_REPLACEMENTS.md",
+          "status": "modified"
+        },
+        {
+          "path": "mth/drivers/field_driver.nas",
+          "status": "modified"
+        },
+        {
+          "path": "mth/nan16/mth_geometric_trail_field.nas",
+          "status": "added"
+        },
+        {
+          "path": "mth/tests/mth_geometric_field_train_test.nas",
+          "status": "added"
+        },
+        {
+          "path": "tools/run_nan16_fixtures.py",
+          "status": "modified"
+        }
+      ],
+      "notes": "255-head two-rail geometric TRAIL batch, kernel, fixture ported to main under noncolliding command 41; retain branch until remaining diff reconciled."
+    },
+    {
+      "branch": "feature/hermes-native-gated-free-chat-20261108",
+      "status": "review_required",
+      "ahead_by": 7,
+      "behind_by": 228,
+      "changed_files": [
+        {
+          "path": ".github/workflows/hermes-free-chat-native.yml",
+          "status": "added"
+        },
+        {
+          "path": "docs/83_HERMES_NATIVE_GATED_FREE_CHAT.md",
+          "status": "added"
+        },
+        {
+          "path": "runner/hermes_free_chat.py",
+          "status": "added"
+        },
+        {
+          "path": "tests/test_hermes_free_chat.py",
+          "status": "added"
+        }
+      ],
+      "notes": "Historical divergent source; retain until verified."
+    },
+    {
+      "branch": "feature/mth-seven-credit-nanlm-train-20261109",
+      "status": "partially_ported_remaining_diff_review_required",
+      "ahead_by": 17,
+      "behind_by": 150,
+      "changed_files": [
+        {
+          "path": ".github/workflows/mth-seven-credit-verify.yml",
+          "status": "added"
+        },
+        {
+          "path": "Makefile",
+          "status": "modified"
+        },
+        {
+          "path": "docs/MTH_SEVEN_NATIVE_TRAIN.md",
+          "status": "added"
+        },
+        {
+          "path": "include/nanlm/raw_field.hpp",
+          "status": "modified"
+        },
+        {
+          "path": "mth/drivers/field_driver.nas",
+          "status": "modified"
+        },
+        {
+          "path": "src/raw_field.cpp",
+          "status": "modified"
+        },
+        {
+          "path": "tests/fixtures/mth-seven-positive.n16mth",
+          "status": "added"
+        },
+        {
+          "path": "tests/fixtures/mth-seven-rejected.n16mth",
+          "status": "added"
+        },
+        {
+          "path": "tests/test_raw_field.cpp",
+          "status": "modified"
+        },
+        {
+          "path": "tools/nanlm_mth_train.cpp",
+          "status": "added"
+        }
+      ],
+      "notes": "Native HOLO/RING/LEAF/TCA/FLUX dispatch and seven-credit bundle now on main. Separate 8D training executable and unreviewed branch files NOT blindly merged."
+    },
+    {
+      "branch": "fix/bs0-hw4-wordnet-hw5-255-allocation",
+      "status": "review_required",
+      "ahead_by": 5,
+      "behind_by": 230,
+      "changed_files": [
+        {
+          "path": "integrations/nannet/README.md",
+          "status": "modified"
+        },
+        {
+          "path": "integrations/nannet/portal.html",
+          "status": "modified"
+        },
+        {
+          "path": "integrations/nannet/server.py",
+          "status": "modified"
+        },
+        {
+          "path": "integrations/nannet/test_server.py",
+          "status": "modified"
+        },
+        {
+          "path": "nanlmind_nannet/devices.py",
+          "status": "modified"
+        }
+      ],
+      "notes": "Historical divergent source; retain until verified."
+    },
+    {
+      "branch": "math-preflight-integration",
+      "status": "review_required",
+      "ahead_by": 17,
+      "behind_by": 234,
+      "changed_files": [
+        {
+          "path": ".github/workflows/ci.yml",
+          "status": "modified"
+        },
+        {
+          "path": "docs/82_MATHEMATICAL_CATALOG_AND_LAYER_UNIFICATION.md",
+          "status": "modified"
+        },
+        {
+          "path": "runner/README.md",
+          "status": "modified"
+        },
+        {
+          "path": "runner/math_preflight.py",
+          "status": "added"
+        },
+        {
+          "path": "runner/nanlm-cpu-runner.yml",
+          "status": "modified"
+        },
+        {
+          "path": "runner/nanlm_worker.py",
+          "status": "modified"
+        }
+      ],
+      "notes": "Historical divergent source; retain until verified."
+    },
+    {
+      "branch": "math-preflight-mainline-assets",
+      "status": "review_required",
+      "ahead_by": 2,
+      "behind_by": 231,
+      "changed_files": [
+        {
+          "path": ".github/workflows/ci.yml",
+          "status": "modified"
+        },
+        {
+          "path": "docs/82_MATHEMATICAL_CATALOG_AND_LAYER_UNIFICATION.md",
+          "status": "modified"
+        }
+      ],
+      "notes": "Historical divergent source; retain until verified."
+    }
+  ]
+}
