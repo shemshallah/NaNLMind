@@ -1,6 +1,8 @@
 #include "nanlm/raw_field.hpp"
 #include "test_util.hpp"
 
+#include <cmath>
+
 using namespace nanlm;
 
 int main() {
@@ -68,6 +70,23 @@ int main() {
         CHECK(score > 60000);
         CHECK(vm.triangle_model_score_contrastive(sides, 3000, 5000, score));
         CHECK(score < 5000);
+    }
+
+    // Global 256-head Hodge: oriented 0->1->2 triangle has zero divergence
+    // and curl +3 from canonical pair flows.
+    {
+        std::array<float, 32640> flows{};
+        flows[0] = 1.0f;    // 0 -> 1
+        flows[255] = 1.0f;  // 1 -> 2
+        flows[1] = -1.0f;   // low 0 -> high 2, so 2 -> 0 is +1
+        std::vector<std::array<std::uint32_t, 3>> faces = {{{0, 1, 2}}};
+        std::array<float, 256> divergence{};
+        std::array<float, 16> curl{};
+        const bool hodge_ok = vm.global_hodge(flows, faces, divergence, curl);
+        if (!hodge_ok) std::cerr << "hodge error: " << vm.error() << "\n";
+        CHECK(hodge_ok);
+        CHECK(std::fabs(curl[0] - 3.0f) < 1e-5f);
+        for (float value : divergence) CHECK(std::fabs(value) < 1e-6f);
     }
 
     return test_done("dual-head self-modification");
