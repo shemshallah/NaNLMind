@@ -219,6 +219,86 @@ bool RawFieldVM::native_stream6_attention(
     return true;
 }
 
+// ABI-only bridge: the NaN16 guest builds a fresh causal prefix for each
+// horizon, then runs the existing CORDIC/MC0/Poincare code. The source may
+// include the original 48M's own earlier generated predictions ONLY.
+bool RawFieldVM::native_future3_causal_attention(
+    const std::vector<std::uint32_t>& observed_word_ids,
+    const std::array<std::uint32_t,3>& generated_prefix,
+    std::uint8_t generated_count,
+    std::uint32_t expected_generation,std::uint32_t current_generation,
+    NativeContext6Receipt& receipt) {
+    receipt={};
+    if(!vm_)return fail("native future3: VM unavailable");
+    if(observed_word_ids.empty()||observed_word_ids.size()>4096u||
+       generated_count>2u)
+        return fail("native future3: observed/generated count invalid");
+    constexpr std::uint32_t kObserved=0x003E6000u;
+    constexpr std::uint32_t kGenerated=0x003E5000u;
+    constexpr std::uint32_t kRequest=0x003E4000u;
+    constexpr std::uint32_t kOutput=0x003E4100u;
+    for(std::uint32_t i=0;i<observed_word_ids.size();++i)
+        if(!write_word(kObserved+i,observed_word_ids[i]))
+            return fail("native future3: observed transport failed");
+    // A future/poison value beyond generated_count may be present; the
+    // native kernel is explicitly forbidden to read that position.
+    for(std::uint32_t i=0;i<3u;++i)
+        if(!write_word(kGenerated+i,generated_prefix[i]))
+            return fail("native future3: generated transport failed");
+    const std::array<std::uint32_t,4> args={
+        static_cast<std::uint32_t>(observed_word_ids.size()),
+        generated_count,expected_generation,current_generation};
+    for(std::uint32_t i=0;i<args.size();++i)
+        if(!write_word(kProposalBase+i,args[i]))
+            return fail("native future3: command transport failed");
+    if(!write_word(kCommandBase,112u)||!run_command())
+        return fail("native future3: NaN16 dispatch failed: "+error_);
+    const auto accepted=read_word(kResultBase);
+    const auto count=read_word(kResultBase+1);
+    const auto horizon=read_word(kResultBase+2);
+    const auto reason=read_word(kResultBase+3);
+    if(accepted==0u){
+        if(count!=0u||horizon!=0u||reason<1u||reason>4u)
+            return fail("native future3: malformed native rejection");
+        receipt.reason=static_cast<std::uint8_t>(reason);
+        return true;
+    }
+    if(accepted!=1u||count==0u||count>3u||
+       horizon!=static_cast<std::uint32_t>(generated_count)+1u||reason!=0u)
+        return fail("native future3: malformed horizon receipt");
+    const auto mask=read_word(kOutput+4);
+    const auto task=read_word(kOutput+5);
+    const auto now=read_word(kOutput+6);
+    const auto anchor=read_word(kOutput+7);
+    if(mask==0u||mask>7u||task!=0u||now!=255u||anchor==0u||
+       mask!=read_word(kRequest+7)||read_word(kRequest+0)!=anchor||
+       read_word(kRequest+4)!=0u||read_word(kRequest+5)!=0u||
+       read_word(kRequest+6)!=0u||read_word(kRequest+8)!=0u)
+        return fail("native future3: causal future leakage or NOW mismatch");
+    const auto decode=[&](std::uint32_t offset){
+        const std::uint32_t bits=read_word(kOutput+offset);
+        float value=0.0f;
+        std::memcpy(&value,&bits,sizeof(value));
+        return value;
+    };
+    const float x=decode(0),y=decode(1),radius=decode(2),depth=decode(3);
+    if(!std::isfinite(x)||!std::isfinite(y)||!std::isfinite(radius)||
+       !std::isfinite(depth)||radius<0.0f||radius>=1.0f||depth<0.0f)
+        return fail("native future3: malformed guest Poincare measurement");
+    receipt.accepted=true;
+    receipt.valid_count=static_cast<std::uint8_t>(count);
+    receipt.task=0;
+    receipt.horizon=static_cast<std::uint8_t>(horizon);
+    receipt.mask=static_cast<std::uint8_t>(mask);
+    receipt.now_head=255;
+    receipt.observed_anchor=anchor;
+    receipt.poincare_x=x;
+    receipt.poincare_y=y;
+    receipt.radius=radius;
+    receipt.radial_distance=depth;
+    return true;
+}
+
 bool RawFieldVM::native_head16_vector(
     std::uint8_t head,const std::array<float,128>& source_vector,
     std::uint16_t learned_truth_mask,std::uint16_t xor_candidate_patch,
