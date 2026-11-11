@@ -503,7 +503,7 @@ mpt_debug_pair_hex:
 mpt_debug_digit:
   ADDI r10,r10,48
   PUTC r10
-  SUBI r8,r8,1
+  ADDI r8,r8,-1
   CMP r8,r0
   JMP[GT] @mpt_debug_pair_hex
   MOVI r8,48
