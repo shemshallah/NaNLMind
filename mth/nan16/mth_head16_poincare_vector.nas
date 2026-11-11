@@ -39,7 +39,7 @@ mth_head16_poincare_measure:
   SHL r9,r1,8
   ADD r8,r8,r9
   ST r15,r8,190
-  ST r1,r8,191
+  ST r1,r0,@h16_head
   MOVI r10,1
   LD r11,r8,132
   CMP r11,r10
@@ -59,10 +59,7 @@ mth_head16_poincare_measure:
   ADD r1,r11,r0
   CALL @mth_bool_lowbit
   ; r2 selected rule; mth_bool_eval rewrites one shared NaN16 BOOL opcode.
-  MOVI r8,0
-  MOVHI r8,0x003B
-  LD r9,r8,191         ; use saved head elsewhere? see reload below
-  ; Reconstruct from a separate retained head number, not from r9.
+  ; Reconstruct independent head-local scratch after BOOL helper.
   LD r9,r0,@h16_head
   SHL r8,r9,8
   MOVI r10,0
