@@ -66,6 +66,7 @@ Field-driver commands:
 | 99 | `mth_global_hodge256_f32` | B1 divergence + B2^T curl from 32,640 float flows |
 | 100 | `mth_global_hodge256_q16` | Q16 matrix-flows adapter for the same Hodge path |
 | 101 | `mth_triangle_flow_build` | semantic triangles -> oriented 32,640-pair flows |
+| 102 | `mth_meta_attention16_f32` | masked softmax attention over 16 committed slots |
 | 93 | `mth_tri_model_observe_negative` | accumulate negative-shape stats |
 | 94 | `mth_tri_model_score_contrast` | positive-vs-negative shape score |
 | 72 | `mth_leaf_verify` | reconstruct codebook+residual, L1 accept/reject |
@@ -885,6 +886,48 @@ rejects any simplicial face containing it. The Q16 adapter
 guest memory, admits the first 16 hot triads as oriented faces, and publishes
 divergence/curl. `phase-ingest` now runs that path after matrix credits and
 records `hodge_ok`, `hodge_divergence_l1` and `hodge_curl_l1` in its manifest.
+
+### MC0 meta attention
+
+`mth_meta_attention16_f32.nas` is the MC0-compatible meta stage: masked
+Q/K/V attention over up to 16 committed global-summary slots, with stable
+softmax, D up to 256 and an era/future mask. `stream-train` keeps the last 16
+line summaries, runs the meta attention, perturbs its context through the
+head/field path, and reports `meta_attention_ok`, `meta_context_energy`,
+`meta_field_hot_heads`, `meta_field_hot_triads` and `meta_field_hot`.
+
+### Matched baselines
+
+`tools/matched_baseline_eval.py` evaluates the raw tensor scores against the
+same split and valid-selected threshold:
+
+```text
+constant majority
+source-prior confidence
+deterministic random
+shape-only score
+raw global model
+```
+
+Current N16TRI test results:
+
+```text
+shape_only       AUC 0.6486  BA 0.6251
+source_prior     AUC 0.6379  BA 0.7085
+raw_global_model AUC 0.5659  BA 0.5980
+```
+
+This is an important negative result: the raw global model is currently weaker
+than the source-prior and shape-only controls. The corpus/geometry wiring is
+real; semantic discrimination is not yet established.
+
+### Actual NaNROUTER corpus ingest
+
+The verified `corpora-short-stories-0001` release was downloaded, its
+`SHA256SUMS` checked, and a book-disjoint 80/20 split was made from 100 books.
+`stream-train` processed 20,000 train lines and 10,000 held-out lines; the
+256-d 8×256 codebook and byte ngrams were produced. Metadata is recorded in
+`spec/nannet_ingest_result.v1.json`.
 
 ### Source-disjoint relation corpus and calibration
 
