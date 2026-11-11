@@ -44,6 +44,26 @@ There are 256 real palindrome points; 255 is the VOID/global head, so the traina
 
 Local work tested the original frozen R25 emitter with known word government and OOV neurogenomics. Unmodified candidate probability matched the original exactly; a nonzero finite test candidate normalized correctly. This is a readout test, not evidence of a trained tensor improving loss.
 
+## Verified native feedback path (continuation)
+
+The live guest execution interface now has `include/nanlm/native48m_feedback.hpp` and `tools/nanlm48m_native_emit.cpp`. The latter consumes two separately supplied source text windows, calls the real NaN16 tokenizer, invokes raw phase/trihead/Hodge/MC0 operations, and emits a candidate-only JSON receipt for the original 48M decoder. The first window is committed into the attention history before the second is evaluated. The 20D MC0 query/key/value feature contract is strictly: 16 phase channels, native field signal, native trihead credit of the authorized proposer, native Hodge divergence at the target head, and native Hodge curl of the first admitted face. These are guest-produced measurements packaged by the host, not independently trained host embeddings. Existing `mth_meta_attention16_f32.nas` computes the attention and `mth_hypertensor256_mirror_dual_map.nas` validates addresses before any candidate write.
+
+The native trihead credit loop was repaired: it now writes **exactly 3 selected head credits**, not 85. The guest fixture explicitly scans all 255 head-credit positions for unintended writes. The C++ `RawFieldVM::meta_attention` bridge now reports guest rejection for all-invalid masks rather than accepting stale output.
+
+Example *candidate-only local smoke* (not live NANNET training):
+
+```sh
+make -j2 build/nanlm48m-native-emit
+printf 'the bright river reflects the light and gentle sky' > /tmp/past.txt
+printf 'a quiet bird moves above the river as clouds drift' > /tmp/current.txt
+./build/nanlm48m-native-emit /tmp/past.txt /tmp/current.txt 'the bright river' bird /tmp/candidate.json
+python3 tools/decoder48m_candidate.py --archive-root /path/to/R27/experiment_archive --candidate /tmp/candidate.json --output /tmp/decoder-score.json
+```
+
+`tools/decoder48m_candidate.py` verifies both SHA-256 checkpoint anchors and receipt constraints; the scored word distribution is exactly normalized over the original 48M model's known and unseen spellings. Optional `--dev-panel /path/panel.json` computes baseline/candidate exact-word NLL diagnostics, but cannot promote the active tensor. Native origin claims in JSON are **not cryptographic attestation**; the runtime must enforce actual writer capabilities, generation leases, source disjointness and atomic journaling outside this local test program. The CLI deliberately uses an explicitly authorized local test head 3 and supplies no external pair-flow faces, so the resulting candidate has **no admissible global Hodge evidence** and must not be promoted.
+
+CI executes `build/test_native48m_feedback`, the native receipt CLI, the guest fixtures and the Python exact-word normalization tests; CI does not have the private Library archive and therefore cannot claim full archived-weight validation from its own workflow. An independent local execution did reopen the complete original R27 archive, verified both SHA-256 anchors and successfully scored known/unseen words with the real frozen R25 emitter.
+
 ## Remaining implementation and repository cleanup
 Wire actual native runner vector frames to guest trihead/Hodge/meta outputs, external candidate value writes, and emitted decoder log-weight proposals; independently test automatic meta feedback and transaction journaling. Obtain new disjoint Gutenberg data before enabling promotion.
 
