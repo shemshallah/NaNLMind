@@ -1,0 +1,44 @@
+{
+  "schema": "nanlm.native48m-frozen-readout-audit/1",
+  "status": "one_native_candidate_readout_not_heldout",
+  "native_ci_job": "https://github.com/shemshallah/NaNLMind/actions/runs/43037680195/job/130580783264",
+  "native_receipt": {
+    "schema": "nanlm.48m-native-feedback/1",
+    "context": "the bright river",
+    "candidate_word": "bird",
+    "native_log_weight": 0.994537354,
+    "proposer": 3,
+    "tensor_coordinates": [
+      7,
+      2,
+      3
+    ],
+    "triads_accepted": 17,
+    "field_accepted": false,
+    "has_admitted_faces": false,
+    "committed_past_slots": 1
+  },
+  "original_48m": {
+    "archive": "palindromic_language_R27_48M_INDEPENDENT_GUTENBERG_FULL.zip",
+    "base_sha256": "299a91daf65c8e66fe3489940371d262afef18dd2ef6fef61947ac14c62bb717",
+    "overlay_sha256": "62bf1e5defbb8224d795db16a8e6959cc9aa3d7fed8a63346c4cee205a1bea04",
+    "decoder": "hybrid_v25_emit.Emitter",
+    "original_checkpoint_training_events": 48000000,
+    "new_checkpoint_training_events": 0
+  },
+  "exact_readout": {
+    "baseline_probability": 0.000001245508620217563,
+    "candidate_probability": 0.000003367192156532477,
+    "normalizer": 1.0000021216906805,
+    "baseline_surprise_nats": 13.595966581178152,
+    "candidate_surprise_nats": 12.601431348866582
+  },
+  "limitations": [
+    "One selected candidate word; not disjoint validation, not a corpus-level language improvement",
+    "Native field quorum 17/85 fails 43/85 acceptance threshold",
+    "No admitted global Hodge faces in CLI local smoke",
+    "Frozen decoder trained weights and active tensor unchanged",
+    "Original 48M archive was opened locally, not stored or trained in GitHub CI"
+  ],
+  "tensor_promotion": false
+}
