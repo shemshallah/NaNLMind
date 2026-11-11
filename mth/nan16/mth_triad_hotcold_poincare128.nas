@@ -44,6 +44,7 @@ mth_triad_hotcold_poincare128:
   JMP[LT] @thc_bad_slot
   CMP r2,r0
   JMP[EQ] @thc_bad_slot
+  ST r15,r0,@thc_link
   ST r1,r0,@thc_t
   ST r2,r0,@thc_map
   ST r3,r0,@thc_curl
@@ -283,7 +284,7 @@ thc_gradient_ready:
   ST r11,r10,13
   MOVI r11,1
   ST r11,r10,14             ; native eligibility gradient, not BPTT
-  LD r15,r10,15
+  LD r15,r0,@thc_link
   MOVI r1,1
   LD r2,r0,@thc_hot
   MOVI r3,3
@@ -305,18 +306,16 @@ thc_bad_writer:
 thc_bad_credit:
   MOVI r4,5
 thc_reject:
-  ; Internal errors must preserve the original call link. The caller's
-  ; private trihead metadata is not approved on error.
-  LD r10,r0,@thc_meta
-  CMP r10,r0
-  JMP[EQ] @thc_no_meta_link
-  LD r15,r10,15
-thc_no_meta_link:
+  ; Always restore this invocation's return link even when preflight
+  ; rejected before meta scratch was assigned. Never use stale trihead meta.
+  LD r15,r0,@thc_link
 thc_reject_no_link:
   MOVI r1,0
   MOVI r2,0
   MOVI r3,0
   RET
+thc_link:
+  .word 0
 thc_t:
   .word 0
 thc_map:
