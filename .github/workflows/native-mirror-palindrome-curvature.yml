@@ -5,6 +5,17 @@ on:
     paths:
       - 'mth/nan16/mth_mirror_triangle_*.nas'
       - 'mth/tests/mth_mirror_triangle_field_test.nas'
+      - 'mth/nan16/mth_mirror_rail_gradient.nas'
+      - 'mth/nan16/mth_head16_poincare_vector.nas'
+      - 'mth/nan16/mth_hyperedge_poincare128_curl.nas'
+      - 'mth/nan16/mth_q16_sin_cos.nas'
+      - 'mth/nan16/mth_bool_dynamic.nas'
+      - 'include/nanlm/raw_field.hpp'
+      - 'include/nanlm/native_mirror_triangle_leaf_feedback.hpp'
+      - 'src/raw_field.cpp'
+      - 'tests/test_native_mirror_triangle_field.cpp'
+      - 'tools/run_nan16_fixtures.py'
+      - 'Makefile'
       - 'mth/drivers/field_driver.nas'
       - '.github/workflows/native-mirror-palindrome-curvature.yml'
   workflow_dispatch:
@@ -31,6 +42,10 @@ jobs:
         run: |
           set -euo pipefail
           awk -f nan0s/tools/nmk.awk -v CMD=emit mth/tests/mth_mirror_triangle_field_test.nas > /tmp/mirror_triangles.nan
-          nan0s/aarch64/android/nan_cli --img /tmp/mirror_triangles.nan --steps 25000000 --serial > /tmp/mirror_triangles.log 2>&1
+          set +e
+          nan0s/aarch64/android/nan_cli --img /tmp/mirror_triangles.nan --steps 100000000 --serial > /tmp/mirror_triangles.log 2>&1
+          guest_status=$?
+          set -e
           cat /tmp/mirror_triangles.log
+          test "$guest_status" -eq 0
           grep -q '^MTH MIRROR PALINDROME TRIANGLE CURL RECOVERY POINCARE PASS' /tmp/mirror_triangles.log
