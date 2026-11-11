@@ -2181,6 +2181,7 @@ int temporal_tokenize_cli(int argc, char** argv) {
                  << "  \"temporal_contexts\": " << total_contexts << ",\n"
                  << "  \"current_word\": " << head255[0] << ",\n"
                  << "  \"current_slot\": " << head255[1] << ",\n"
+
                  << "  \"accepted_triads\": " << accepted << ",\n"
                  << "  \"field_hot\": " << (field_accepted ? "true" : "false") << ",\n"
                  << "  \"hot_heads\": " << hot.hot_heads << ",\n"
@@ -2343,6 +2344,10 @@ int stream_train_cli(int argc, char** argv) {
     std::uint16_t local_attention_hot_heads = 0;
     std::uint16_t local_attention_hot_triads = 0;
     bool local_attention_field_hot = false;
+    bool six_context_ok = false;
+    std::size_t six_context_observations = 0;
+    double six_context_radius_sum = 0.0;
+    double six_context_distance_sum = 0.0;
     std::vector<std::vector<std::int32_t>> meta_history;
     std::int32_t first_head255_word = 0, last_head255_word = 0;
     bool word_field_hot = false;
@@ -2389,6 +2394,30 @@ int stream_train_cli(int argc, char** argv) {
             return 7;
         }
         if (word_count == 0) continue;
+        // Bidirectional six-neighbor context: 3 back, 3 forward, NOW=255.
+        {
+            const std::size_t now = word_count - 1;
+            std::array<std::uint32_t, 6> neighbor{};
+            std::uint32_t mask = 0;
+            for (std::size_t d = 1; d <= 3; ++d) {
+                if (now >= d) {
+                    neighbor[d - 1] = words[now - d];
+                    mask |= 1u << (d - 1);
+                }
+                if (now + d < word_count) {
+                    neighbor[3 + d - 1] = words[now + d];
+                    mask |= 1u << (3 + d - 1);
+                }
+            }
+            RawFieldVM::SixContextResult six;
+            if (vm.six_context_poincare(words[now], neighbor, mask, 1, 0, 0,
+                                        six)) {
+                six_context_ok = true;
+                ++six_context_observations;
+                six_context_radius_sum += six.radius;
+                six_context_distance_sum += six.distance;
+            }
+        }
         std::size_t contexts = 0;
         if (!vm.temporal_slots_observe_batch(words, contexts)) {
             std::cerr << "stream temporal failed: " << vm.error() << "\n";
@@ -2909,7 +2938,11 @@ int stream_train_cli(int argc, char** argv) {
                  << "  \"current_slot_head\": 255,\n"
                  << "  \"head255_policy\": \"current-context register 255; void for incidence/faces\",\n"
                  << "  \"current_word\": " << head255[0] << ",\n"
-                 << "  \"current_slot\": " << head255[1] << ",\n"
+                 << "  \"current_slot\": " << head255[1] << ",\n"                 << "  \"six_context_ok\": " << (six_context_ok ? "true" : "false") << ",\n"
+                 << "  \"six_context_observations\": " << six_context_observations << ",\n"
+                 << "  \"six_context_radius\": " << (six_context_observations ? six_context_radius_sum / six_context_observations : 0.0) << ",\n"
+                 << "  \"six_context_distance\": " << (six_context_observations ? six_context_distance_sum / six_context_observations : 0.0) << ",\n"
+                 << "  \"six_context_now_head\": 255,\n"
                  << "  \"ngram_orders\": [1,2,3,4],\n"
                  << "  \"ngram_top_k\": 64,\n"
                  << "  \"codebook_codewords\": " << codebook_codewords << ",\n"

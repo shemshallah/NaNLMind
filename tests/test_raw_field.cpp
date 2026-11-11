@@ -1024,5 +1024,18 @@ int main() {
                          triad_score));
     CHECK_EQ(triad_score, 5);
 
+    // Six-neighbor temporal attention with NOW=255 and Poincare projection.
+    RawFieldVM::SixContextResult six;
+    const std::array<std::uint32_t, 6> six_context = {1, 2, 3, 5, 6, 7};
+    CHECK(vm.six_context_poincare(4, six_context, 0x3Fu, 1, 0, 0, six));
+    CHECK(six.valid);
+    CHECK_EQ(six.mask, 0x3Fu);
+    CHECK_EQ(six.now_head, 255u);
+    CHECK_EQ(six.anchor, 4u);
+    CHECK(six.radius >= 0.0f && six.radius < 1.0f);
+    CHECK(six.distance >= 0.0f);
+    // Future mask bits are rejected in causal mode.
+    CHECK(!vm.six_context_poincare(4, six_context, 0x38u, 0, 0, 0, six));
+
     return test_done("raw NaN16 field VM bridge");
 }

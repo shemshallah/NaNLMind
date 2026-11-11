@@ -53,7 +53,16 @@
     "cli_pending": [
       "backoffjoint",
       "induction"
-    ]
+    ],
+    "six_context": "mth_six_context_poincare_attention (3 back, 3 forward, NOW=255)"
   },
-  "note": "73.7821% is same-corpus next-byte accuracy, not held-out language quality."
+  "note": "73.7821% is same-corpus next-byte accuracy, not held-out language quality.",
+  "restored_raw_commands": {
+    "30": "mth_context_class",
+    "40": "mth_context_backoff",
+    "43": "mth_context_hier_joint",
+    "44": "mth_context_copy",
+    "45": "mth_triad_score",
+    "46": "mth_six_context_poincare_attention"
+  }
 }

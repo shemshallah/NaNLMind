@@ -714,6 +714,23 @@ public:
     bool phase_hyperbolic(const std::vector<std::int32_t>& phase_vector,
                           std::size_t lanes, std::int32_t& mean_energy,
                           std::int32_t& radial);
+    struct SixContextResult {
+        float poincare_x = 0.0f;
+        float poincare_y = 0.0f;
+        float radius = 0.0f;
+        float distance = 0.0f;
+        std::uint32_t mask = 0;
+        std::uint32_t task = 0;
+        std::uint32_t now_head = 255;
+        std::uint32_t anchor = 0;
+        std::uint32_t valid = 0;
+    };
+    bool six_context_poincare(std::uint32_t anchor,
+                              const std::array<std::uint32_t, 6>& context,
+                              std::uint32_t mask, std::uint32_t task,
+                              std::uint32_t expected_generation,
+                              std::uint32_t actual_generation,
+                              SixContextResult& out);
     bool meta_attention(const std::vector<float>& query,
                         const std::vector<float>& keys,
                         const std::vector<float>& values,

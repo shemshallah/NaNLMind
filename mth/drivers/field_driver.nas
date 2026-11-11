@@ -85,6 +85,7 @@ JMP @field_driver_entry
 .include "../nan16/mth_hypertensor256_mirror_dual_map.nas"
 .include "../nan16/mth_triangle_flow.nas"
 .include "../nan16/mth_meta_attention16_f32.nas"
+.include "../nan16/mth_six_context_poincare_attention.nas"
 .include "../nan16/mth_global_hodge256_q16.nas"
 .include "../nan16/mth_phase_geometry.nas"
 .include "../nan16/mth_shape_field.nas"
@@ -98,6 +99,8 @@ JMP @field_driver_entry
 .include "../nan16/mth_role_step24.nas"
 .include "../nan16/mth_role_step24k.nas"
 .include "../nan16/mth_sense_step24.nas"
+.include "../nan16/mth_context_hash.nas"
+.include "../nan16/mth_context_batch.nas"
 .include "../nan16/mth_context_copy.nas"
 .include "../nan16/mth_context_class.nas"
 .include "../nan16/mth_readout_hier.nas"
@@ -225,6 +228,9 @@ field_driver_main:
   MOVI r3,45
   CMP r2,r3
   JMP[EQ] @field_driver_triad_score
+  MOVI r3,46
+  CMP r2,r3
+  JMP[EQ] @field_driver_six_context
   MOVI r3,27
   CMP r2,r3
   JMP[EQ] @field_driver_combined_all
@@ -757,6 +763,18 @@ field_driver_ctxb_step:
   ST r4,r10,3
   ST r5,r10,4
   ST r6,r10,5
+  JMP @field_driver_return
+
+field_driver_six_context:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  CALL @mth_six_context_poincare_attention
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  ST r4,r10,3
   JMP @field_driver_return
 
 field_driver_triad_score:

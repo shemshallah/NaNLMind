@@ -141,6 +141,27 @@ not a compact triangle.
 This is the local-credit replacement path for BPTT. The values are currently
 measured, not yet used to mutate a trainable tensor.
 
+### Six-neighbor trigonometric attention
+
+`mth_six_context_poincare_attention.nas` consumes six neighbor word IDs plus
+the observed anchor at NOW=255:
+
+```text
+[-3, -2, -1, +1, +2, +3] + NOW(255)
+```
+
+It uses the existing native CORDIC and `mth_meta_attention16_f32` kernels,
+rejects future slots in causal mode, validates generations, and projects the
+native attention result into a 2D Poincare disk. `stream-train` reports:
+
+```text
+six_context_ok
+six_context_observations
+six_context_radius
+six_context_distance
+six_context_now_head=255
+```
+
 ### Branch policy
 
 No long-lived architecture branches. Merged branches are deletion candidates;
@@ -163,6 +184,7 @@ Restored raw commands:
 | 43 | `mth_context_hier_joint` | joint high/low head-pair readout |
 | 44 | `mth_context_copy` | copy/induction context route |
 | 45 | `mth_triad_score` | 2-of-3 triad objective with majority bonus |
+| 46 | `mth_six_context_poincare_attention` | 3 back + 3 forward + NOW=255 trig attention and Poincare projection |
 
 These are the kernel-level paths removed by the earlier ABI-conflict merge.
 They are now reachable and covered by focused tests. CLI exposure for the

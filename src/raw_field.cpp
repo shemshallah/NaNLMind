@@ -3136,6 +3136,47 @@ bool RawFieldVM::global_hodge_from_triads(
     return true;
 }
 
+bool RawFieldVM::six_context_poincare(
+    std::uint32_t anchor, const std::array<std::uint32_t, 6>& context,
+    std::uint32_t mask, std::uint32_t task, std::uint32_t expected_generation,
+    std::uint32_t actual_generation, SixContextResult& out) {
+    constexpr std::uint32_t kRequest = 0x7000;
+    constexpr std::uint32_t kOutput = 0x7100;
+    if (!write_word(kRequest + 0, anchor) ||
+        !write_word(kRequest + 7, mask) ||
+        !write_word(kRequest + 8, task) ||
+        !write_word(kRequest + 9, expected_generation) ||
+        !write_word(kRequest + 10, actual_generation) ||
+        !write_word(kRequest + 11, 255))
+        return fail("cannot write six-context request");
+    for (std::size_t i = 0; i < context.size(); ++i)
+        if (!write_word(kRequest + 1 + static_cast<std::uint32_t>(i),
+                        context[i]))
+            return fail("cannot write six-context words");
+    if (!write_word(kProposalBase + 0, kRequest) ||
+        !write_word(kProposalBase + 1, kOutput) ||
+        !write_word(kCommandBase, 46))
+        return fail("cannot write six-context command");
+    if (!run_command()) return false;
+    out.valid = read_word(kResultBase + 0) & 1u;
+    const std::uint32_t xb = read_word(kOutput + 0);
+    const std::uint32_t yb = read_word(kOutput + 1);
+    const std::uint32_t rb = read_word(kOutput + 2);
+    const std::uint32_t db = read_word(kOutput + 3);
+    std::memcpy(&out.poincare_x, &xb, sizeof(xb));
+    std::memcpy(&out.poincare_y, &yb, sizeof(yb));
+    std::memcpy(&out.radius, &rb, sizeof(rb));
+    std::memcpy(&out.distance, &db, sizeof(db));
+    out.mask = read_word(kOutput + 4);
+    out.task = read_word(kOutput + 5);
+    out.now_head = read_word(kOutput + 6);
+    out.anchor = read_word(kOutput + 7);
+    if (!out.valid) {
+        return fail("six-context attention rejected");
+    }
+    return true;
+}
+
 bool RawFieldVM::meta_attention(
     const std::vector<float>& query, const std::vector<float>& keys,
     const std::vector<float>& values,
