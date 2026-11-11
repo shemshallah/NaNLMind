@@ -119,6 +119,7 @@ JMP @field_driver_entry
 .include "../nan16/mth_geometric_trail_field.nas"
 .include "../nan16/mth_spectral_trihead_tensor_proposal.nas"
 .include "../nan16/mth_six_context_poincare_attention.nas"
+.include "../nan16/mth_hyperedge_poincare128_curl.nas"
 
 field_driver_entry:
   MOVI r13,1
@@ -417,6 +418,9 @@ field_driver_main:
   MOVI r3,107
   CMP r2,r3
   JMP[EQ] @field_driver_six_context_poincare
+  MOVI r3,108
+  CMP r2,r3
+  JMP[EQ] @field_driver_hyperedge_poincare128
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -1684,6 +1688,29 @@ field_driver_six_context_poincare:
   MOVI r2,0x4100
   MOVHI r2,0x003E
   CALL @mth_six_context_poincare_attention
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  ST r4,r10,3
+  JMP @field_driver_return
+
+; Opcode108: 128D hyperbolic hyperedge abstraction depth with signed
+; Hodge curl (native verification only: source provenance comes from caller).
+; guest 0x3E5000 input vector[128], 0x3E5200 candidate vector[128],
+; 0x3E5400 hyperedge record[8], 0x3E5500 output[5].
+; Return at 0x4010: accepted/128/sign/rejection.
+; The VOID NOW point is reference-only. No root or active tensor writes.
+field_driver_hyperedge_poincare128:
+  MOVI r1,0x5000
+  MOVHI r1,0x003E
+  MOVI r2,0x5200
+  MOVHI r2,0x003E
+  MOVI r3,0x5400
+  MOVHI r3,0x003E
+  MOVI r4,0x5500
+  MOVHI r4,0x003E
+  CALL @mth_hyperedge_poincare128_curl
   MOVI r10,0x4010
   ST r1,r10,0
   ST r2,r10,1
