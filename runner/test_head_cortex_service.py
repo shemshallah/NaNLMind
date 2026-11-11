@@ -239,7 +239,7 @@ class HeadCortexServiceTests(unittest.TestCase):
             " candidate = 'candidates' in sys.argv[3]\n"
             " digest = 'e' if candidate else 'd'\n"
             " print('relation_eval schema=N16REL-EVAL/1 generation=12 state_digest=' + digest*64 + ' rows=2')\n"
-            " print('relation_eval_row index=0 head=42 votes=7 truth_state=' + ('TRUE' if candidate else 'FALSE') + ' rule=3')\n"
+            " print('relation_eval_row index=0 head=42 votes=7 truth_state=' + ('TRUE' if candidate else 'FALSE') + ' hypermatrix_score=5 rule=3')\n"
             " print('relation_eval_row index=1 head=43 votes=1 truth_state=FALSE rule=2')\n"
             "elif sys.argv[1] == 'head-candidate':\n"
             " pathlib.Path(sys.argv[5]).write_bytes(b'candidate-state')\n"
