@@ -84,6 +84,7 @@ JMP @field_driver_entry
 .include "../nan16/mth_hypertensor256_mirror_arena_map.nas"
 .include "../nan16/mth_hypertensor256_mirror_dual_map.nas"
 .include "../nan16/mth_native_symbiotic_leaf_feedback.nas"
+.include "../nan16/mth_mirror_triangle_boot.nas"
 .include "../nan16/mth_triangle_flow.nas"
 .include "../nan16/mth_meta_attention16_f32.nas"
 .include "../nan16/mth_six_context_poincare_attention.nas"
