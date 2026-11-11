@@ -54,5 +54,21 @@ int main() {
     CHECK(!blocked.committed);
     CHECK_EQ(gated_heads.at(6).boolean_mask(), 0x0001u);
 
+    // Contrastive triangle model: positive-like shapes score high, negative
+    // shapes low, all in the raw guest.
+    {
+        std::array<std::int32_t, 3> sides = {100, 100, 100};
+        std::int32_t count = 0, score = 0;
+        CHECK(vm.triangle_model_reset());
+        CHECK(vm.triangle_model_observe(sides, 500, 1000, 1, count));
+        CHECK(vm.triangle_model_observe(sides, 500, 1000, 1, count));
+        CHECK(vm.triangle_model_observe_negative(sides, 3000, 5000, 1, count));
+        CHECK(vm.triangle_model_observe_negative(sides, 3000, 5000, 1, count));
+        CHECK(vm.triangle_model_score_contrastive(sides, 500, 1000, score));
+        CHECK(score > 60000);
+        CHECK(vm.triangle_model_score_contrastive(sides, 3000, 5000, score));
+        CHECK(score < 5000);
+    }
+
     return test_done("dual-head self-modification");
 }
