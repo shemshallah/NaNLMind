@@ -66,6 +66,16 @@ struct NativeContext6Receipt {
     std::uint32_t observed_anchor=0;
 };
 
+// Real 128-dimensional guest Poincare-ball hyperedge projection, with
+// signed oriented Hodge-curl feedback. No host numerical reconstruction.
+struct NativeHyperedge128Receipt {
+    bool accepted=false;
+    std::uint8_t rejection_reason=0;
+    std::array<float,128> poincare_vector{};
+    float radius=0.0f,radial_distance=0.0f,signed_curl_feedback=0.0f;
+    std::int32_t orientation=0;
+    std::uint8_t now_head=255;
+};
 struct DualProposalResult {
     RawProposalResult fast;
     RawProposalResult slow;
@@ -202,6 +212,14 @@ public:
         std::uint8_t valid_mask, std::uint8_t task,
         std::uint32_t expected_generation, std::uint32_t current_generation,
         NativeContext6Receipt& receipt);
+    // Native opcode108: full 128D ball, actual Hodge curl supplied by
+    // the already verified global Hodge result; host only transports.
+    bool native_hyperedge128_depth(
+        const std::array<float,128>& sourced_vector,
+        const std::array<std::uint8_t,3>& ordered_hyperedge,
+        float native_hodge_curl, std::uint32_t expected_generation,
+        std::uint32_t current_generation,
+        NativeHyperedge128Receipt& receipt);
     bool native_spectral_tensor_propose(
         const std::array<std::int64_t,256>& spectral_q16_i64,
         const std::array<std::uint8_t,85>& trihead_masks,
