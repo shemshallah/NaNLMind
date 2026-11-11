@@ -459,6 +459,204 @@ bool RawFieldVM::native_triad_hotcold_vector(
     return true;
 }
 
+// Native opcode113 transports sourced head vectors into private NaN16
+// scratches, executes every Boolean/trig/head and every 128D trihead in the
+// guest, and READS its genuine source-derived 85 masks and field quorum.
+// The host is a provenance/ABI boundary, NOT a substitute geometry engine.
+bool RawFieldVM::native_full_field_255_85(
+    const std::array<NativeFullFieldHeadSource,255>& sources,
+    const std::array<std::uint8_t,255>& mapping,
+    const std::array<float,85>& triad_curls,
+    const std::array<std::int32_t,85>& seven_credits,
+    std::uint32_t expected_epoch,std::uint32_t current_epoch,
+    NativeFullField128Receipt& receipt) {
+    receipt={};
+    if(!vm_)return fail("native full field: NaN0S guest not loaded");
+    const auto bits=[](float v){
+        std::uint32_t b=0;static_assert(sizeof(b)==sizeof(v));
+        std::memcpy(&b,&v,sizeof(b));return b;
+    };
+    const auto f32=[](std::uint32_t b){
+        float v=0;std::memcpy(&v,&b,sizeof(b));return v;
+    };
+    // Prevalidate entire mapping/capability/source envelope so partial
+    // transport never makes a malformed field appear measured.
+    std::array<bool,255> seen{};
+    for(std::size_t slot=0;slot<255u;++slot){
+        const unsigned h=mapping[slot];
+        if(h>=255u||seen[h])
+            return fail("native full field: duplicate/VOID mapping");
+        seen[h]=true;
+    }
+    for(unsigned h=0;h<255u;++h){
+        const auto& x=sources[h];
+        if(!x.candidate_writer_lease || !x.truth_mask ||
+           !std::isfinite(x.sourced_native_hodge_curl) ||
+           std::fabs(x.sourced_native_hodge_curl)>8.0f)
+            return fail("native full field: missing head lease/truth/Hodge source");
+        const auto& e=x.sourced_oriented_hyperedge;
+        if(e[0]>=255u||e[1]>=255u||e[2]>=255u||
+           e[0]==e[1]||e[0]==e[2]||e[1]==e[2])
+            return fail("native full field: invalid sourced oriented head triangle");
+        for(float v:x.sourced_vector)
+            if(!std::isfinite(v))
+                return fail("native full field: nonfinite sourced 128D head vector");
+    }
+    for(std::size_t t=0;t<85u;++t)
+        if(!std::isfinite(triad_curls[t]) ||
+           std::fabs(triad_curls[t])>8.0f ||
+           seven_credits[t]<-524288 || seven_credits[t]>524288)
+            return fail("native full field: nonfinite/out-of-range native curl or credit");
+    constexpr std::uint32_t kMapping=0x003E7000u;
+    constexpr std::uint32_t kCurl=0x003EF600u;
+    constexpr std::uint32_t kCredit=0x003EF700u;
+    constexpr std::uint32_t kVotes=0x003EF000u;
+    constexpr std::uint32_t kReport=0x003EF100u;
+    // Every source vector and operator setting goes to its OWN head slab.
+    for(unsigned h=0;h<255u;++h){
+        const auto& x=sources[h];
+        const std::uint32_t base=0x003B0000u+(h<<8u);
+        for(unsigned d=0;d<128u;++d)
+            if(!write_word(base+d,bits(x.sourced_vector[d])))
+                return fail("native full field: head vector scratch transport failed");
+        const std::array<std::uint32_t,12> meta={
+            x.truth_mask,x.candidate_xor_patch,x.boolean_a,x.boolean_b,
+            x.candidate_writer_lease?1u:0u,expected_epoch,current_epoch,
+            x.sourced_oriented_hyperedge[0],x.sourced_oriented_hyperedge[1],
+            x.sourced_oriented_hyperedge[2],bits(x.sourced_native_hodge_curl),
+            x.phase_turns};
+        for(unsigned i=0;i<meta.size();++i)
+            if(!write_word(base+128u+i,meta[i]))
+                return fail("native full field: head truth/epoch transport failed");
+    }
+    for(unsigned i=0;i<255u;++i)
+        if(!write_word(kMapping+i,mapping[i]))
+            return fail("native full field: mapping transport failed");
+    for(unsigned t=0;t<85u;++t)
+        if(!write_word(kCurl+t,bits(triad_curls[t])) ||
+           !write_word(kCredit+t,static_cast<std::uint32_t>(seven_credits[t])))
+            return fail("native full field: sourced credit/curl transport failed");
+    if(!write_word(kProposalBase,expected_epoch)||
+       !write_word(kProposalBase+1,current_epoch)||
+       !write_word(kCommandBase,113u)||!run_command())
+        return fail("native full field: fused NaN16 guest failed: "+error_);
+    const auto ok=read_word(kResultBase),quorum=read_word(kResultBase+1);
+    const auto head_count=read_word(kResultBase+2),reason=read_word(kResultBase+3);
+    if(ok==0u){
+        if(quorum||head_count||reason<1u||reason>5u)
+            return fail("native full field: invalid rejected guest receipt");
+        receipt.rejection_reason=static_cast<std::uint8_t>(reason);
+        return true;
+    }
+    if(ok!=1u||head_count!=255u||quorum>85u||reason!=0u)
+        return fail("native full field: incomplete or invalid guest execution");
+    std::array<std::uint32_t,10> field{};
+    for(unsigned i=0;i<field.size();++i)field[i]=read_word(kReport+i);
+    if(field[0]!=255u||field[1]!=85u||field[2]>255u||
+       field[3]!=quorum||field[4]>85u||field[5]>85u||
+       field[6]>85u||field[7]>1u||field[8]!=255u||
+       field[9]!=expected_epoch||
+       field[3]+field[4]!=85u||field[5]>field[3]||
+       field[6]>field[4]||field[7]!=(quorum>=43u?1u:0u))
+        return fail("native full field: guest field/quorum report inconsistent");
+    receipt.mapping=mapping;
+    receipt.head_count=255u;receipt.triad_count=85u;
+    receipt.hot_heads=static_cast<std::uint16_t>(field[2]);
+    receipt.hot_majority_triads=static_cast<std::uint16_t>(quorum);
+    receipt.cold_majority_triads=static_cast<std::uint16_t>(field[4]);
+    receipt.unanimous_hot=static_cast<std::uint16_t>(field[5]);
+    receipt.unanimous_cold=static_cast<std::uint16_t>(field[6]);
+    receipt.field_hot=field[7]==1u;receipt.source_generation=expected_epoch;
+    for(unsigned t=0;t<85u;++t){
+        const auto vote=read_word(kVotes+t);
+        if(vote>7u)return fail("native full field: malformed triad member mask");
+        receipt.native_vote_masks[t]=static_cast<std::uint8_t>(vote);
+    }
+    // Verify every distinct head scratch and read the native Poincare128
+    // vector. The host does not project or rotate any source coordinates.
+    for(unsigned h=0;h<255u;++h){
+        const std::uint32_t src=0x003B0000u+(h<<8u);
+        const std::uint32_t dst=0x003F0000u+(h<<8u);
+        const auto vote=read_word(src+140u),rule=read_word(src+141u);
+        const auto mask=read_word(src+146u);
+        if(read_word(src+147u)!=1u||read_word(src+128u)!=sources[h].truth_mask||
+           vote>1u||rule>=16u||!mask||mask>65535u)
+            return fail("native full field: head Boolean/source identity drift");
+        auto& out=receipt.heads[h];
+        out.head=static_cast<std::uint8_t>(h);
+        out.hot_vote=static_cast<std::uint8_t>(vote);
+        out.rule=static_cast<std::uint8_t>(rule);
+        out.candidate_truth_mask=static_cast<std::uint16_t>(mask);
+        out.source_generation=expected_epoch;
+        out.radius=f32(read_word(src+168u));
+        out.radial_distance=f32(read_word(src+142u));
+        out.signed_curl_feedback=f32(read_word(src+143u));
+        out.phase_cos_q16=static_cast<std::int32_t>(read_word(src+144u));
+        out.phase_sin_q16=static_cast<std::int32_t>(read_word(src+145u));
+        if(!std::isfinite(out.radius)||out.radius<0.0f||out.radius>=1.0f||
+           !std::isfinite(out.radial_distance)||out.radial_distance<0.0f||
+           !std::isfinite(out.signed_curl_feedback)||
+           std::fabs(out.signed_curl_feedback)>8.0f)
+            return fail("native full field: invalid guest head Poincare/curl");
+        for(unsigned d=0;d<128u;++d){
+            const float v=f32(read_word(dst+d));
+            if(!std::isfinite(v)||std::fabs(v)>1.0f)
+                return fail("native full field: invalid guest head vector");
+            out.poincare_vector[d]=v;
+        }
+        out.accepted=true;
+    }
+    // Read each trihead's independent 128D Poincare, HOT/COLD selection,
+    // signed native curl and seven-credit eligibility gradient (not BPTT).
+    for(unsigned t=0;t<85u;++t){
+        const std::uint32_t meta=0x003EE000u+(t<<4u);
+        const std::uint32_t dst=0x003EB000u+(t<<7u);
+        const auto hot=read_word(meta+5),cold=read_word(meta+6);
+        const auto sign=static_cast<std::int32_t>(read_word(meta+7));
+        if(hot>3u||hot+cold!=3u||read_word(meta+12)!=1u||
+           read_word(meta+13)!=t||read_word(meta+14)!=1u||
+           read_word(meta+4)!=255u||
+           read_word(meta+11)!=static_cast<std::uint32_t>(seven_credits[t])||
+           read_word(meta+8)!=(hot==3u?1u:0u)||
+           read_word(meta+9)!=(cold==3u?1u:0u)||
+           sign!=(hot>=2u?1:-1))
+            return fail("native full field: trihead scratch metadata drift");
+        auto& out=receipt.triheads[t];
+        out.triad=static_cast<std::uint8_t>(t);
+        out.members={mapping[3u*t],mapping[3u*t+1u],mapping[3u*t+2u]};
+        out.hot_count=static_cast<std::uint8_t>(hot);
+        out.cold_count=static_cast<std::uint8_t>(cold);
+        out.unanimous_hot=hot==3u;out.unanimous_cold=cold==3u;
+        out.majority_sign=sign;
+        out.source_seven_credit_q16=seven_credits[t];
+        out.source_generation=expected_epoch;
+        out.radius=f32(read_word(meta));
+        out.radial_distance=f32(read_word(meta+1u));
+        out.signed_curl_feedback=f32(read_word(meta+2u));
+        out.candidate_credit_gradient=f32(read_word(meta+10u));
+        if(!std::isfinite(out.radius)||out.radius<0.0f||out.radius>=1.0f||
+           !std::isfinite(out.radial_distance)||out.radial_distance<0.0f||
+           !std::isfinite(out.signed_curl_feedback)||
+           !std::isfinite(out.candidate_credit_gradient))
+            return fail("native full field: invalid native triad geometry");
+        for(unsigned d=0;d<128u;++d){
+            const float v=f32(read_word(dst+d));
+            if(!std::isfinite(v)||std::fabs(v)>1.0f)
+                return fail("native full field: invalid native triad vector");
+            out.poincare_vector[d]=v;
+        }
+        // Independent raw-head votes must agree with guest-produced mask.
+        const unsigned mask=unsigned(receipt.heads[out.members[0]].hot_vote)|
+            (unsigned(receipt.heads[out.members[1]].hot_vote)<<1u)|
+            (unsigned(receipt.heads[out.members[2]].hot_vote)<<2u);
+        if(mask!=receipt.native_vote_masks[t])
+            return fail("native full field: mask is not derived from its three heads");
+        out.accepted=true;
+    }
+    receipt.accepted=true;
+    return true;
+}
+
 bool RawFieldVM::native_hyperedge128_depth(
     const std::array<float,128>& sourced_vector,
     const std::array<std::uint8_t,3>& ordered_hyperedge,
