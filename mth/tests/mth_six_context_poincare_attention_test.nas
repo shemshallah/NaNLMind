@@ -47,7 +47,6 @@ ctx6_test_main:
   JMP[NE] @ctx6_test_fail
 
   ; Future payload still present with MASKED bit must also reject.
-  ST r0,r10,0          ; r10 might have been clobbered; reset below
   MOVI r10,@ctx6_req
   MOVI r11,8192
   ST r11,r10,0
