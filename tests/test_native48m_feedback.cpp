@@ -73,6 +73,28 @@ int main(){
     try{bridge.stage_all_trihead_candidate_credits(second,malformed);}
     catch(const std::invalid_argument&){invalid_mapping=true;}
     assert(invalid_mapping);
+    // All seven MTH credit methods act through the ORIGINAL guest kernel
+    // bundle, with TCA additionally sourced from the frozen decoder's
+    // exact-word score difference (signed Q16). Fixture values are NOT
+    // training evidence, so the global/heldout commit stays blocked.
+    nanlm::CreditBundleState src{};
+    src.cft={0,0,0,65536,39321};
+    src.trail={0x8000,0x6666,0x4CCC,0x3333,0x1999,
+               0x1999,0x3333,0x0CCC,0x051E,0xE666,0xCCCC};
+    src.holo={0,8192,8192};
+    src.ring_phases.fill(0); src.ring_shift=0;
+    src.leaf={15,3,100};
+    src.flux={0,65536,32768,0};
+    const std::array<std::int32_t,7> coefficients={
+        8192,8192,8192,8192,8192,8192,8192};
+    const auto seven=bridge.stage_seven_credit_feedback(
+        second,src,-65536,-32768,coefficients);
+    for(auto c:seven.native_credits_q16)assert(c!=0);
+    assert(seven.native_credits_q16[5]==32768);
+    assert(std::isfinite(seven.staged_tensor_value));
+    assert(arena.candidate(7,2,3)==seven.staged_tensor_value);
+    assert(arena.candidate(7,3,2)==0.0f);
+    assert(arena.active(7,2,3)==0.0f);
     bridge.commit_context(second);
     assert(bridge.history_size()==2u);
     // This is a real native calculation but not a held-out quality gate:
