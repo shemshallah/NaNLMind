@@ -657,6 +657,220 @@ bool RawFieldVM::native_full_field_255_85(
     return true;
 }
 
+// Typed NaN16 ABI for physical palindromic anchors and the existing
+// C(256,2) dual-rail mirror field. ALL curvature/geometry/recovery is guest.
+bool RawFieldVM::native_mirror_triangle_boot(
+    std::uint32_t seed,std::uint32_t epoch,bool& accepted,
+    std::uint8_t& reason) {
+    accepted=false;reason=0u;
+    if(!vm_||seed==0u)return fail("native mirror boot: invalid guest/seed");
+    if(!write_word(kProposalBase,seed)||
+       !write_word(kProposalBase+1u,epoch)||
+       !write_word(kCommandBase,114u)||!run_command())
+        return fail("native mirror boot: NaN16 execution failed: "+error_);
+    const auto ok=read_word(kResultBase);
+    const auto count=read_word(kResultBase+1);
+    const auto code=read_word(kResultBase+2);
+    if(ok==0u){
+        if(count!=0u||code<1u||code>2u)
+            return fail("native mirror boot: malformed rejection");
+        reason=static_cast<std::uint8_t>(code);return true;
+    }
+    if(ok!=1u||count!=510u||code!=0u)
+        return fail("native mirror boot: malformed seeded sample count");
+    constexpr std::uint32_t kFlag=0x00394000u;
+    if(read_word(kFlag)!=1u||read_word(kFlag+1)!=seed||
+       read_word(kFlag+2)!=epoch)
+        return fail("native mirror boot: frozen seed or generation drift");
+    accepted=true;return true;
+}
+
+bool RawFieldVM::native_mirror_triangle_measure(
+    const std::array<float,32640>& flows,
+    std::uint32_t expected_epoch,std::uint32_t current_epoch,
+    std::vector<NativeMirrorTriangleReceipt>& measured,
+    std::uint16_t& hot_majority,bool& accepted,std::uint8_t& reason) {
+    measured.clear();hot_majority=0;accepted=false;reason=0u;
+    if(!vm_)return fail("native mirror field: missing guest");
+    constexpr std::uint32_t kFlow=0x003A0000u;
+    constexpr std::uint32_t kRecords=0x00360000u;
+    const auto as_bits=[](float value){
+        std::uint32_t bits=0;static_assert(sizeof(value)==sizeof(bits));
+        std::memcpy(&bits,&value,sizeof(bits));return bits;
+    };
+    const auto as_float=[](std::uint32_t bits){
+        float value=0;std::memcpy(&value,&bits,sizeof(value));return value;
+    };
+    for(const auto v:flows)
+        if(!std::isfinite(v)||std::fabs(v)>8.0f)
+            return fail("native mirror field: nonfinite/unbounded signed pair source");
+    for(std::uint32_t i=0;i<flows.size();++i)
+        if(!write_word(kFlow+i,as_bits(flows[i])))
+            return fail("native mirror field: C(256,2) pair-flow transport failed");
+    const std::array<std::uint32_t,3> args={510u,expected_epoch,current_epoch};
+    for(std::uint32_t i=0;i<args.size();++i)
+        if(!write_word(kProposalBase+i,args[i]))
+            return fail("native mirror field: epoch transport failed");
+    if(!write_word(kCommandBase,115u)||!run_command())
+        return fail("native mirror field: fused guest failed: "+error_);
+    const auto ok=read_word(kResultBase);
+    const auto count=read_word(kResultBase+1);
+    const auto hot=read_word(kResultBase+2);
+    const auto code=read_word(kResultBase+3);
+    if(ok==0u){
+        if(count||hot||code<1u||code>4u)
+            return fail("native mirror field: malformed rejection");
+        reason=static_cast<std::uint8_t>(code);return true;
+    }
+    if(ok!=1u||count!=510u||hot>510u||code!=0u)
+        return fail("native mirror field: wrong sample/field report");
+    measured.reserve(510u);
+    std::uint32_t computed_hot_majority=0;
+    for(std::uint32_t t=0;t<510u;++t){
+        NativeMirrorTriangleReceipt v{};
+        v.sample_index=static_cast<std::uint16_t>(t);
+        const std::uint32_t base=kRecords+(t<<5u);
+        for(std::uint32_t d=0;d<32u;++d)
+            v.native_record_words[d]=read_word(base+d);
+        const auto& w=v.native_record_words;
+        if(w[0]>=255u||w[1]>=255u||w[2]>=255u||
+           w[0]==w[1]||w[0]==w[2]||w[1]==w[2]||
+           w[3]!=(t>=255u?1u:0u)||w[4]>7u||w[5]>7u||
+           (w[4]&w[5])!=0u||w[6]>3u||w[7]>3u||
+           w[6]+w[7]>3u||w[9]!=(w[6]==3u?1u:0u)||
+           w[10]!=(w[7]==3u?1u:0u)||w[26]!=expected_epoch||
+           w[27]!=255u||w[28]!=0u||w[29]!=0u||
+           w[30]!=0u||w[31]!=0u)
+            return fail("native mirror field: malformed native triangle record");
+        const auto majority=static_cast<std::int32_t>(w[8]);
+        if(majority!=(w[6]>=2u?1:w[7]>=2u?-1:0))
+            return fail("native mirror field: HOT/COLD majority drift");
+        v.anchors={static_cast<std::uint8_t>(w[0]),
+                   static_cast<std::uint8_t>(w[1]),
+                   static_cast<std::uint8_t>(w[2])};
+        v.family=static_cast<std::uint8_t>(w[3]);
+        v.hot_mask=static_cast<std::uint8_t>(w[4]);
+        v.cold_mask=static_cast<std::uint8_t>(w[5]);
+        v.hot_count=static_cast<std::uint8_t>(w[6]);
+        v.cold_count=static_cast<std::uint8_t>(w[7]);
+        v.majority_sign=majority;
+        v.unanimous_hot=w[9]==1u;v.unanimous_cold=w[10]==1u;
+        v.loop_curl=as_float(w[11]);
+        v.directed_edges={as_float(w[12]),as_float(w[13]),as_float(w[14])};
+        v.native_reconstruction=as_float(w[15]);
+        v.native_residual=as_float(w[16]);
+        for(unsigned d=0;d<3u;++d)
+            v.palindrome_addresses[d]=static_cast<std::uint16_t>(w[17u+d]);
+        for(unsigned d=0;d<6u;++d)
+            v.directed_mirror_addresses[d]=static_cast<std::uint16_t>(w[20u+d]);
+        for(unsigned d=11u;d<=16u;++d)
+            if(!std::isfinite(as_float(w[d])))
+                return fail("native mirror field: nonfinite measured gradient/curl");
+        for(unsigned d=17u;d<=25u;++d)
+            if(w[d]>65535u)
+                return fail("native mirror field: physical address overflow");
+        v.source_generation=expected_epoch;
+        v.measured=true;
+        computed_hot_majority+=v.hot_count>=2u?1u:0u;
+        measured.push_back(v);
+    }
+    if(computed_hot_majority!=hot)
+        return fail("native mirror field: 510 guest vote report mismatch");
+    hot_majority=static_cast<std::uint16_t>(hot);
+    accepted=true;return true;
+}
+
+bool RawFieldVM::native_mirror_triangle_project(
+    std::uint16_t sample_index,std::uint32_t source_epoch,
+    NativeMirrorTriangleReceipt& receipt) {
+    if(!vm_||sample_index>=510u||!receipt.measured||
+       receipt.sample_index!=sample_index||
+       receipt.source_generation!=source_epoch)
+        return fail("native mirror Poincare128: missing matching source measurement");
+    if(!write_word(kProposalBase,sample_index)||
+       !write_word(kProposalBase+1u,source_epoch)||
+       !write_word(kCommandBase,116u)||!run_command())
+        return fail("native mirror Poincare128: guest execution failed: "+error_);
+    const auto ok=read_word(kResultBase);
+    const auto width=read_word(kResultBase+1);
+    const auto reason=read_word(kResultBase+3);
+    if(ok==0u){
+        if(width!=0u||reason<1u||reason>4u)
+            return fail("native mirror Poincare128: malformed rejection");
+        receipt.projected=false;return true;
+    }
+    if(ok!=1u||width!=128u||reason!=0u)
+        return fail("native mirror Poincare128: malformed native projection");
+    const auto decode=[](std::uint32_t bits){
+        float v=0;std::memcpy(&v,&bits,sizeof(v));return v;
+    };
+    const std::uint32_t base=0x00360000u+(std::uint32_t(sample_index)<<5u);
+    for(unsigned d=28u;d<32u;++d)
+        receipt.native_record_words[d]=read_word(base+d);
+    if(receipt.native_record_words[31]!=1u)
+        return fail("native mirror Poincare128: missing guest acceptance stamp");
+    receipt.poincare_radius=decode(receipt.native_record_words[28]);
+    receipt.poincare_depth=decode(receipt.native_record_words[29]);
+    receipt.signed_curl_radial_feedback=decode(receipt.native_record_words[30]);
+    if(!std::isfinite(receipt.poincare_radius)||receipt.poincare_radius<0.0f||
+       receipt.poincare_radius>=1.0f||!std::isfinite(receipt.poincare_depth)||
+       receipt.poincare_depth<0.0f||
+       !std::isfinite(receipt.signed_curl_radial_feedback))
+        return fail("native mirror Poincare128: nonfinite geometry");
+    for(unsigned d=0;d<128u;++d){
+        const float v=decode(read_word(0x00371000u+d));
+        if(!std::isfinite(v)||std::fabs(v)>1.0f)
+            return fail("native mirror Poincare128: nonfinite vector dimension");
+        receipt.poincare_vector[d]=v;
+    }
+    receipt.projected=true;return true;
+}
+
+bool RawFieldVM::native_mirror_triangle_recover(
+    std::uint16_t sample_index,std::uint32_t epoch,
+    const std::array<float,32640>& current_flows,
+    NativeMirrorTriangleRecoveryReceipt& receipt) {
+    receipt={};
+    if(!vm_||sample_index>=510u)
+        return fail("native mirror repair: invalid guest/triangle index");
+    for(float flow:current_flows)
+        if(!std::isfinite(flow)||std::fabs(flow)>8.0f)
+            return fail("native mirror repair: malformed current signed rail source");
+    for(unsigned i=0;i<32640u;++i){
+        std::uint32_t bits=0;
+        std::memcpy(&bits,&current_flows[i],sizeof(bits));
+        if(!write_word(0x003A0000u+i,bits))
+            return fail("native mirror repair: current observed rail transport failed");
+    }
+    if(!write_word(kProposalBase,sample_index)||
+       !write_word(kProposalBase+1u,epoch)||
+       !write_word(kCommandBase,117u)||!run_command())
+        return fail("native mirror repair: guest execution failed: "+error_);
+    const auto ok=read_word(kResultBase);
+    const auto reason=read_word(kResultBase+3);
+    if(ok==0u){
+        if(read_word(kResultBase+1)||read_word(kResultBase+2)||
+           reason<1u||reason>3u)
+            return fail("native mirror repair: malformed native refusal");
+        receipt.rejection_reason=static_cast<std::uint8_t>(reason);
+        return true;
+    }
+    if(ok!=1u||reason!=0u)
+        return fail("native mirror repair: malformed success receipt");
+    const auto decode=[](std::uint32_t bits){
+        float v=0;std::memcpy(&v,&bits,sizeof(v));return v;
+    };
+    receipt.reconstructed_edge=decode(read_word(0x00374000u));
+    receipt.current_edge=decode(read_word(0x00374001u));
+    receipt.residual=decode(read_word(0x00374002u));
+    receipt.source_generation=read_word(0x00374003u);
+    if(!std::isfinite(receipt.reconstructed_edge)||
+       !std::isfinite(receipt.current_edge)||
+       !std::isfinite(receipt.residual)||receipt.source_generation!=epoch)
+        return fail("native mirror repair: corrupt candidate recovery receipt");
+    receipt.accepted=true;return true;
+}
+
 bool RawFieldVM::native_hyperedge128_depth(
     const std::array<float,128>& sourced_vector,
     const std::array<std::uint8_t,3>& ordered_hyperedge,
