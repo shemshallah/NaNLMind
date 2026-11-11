@@ -1163,6 +1163,9 @@ int phase_ingest_cli(int argc, char** argv) {
                  << ", \"hot_heads\": " << field_hot_heads
                  << ", \"hot_triads\": " << field_hot_triads
                  << ", \"field_hot\": " << (field_accept ? "true" : "false")
+                 << ", \"hodge_ok\": " << (hodge_ok ? "true" : "false")
+                 << ", \"hodge_divergence_l1\": " << hodge_divergence_l1
+                 << ", \"hodge_curl_l1\": " << hodge_curl_l1
                  << "},\n"
                  << "  \"shards\": [";
         for (std::size_t i = 0; i < shard_counts.size(); ++i) {
