@@ -19,6 +19,9 @@ struct Native48MFeedbackReceipt {
     std::uint8_t proposer=0, h=0, a=0, b=0;
     std::uint32_t phase_shard=0;
     std::array<std::int32_t,16> phase_q16{};
+    // Direct bridge of four guest-measured layers into the MC0 query/key:
+    // phase[0..15], native field, trihead credit, Hodge div and curl.
+    std::array<float,20> meta_features{};
     std::array<std::uint8_t,85> triad_votes{};
     std::array<std::int32_t,255> head_credits{};
     std::int32_t field_q16=0;
@@ -35,6 +38,7 @@ struct Native48MFeedbackReceipt {
 class Native48MFeedbackBridge {
 public:
     static constexpr std::size_t kDim=16;
+    static constexpr std::size_t kMetaDim=20;
     Native48MFeedbackBridge(RawFieldVM& vm, DualTensor256Arena& arena)
        : vm_(vm),arena_(arena) {}
     void reset_native_session(){
@@ -87,24 +91,32 @@ public:
         r.has_admitted_faces=!admitted_faces.empty();
         r.committed_history_slots=history_.size();
         r.native_measured=true;
+        for(std::size_t i=0;i<kDim;++i)
+            r.meta_features[i]=static_cast<float>(r.phase_q16[i])/65536.0f;
+        r.meta_features[16]=static_cast<float>(r.field_q16)/65536.0f;
+        r.meta_features[17]=static_cast<float>(r.head_credits[proposer])/65536.0f;
+        r.meta_features[18]=r.divergence[h];
+        r.meta_features[19]=r.curl[0];
+        for(float v:r.meta_features)
+            if(!std::isfinite(v))throw std::runtime_error("nonfinite native meta feature");
 
         // No future/current slot enters MC0: only explicitly committed past
         // phase observations may provide keys/values.
         if(history_.empty())return r;
         std::vector<float> query,keys,values;
         std::vector<std::uint32_t> mask;
-        query.reserve(kDim);
-        keys.reserve(history_.size()*kDim);
-        values.reserve(history_.size()*kDim);
-        for(auto x:r.phase_q16)query.push_back(static_cast<float>(x)/65536.0f);
+        query.reserve(kMetaDim);
+        keys.reserve(history_.size()*kMetaDim);
+        values.reserve(history_.size()*kMetaDim);
+        for(float x:r.meta_features)query.push_back(x);
         for(const auto& past:history_){
             for(float x:past){keys.push_back(x);values.push_back(x);}
             mask.push_back(1u);
         }
         std::vector<float> guest_meta;
-        if(!vm_.meta_attention(query,keys,values,mask,mask.size(),kDim,guest_meta))
+        if(!vm_.meta_attention(query,keys,values,mask,mask.size(),kMetaDim,guest_meta))
             throw std::runtime_error("MC0 guest: "+vm_.error());
-        if(guest_meta.size()!=kDim||!std::isfinite(guest_meta[0])||
+        if(guest_meta.size()!=kMetaDim||!std::isfinite(guest_meta[0])||
            std::fabs(guest_meta[0])>8.0f)
             throw std::runtime_error("native MC0 candidate outside finite log-weight contract");
         Tensor256Address native_address{};
@@ -124,9 +136,7 @@ public:
     // Caller commits only sourced past context. Not a 48M model-weight commit.
     void commit_context(const Native48MFeedbackReceipt& receipt){
         if(!receipt.native_measured)throw std::invalid_argument("not guest measured");
-        std::array<float,kDim> v{};
-        for(std::size_t i=0;i<kDim;++i)
-            v[i]=static_cast<float>(receipt.phase_q16[i])/65536.0f;
+        const std::array<float,kMetaDim> v=receipt.meta_features;
         if(history_.size()==16)history_.pop_front();
         history_.push_back(v);
     }
@@ -134,7 +144,7 @@ public:
 private:
     RawFieldVM& vm_;
     DualTensor256Arena& arena_;
-    std::deque<std::array<float,kDim>> history_;
+    std::deque<std::array<float,kMetaDim>> history_;
     bool initialized_=false;
 };
 } // namespace nanlm
