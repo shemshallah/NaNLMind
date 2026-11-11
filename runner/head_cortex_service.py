@@ -457,7 +457,7 @@ class HeadCortexService:
         if not header or int(header.group(3)) != expected_rows:
             raise OSError("native_candidate_evaluation_receipt_invalid")
         predictions = []
-        for match in re.finditer(r"relation_eval_row index=(\d+) head=(\d+) votes=(\d+) truth_state=(TRUE|FALSE|UNKNOWN) rule=(\d+)", proc.stdout):
+        for match in re.finditer(r"relation_eval_row index=(\d+) head=(\d+) votes=(\d+) truth_state=(TRUE|FALSE|UNKNOWN) (?:hypermatrix_score=\d+ )?rule=(\d+)", proc.stdout):
             predictions.append({
                 "index": int(match.group(1)), "head": int(match.group(2)),
                 "votes": int(match.group(3)), "truth_state": match.group(4),
