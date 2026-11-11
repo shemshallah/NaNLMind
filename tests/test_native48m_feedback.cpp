@@ -34,6 +34,13 @@ int main(){
     assert(second.native_measured && second.meta_available);
     assert(second.candidate_staged && second.committed_history_slots==1u);
     assert(second.has_admitted_faces && std::fabs(second.curl[0]-3.0f)<1e-5f);
+    // Global and trihead measurements enter the actual 20D meta query,
+    // not merely unused side diagnostics.
+    assert(std::fabs(second.meta_features[19]-3.0f)<1e-5f);
+    assert(second.meta_features[18]==second.divergence[7]);
+    assert(second.meta_features[16]==static_cast<float>(second.field_q16)/65536.0f);
+    assert(second.meta_features[17]==static_cast<float>(second.head_credits[3])/65536.0f);
+    assert(second.meta_features[19]!=first.meta_features[19]);
     assert(std::isfinite(second.native_log_weight));
     assert(std::fabs(second.native_log_weight)<=8.0f);
     assert(arena.candidate(7,2,3)==second.native_log_weight);
