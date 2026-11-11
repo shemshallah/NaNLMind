@@ -437,6 +437,7 @@ mpf_edge_done:
 
 ; r8=u,r9=v; physical 16-bit directed address in r10.
 mpf_addr:
+  ST r15,r0,@mpf_addr_link ; nested CALL must preserve caller link
   ST r9,r0,@mpf_v
   ADD r9,r8,r0
   CALL @mpf_pal16
@@ -444,6 +445,7 @@ mpf_addr:
   BOOL.8 r10,r10,r11
   LD r11,r0,@mpf_v
   ADD r10,r10,r11
+  LD r15,r0,@mpf_addr_link
   RET
 ; r9=anchor 0..254, return pal16(anchor) in r10.
 mpf_pal16:
@@ -520,4 +522,6 @@ mpf_edge_indices:
 mpf_v:
   .word 0
 mpf_pair_index:
+  .word 0
+mpf_addr_link:
   .word 0
