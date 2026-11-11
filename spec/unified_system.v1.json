@@ -1,0 +1,77 @@
+{
+  "schema": "nanlm.unified-system/1",
+  "canonical_vm": "nan0s",
+  "description": "Provider-scoped kernel surface linking NaNLMind and NaNROUTER without renaming either tree. The audit tool is the single cross-repo runner; the catalog keeps provider IDs distinct until a semantic kernel map is approved.",
+  "kernel_id_policy": "provider-scoped: nanlmind.mth.nan16.<source-stem>; nanrouter.<catalog-kernel-id>",
+  "providers": {
+    "nanlmind": {
+      "repo": "NaNLMind",
+      "source_glob": "mth/nan16/*.nas",
+      "fixture_glob": "mth/tests/*.nas",
+      "runner": "tools/run_nan16_fixtures.py",
+      "raw_driver": "mth/drivers/field_driver.nas",
+      "counts": {
+        "sources": 74,
+        "fixtures": 33,
+        "direct_fixture_sources": 43,
+        "driver_included_sources": 73,
+        "uncovered_sources": 0
+      }
+    },
+    "nanrouter": {
+      "repo": "NaNROUTER",
+      "catalog_tool": "tools/mth_unified.py",
+      "catalog_spec": "spec/wave-capabilities.json",
+      "runner": "tools/run_mth_fixtures.py",
+      "counts": {
+        "kernels": 160,
+        "fixtures": 156,
+        "unique_kernel_fixtures": 155,
+        "kernels_without_runner_fixture": 0
+      }
+    }
+  },
+  "links": {
+    "kernel_audit": "tools/unified_kernel_audit.py",
+    "phase_vector_pipeline": "docs/PHASE_VECTOR_PIPELINE.md",
+    "relation_triangle": "docs/RELATION_TRIANGLE_CORPUS.md",
+    "relation_triangle_baseline": "spec/relation_triangle_matched_baseline.v1.json",
+    "nanrouter_integration": "spec/nanrouter_integration.v1.json",
+    "nannet_corpus_routes": "spec/nannet_corpus_routes.v1.json",
+    "nannet_ingest_result": "spec/nannet_ingest_result.v1.json",
+    "nannet_corpus_objects": "spec/nannet_corpus_objects.v1.json",
+    "void255": "spec/void255_active_head_math.v1.json",
+    "phase_bank_release": "spec/phase_bank_release.v1.json"
+  },
+  "legacy_removed": [
+    {
+      "component": "Hopfield byte-expert benchmark",
+      "paths": [
+        "tests/test_byte_router_repeats.cpp",
+        "tests/test_byte_expert_router.cpp",
+        "tests/test_hopfield_learning.cpp"
+      ],
+      "surfaces": [
+        "make byte-router",
+        "make byte-router-repeats"
+      ]
+    },
+    {
+      "component": "Hopfield legacy docs",
+      "paths": [
+        "docs/34_HOPFIELD_LEARNING.md",
+        "docs/42_BYTE_EXPERT_ROUTER.md",
+        "docs/43_BYTE_ROUTER_REPEATS.md"
+      ]
+    }
+  ],
+  "commands": {
+    "audit": "python3 tools/unified_kernel_audit.py --run",
+    "audit_check": "python3 tools/unified_kernel_audit.py",
+    "system_check": "python3 tools/unified_system_check.py",
+    "nanlmind_fixtures": "python3 tools/run_nan16_fixtures.py",
+    "nanrouter_fixtures": "python3 tools/run_mth_fixtures.py",
+    "make_audit": "make unified-kernel-audit",
+    "make_check": "make unified-system-check"
+  }
+}

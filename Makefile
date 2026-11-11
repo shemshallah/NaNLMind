@@ -17,10 +17,10 @@ NAN0S_OBJ := $(patsubst third_party/nan0s/core/%.c,$(BUILD)/nan0s_%.o,$(NAN0S_SR
 NAN0S_LIB := $(BUILD)/libnan0s.a
 CLI := $(BUILD)/nanlm-universal
 
-TEST_SRC := tests/test_journal_forest.cpp tests/test_address.cpp tests/test_nan16.cpp tests/test_volume_address.cpp tests/test_universe.cpp tests/test_pager.cpp tests/test_resonance.cpp tests/test_ledger.cpp tests/test_scale.cpp tests/test_hypergraph.cpp tests/test_hypermatrix.cpp tests/test_temporal.cpp tests/test_global.cpp tests/test_heads.cpp tests/test_clock.cpp tests/test_phase.cpp tests/test_growth.cpp tests/test_consolidation.cpp tests/test_handoff.cpp tests/test_training.cpp tests/test_r18t_sequence.cpp tests/test_router.cpp tests/test_inverse.cpp tests/test_frame_sync.cpp tests/test_meta_index.cpp tests/test_contemplation.cpp tests/test_atomic.cpp tests/test_ntf.cpp tests/test_ncr.cpp tests/test_universe_task.cpp tests/test_supercluster.cpp tests/test_byte_model.cpp tests/test_recovery.cpp tests/test_slot_model.cpp tests/test_kneser_ney.cpp tests/test_context2.cpp tests/test_context2_topology.cpp tests/test_vector_store.cpp tests/test_word_memory.cpp tests/test_bootstrap_router.cpp tests/test_bootstrap_layers.cpp tests/test_hopfield_learning.cpp tests/test_overbootstrap_map.cpp tests/test_learning_mesh.cpp tests/test_hyperparameter.cpp tests/test_bit_byte_learning.cpp tests/test_relation_curriculum.cpp tests/test_byte_expert_router.cpp tests/test_word_stream_learning.cpp tests/test_word_vector_learning.cpp tests/test_logic_scale.cpp tests/test_boolean_curriculum.cpp tests/test_relation_boolean_gate.cpp tests/test_transform_chain.cpp tests/test_boolean_spectrum.cpp tests/test_hypervector.cpp tests/test_hypervector_scale.cpp tests/test_degree_exceptions.cpp tests/test_sparse_degree_20k.cpp tests/test_two_counter.cpp tests/test_limb_atlas.cpp tests/test_two_counter_limb.cpp tests/test_turing_machine.cpp tests/test_universal_tm.cpp tests/test_utm_proof.cpp tests/test_tape_checkpoint.cpp tests/test_small_utm.cpp tests/test_minsky_utm.cpp tests/test_minsky_encoded.cpp tests/test_utm_universal_desc.cpp tests/test_binary_tm_compiler.cpp tests/test_binary_utm.cpp tests/test_binary_utm_self.cpp tests/test_logic_session.cpp tests/test_relation_train.cpp tests/test_endpoint_evidence.cpp tests/test_two_counter_orbit.cpp tests/test_reversible.cpp tests/test_semiring_inheritance.cpp tests/test_sparse_exceptions.cpp tests/test_semiring.cpp tests/test_ntt257.cpp tests/test_ntt_sequence.cpp tests/test_reversible_vs_stored.cpp tests/test_slot_recovery.cpp tests/test_teacher_gate.cpp tests/test_math_catalog.cpp tests/test_raw_field.cpp tests/test_context_backoff.cpp tests/test_sparse_field.cpp tests/test_raw_contextual.cpp
+TEST_SRC := tests/test_journal_forest.cpp tests/test_address.cpp tests/test_nan16.cpp tests/test_volume_address.cpp tests/test_universe.cpp tests/test_pager.cpp tests/test_resonance.cpp tests/test_ledger.cpp tests/test_scale.cpp tests/test_hypergraph.cpp tests/test_hypermatrix.cpp tests/test_temporal.cpp tests/test_global.cpp tests/test_heads.cpp tests/test_clock.cpp tests/test_phase.cpp tests/test_growth.cpp tests/test_consolidation.cpp tests/test_handoff.cpp tests/test_training.cpp tests/test_r18t_sequence.cpp tests/test_router.cpp tests/test_inverse.cpp tests/test_frame_sync.cpp tests/test_meta_index.cpp tests/test_contemplation.cpp tests/test_atomic.cpp tests/test_ntf.cpp tests/test_ncr.cpp tests/test_universe_task.cpp tests/test_supercluster.cpp tests/test_byte_model.cpp tests/test_recovery.cpp tests/test_slot_model.cpp tests/test_kneser_ney.cpp tests/test_context2.cpp tests/test_context2_topology.cpp tests/test_vector_store.cpp tests/test_word_memory.cpp tests/test_bootstrap_router.cpp tests/test_bootstrap_layers.cpp tests/test_overbootstrap_map.cpp tests/test_learning_mesh.cpp tests/test_hyperparameter.cpp tests/test_bit_byte_learning.cpp tests/test_relation_curriculum.cpp tests/test_word_stream_learning.cpp tests/test_word_vector_learning.cpp tests/test_logic_scale.cpp tests/test_boolean_curriculum.cpp tests/test_relation_boolean_gate.cpp tests/test_transform_chain.cpp tests/test_boolean_spectrum.cpp tests/test_hypervector.cpp tests/test_hypervector_scale.cpp tests/test_degree_exceptions.cpp tests/test_sparse_degree_20k.cpp tests/test_two_counter.cpp tests/test_limb_atlas.cpp tests/test_two_counter_limb.cpp tests/test_turing_machine.cpp tests/test_universal_tm.cpp tests/test_utm_proof.cpp tests/test_tape_checkpoint.cpp tests/test_small_utm.cpp tests/test_minsky_utm.cpp tests/test_minsky_encoded.cpp tests/test_utm_universal_desc.cpp tests/test_binary_tm_compiler.cpp tests/test_binary_utm.cpp tests/test_binary_utm_self.cpp tests/test_logic_session.cpp tests/test_relation_train.cpp tests/test_endpoint_evidence.cpp tests/test_two_counter_orbit.cpp tests/test_reversible.cpp tests/test_semiring_inheritance.cpp tests/test_sparse_exceptions.cpp tests/test_semiring.cpp tests/test_ntt257.cpp tests/test_ntt_sequence.cpp tests/test_reversible_vs_stored.cpp tests/test_slot_recovery.cpp tests/test_teacher_gate.cpp tests/test_math_catalog.cpp tests/test_raw_field.cpp tests/test_context_backoff.cpp tests/test_sparse_field.cpp tests/test_raw_contextual.cpp
 TEST_BIN := $(patsubst tests/%.cpp,$(BUILD)/%,$(TEST_SRC))
 
-.PHONY: all test dual-head-test clean verify unified-check nan16-test legacy self-sim-probe universe-check bootstrap penguin logic behavior challenge warmup merge-test clocked-head-demo byte-mesh curriculum byte-router byte-router-repeats hyper-scale rawroute-test rss-contract-test sparse-field-test raw-contextual-test phase-ingest-check phase-train-check phase-train-book-check wordlist-corpus wordlist-fetch wordlist-intake-check
+.PHONY: all test dual-head-test clean verify unified-check unified-kernel-audit unified-system-check nan16-test legacy self-sim-probe universe-check bootstrap penguin logic behavior challenge warmup merge-test clocked-head-demo byte-mesh curriculum hyper-scale rawroute-test rss-contract-test sparse-field-test raw-contextual-test phase-ingest-check phase-train-check phase-train-book-check wordlist-corpus wordlist-fetch wordlist-intake-check
 
 LEGACY_R23 := NaNLM_statespace/archive/NaN16_Palindromic_Temporal_Computer_Round23/R23
 LEGACY_BIN := $(BUILD)/test_legacy_logic
@@ -112,7 +112,7 @@ behavior: penguin logic legacy
 challenge: $(BUILD)/test_logic_challenge
 	./$(BUILD)/test_logic_challenge
 
-universe-check: $(BUILD)/test_universe_task $(BUILD)/test_byte_model $(BUILD)/test_slot_model $(BUILD)/test_kneser_ney $(BUILD)/test_context2 $(BUILD)/test_context2_topology $(BUILD)/test_bootstrap_router $(BUILD)/test_bootstrap_layers $(BUILD)/test_hopfield_learning $(BUILD)/test_overbootstrap_map $(BUILD)/test_learning_mesh $(BUILD)/test_endpoint_evidence $(BUILD)/test_hyperparameter $(BUILD)/test_bit_byte_learning $(BUILD)/test_relation_curriculum $(BUILD)/test_byte_expert_router $(BUILD)/test_word_stream_learning $(BUILD)/test_word_vector_learning $(BUILD)/test_logic_scale $(BUILD)/test_boolean_curriculum $(BUILD)/test_relation_boolean_gate $(BUILD)/test_transform_chain $(BUILD)/test_boolean_spectrum $(BUILD)/test_math_catalog $(BUILD)/test_hypervector $(BUILD)/test_teacher_gate $(BUILD)/test_heads $(BUILD)/test_training $(BUILD)/test_r18t_sequence $(BUILD)/test_handoff $(BUILD)/test_growth $(BUILD)/test_inverse $(BUILD)/test_contemplation $(BUILD)/test_recovery
+universe-check: $(BUILD)/test_universe_task $(BUILD)/test_byte_model $(BUILD)/test_slot_model $(BUILD)/test_kneser_ney $(BUILD)/test_context2 $(BUILD)/test_context2_topology $(BUILD)/test_bootstrap_router $(BUILD)/test_bootstrap_layers $(BUILD)/test_overbootstrap_map $(BUILD)/test_learning_mesh $(BUILD)/test_endpoint_evidence $(BUILD)/test_hyperparameter $(BUILD)/test_bit_byte_learning $(BUILD)/test_relation_curriculum $(BUILD)/test_word_stream_learning $(BUILD)/test_word_vector_learning $(BUILD)/test_logic_scale $(BUILD)/test_boolean_curriculum $(BUILD)/test_relation_boolean_gate $(BUILD)/test_transform_chain $(BUILD)/test_boolean_spectrum $(BUILD)/test_math_catalog $(BUILD)/test_hypervector $(BUILD)/test_teacher_gate $(BUILD)/test_heads $(BUILD)/test_training $(BUILD)/test_r18t_sequence $(BUILD)/test_handoff $(BUILD)/test_growth $(BUILD)/test_inverse $(BUILD)/test_contemplation $(BUILD)/test_recovery
 	@set -e; for t in $^; do ./$$t; done
 
 bootstrap: $(CLI)
@@ -162,12 +162,6 @@ curriculum: $(BUILD)/test_relation_curriculum $(BUILD)/test_word_memory $(BUILD)
 	./$(BUILD)/test_word_memory
 	./$(BUILD)/test_bit_byte_learning
 
-byte-router: $(BUILD)/test_byte_expert_router
-	./$(BUILD)/test_byte_expert_router
-
-byte-router-repeats: $(BUILD)/test_byte_router_repeats
-	./$(BUILD)/test_byte_router_repeats
-
 hyper-scale: $(BUILD)/test_hypervector_scale
 	./$(BUILD)/test_hypervector_scale
 
@@ -176,6 +170,12 @@ verify: $(CLI)
 
 unified-check: $(CLI)
 	python3 tools/unified_build_audit.py
+
+unified-kernel-audit:
+	python3 tools/unified_kernel_audit.py --run
+
+unified-system-check: $(BUILD)/test_raw_field $(BUILD)/test_dual_head
+	python3 tools/unified_system_check.py --run
 
 nan16-test:
 	python3 tools/run_nan16_fixtures.py

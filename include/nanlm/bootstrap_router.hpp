@@ -1,4 +1,9 @@
-// Point-1 bootstrap router and sparse Hopfield layer.
+// Point-1 bootstrap router and bounded legacy key store.
+//
+// Hopfield is retired from the production sparse-trunk path and its legacy
+// byte-expert benchmark/tests have been removed. BootstrapMesh and HeadStore
+// still use this bounded store for compatibility; new work should use the raw
+// NaN16 field/context path instead.
 //
 // The router is a role on a non-head portal (default point 1 = 0x0001).
 // The Hopfield layer is deliberately bounded:

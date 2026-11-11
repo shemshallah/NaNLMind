@@ -36,7 +36,6 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 31 | [31_WORD_MEMORY.md](31_WORD_MEMORY.md) | What does the word layer over bins answer, and what does it prove? |
 | 32 | [32_HARD_LOGIC_WARMUP.md](32_HARD_LOGIC_WARMUP.md) | What happens after ten bytewise passes on nested-exception relations? |
 | 33 | [33_BOOTSTRAP_ROUTER.md](33_BOOTSTRAP_ROUTER.md) | How does the bootstrap router work with a bootstrap-only 2 GiB map and 8 MiB Android peers? |
-| 34 | [34_HOPFIELD_LEARNING.md](34_HOPFIELD_LEARNING.md) | Can the sparse Hopfield layer learn and replay a token sequence? |
 | 35 | [35_BOOTSTRAP_HEAD_STORE.md](35_BOOTSTRAP_HEAD_STORE.md) | How do trained head vectors reach the 2 GiB overbootstrap head arena? |
 | 36 | [36_TRAINING_MERGE.md](36_TRAINING_MERGE.md) | How does Koyeb merge training deltas without holding the 2 GiB map? |
 | 37 | [37_TWO_RATE_MESH.md](37_TWO_RATE_MESH.md) | How do bootstrap and overbootstrap learn together with different math? |
@@ -49,8 +48,6 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 39 | [39_BIT_BYTE_GATE.md](39_BIT_BYTE_GATE.md) | What happens when the mesh learns bit and byte transitions? |
 | 40 | [40_BYTE_STREAM_GATE.md](40_BYTE_STREAM_GATE.md) | Does the mesh beat order-0 on real Alice byte transitions? |
 | 41 | [41_RELATION_FIRST_CURRICULUM.md](41_RELATION_FIRST_CURRICULUM.md) | Why relations and penguin logic come before scaled bytes/words |
-| 42 | [42_BYTE_EXPERT_ROUTER.md](42_BYTE_EXPERT_ROUTER.md) | How does overbootstrap choose between Hopfield and bigram byte experts? |
-| 43 | [43_BYTE_ROUTER_REPEATS.md](43_BYTE_ROUTER_REPEATS.md) | Does repeating the same byte corpus improve the routed result? |
 | 44 | [44_WORD_STREAM_GATE.md](44_WORD_STREAM_GATE.md) | How strong is a simple word-level baseline on Alice? |
 | 45 | [45_WORD_VECTOR_GATE.md](45_WORD_VECTOR_GATE.md) | Can the word-vector layer beat unigram or bigram? |
 | 46 | [46_LOGIC_SCALE_BASELINE.md](46_LOGIC_SCALE_BASELINE.md) | How large is the symbolic logic baseline, and what does it prove? |
@@ -59,7 +56,7 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 49 | [49_BOOLEAN_SPECTRUM.md](49_BOOLEAN_SPECTRUM.md) | What are ANF, Walsh, symmetry classes and the four-NaN transforms? |
 | 50 | [50_LIFT_AND_SCALE.md](50_LIFT_AND_SCALE.md) | Which lift, hypervector and scale-stack forms should we build? |
 | 51 | [51_HYPERVECTOR_TRIPLES.md](51_HYPERVECTOR_TRIPLES.md) | Can XOR hypervectors store and recall merged triples? |
-| 52 | [52_TEACHER_GATE.md](52_TEACHER_GATE.md) | Do Hopfield, Boolean gates, and the triple store agree on cassowary? |
+| 52 | [52_TEACHER_GATE.md](52_TEACHER_GATE.md) | Do candidates, Boolean gates, and the triple store agree on cassowary? |
 | 53 | [53_DETERMINISTIC_LAYERS.md](53_DETERMINISTIC_LAYERS.md) | What do reversible coupling, semiring closure, and exact NTT add? |
 | 54 | [54_HYPERVECTOR_SCALE.md](54_HYPERVECTOR_SCALE.md) | Does the hypervector store hold 20k facts, and when does it fail? |
 | 55 | [55_SUPERPOSITION_TODO.md](55_SUPERPOSITION_TODO.md) | What is the deferred superposition/phase design, and why is it not implemented? |

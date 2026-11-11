@@ -198,8 +198,6 @@ make
 make unified-check
 make nan16-test
 ./build/nanlm-universal warmup 10
-make byte-router
-make byte-router-repeats
 ./build/nanlm-universal bootstrap
 ./build/nanlm-universal growth
 make test
@@ -263,7 +261,6 @@ baseline — a plain RNN matching the 256-head topology — is in
 | `docs/31_WORD_MEMORY.md` | word layer over bins, fixed-challenge baseline, honesty note |
 | `docs/32_HARD_LOGIC_WARMUP.md` | nested-exception challenge and ten-pass byte warmup |
 | `docs/33_BOOTSTRAP_ROUTER.md` | point-1 router, bootstrap-only 2 GiB map, layer storage, Android scope |
-| `docs/34_HOPFIELD_LEARNING.md` | sparse Hopfield token-sequence learning and key-identity fix |
 | `docs/35_BOOTSTRAP_HEAD_STORE.md` | train → 256 head vectors → 2 GiB head arena persistence |
 | `docs/36_TRAINING_MERGE.md` | Koyeb training-delta merger, stale/idempotent merge, scoped token |
 | `docs/37_TWO_RATE_MESH.md` | bootstrap/overbootstrap mesh, meta evidence, bounded feedback |
@@ -271,8 +268,6 @@ baseline — a plain RNN matching the 256-head topology — is in
 | `docs/39_BIT_BYTE_GATE.md` | bit/byte two-rate learning gate and the unresolved byte transition |
 | `docs/40_BYTE_STREAM_GATE.md` | real Alice byte-stream challenge; current failure vs order-0 |
 | `docs/41_RELATION_FIRST_CURRICULUM.md` | relation-first penguin gate, word/logic checks, curriculum order |
-| `docs/42_BYTE_EXPERT_ROUTER.md` | overbootstrap chooses between Hopfield and bigram byte experts |
-| `docs/43_BYTE_ROUTER_REPEATS.md` | ten-pass byte measurement: repetition does not improve top-1 |
 | `docs/44_WORD_STREAM_GATE.md` | word unigram/bigram baseline and the weak word signal |
 | `docs/45_WORD_VECTOR_GATE.md` | binned word-vector expert vs word bigram |
 | `docs/46_LOGIC_SCALE_BASELINE.md` | 20k-entity symbolic logic baseline and universal triple corpus |
@@ -281,7 +276,7 @@ baseline — a plain RNN matching the 256-head topology — is in
 | `docs/49_BOOLEAN_SPECTRUM.md` | four-NaN transforms, ANF/Walsh/symmetry, transpose split |
 | `docs/50_LIFT_AND_SCALE.md` | lift/sketch/outer-product choices, hypervectors, scale stack |
 | `docs/51_HYPERVECTOR_TRIPLES.md` | XOR bind/bundle/cleanup triple store and merge test |
-| `docs/52_TEACHER_GATE.md` | Hopfield candidate → Boolean exception gate → triple-store grader |
+| `docs/52_TEACHER_GATE.md` | candidate → Boolean exception gate → triple-store grader |
 | `docs/53_DETERMINISTIC_LAYERS.md` | reversible coupling, Boolean closure, exact F257 NTT |
 | `docs/54_HYPERVECTOR_SCALE.md` | 20k hypervector split: global 0%, sharded 100% |
 | `docs/55_SUPERPOSITION_TODO.md` | deferred signed-amplitude/phase design; explicitly not implemented |
