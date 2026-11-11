@@ -1,0 +1,22 @@
+name: Frozen 48M three-future-word causal rollout
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/decoder48m_future3.py'
+      - 'tools/decoder48m_candidate.py'
+      - 'tests/test_decoder48m_future3.py'
+      - '.github/workflows/48m-future3-causal.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  exact-word-no-gold:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Three conditional horizons using frozen-emitter API
+        run: python -m unittest discover -s tests -p test_decoder48m_future3.py -v
