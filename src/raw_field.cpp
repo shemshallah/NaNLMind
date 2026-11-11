@@ -77,6 +77,88 @@ RawFieldVM::~RawFieldVM() {
     if (vm_) nan_destroy(vm_);
 }
 
+bool RawFieldVM::native_spectral_tensor_propose(
+    const std::array<std::int64_t,256>& spectral_q16_i64,
+    const std::array<std::uint8_t,85>& trihead_masks,
+    const std::array<std::array<std::uint8_t,2>,255>& directed_pairs,
+    const std::array<std::uint8_t,255>& writer_capabilities,
+    std::uint32_t expected_generation, std::uint32_t current_generation,
+    bool global_approved, bool meta_approved,
+    NativeSpectralTensorResult& result) {
+    result = {};
+    if (!vm_) return fail("native spectral tensor: VM not loaded");
+    // The host only serializes a verified observation envelope; the guest
+    // performs all mathematical acceptance, voting and directed mapping.
+    constexpr std::uint32_t spectral_base=0x003D0000u;
+    constexpr std::uint32_t trihead_base=0x003D0400u;
+    constexpr std::uint32_t pair_base=0x003D0500u;
+    constexpr std::uint32_t writer_base=0x003D0800u;
+    constexpr std::uint32_t output_base=0x003D1000u;
+    for (std::size_t h=0;h<spectral_q16_i64.size();++h) {
+        const std::uint64_t bits=static_cast<std::uint64_t>(spectral_q16_i64[h]);
+        if (!write_word(spectral_base+static_cast<std::uint32_t>(2*h),
+                        static_cast<std::uint32_t>(bits)) ||
+            !write_word(spectral_base+static_cast<std::uint32_t>(2*h+1),
+                        static_cast<std::uint32_t>(bits>>32u)))
+            return fail("native spectral tensor: cannot transmit I64 input");
+    }
+    for (std::size_t t=0;t<trihead_masks.size();++t)
+        if (!write_word(trihead_base+static_cast<std::uint32_t>(t),trihead_masks[t]))
+            return fail("native spectral tensor: cannot transmit trihead mask");
+    for (std::size_t h=0;h<directed_pairs.size();++h) {
+        const std::uint32_t j=static_cast<std::uint32_t>(h);
+        if (!write_word(pair_base+2u*j,directed_pairs[h][0]) ||
+            !write_word(pair_base+2u*j+1u,directed_pairs[h][1]) ||
+            !write_word(writer_base+j,writer_capabilities[h]))
+            return fail("native spectral tensor: cannot transmit candidate coordinates");
+    }
+    if (!write_word(kProposalBase+0,expected_generation) ||
+        !write_word(kProposalBase+1,current_generation) ||
+        !write_word(kProposalBase+2,global_approved?1u:0u) ||
+        !write_word(kProposalBase+3,meta_approved?1u:0u) ||
+        !write_word(kCommandBase,106u))
+        return fail("native spectral tensor: cannot transmit generation and gate");
+    if (!run_command()) return false;
+    const auto status=read_word(kResultBase+0);
+    const auto approved=read_word(kResultBase+1);
+    const auto count=read_word(kResultBase+2);
+    const auto reason=read_word(kResultBase+3);
+    if (status==0u) {
+        if (approved!=0u||count!=0u||reason<1u||reason>5u)
+            return fail("native spectral tensor: malformed guest reject receipt");
+        result.rejection_reason=static_cast<std::uint8_t>(reason);
+        return true;
+    }
+    if (status!=1u||reason!=0u||approved<43u||approved>85u||
+        count==0u||count>255u)
+        return fail("native spectral tensor: malformed guest approval receipt");
+    result.accepted_triads=static_cast<std::uint16_t>(approved);
+    std::array<bool,255> seen{};
+    for (std::uint32_t i=0;i<count;++i) {
+        const auto base=output_base+5u*i;
+        const auto h=read_word(base+0);
+        const auto a=read_word(base+1);
+        const auto b=read_word(base+2);
+        const auto offset=read_word(base+3);
+        const auto credit=read_word(base+4);
+        if (h>=255u||a>=255u||b>=255u||seen[h]||
+            writer_capabilities[h]!=1u||
+            a!=directed_pairs[h][0]||b!=directed_pairs[h][1]||
+            offset<67108864u||offset>=134217728u||
+            (offset&3u)!=0u)
+            return fail("native spectral tensor: invalid candidate bank receipt");
+        seen[h]=true;
+        result.records.push_back({
+            static_cast<std::uint8_t>(h),
+            static_cast<std::uint8_t>(a),
+            static_cast<std::uint8_t>(b),
+            offset,
+            static_cast<std::int32_t>(credit)});
+    }
+    result.accepted=true;
+    return true;
+}
+
 bool RawFieldVM::fail(const std::string& message) {
     error_ = message;
     return false;
