@@ -24,6 +24,7 @@ struct Native48MFeedbackReceipt {
     std::array<float,20> meta_features{};
     std::array<std::uint8_t,85> triad_votes{};
     std::array<std::int32_t,255> head_credits{};
+    HotTriheadResult native_hot{}; // hothead->native dynamically mapped hottriheads
     std::int32_t field_q16=0;
     std::uint16_t accepted_triads=0;
     bool field_accepted=false, has_admitted_faces=false;
@@ -84,6 +85,11 @@ public:
             r.triad_votes[i]=static_cast<std::uint8_t>(votes[i]);
         }
         std::copy(head_credits.begin(),head_credits.end(),r.head_credits.begin());
+        // Actual native hothead scan and dynamically reordered 85x3 map.
+        // It is a measurement, NOT a new independent chart authority:
+        // no live trihead remap occurs without a separate authorization.
+        if(!vm_.hot_triheads(r.head_credits,0,r.native_hot))
+            throw std::runtime_error("hothead->hottrihead guest: "+vm_.error());
         if(!vm_.field_vote(r.triad_votes,r.accepted_triads,r.field_accepted))
             throw std::runtime_error("field vote guest: "+vm_.error());
         if(!vm_.global_hodge(pair_flows,admitted_faces,r.divergence,r.curl))
@@ -311,6 +317,25 @@ public:
         arena_.stage_native_value(head.proposer,head.h,head.b,head.a,
                                   temporal.poincare_y);
         return 2;
+    }
+
+    // Allow the dynamic hottrihead map to propose from all 255 heads
+    // only after its OWN native quorum and the sourced Hodge/MC0 gates.
+    // No remap of active chart state and no active tensor mutation.
+    std::size_t stage_native_hottrihead_feedback(
+        const Native48MFeedbackReceipt& receipt) {
+        if (!receipt.native_measured || !receipt.native_hot.field_hot ||
+            !receipt.has_admitted_faces || !receipt.meta_available ||
+            !arena_.candidate_open())
+            throw std::logic_error("native hottrihead quorum/Hodge/MC0 not met");
+        if (receipt.native_hot.hot_triads<43u ||
+            receipt.native_hot.hot_heads<129u)
+            throw std::logic_error("invalid native hottrihead majority");
+        std::array<std::array<std::uint8_t,3>,85> triads{};
+        for (std::size_t t=0;t<85;++t)
+            for (std::size_t slot=0;slot<3;++slot)
+                triads[t][slot]=receipt.native_hot.members[3*t+slot];
+        return stage_all_trihead_candidate_credits(receipt,triads);
     }
 
     // Hodge curl -> 128D native Poincare hyperedge depth -> a separate
