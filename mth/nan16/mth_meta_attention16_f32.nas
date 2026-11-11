@@ -26,6 +26,26 @@ mth_meta_attention16_f32:
   MOVI r10,256
   CMP r5,r10
   JMP[GT] @mth_ma_reject
+  ; At least one committed slot must be valid; mask entries are 0/1.
+  MOVI r8,0
+  MOVI r9,0
+mth_ma_mask_gate:
+  CMP r8,r4
+  JMP[GE] @mth_ma_mask_gate_done
+  ADD r10,r6,r8
+  LD r10,r10,0
+  CMP r10,r0
+  JMP[EQ] @mth_ma_mask_gate_next
+  MOVI r11,1
+  CMP r10,r11
+  JMP[NE] @mth_ma_reject
+  ADDI r9,r9,1
+mth_ma_mask_gate_next:
+  ADDI r8,r8,1
+  JMP @mth_ma_mask_gate
+mth_ma_mask_gate_done:
+  CMP r9,r0
+  JMP[EQ] @mth_ma_reject
   ; scale = 1/sqrt(D)
   CVTIF r1,r5
   FSQRT r1,r1
@@ -74,7 +94,7 @@ mth_ma_masked:
   MOVHI r10,0xFF7F
   MOVI r11,@mth_ma_scores
   ADD r11,r11,r8
-  ST r15,r11,0
+  ST r10,r11,0
   ADDI r8,r8,1
   JMP @mth_ma_score_loop
 mth_ma_score_done:
