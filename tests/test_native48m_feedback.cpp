@@ -48,6 +48,19 @@ int main(){
     assert(arena.candidate(7,3,2)==0.0f); // opposite mirror is independent
     assert(second.accepted_triads<=85);
     assert(second.native_observed_contexts==4u);
+    // Hothead -> dynamically assigned hottrihead is measured by the
+    // actual NaN16 opcode8, not inferred from ordinary trihead votes.
+    assert(second.native_hot.hot_heads<=255);
+    assert(second.native_hot.hot_triads==second.native_hot.hot_heads/3);
+    assert(second.native_hot.field_hot==
+           (second.native_hot.hot_triads>=43));
+    std::array<bool,255> all_hot_mapping{};
+    for (const auto head_id:second.native_hot.members) {
+        assert(head_id<255 && !all_hot_mapping[head_id]);
+        all_hot_mapping[head_id]=true;
+    }
+    for(const bool used:all_hot_mapping)assert(used);
+
     // Every one of the 255 heads (including head 0) can be leased to write
     // its OWN candidate coordinate. The mirror direction remains untouched.
     arena.set_all_candidate_writer_permissions(true);
@@ -66,6 +79,12 @@ int main(){
             assert(arena.candidate(head,a,b)==expected);
         assert(arena.active(head,a,b)==0.0f);
         assert(arena.candidate(head,b,a)==0.0f);
+    }
+    if (!second.native_hot.field_hot) {
+        bool quorum_denied=false;
+        try { bridge.stage_native_hottrihead_feedback(second); }
+        catch (const std::logic_error&) { quorum_denied=true; }
+        assert(quorum_denied); // below-threshold hot groups cannot publish
     }
     auto malformed=triads;
     malformed[84][2]=3;  // duplicate 3, absent head 254
