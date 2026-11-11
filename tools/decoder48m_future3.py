@@ -16,6 +16,7 @@ import argparse
 import hashlib
 import json
 import math
+import subprocess
 from pathlib import Path
 from collections.abc import Callable, Mapping, Sequence
 from decoder48m_candidate import FiniteCandidateDistribution, frozen_r25_emitter
@@ -85,16 +86,71 @@ def future_three_rollout(
         "requires_precommitted_disjoint_evaluation":True,
     }
 
+def native_guest_remeasure(guest_executable: Path, observed_context: str,
+                           receipts: list[dict]):
+    """Call the SAME NaN16 guest at each frozen-decoder causal horizon.
+
+    The observer computes actual native trig/MC0/Poincare geometry, but has
+    no sourced Hodge faces or loss-trained proposal; it must return ZERO
+    candidate logit deltas. Never disguise untrained geometry as a learned
+    decoder adjustment. All original 48M word probabilities remain exact.
+    """
+    observed=observed_context.strip()
+    if not observed:
+        raise ValueError("original observed context must be nonempty")
+
+    def observe(context: str, horizon: int, previously_generated: tuple[str,...]):
+        if horizon!=len(previously_generated)+1 or horizon not in (1,2,3):
+            raise ValueError("native guest horizon/source mismatch")
+        expected=" ".join((observed,*previously_generated))
+        if context!=expected:
+            raise ValueError("future native observer received altered context")
+        command=[str(guest_executable),observed,
+                 " ".join(previously_generated) if previously_generated else "-",
+                 str(len(previously_generated))]
+        completed=subprocess.run(command,check=True,capture_output=True,text=True)
+        receipt=json.loads(completed.stdout)
+        if (receipt.get("schema")!="nanlm.native-future3-measure/1" or
+            receipt.get("horizon")!=horizon or
+            receipt.get("generated_word_count")!=len(previously_generated) or
+            receipt.get("guest_measured") is not True or
+            receipt.get("source_future_read") is not False or
+            receipt.get("candidate_delta_available") is not False or
+            receipt.get("has_admitted_hodge_faces") is not False or
+            receipt.get("tensor_promoted") is not False or
+            receipt.get("now_void_head")!=255 or
+            receipt.get("past_mask",0)<1 or receipt.get("past_mask",0)>7):
+            raise ValueError("native guest reported invalid causal evidence")
+        for key in ("poincare_x","poincare_y","poincare_radius","poincare_depth"):
+            if not math.isfinite(float(receipt[key])):
+                raise ValueError("nonfinite native geometry receipt")
+        if not (0<=receipt["poincare_radius"]<1 and receipt["poincare_depth"]>=0):
+            raise ValueError("invalid native Poincare ball")
+        receipts.append(receipt)
+        return {} # No unvalidated word-logit modifications!
+    return observe
+
 def main()->None:
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--archive-root",type=Path,required=True)
     parser.add_argument("--context",required=True,help="Observed prefix, no future gold")
     parser.add_argument("--wordlist",type=Path,required=True)
+    parser.add_argument("--native-guest",type=Path,
+                        help="existing NaN16 opcode112 observer (measure only)")
     parser.add_argument("--output",type=Path)
     args=parser.parse_args()
     words=[x.strip() for x in args.wordlist.read_text().splitlines() if x.strip()]
+    native_receipts: list[dict]=[]
+    observer=(native_guest_remeasure(args.native_guest,args.context,native_receipts)
+              if args.native_guest is not None else None)
     result=future_three_rollout(frozen_r25_emitter(args.archive_root),
-                                args.context,words)
+                                args.context,words,native_remeasure=observer)
+    if args.native_guest is not None:
+        if len(native_receipts)!=3:
+            raise RuntimeError("NaN16 observer omitted a future-word horizon")
+        result["native_future3_receipts"]=native_receipts
+        result["native_math_origin"]="NaN16 opcode112 CORDIC/MC0/Poincare"
+        result["untrained_native_deltas_applied"]=False
     result["shortlist_sha256"]=hashlib.sha256(args.wordlist.read_bytes()).hexdigest()
     encoded=json.dumps(result,indent=2)
     if args.output:
