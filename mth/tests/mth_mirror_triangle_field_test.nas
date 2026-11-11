@@ -100,6 +100,8 @@ mpt_main:
   CMP r10,r11
   JMP[NE] @mpt_fail
 
+  MOVI r10,1
+  ST r10,r0,@mpt_stage
   ; Authenticated-source fixture S+/S- mirror rails are two INDEPENDENT
   ; directed stored float32 values per canonical C(256,2) cell.
   ; The guest, NOT the test harness, constructs anti-symmetric g=S+-S-.
@@ -157,6 +159,8 @@ mpt_main:
   MOVHI r11,0x4000
   CMP r10,r11
   JMP[NE] @mpt_fail
+  MOVI r10,2
+  ST r10,r0,@mpt_stage
   ; Invalid nonzero VOID255 mirror rail rejected before publishing.
   MOVI r8,0
   MOVHI r8,0x0034
@@ -181,6 +185,8 @@ mpt_main:
   JMP[NE] @mpt_fail
   MOVI r8,0
   MOVHI r8,0x0034
+  MOVI r10,3
+  ST r10,r0,@mpt_stage
   ST r0,r8,508       ; restore valid physical snapshot
   MOVI r8,0
   MOVHI r8,0x003A
@@ -191,6 +197,8 @@ mpt_main:
   JMP[NE] @mpt_fail
 
   MOVI r1,0
+  MOVI r10,4
+  ST r10,r0,@mpt_stage
   MOVHI r1,0x003A       ; 32640 signed canonical pair flows
   MOVI r2,0
   MOVHI r2,0x0039       ; boot frozen 510 triples
@@ -301,6 +309,8 @@ mpt_main:
   CMP r10,r11
   JMP[NE] @mpt_fail
 
+  MOVI r10,5
+  ST r10,r0,@mpt_stage
   ; Trainable 128D head vectors must originate from SAME native head guest.
   ST r0,r0,@mpt_index
 mpt_seed_head:
@@ -388,6 +398,8 @@ mpt_project:
   FCMP r10,r0
   JMP[LE] @mpt_fail
 
+  MOVI r10,6
+  ST r10,r0,@mpt_stage
   ; Corrupt only g_01: 1 -> 4, retain L=6 and trusted g_12,g_20.
   MOVI r8,0
   MOVHI r8,0x003A
@@ -442,6 +454,8 @@ mpt_project:
   CMP r10,r11
   JMP[NE] @mpt_fail
 
+  MOVI r10,7
+  ST r10,r0,@mpt_stage
   ; Source-generation failure does NOT publish new triangle records.
   MOVI r8,0
   MOVHI r8,0x0036
@@ -474,6 +488,10 @@ mpt_project:
   CALL @mpt_print
   HALT
 mpt_fail:
+  LD r8,r0,@mpt_stage
+  MOVI r11,48
+  ADD r8,r8,r11
+  PUTC r8
   MOVI r1,@mpt_bad
   CALL @mpt_print
   HALT
@@ -500,4 +518,6 @@ mpt_bad:
 mpt_random_c:
   .word 0
 mpt_index:
+  .word 0
+mpt_stage:
   .word 0
