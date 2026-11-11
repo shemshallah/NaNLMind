@@ -141,7 +141,7 @@ mrg_publish_begin:
   MOVI r14,6
   ST r14,r0,@mrg_fail_site
   MOVI r8,0
-mrg_publish:
+mrg_publish_loop:
   MOVI r9,32640
   CMP r8,r9
   JMP[GE] @mrg_publish_report
@@ -152,7 +152,7 @@ mrg_publish:
   ADD r10,r10,r8
   ST r11,r10,0
   ADDI r8,r8,1
-  JMP @mrg_publish
+  JMP @mrg_publish_loop
 mrg_publish_report:
   MOVI r14,7
   ST r14,r0,@mrg_fail_site
