@@ -324,6 +324,8 @@ slft_puts_byte:
   JMP[NE] @slft_puts_byte
   ADD r1,r1,r13
   JMP @slft_puts_word
+slft_h:
+  .word 0
 slft_stage:
   .word 0
 slft_pass:
