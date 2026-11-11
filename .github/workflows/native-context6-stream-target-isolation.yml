@@ -1,0 +1,35 @@
+name: Native NaN16 corpus stream context target isolation
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mth/nan16/mth_context6_window_stream.nas'
+      - 'mth/tests/mth_context6_window_stream_test.nas'
+      - '.github/workflows/native-context6-stream-target-isolation.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  no-leakage:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: shemshallah/NaN0S
+          ref: main
+          path: nan0s
+      - run: make -s -C nan0s/aarch64/android nan_cli
+      - name: Verify future mask, target mutation isolation, generation rejects
+        shell: bash
+        run: |
+          set -euo pipefail
+          awk -f nan0s/tools/nmk.awk -v CMD=emit mth/tests/mth_context6_window_stream_test.nas > /tmp/context-stream.nan
+          nan0s/aarch64/android/nan_cli --img /tmp/context-stream.nan --steps 2500000 --serial > /tmp/context-stream.log 2>&1
+          cat /tmp/context-stream.log
+          grep -q '^MTH CONTEXT6 STREAM TARGET ISOLATION PASS' /tmp/context-stream.log
