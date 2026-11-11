@@ -79,6 +79,8 @@ mth_meta_trihead_observe:
   MOVHI r10,0x0022
   ADD r10,r10,r7
   ; Only the three members of this selected triad receive credit.
+  ; When signed Q16 counters approach overflow, halve ALL 255 head credits
+  ; together to retain relative strengths during multi-million-step training.
   ; r9 was 85 for the modulo above and must not become a loop bound.
   MOVI r9,3
   MOVI r8,0
@@ -87,12 +89,40 @@ mth_mt_credit_loop:
   JMP[GE] @mth_mt_observe_done
   ADD r11,r10,r8
   LD r12,r11,0
+  MOVI r14,0
+  MOVHI r14,0x7FFF
+  CMPS r12,r14
+  JMP[GE] @mth_mt_credit_rescale
   MOVI r13,0
   MOVHI r13,0x0001
   ADD r12,r12,r13
   ST r12,r11,0
   ADDI r8,r8,1
   JMP @mth_mt_credit_loop
+mth_mt_credit_rescale:
+  ; Preserve current r8/r9/r10 member index/bound/group pointer.
+  MOVI r14,0
+  MOVI r11,0x0100
+  MOVHI r11,0x0022
+mth_mt_credit_rescale_all:
+  MOVI r12,255
+  CMP r14,r12
+  JMP[GE] @mth_mt_credit_loop
+  ADD r12,r11,r14
+  LD r13,r12,0
+  CMPS r13,r0
+  JMP[GE] @mth_mt_credit_half_positive
+  ; Signed half, including the two's-complement minimum.
+  SUB r13,r0,r13
+  SHR r13,r13,1
+  SUB r13,r0,r13
+  JMP @mth_mt_credit_half_store
+mth_mt_credit_half_positive:
+  SHR r13,r13,1
+mth_mt_credit_half_store:
+  ST r13,r12,0
+  ADDI r14,r14,1
+  JMP @mth_mt_credit_rescale_all
 mth_mt_observe_done:
   MOVI r12,@mth_mt_triad
   LD r1,r12,0
