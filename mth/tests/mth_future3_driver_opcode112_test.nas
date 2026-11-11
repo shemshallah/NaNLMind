@@ -35,9 +35,8 @@ f112_main:
   ST r11,r8,3
   ST r11,r8,4
   MOVI r9,0
+  ST r9,r0,0x4002      ; generated count = 0,1,2
 f112_step:
-  MOVI r10,0x4002
-  ST r9,r10,0          ; generated count = 0,1,2
   CALL @field_driver_main
   LD r10,r0,0x4010
   CMP r10,r13
@@ -47,7 +46,8 @@ f112_step:
   CMP r10,r11
   JMP[NE] @f112_bad
   LD r10,r0,0x4012
-  ADD r11,r9,r13
+  LD r11,r0,0x4002
+  ADD r11,r11,r13
   CMP r10,r11
   JMP[NE] @f112_bad
   MOVI r10,0x4000
@@ -65,7 +65,9 @@ f112_step:
   LD r11,r10,6
   CMP r11,r0
   JMP[NE] @f112_bad
+  LD r9,r0,0x4002
   ADDI r9,r9,1
+  ST r9,r0,0x4002
   MOVI r10,3
   CMP r9,r10
   JMP[LT] @f112_step
