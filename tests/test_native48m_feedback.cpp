@@ -1,0 +1,59 @@
+#include "nanlm/native48m_feedback.hpp"
+#include <cassert>
+#include <cmath>
+#include <iostream>
+#include <string>
+#include <vector>
+
+int main(){
+    nanlm::RawFieldVM vm("build/field_driver.nan");
+    if(!vm.ready()){std::cerr<<"native VM unavailable: "<<vm.error()<<"\n";return 1;}
+    nanlm::DualTensor256Arena arena(std::string(64,'a'),std::string(64,'b'));
+    arena.set_writer_permission(3,true);
+    arena.begin_candidate();
+    nanlm::Native48MFeedbackBridge bridge(vm,arena);
+    bridge.reset_native_session();
+    std::array<float,32640> initial_flow{};
+    auto first=bridge.measure_and_stage(
+        {'a','b','c'},{1,2,3,4},3,7,2,3,initial_flow,{});
+    assert(first.native_measured);
+    assert(first.native_observed_contexts==4u);
+    assert(!first.meta_available && !first.candidate_staged);
+    assert(first.committed_history_slots==0);
+    bridge.commit_context(first);
+    assert(bridge.history_size()==1u);
+
+    // The face and its oriented flows are explicit upstream evidence,
+    // NOT inferred from a synthetic tensor symmetry.
+    std::array<float,32640> measured_flows{};
+    measured_flows[0]=1.0f;   // directed 0 -> 1
+    measured_flows[255]=1.0f; // directed 1 -> 2
+    measured_flows[1]=-1.0f;  // directed 2 -> 0
+    auto second=bridge.measure_and_stage(
+        {'d','e','f'},{5,6,7,8},3,7,2,3,measured_flows,{{0,1,2}});
+    assert(second.native_measured && second.meta_available);
+    assert(second.candidate_staged && second.committed_history_slots==1u);
+    assert(second.has_admitted_faces && std::fabs(second.curl[0]-3.0f)<1e-5f);
+    assert(std::isfinite(second.native_log_weight));
+    assert(std::fabs(second.native_log_weight)<=8.0f);
+    assert(arena.candidate(7,2,3)==second.native_log_weight);
+    assert(arena.active(7,2,3)==0.0f);
+    assert(arena.candidate(7,3,2)==0.0f); // opposite mirror is independent
+    assert(second.accepted_triads<=85);
+    assert(second.native_observed_contexts==4u);
+    bridge.commit_context(second);
+    assert(bridge.history_size()==2u);
+    // This is a real native calculation but not a held-out quality gate:
+    // unknown NLL must reject promotion.
+    nanlm::TensorMetaGate gate;
+    gate.base_sha256=std::string(64,'a');
+    gate.overlay_sha256=std::string(64,'b');
+    gate.triad_votes=second.triad_votes;
+    gate.global_approved=second.has_admitted_faces;
+    gate.meta_approved=second.meta_available;
+    const auto result=arena.decide(gate);
+    assert(!result.promoted && result.generation==0);
+    assert(arena.active(7,2,3)==0.0f);
+    std::cout<<"PASS native phase -> cumulative triheads -> Hodge -> committed MC0 -> mirrored candidate; no unvalidated promotion\n";
+    return 0;
+}
