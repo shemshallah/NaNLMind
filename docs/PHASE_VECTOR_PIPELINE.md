@@ -785,10 +785,10 @@ vectors in the same line and reports `contrastive_triangles`,
 This is still a shape prior, not a supervised semantic truth classifier. The
 source-disjoint positive/negative evaluation with calibrated thresholds is now
 implemented in [Relation and inverse triangle corpus](RELATION_TRIANGLE_CORPUS.md).
-On the current medium WordNet sample the global raw test AUC is 0.5659 and the
-calibrated global test AUC is 0.5976 (ECE 0.0044), with weak per-relation
-results. Those are corpus labels and calibrated research outputs, not semantic
-truth.
+On the current medium WordNet sample the global raw test AUC is 0.5587 and the
+calibrated global test AUC is 0.5587 (ECE 0.0418). Per-relation raw AUCs are
+0.5690-0.6427; the pooled contrast score is the weak part. Those are corpus
+labels and calibrated research outputs, not semantic truth.
 
 ### Trig rotation + hyperbolic synergy
 
@@ -923,9 +923,9 @@ raw global model
 Current N16TRI test results:
 
 ```text
-shape_only       AUC 0.6486  BA 0.6251
+shape_only       AUC 0.6487  BA 0.6251
 source_prior     AUC 0.6379  BA 0.7085
-raw_global_model AUC 0.5659  BA 0.5980
+raw_global_model AUC 0.5587  BA 0.5984
 ```
 
 This is an important negative result: the raw global model is currently weaker
@@ -971,12 +971,19 @@ python3 tools/calibrate_triangle_relations.py \
 ```
 
 The current medium run (18,802 anchors, 143,746 rows) has global raw test AUC
-`0.5659`, calibrated global test AUC `0.5976`, balanced accuracy `0.5980`, and
-ECE `0.0044` at the valid-optimal threshold `0.3075`. Per-relation results are
-weak: `CONTRADICTS` raw AUC `0.6991`, `PART_OF` `0.6186`, `HAS_PART` `0.5843`,
-`ISA` `0.5340`, `ASSOCIATED` `0.5303`, and `HAS_SUBTYPE` `0.5127`. The model is
-a shape prior over the last 8 bytes of each role text, not a semantic relation
-encoder; the calibrated labels are corpus labels, not truth. See
+`0.5587`, calibrated global test AUC `0.5587`, balanced accuracy `0.5984`, and
+ECE `0.0418` at the valid-optimal threshold `0.1932`. Per-relation raw AUCs are
+`0.5690`-`0.6427`; the strongest are `PART_OF` `0.6427`, `HAS_PART` `0.6134`
+and `ISA` `0.6031`. The separate `shape_only` score reaches pooled AUC `0.6487`
+on the same test rows, so the global contrast combination is losing
+information. The model is a shape prior over the last 8 bytes of each role
+text, not a semantic relation encoder; the calibrated labels are corpus labels,
+not truth.
+
+The bank is a sufficient-statistic Q8 mean. One epoch took about 64 s and 10
+identical epochs about 61 s wall on this device, with no held-out improvement;
+forward `positive` and `inverse` rows are both the positive class (15,066 each,
+30,132 train positives). The chosen setting is one epoch. See
 [Relation and inverse triangle corpus](RELATION_TRIANGLE_CORPUS.md) for the
 schema, commands, full metric table, and caveats.
 

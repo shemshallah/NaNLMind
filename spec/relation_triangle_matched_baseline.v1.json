@@ -45,7 +45,7 @@
     "shape_only": {
       "n": 14229,
       "positives": 3716,
-      "auc": 0.6486479602833214,
+      "auc": 0.648670127722333,
       "balanced_accuracy": 0.6250804785545642,
       "precision": 0.32600075528700906,
       "recall": 0.9292249730893434,
@@ -55,13 +55,13 @@
     "raw_global_model": {
       "n": 14229,
       "positives": 3716,
-      "auc": 0.5658931732171876,
-      "balanced_accuracy": 0.5979976531183853,
-      "precision": 0.31165540540540543,
-      "recall": 0.893702906350915,
-      "f1": 0.46214862232118015,
-      "threshold": 0.3905487060546875
+      "auc": 0.5587121132613811,
+      "balanced_accuracy": 0.5984013129676856,
+      "precision": 0.3118491415705038,
+      "recall": 0.8945102260495156,
+      "f1": 0.46246956521739135,
+      "threshold": 0.01043701171875
     }
   },
-  "note": "all baselines use the same train/valid/test split and valid-selected threshold"
+  "note": "all baselines use the same train/valid/test split and valid-selected threshold; positive class is positive+inverse"
 }

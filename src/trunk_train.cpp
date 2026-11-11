@@ -3090,11 +3090,6 @@ void tri_read_bank(RawFieldVM& vm, TriBank& bank) {
     vm.read_triangle_model(bank.positive_shape, bank.positive_orientation);
     vm.read_triangle_model_negative(bank.negative_shape,
                                     bank.negative_orientation);
-    // Raw banks are Q8 means.  Keep the persisted bank JSON/TSV in Q0 units.
-    bank.positive_shape[0] /= 256;
-    bank.positive_shape[1] /= 256;
-    bank.negative_shape[0] /= 256;
-    bank.negative_shape[1] /= 256;
 }
 
 template <typename ScoreFn>

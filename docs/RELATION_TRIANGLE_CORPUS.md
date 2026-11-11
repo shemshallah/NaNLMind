@@ -273,30 +273,56 @@ artifacts.
 ```sh
 ./build/nanlm-universal triangle-contrast-train \
   state/relation_triangle/tri.tsv \
-  state/relation_triangle/contrast 0
+  state/relation_triangle/contrast 0 1
 ```
 
-The third argument is `MAX_ROWS`; `0` means all rows. The trainer:
+The third argument is `MAX_ROWS`; `0` means all rows. The fourth argument is
+`EPOCHS` (1–100, default 1). The trainer:
 
 1. reads the `N16TRI/1` header and validates every row;
 2. phase-encodes each role with the raw guest;
 3. calls `mth_tri_model_reset` once per bank;
-4. observes train positives with `mth_tri_model_observe`;
+4. observes train positives with `mth_tri_model_observe`; `positive` and
+   `inverse` are both positive rows;
 5. observes train negatives with `mth_tri_model_observe_negative`;
 6. snapshots the bank and scores `valid`/`test` with
    `mth_tri_model_score_contrast`.
+
+Banks store Q8 running means, not 32-bit sums. A full train pass has more than
+100,000 rows; the old sum representation overflowed int32 and silently changed
+the model. Rounded Q8 means stay bounded and remain accurate.
 
 It trains **six independent per-relation banks sequentially**, then one global
 bank over all train rows. The per-relation banks are snapshots, not a single
 jointly trained model; the global bank is the production model. Train scores are
 in-sample diagnostics and must not be used for calibration.
 
+### Epochs and inverse rows
+
+The bank is a sufficient-statistic shape model, not an SGD model. Repeating the
+identical corpus does not add new shape information. Measured on this device
+with all 143,746 rows:
+
+| epochs | wall time | user time | train positive rows | global test raw AUC | global test BA |
+|---:|---:|---:|---:|---:|---:|
+| 1 | 63.6 s | 53.7 s | 30,132 | 0.558712 | 0.598401 |
+| 10 | 60.8 s | 59.9 s | 30,132 (301,320 observations) | 0.558738 | 0.598227 |
+
+The 30,132 positive train rows are exactly the 15,066 forward `positive` rows
+plus 15,066 `inverse` rows. Hard, random and self negatives remain negative.
+The 10-epoch run does not improve held-out metrics, so the selected production
+setting is **1 epoch**. A 100-epoch replay was not run; it adds no information
+and only accumulates rounding drift in the Q8 means.
+
+The authoritative timing/metric record is
+`spec/relation_triangle_epochs.v1.json`.
+
 Outputs:
 
 | file | contents |
 |---|---|
 | `PREFIX.scores.tsv` | every row's raw scores and geometry, plus provenance |
-| `PREFIX.banks.tsv` | positive/negative tightness and area sums/counts, orientation counts |
+| `PREFIX.banks.tsv` | positive/negative tightness and area Q0 means, observation counts, orientation counts |
 | `PREFIX.metrics.json` | per-relation and global raw AUC/BA/precision/recall/F1/confusion/threshold |
 
 The scores TSV columns are:
@@ -313,12 +339,15 @@ raw medium-run global test result was:
 
 ```text
 n=14229  positives=3716  negatives=10513
-AUC=0.565893  balanced accuracy=0.597998
-precision=0.311655  recall=0.893703  F1=0.462149
-threshold=25595  tp=3321  fp=7335  tn=3178  fn=395
+raw AUC=0.558712  balanced accuracy=0.598401
+precision=0.311849  recall=0.894510  F1=0.462470
+threshold=684  tp=3324  fp=7335  tn=3178  fn=392
 ```
 
-This is a weak shape prior, not a semantic relation classifier.
+This is a weak shape prior, not a semantic relation classifier. The separate
+`shape_only` baseline has a higher pooled AUC (0.6487); the global contrast
+score mixes relation score scales, while the per-relation models rank better
+than the pooled global model.
 
 ## 8. Calibration
 
@@ -354,7 +383,7 @@ global_p  global_threshold  global_label  provenance
 `calibrated_label` uses the per-relation threshold; `global_label` uses the
 global threshold. The probabilities reflect the corpus prior (about 26%
 positive), so `p >= 0.5` is **not** the balanced decision boundary. In this run
-the global valid-optimal threshold was `0.3075`, and `p >= 0.5` predicted all
+the global valid-optimal threshold was `0.1932`, and `p >= 0.5` predicted all
 rows negative. Both results are reported so the choice is explicit.
 
 ## 9. Medium-run results
@@ -366,35 +395,36 @@ metrics. All thresholds and calibrators were fitted on `valid`.
 
 | relation | test n | pos | neg | raw AUC | cal AUC | BA | precision | recall | F1 | ECE | Brier | TP | FP | TN | FN | threshold |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| ASSOCIATED | 3642 | 1050 | 2592 | 0.5303 | 0.5303 | 0.5588 | 0.3251 | 0.7390 | 0.4516 | 0.0187 | 0.2055 | 776 | 1611 | 981 | 274 | 0.2689 |
-| CONTRADICTS | 3102 | 728 | 2374 | 0.6991 | 0.7349 | 0.6891 | 0.3849 | 0.7418 | 0.5068 | 0.0357 | 0.1387 | 540 | 863 | 1511 | 188 | 0.3160 |
-| HAS_PART | 1811 | 493 | 1318 | 0.5843 | 0.5843 | 0.5756 | 0.3169 | 0.7809 | 0.4508 | 0.0081 | 0.1957 | 385 | 830 | 488 | 108 | 0.2561 |
-| HAS_SUBTYPE | 1801 | 476 | 1325 | 0.5127 | 0.4873 | 0.5708 | 0.4887 | 0.2269 | 0.3099 | 0.0016 | 0.1947 | 108 | 113 | 1212 | 368 | 0.2714 |
-| ISA | 1974 | 476 | 1498 | 0.5340 | 0.5340 | 0.5533 | 0.2771 | 0.6239 | 0.3837 | 0.0147 | 0.1831 | 297 | 775 | 723 | 179 | 0.2576 |
-| PART_OF | 1899 | 493 | 1406 | 0.6186 | 0.6270 | 0.6160 | 0.3314 | 0.7931 | 0.4674 | 0.0127 | 0.1820 | 391 | 789 | 617 | 102 | 0.3202 |
-| **global** | 14229 | 3716 | 10513 | 0.5659 | 0.5976 | 0.5980 | 0.3117 | 0.8937 | 0.4621 | 0.0044 | 0.1854 | 3321 | 7335 | 3178 | 395 | 0.3075 |
+| ASSOCIATED | 3642 | 1050 | 2592 | 0.5950 | 0.6247 | 0.6264 | 0.3526 | 0.9867 | 0.5196 | 0.0169 | 0.1883 | 1036 | 1902 | 690 | 14 | 0.3307 |
+| CONTRADICTS | 3102 | 728 | 2374 | 0.5690 | 0.6727 | 0.6724 | 0.8444 | 0.3654 | 0.5101 | 0.0363 | 0.1388 | 266 | 49 | 2325 | 462 | 0.5000 |
+| HAS_PART | 1811 | 493 | 1318 | 0.6134 | 0.6163 | 0.6013 | 0.3235 | 0.9310 | 0.4801 | 0.0119 | 0.1880 | 459 | 960 | 358 | 34 | 0.2784 |
+| HAS_SUBTYPE | 1801 | 476 | 1325 | 0.5714 | 0.6151 | 0.6074 | 0.3202 | 0.9055 | 0.4731 | 0.0057 | 0.1841 | 431 | 915 | 410 | 45 | 0.3139 |
+| ISA | 1974 | 476 | 1498 | 0.6031 | 0.6325 | 0.6290 | 0.3063 | 0.9202 | 0.4596 | 0.0150 | 0.1724 | 438 | 992 | 506 | 38 | 0.3234 |
+| PART_OF | 1899 | 493 | 1406 | 0.6427 | 0.6455 | 0.6462 | 0.3370 | 0.9432 | 0.4965 | 0.0125 | 0.1763 | 465 | 915 | 491 | 28 | 0.3182 |
+| **global** | 14229 | 3716 | 10513 | 0.5587 | 0.5587 | 0.5984 | 0.3118 | 0.8945 | 0.4625 | 0.0418 | 0.1880 | 3324 | 7335 | 3178 | 392 | 0.1932 |
 
-Global calibration chose isotonic. The global test metrics at the valid-optimal
-threshold and at `0.5`:
+Global calibration chose Platt (the isotonic margin was not met). The global
+test metrics at the valid-optimal threshold and at `0.5`:
 
 | threshold | cal AUC | BA | precision | recall | F1 | TP | FP | TN | FN |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| `0.3075` (valid-optimal) | 0.5976 | 0.5980 | 0.3117 | 0.8937 | 0.4621 | 3321 | 7335 | 3178 | 395 |
-| `0.5` (fixed) | 0.5976 | 0.5000 | 0.0000 | 0.0000 | 0.0000 | 0 | 0 | 10513 | 3716 |
+| `0.1932` (valid-optimal) | 0.5587 | 0.5984 | 0.3118 | 0.8945 | 0.4625 | 3324 | 7335 | 3178 | 392 |
+| `0.5` (fixed) | 0.5587 | 0.5000 | 0.0000 | 0.0000 | 0.0000 | 0 | 0 | 10513 | 3716 |
 
 ### Reading the results
 
-- `CONTRADICTS` is the strongest relation by raw AUC (`0.6991`), followed by
-  `PART_OF` (`0.6186`) and `HAS_PART` (`0.5843`).
-- `ASSOCIATED` (`0.5303`) and `ISA` (`0.5340`) are close to chance.
-  `HAS_SUBTYPE` is only `0.5127` raw AUC; its calibrated AUC is `0.4873` because
-  the calibrator collapses score ties. The raw AUC is the appropriate ranking
-  metric; the calibrated AUC shows that probability ties can reorder the
-  metric.
+- Per-relation raw AUCs are now `0.5690`–`0.6427`; `PART_OF` (`0.6427`),
+  `HAS_PART` (`0.6134`) and `ISA` (`0.6031`) are the strongest. Calibration
+  raises the per-relation ranking for several banks (for example
+  `CONTRADICTS` raw `0.5690` -> calibrated `0.6727`).
+- The pooled global contrast score is only `0.5587` raw AUC. The separate
+  `shape_only` score reaches `0.6487` AUC on the same test rows, so the pooled
+  contrast combination is losing information. This is a concrete next target,
+  not a semantic result.
 - The global model has high recall and low precision at the balanced-accuracy
   threshold because the corpus is about 26% positive and the shape score is a
-  weak separator. ECE is low (`0.0044`) because isotonic calibration fits the
-  valid distribution well; low ECE does **not** mean high discrimination.
+  weak separator. ECE is `0.0418`; low ECE does **not** mean high
+  discrimination.
 - These numbers are not evidence that the model understands relation
   semantics. They are evidence that the corpus, inverse rows, negatives,
   provenance, split audit, raw trainer, and valid-only calibration are wired
@@ -419,7 +449,7 @@ positive observe/score, negative observe, and contrastive score. The expected
 marker is:
 
 ```text
-[PASS] triangle_contrast: steps=915 marker=MTH TRIANGLE CONTRAST PASS
+[PASS] triangle_contrast: steps=1561 marker=MTH TRIANGLE CONTRAST PASS
 ```
 
 The generator and calibration self-tests are deterministic and do not need the
