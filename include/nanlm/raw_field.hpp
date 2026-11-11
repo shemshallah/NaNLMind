@@ -42,6 +42,19 @@ struct Tensor256Address {
     std::uint32_t byte_offset = 0;
 };
 
+// ABI-only transport of results measured by native opcode 106.
+struct NativeSpectralTensorRecord {
+    std::uint8_t head=0,a=0,b=0;
+    std::uint32_t candidate_byte_offset=0;
+    std::int32_t credit_q16=0;
+};
+struct NativeSpectralTensorResult {
+    bool accepted=false;
+    std::uint16_t accepted_triads=0;
+    std::uint8_t rejection_reason=0;
+    std::vector<NativeSpectralTensorRecord> records;
+};
+
 struct DualProposalResult {
     RawProposalResult fast;
     RawProposalResult slow;
@@ -166,6 +179,17 @@ public:
 
     bool ready() const { return vm_ != nullptr; }
     const std::string& error() const { return error_; }
+
+    // Host transports authenticated observations/leases into the raw guest.
+    // No spectral arithmetic, quorum scoring or mirror offsets happen here.
+    bool native_spectral_tensor_propose(
+        const std::array<std::int64_t,256>& spectral_q16_i64,
+        const std::array<std::uint8_t,85>& trihead_masks,
+        const std::array<std::array<std::uint8_t,2>,255>& directed_pairs,
+        const std::array<std::uint8_t,255>& writer_capabilities,
+        std::uint32_t expected_generation, std::uint32_t current_generation,
+        bool global_approved, bool meta_approved,
+        NativeSpectralTensorResult& result);
 
     bool proposal(std::uint16_t current_mask, std::uint16_t patch,
                   const std::array<std::uint16_t, 3>& members,
