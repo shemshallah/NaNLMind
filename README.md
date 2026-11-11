@@ -13,6 +13,10 @@
 
 NaNLMind is a research repository for a single, address-derived computational state space built from NaN16 words. The 16-bit address space is treated as a 256 x 256 matrix. Bit reversal is transposition. Every unordered pair of the 256 palindromic addresses is one canonical cell with two temporal rails. All 256 palindromic fixed points are structural heads, and none is removed from the topology. A separate, versioned runtime role/authorization overlay determines which head indices may propose mirror bindings or join a training curriculum; physical existence does not grant write authority.
 
+## Canonical 48M language feedback path
+
+The **existing frozen 48M hybrid decoder** (43M base + 5M contextual overlay) is the sole lexical model. Heads, 85 triheads, native vector measurements, the full 128 MiB candidate/active mirrored hypertensor, global Hodge field and MC0 meta feedback are integrated **on `main`**, not spun into parallel decoder models. The storage and frozen-decoder candidate tests are committed; native stream-to-meta-to-decoder training and fresh held-out gains are still under development. See [48M unified head/trihead/tensor/meta mathematics and status](docs/48M_UNIFIED_HEAD_TRIHEAD_TENSOR_META.md) and [branch consolidation audit](docs/BRANCH_CONSOLIDATION_AUDIT.md).
+
 This repository contains:
 
 - the extracted provenance of 28 archives (Rounds 2–23, merged R15–R17/R18/R23clock, `distributedmind`, and `nanclock`);
