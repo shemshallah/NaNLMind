@@ -118,6 +118,7 @@ JMP @field_driver_entry
 .include "../nan16/mth_credit_bundle.nas"
 .include "../nan16/mth_geometric_trail_field.nas"
 .include "../nan16/mth_spectral_trihead_tensor_proposal.nas"
+.include "../nan16/mth_six_context_poincare_attention.nas"
 
 field_driver_entry:
   MOVI r13,1
@@ -413,6 +414,9 @@ field_driver_main:
   MOVI r3,106
   CMP r2,r3
   JMP[EQ] @field_driver_spectral_tensor_proposal
+  MOVI r3,107
+  CMP r2,r3
+  JMP[EQ] @field_driver_six_context_poincare
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -1660,6 +1664,26 @@ field_driver_spectral_tensor_proposal:
   ST r0,r1,10
   ST r0,r1,11
   CALL @mth_spectral_trihead_tensor_proposal
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  ST r4,r10,3
+  JMP @field_driver_return
+
+;
+; Opcode107: unified six-word signed-temporal self-attention, NOW(255)
+; and true 2D Poincare ball radial depth. Task 0 forbids all future
+; slots, task1 requires caller to mask its infill target.
+; Guest request at word 0x003E4000 U32[12], output 0x003E4100 [8].
+; Driver result at 0x4010: accepted, valid_count, mode, rejection_code.
+; Neither opcode nor kernel modifies the 48M checkpoint or active tensor.
+field_driver_six_context_poincare:
+  MOVI r1,0x4000
+  MOVHI r1,0x003E
+  MOVI r2,0x4100
+  MOVHI r2,0x003E
+  CALL @mth_six_context_poincare_attention
   MOVI r10,0x4010
   ST r1,r10,0
   ST r2,r10,1
