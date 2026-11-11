@@ -97,6 +97,41 @@ int main(){
     assert(arena.active(7,2,3)==0.0f);
     bridge.commit_context(second);
     assert(bridge.history_size()==2u);
+    // The spectral path also runs through the SAME loaded native driver, not
+    // a substitute Python/C++ spectral predictor or a second tensor.
+    std::array<std::int64_t,256> spectral_credit{};
+    spectral_credit[1]=65536;
+    std::array<std::uint8_t,85> spectral_votes{};
+    spectral_votes.fill(7);
+    std::array<std::array<std::uint8_t,2>,255> directed_pairs{};
+    directed_pairs[1]={1,2};
+    std::array<std::uint8_t,255> capabilities{};
+    capabilities[1]=1;
+    arena.set_writer_permission(1,true);
+    nanlm::NativeSpectralTensorResult spectral_result{};
+    assert(vm.native_spectral_tensor_propose(
+        spectral_credit,spectral_votes,directed_pairs,capabilities,
+        0,0,true,true,spectral_result));
+    assert(spectral_result.accepted && spectral_result.accepted_triads==85);
+    assert(spectral_result.records.size()==1u);
+    const auto record=spectral_result.records.front();
+    assert(record.head==1 && record.a==1 && record.b==2);
+    assert(record.candidate_byte_offset==
+           nanlm::DualTensor256Arena::byte_offset(1,1,2,1));
+    assert(record.credit_q16==65536);
+    // This is an ABI-only transfer; credit came from the NaN16 guest.
+    arena.stage_native_value(record.head,record.head,record.a,record.b,
+                             static_cast<float>(record.credit_q16)/65536.0f);
+    assert(arena.candidate(1,1,2)==1.0f);
+    assert(arena.active(1,1,2)==0.0f);
+    assert(arena.candidate(1,2,1)==0.0f);
+    nanlm::NativeSpectralTensorResult stale_spectral{};
+    assert(vm.native_spectral_tensor_propose(
+        spectral_credit,spectral_votes,directed_pairs,capabilities,
+        1,0,true,true,stale_spectral));
+    assert(!stale_spectral.accepted && stale_spectral.records.empty());
+    assert(stale_spectral.rejection_reason==1);
+    assert(arena.candidate(1,1,2)==1.0f);
     // This is a real native calculation but not a held-out quality gate:
     // unknown NLL must reject promotion.
     nanlm::TensorMetaGate gate;
