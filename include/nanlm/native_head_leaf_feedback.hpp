@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <cstring>
 #include <stdexcept>
+#include <limits>
 #include <string>
 #include <vector>
 namespace nanlm {
@@ -119,5 +120,95 @@ inline NativeHeadLeafStage stage_native_triad_leaf_candidate(
     arena.stage_native_value(h,h,b,b,triad.radial_distance);
     return {static_cast<std::uint8_t>(h),2u,
             std::size_t(fresh_vec)+std::size_t(fresh_edge),arena.generation()};
+}
+// One unified candidate-only storage path for the WHOLE native field, not
+// 3 heads plus 84 artificial votes. No new model, no second state space.
+// Each head's independently measured Boolean truth and Poincare128 vector,
+// and each of the 85 trihead geometry/gradient/HOT/COLD records, is stored
+// at the ORIGINAL directed rank-3 mirrored tensor's exact data leaf index.
+// Real authenticated Hodge/MC0 gates must be supplied by the controller;
+// these booleans are admission interfaces, NOT cryptographic attestation.
+// True promotion still requires the existing disjoint 48M whole-word NLL
+// comparison, source identity and transaction journal outside this helper.
+struct NativeFullFieldLeafStage {
+    std::size_t head_writes=0,trihead_writes=0,typed_leaf_writes=0;
+    std::uint64_t generation=0;
+};
+inline NativeFullFieldLeafStage stage_native_full_field_candidate_leaves(
+    DualTensor256Arena& arena, const NativeFullField128Receipt& field,
+    std::uint64_t first_head_leaf_id,std::uint64_t first_triad_leaf_id,
+    const std::string& externally_verified_source_sha256,
+    bool externally_validated_global_hodge,
+    bool externally_validated_committed_meta) {
+    if(!arena.candidate_open()||!field.accepted||!field.field_hot||
+       field.hot_majority_triads<43u||field.head_count!=255u||
+       field.triad_count!=85u||
+       field.source_generation!=arena.generation()||
+       !externally_validated_global_hodge||
+       !externally_validated_committed_meta)
+        throw std::logic_error("full-field stage requires live 255/85 guest, quorum, Hodge, meta, epoch");
+    if(!valid_tensor_leaf_sha256(externally_verified_source_sha256)||
+       !first_head_leaf_id||!first_triad_leaf_id||
+       first_head_leaf_id>std::numeric_limits<std::uint64_t>::max()-254u||
+       first_triad_leaf_id>std::numeric_limits<std::uint64_t>::max()-84u)
+        throw std::invalid_argument("full field requires authenticated digest and bounded leaf IDs");
+    // All-or-nothing *validation* before the first 128MiB candidate write.
+    // Existing store aborts on any later exception (active remains intact).
+    std::array<bool,255> seen{};
+    for(std::size_t i=0;i<255u;++i){
+        const auto h=field.mapping[i];
+        if(h>=255u||seen[h])
+            throw std::logic_error("full field mapping repeats or uses VOID255");
+        seen[h]=true;
+        if(!arena.candidate_writer_allowed(h))
+            throw std::logic_error("full field member lacks writer lease");
+        const auto& measured=field.heads[h];
+        if(!measured.accepted||measured.head!=h||
+           measured.source_generation!=arena.generation()||
+           measured.hot_vote>1u||measured.candidate_truth_mask==0u||
+           !std::isfinite(measured.signed_curl_feedback)||
+           !std::isfinite(measured.radial_distance))
+            throw std::logic_error("full field has incomplete native head evidence");
+    }
+    for(std::size_t t=0;t<85u;++t){
+        const auto& triad=field.triheads[t];
+        if(!triad.accepted||triad.triad!=t||
+           triad.source_generation!=arena.generation()||
+           triad.members[0]!=field.mapping[3u*t]||
+           triad.members[1]!=field.mapping[3u*t+1u]||
+           triad.members[2]!=field.mapping[3u*t+2u]||
+           triad.hot_count>3u||triad.cold_count>3u||
+           triad.hot_count+triad.cold_count!=3u||
+           !std::isfinite(triad.candidate_credit_gradient)||
+           !std::isfinite(triad.radial_distance))
+            throw std::logic_error("full field has incomplete native trihead evidence");
+        const auto actual=unsigned(field.heads[triad.members[0]].hot_vote)|
+            (unsigned(field.heads[triad.members[1]].hot_vote)<<1u)|
+            (unsigned(field.heads[triad.members[2]].hot_vote)<<2u);
+        if(actual!=field.native_vote_masks[t])
+            throw std::logic_error("full field supplied vote is not measured");
+    }
+    NativeFullFieldLeafStage result{};
+    result.generation=arena.generation();
+    try{
+        for(unsigned h=0;h<255u;++h){
+            const auto staged=stage_native_head_leaf_candidate(
+                arena,field.heads[h],first_head_leaf_id+h,
+                externally_verified_source_sha256);
+            result.head_writes+=staged.numerical_writes;
+            result.typed_leaf_writes+=staged.typed_leaf_attachments;
+        }
+        for(unsigned t=0;t<85u;++t){
+            const auto staged=stage_native_triad_leaf_candidate(
+                arena,field.triheads[t],first_triad_leaf_id+t,
+                externally_verified_source_sha256);
+            result.trihead_writes+=staged.numerical_writes;
+            result.typed_leaf_writes+=staged.typed_leaf_attachments;
+        }
+    }catch(...){
+        arena.abort_candidate(); // active bank AND data leaves stay unchanged
+        throw;
+    }
+    return result;
 }
 } // namespace nanlm
