@@ -121,6 +121,7 @@ JMP @field_driver_entry
 .include "../nan16/mth_six_context_poincare_attention.nas"
 .include "../nan16/mth_hyperedge_poincare128_curl.nas"
 .include "../nan16/mth_context6_window_stream.nas"
+.include "../nan16/mth_future3_causal_window.nas"
 .include "../nan16/mth_head16_poincare_vector.nas"
 .include "../nan16/mth_triad_hotcold_poincare128.nas"
 
@@ -433,6 +434,9 @@ field_driver_main:
   MOVI r3,111
   CMP r2,r3
   JMP[EQ] @field_driver_triad_hotcold_poincare
+  MOVI r3,112
+  CMP r2,r3
+  JMP[EQ] @field_driver_future3_causal
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -1761,6 +1765,48 @@ field_driver_stream_context6:
   MOVHI r2,0x003E
   CALL @mth_six_context_poincare_attention
 field_driver_stream_context6_result:
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  ST r4,r10,3
+  JMP @field_driver_return
+
+; Opcode112: frozen-48M future3 AUTOREGRESSIVE native measurement.
+; Guest reads original observed source at 0x3E6000 (1..4096 words),
+; only earlier DECODER-GENERATED words from 0x3E5000[0..count-1].
+; Args 0x4001: observed_count, generated_count[0..2], expected_gen, current_gen.
+; Output context request 0x3E4000[12], trig/MC0/Poincare 0x3E4100[8].
+; 0x4010: success, valid past count, horizon[1..3], rejection reason.
+; No future gold, no active tensor, no host contextual mathematics.
+field_driver_future3_causal:
+  MOVI r1,0x6000
+  MOVHI r1,0x003E
+  MOVI r3,0x5000
+  MOVHI r3,0x003E
+  MOVI r10,0x4001
+  LD r2,r10,0
+  LD r4,r10,1
+  LD r5,r10,2
+  LD r6,r10,3
+  MOVI r7,0x4000
+  MOVHI r7,0x003E
+  CALL @mth_future3_causal_window
+  MOVI r13,1
+  CMP r1,r13
+  JMP[NE] @field_driver_future3_result
+  MOVI r1,0x4000
+  MOVHI r1,0x003E
+  MOVI r2,0x4100
+  MOVHI r2,0x003E
+  CALL @mth_six_context_poincare_attention
+  MOVI r13,1
+  CMP r1,r13
+  JMP[NE] @field_driver_future3_result
+  MOVI r10,0x4002
+  LD r3,r10,0
+  ADDI r3,r3,1
+field_driver_future3_result:
   MOVI r10,0x4010
   ST r1,r10,0
   ST r2,r10,1
