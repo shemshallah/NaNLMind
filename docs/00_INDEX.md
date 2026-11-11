@@ -44,6 +44,7 @@ This repository has three layers: provenance, mathematical core, and plan.
 | — | [GEOMETRIC_CREDIT_REPLACEMENTS.md](GEOMETRIC_CREDIT_REPLACEMENTS.md) | What replaces BPTT with local temporal-rail, cycle, holonomy, ring, leaf and triad credit? |
 | — | [SYMBIOTIC_FIELD_ARCHITECTURE.md](SYMBIOTIC_FIELD_ARCHITECTURE.md) | How do micro-transformer triads, the 255-head wave, the hypermatrix/leaves and the global field fit in one memory budget, with CFT-based hybrid credit? |
 | — | [UNIFIED_BUILD_CONTRACT.md](UNIFIED_BUILD_CONTRACT.md) | Which repository owns the native build/topology, and what may NaNROUTER and HERMES do? |
+| — | [UNIFIED_SYSTEM.md](UNIFIED_SYSTEM.md) | How are the NaNLMind and NaNROUTER kernel/fixture surfaces linked and checked in one place? |
 | — | [NAN16_ADAPTIVE_FIELD.md](NAN16_ADAPTIVE_FIELD.md) | What raw NaN16 kernels implement per-head self-modification, triad/field votes and Q16 coherence? |
 | 39 | [39_BIT_BYTE_GATE.md](39_BIT_BYTE_GATE.md) | What happens when the mesh learns bit and byte transitions? |
 | 40 | [40_BYTE_STREAM_GATE.md](40_BYTE_STREAM_GATE.md) | Does the mesh beat order-0 on real Alice byte transitions? |

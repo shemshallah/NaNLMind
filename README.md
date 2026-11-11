@@ -244,6 +244,7 @@ baseline — a plain RNN matching the 256-head topology — is in
 | `docs/SYMBIOTIC_FIELD_ARCHITECTURE.md` | symbiotic micro-transformer/wave/hypermatrix/field architecture and TODO |
 | `docs/HYPERMATRIX_V1_V2_RECONCILIATION.md` | v1 NaNLM comparison, mapped hypermatrix, triad/field consensus and integration plan |
 | `docs/UNIFIED_BUILD_CONTRACT.md` | canonical build/authority boundary for NaNLMind, NaNROUTER and HERMES |
+| `docs/UNIFIED_SYSTEM.md` | provider-scoped kernel link map, `make unified-system-check`, coverage and legacy-retirement policy |
 | `docs/NAN16_ADAPTIVE_FIELD.md` | raw NaN16 per-head self-modification, triad/field votes, Q16 trig and coherence ABI |
 | `docs/06_HEADS_RESONANCE.md` | 256 heads, resonance, self-modification, bidirectional memory |
 | `docs/07_DISTRIBUTED.md` | one object on a replica ring; leases, replay, failure modes |

@@ -41,7 +41,8 @@
     "nannet_ingest_result": "spec/nannet_ingest_result.v1.json",
     "nannet_corpus_objects": "spec/nannet_corpus_objects.v1.json",
     "void255": "spec/void255_active_head_math.v1.json",
-    "phase_bank_release": "spec/phase_bank_release.v1.json"
+    "phase_bank_release": "spec/phase_bank_release.v1.json",
+    "unified_system_doc": "docs/UNIFIED_SYSTEM.md"
   },
   "legacy_removed": [
     {
