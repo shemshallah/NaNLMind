@@ -559,7 +559,10 @@ full-vocabulary BPB or tensor promotion. The contract is frozen in
 `build/word-baselines` records held-out word BPB and full-vocabulary top-1/top-5
 for training-vocabulary unigram and interpolated bigram models. The BPB
 denominator is the target word bytes plus one separator byte per held-out word.
-Top-5 ranks the full training vocabulary plus `<unk>`, not a shortlist.
+Top-5 ranks the full training vocabulary plus `<unk>`, not a shortlist. Current
+Alice-full held-out results are unigram BPB 1.87039 / top-1 8.216% / top-5
+16.834%, and interpolated bigram BPB 1.61632 / top-1 14.247% / top-5 30.698%;
+in-vocabulary bigram top-5 is 33.333%, with OOV rate 7.907%.
 
 This is a word-level reference baseline, not the 48M frontier decoder and not
 native head-worker logits. The contract is frozen in

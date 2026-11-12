@@ -73,50 +73,62 @@ int main(int argc, char** argv) {
             std::uint64_t total = 0;
             for (const auto& kv : it->second) total += kv.second;
             const auto jt = it->second.find(vocab[target]);
-            const double b = jt == it->second.end() ? 0.0 :
-                static_cast<double>(jt->second) /
+            const double b = ((jt == it->second.end() ? 0.0 :
+                static_cast<double>(jt->second)) + alpha) /
                 (static_cast<double>(total) + alpha * vocab.size());
             return lambda * b + (1.0 - lambda) * u;
         };
         Eval uni{}, bi{};
         double ubits = 0, bbits = 0;
-        std::size_t bytes = 0, uni_top1 = 0, uni_top5 = 0, bi_top1 = 0, bi_top5 = 0;
+        std::size_t bytes = 0, oov = 0, in_vocab_n = 0;
+        std::size_t uni_top1 = 0, uni_top5 = 0, bi_top1 = 0, bi_top5 = 0;
+        std::size_t uni_in_top1 = 0, uni_in_top5 = 0, bi_in_top1 = 0, bi_in_top5 = 0;
         for (std::size_t i = split; i < tokens.size(); ++i) {
             const std::string& target_word = tokens[i];
             const auto tid = id.find(target_word);
-            const std::uint32_t target = tid == id.end() ? id[unk] : tid->second;
+            const bool is_oov = tid == id.end();
+            const std::uint32_t target = is_oov ? id[unk] : tid->second;
             const std::string ctx = i == 0 ? unk :
                 (id.count(tokens[i - 1]) ? tokens[i - 1] : unk);
             std::vector<std::pair<double, std::uint32_t>> up, bp;
             up.reserve(vocab.size());
             for (std::uint32_t v = 0; v < vocab.size(); ++v)
                 up.emplace_back(unigram_prob(v), v);
-            std::partial_sort(up.begin(), up.begin() + 5, up.end(),
-                              [](const auto& a, const auto& b) { return a.first > b.first; });
-            auto it = bg.find(ctx);
-            std::vector<std::uint64_t> bcount(vocab.size(), 0);
-            if (it != bg.end())
-                for (const auto& kv : it->second) {
-                    const auto jt = id.find(kv.first);
-                    if (jt != id.end()) bcount[jt->second] = kv.second;
-                }
+            const std::size_t topn = std::min<std::size_t>(5u, vocab.size());
+            std::partial_sort(up.begin(), up.begin() + topn, up.end(),
+                              [](const auto& a, const auto& b) {
+                                  if (a.first != b.first) return a.first > b.first;
+                                  return a.second < b.second;
+                              });
             for (std::uint32_t v = 0; v < vocab.size(); ++v)
                 bp.emplace_back(bigram_prob(ctx, v), v);
-            std::partial_sort(bp.begin(), bp.begin() + 5, bp.end(),
-                              [](const auto& a, const auto& b) { return a.first > b.first; });
+            std::partial_sort(bp.begin(), bp.begin() + topn, bp.end(),
+                              [](const auto& a, const auto& b) {
+                                  if (a.first != b.first) return a.first > b.first;
+                                  return a.second < b.second;
+                              });
             auto rank = [&](const std::vector<std::pair<double, std::uint32_t>>& v) {
-                for (unsigned k = 0; k < 5; ++k) if (v[k].second == target) return k;
-                return 5u;
+                for (std::size_t k = 0; k < topn; ++k)
+                    if (v[k].second == target) return k;
+                return topn;
             };
             const double pu = unigram_prob(target);
             const double pb = bigram_prob(ctx, target);
             ubits += -std::log2(pu);
             bbits += -std::log2(pb);
             if (rank(up) == 0) ++uni_top1;
-            if (rank(up) < 5) ++uni_top5;
+            if (rank(up) < topn) ++uni_top5;
             if (rank(bp) == 0) ++bi_top1;
-            if (rank(bp) < 5) ++bi_top5;
+            if (rank(bp) < topn) ++bi_top5;
+            if (!is_oov) {
+                ++in_vocab_n;
+                if (rank(up) == 0) ++uni_in_top1;
+                if (rank(up) < topn) ++uni_in_top5;
+                if (rank(bp) == 0) ++bi_in_top1;
+                if (rank(bp) < topn) ++bi_in_top5;
+            }
             bytes += target_word.size() + 1u;
+            if (is_oov) ++oov;
         }
         const double n = static_cast<double>(tokens.size() - split);
         uni = {ubits / static_cast<double>(bytes),
@@ -135,9 +147,16 @@ int main(int argc, char** argv) {
                "\"bytes_denominator\":" << bytes << ","
                "\"scope\":\"word n-gram baseline over training vocabulary + <unk>; not 48M frontier\","
                "\"unigram\":{\"bpb\":" << uni.bpb
-            << ",\"top1\":" << uni.top1 << ",\"top5\":" << uni.top5 << "},"
+            << ",\"top1\":" << uni.top1 << ",\"top5\":" << uni.top5
+            << ",\"in_vocab_top1\":" << (in_vocab_n ? static_cast<double>(uni_in_top1) / in_vocab_n : 0.0)
+            << ",\"in_vocab_top5\":" << (in_vocab_n ? static_cast<double>(uni_in_top5) / in_vocab_n : 0.0)
+            << "},"
                "\"bigram\":{\"bpb\":" << bi.bpb
-            << ",\"top1\":" << bi.top1 << ",\"top5\":" << bi.top5 << "}}\n";
+            << ",\"top1\":" << bi.top1 << ",\"top5\":" << bi.top5
+            << ",\"in_vocab_top1\":" << (in_vocab_n ? static_cast<double>(bi_in_top1) / in_vocab_n : 0.0)
+            << ",\"in_vocab_top5\":" << (in_vocab_n ? static_cast<double>(bi_in_top5) / in_vocab_n : 0.0)
+            << "},\"oov_rate\":" << (n ? static_cast<double>(oov) / n : 0.0)
+            << "}\n";
         std::cout << "word_baselines vocab=" << vocab.size()
                   << " unigram_bpb=" << uni.bpb
                   << " bigram_bpb=" << bi.bpb

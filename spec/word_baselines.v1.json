@@ -11,9 +11,16 @@
   "metrics": [
     "bits_per_byte",
     "top1_accuracy",
-    "top5_accuracy"
+    "top5_accuracy",
+    "in_vocab_top1",
+    "in_vocab_top5",
+    "oov_rate"
   ],
   "bpb_denominator": "UTF-8 target word bytes + one separator byte per held-out word",
   "scope": "word n-gram reference baseline; not the 48M frontier decoder and not the native head worker",
-  "note": "Top-5 ranks the full training vocabulary plus OOV, not a shortlist."
+  "note": "Top-5 ranks the full training vocabulary plus OOV; in-vocab metrics exclude OOV targets. BPB denominator excludes punctuation bytes.",
+  "alpha": 0.01,
+  "bigram_lambda": 0.7,
+  "normalization": "unigram and bigram emit normalized distributions over training vocab + <unk>; bigram uses interpolated add-alpha with alpha in numerator and denominator",
+  "tie_break": "ascending vocabulary id"
 }
