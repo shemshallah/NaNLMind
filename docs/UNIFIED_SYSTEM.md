@@ -548,8 +548,8 @@ checkpoints over an arbitrary token-vector chunk through the 64-slot causal
 recurrent worker. Final per-head memory is scored by the native readout at
 `lr=0`; acceptance requires a strict finite NLL improvement.
 
-The default target is a 256-token chunk, but tests use smaller chunks to keep
-the native gate fast. This is a candidate-panel readout gate, not
+The default target is a 256-token chunk; the gate test exercises the full
+256-token path and reports recurrent chunk counts. This is a candidate-panel readout gate, not
 full-vocabulary BPB or tensor promotion. The contract is frozen in
 `spec/head_chunk_gate.v1.json`.
 
