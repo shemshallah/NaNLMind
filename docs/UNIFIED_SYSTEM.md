@@ -429,7 +429,10 @@ final attention output Wo projection, the hidden W1 projection, or the final
 value projection. W1 uses the final W2 gradient to form `g_h`, applies the
 tanh derivative, and updates `W1[k,d] += lr*g_h[k]*(1-h[k]^2)*xn2[d]`. Wv
 uses `g_ctx = Wo^T e` and the last-query softmax probabilities to update
-`Wv[k,d] += lr*sum_j p[j]*g_ctx[k]*xn[j][d]`. All are local updates. The page gate can then compare
+`Wv[k,d] += lr*sum_j p[j]*g_ctx[k]*xn[j][d]`. The `qk` mode computes
+`d_s[j] = p[j]*(g_v[j]-mean)` and updates final Wq/Wk through
+`d_q=sum_j d_s[j]*K[j]/sqrt(128)` and
+`d_k[j]=d_s[j]*Q[last]/sqrt(128)`. All are local updates. The page gate can then compare
 the source and candidate checkpoints. The ABI is frozen in
 `spec/head_page_train.v1.json`.
 

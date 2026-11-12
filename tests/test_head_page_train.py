@@ -129,7 +129,24 @@ def main() -> int:
         assert wv["local_scope"] == "final_layer_Wv_only"
         wv_updated = (wv_candidate / "head-001.page").read_bytes()
         assert wv_updated != source_page
-        print("PASS native final-W2/Wo/W1/Wv page training adapter")
+
+        context2 = context + [0.5] + [0.0] * 127
+        (tmp / "context2.txt").write_text(" ".join(map(str, context2)) + "\n")
+        qk_candidate = tmp / "qk-candidate"
+        qk_receipt = tmp / "qk.json"
+        run = subprocess.run(
+            [str(binary), str(baseline), str(tmp / "context2.txt"),
+             str(tmp / "target.txt"), "1", "0.1", "1", str(qk_candidate),
+             str(qk_receipt), "qk"], cwd=ROOT, text=True, capture_output=True)
+        if run.returncode != 0:
+            print(run.stdout)
+            print(run.stderr)
+            return 1
+        qk = json.loads(qk_receipt.read_text())
+        assert qk["local_scope"] == "final_layer_Wq_Wk_only"
+        qk_updated = (qk_candidate / "head-001.page").read_bytes()
+        assert qk_updated != source_page
+        print("PASS native final-W2/Wo/W1/Wv/QK page training adapter")
         return 0
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
