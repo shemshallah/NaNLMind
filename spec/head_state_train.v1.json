@@ -1,0 +1,25 @@
+{
+  "schema": "nanlm.head-state-train/1",
+  "opcode": 124,
+  "image": "build/head_worker.nan",
+  "state": "f32[128]",
+  "candidates": "f32[N][128], N=1..64, updated in place in guest",
+  "target": "0..N-1",
+  "learning_rate": "finite nonnegative f32",
+  "guest_math": [
+    "candidate dot scores",
+    "softmax probabilities",
+    "cross-entropy loss",
+    "SGD candidate-vector update"
+  ],
+  "result": {
+    "0x4010": "accepted",
+    "0x4011": "loss f32 bits",
+    "0x4012": "predicted index",
+    "0x4013": "reject reason"
+  },
+  "host_math": false,
+  "scope": "one error-corrective step; no BPTT, page training, optimizer state, or promotion gate",
+  "cli": "build/nanlm-head-readout-train <state.f32> <candidates.f32> <target> <lr> <out-candidates.f32> <out.json>",
+  "note": "The host transports and serializes only; updated candidate vectors are read back from guest memory."
+}

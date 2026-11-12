@@ -54,7 +54,7 @@ $(FIELD_DRIVER): mth/drivers/field_driver.nas $(wildcard mth/nan16/*.nas) $(NAN0
 	@test "$$(wc -l < $@.tmp)" -le 1048576 || { echo "field driver exceeds 0x100000-word guest code/data boundary"; rm -f $@.tmp; exit 1; }
 	mv $@.tmp $@
 
-$(HEAD_WORKER): mth/drivers/head_worker.nas mth/nan16/mth_head_block6.nas $(NAN0S_NMK) | $(BUILD)
+$(HEAD_WORKER): mth/drivers/head_worker.nas $(wildcard mth/nan16/*.nas) $(NAN0S_NMK) | $(BUILD)
 	awk -f $(NAN0S_NMK) -v CMD=emit $< > $@.tmp
 	@test "$$(wc -l < $@.tmp)" -le 16384 || { echo "head worker overlaps the 0x4000 command block"; rm -f $@.tmp; exit 1; }
 	mv $@.tmp $@
@@ -89,6 +89,9 @@ $(BUILD)/test_head_worker_scheduler: tests/test_head_worker_scheduler.cpp includ
 $(BUILD)/test_head_readout: tests/test_head_readout.cpp include/nanlm/raw_field.hpp $(LIB) $(NAN0S_LIB) $(HEAD_WORKER) | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
+$(BUILD)/test_head_readout_train: tests/test_head_readout_train.cpp include/nanlm/raw_field.hpp $(LIB) $(NAN0S_LIB) $(HEAD_WORKER) | $(BUILD)
+	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
+
 $(BUILD)/test_nlhe2: tests/test_nlhe2.cpp include/nanlm/nlhe2.hpp include/nanlm/nlhe2_arena.hpp include/nanlm/tensor_point.hpp include/nanlm/tensor_leaf_sidecar.hpp include/nanlm/dual_tensor_arena.hpp | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS) $(LDLIBS)
 
@@ -105,6 +108,9 @@ $(BUILD)/nanlm48m-native-batch: tools/nanlm48m_native_batch.cpp include/nanlm/ra
 	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
 $(BUILD)/nanlm-head-worker-batch: tools/nanlm_head_worker_batch.cpp include/nanlm/head_worker_scheduler.hpp include/nanlm/head_page_loader.hpp include/nanlm/head_page_arena.hpp $(LIB) $(NAN0S_LIB) $(HEAD_WORKER) | $(BUILD)
+	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
+
+$(BUILD)/nanlm-head-readout-train: tools/nanlm_head_readout_train.cpp include/nanlm/raw_field.hpp $(LIB) $(NAN0S_LIB) $(HEAD_WORKER) | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
 $(BUILD)/nanlm48m-native-emit: tools/nanlm48m_native_emit.cpp include/nanlm/native48m_feedback_json.hpp include/nanlm/native48m_feedback.hpp include/nanlm/dual_tensor_arena.hpp $(LIB) $(NAN0S_LIB) $(FIELD_DRIVER) | $(BUILD)
@@ -283,5 +289,5 @@ dual-head-test: $(BUILD)/test_dual_head
 	./$(BUILD)/test_dual_head
 
 
-unified-test-base: $(CLI) $(FIELD_DRIVER) $(BUILD)/test_raw_field $(BUILD)/test_context_backoff $(BUILD)/test_context_route $(BUILD)/test_native48m_feedback $(BUILD)/test_dual_tensor_arena $(BUILD)/test_head_page_arena $(BUILD)/test_head_page_loader $(BUILD)/test_head_block $(BUILD)/test_head_worker $(BUILD)/test_head_worker_scheduler $(BUILD)/test_head_readout $(BUILD)/test_nlhe2 $(BUILD)/credit-ablation $(BUILD)/nanlm48m-native-batch $(BUILD)/nanlm-head-worker-batch
+unified-test-base: $(CLI) $(FIELD_DRIVER) $(BUILD)/test_raw_field $(BUILD)/test_context_backoff $(BUILD)/test_context_route $(BUILD)/test_native48m_feedback $(BUILD)/test_dual_tensor_arena $(BUILD)/test_head_page_arena $(BUILD)/test_head_page_loader $(BUILD)/test_head_block $(BUILD)/test_head_worker $(BUILD)/test_head_worker_scheduler $(BUILD)/test_head_readout $(BUILD)/test_head_readout_train $(BUILD)/test_nlhe2 $(BUILD)/credit-ablation $(BUILD)/nanlm48m-native-batch $(BUILD)/nanlm-head-worker-batch $(BUILD)/nanlm-head-readout-train
 	python3 tools/unified_test_base.py

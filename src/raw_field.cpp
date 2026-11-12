@@ -647,6 +647,100 @@ bool RawFieldVM::native_head_state_readout(
     return true;
 }
 
+bool RawFieldVM::native_head_state_train(
+    const std::array<float, 128>& state,
+    const std::vector<std::array<float, 128>>& candidates,
+    std::uint8_t target, float learning_rate,
+    std::vector<float>& probabilities,
+    std::vector<std::array<float, 128>>& updated_candidates,
+    float& loss, std::uint8_t& predicted, std::uint8_t& reason) {
+    probabilities.clear();
+    updated_candidates.clear();
+    loss = 0.0f;
+    predicted = 0u;
+    reason = 0u;
+    if (!vm_) return fail("native head train: VM unavailable");
+    if (candidates.empty() || candidates.size() > 64u ||
+        target >= candidates.size() || !std::isfinite(learning_rate) ||
+        learning_rate < 0.0f) {
+        reason = 1u;
+        return true;
+    }
+    constexpr std::uint32_t kState = 0x00D03000u;
+    constexpr std::uint32_t kCandidates = 0x00D04000u;
+    constexpr std::uint32_t kProbabilities = 0x00D07000u;
+    auto as_bits = [](float value) {
+        std::uint32_t bits = 0u;
+        std::memcpy(&bits, &value, sizeof(bits));
+        return bits;
+    };
+    for (std::uint32_t d = 0; d < 128u; ++d) {
+        if (!std::isfinite(state[d]))
+            return fail("native head train: nonfinite state");
+        if (!write_word(kState + d, as_bits(state[d])))
+            return fail("native head train: state transport failed");
+    }
+    for (std::size_t i = 0; i < candidates.size(); ++i) {
+        for (std::uint32_t d = 0; d < 128u; ++d) {
+            const float value = candidates[i][d];
+            if (!std::isfinite(value))
+                return fail("native head train: nonfinite candidate");
+            if (!write_word(kCandidates + static_cast<std::uint32_t>(i) * 128u + d,
+                            as_bits(value)))
+                return fail("native head train: candidate transport failed");
+        }
+    }
+    if (!write_word(kProposalBase + 0u, kState) ||
+        !write_word(kProposalBase + 1u, kCandidates) ||
+        !write_word(kProposalBase + 2u, kProbabilities) ||
+        !write_word(kProposalBase + 3u, static_cast<std::uint32_t>(candidates.size())) ||
+        !write_word(kProposalBase + 4u, target) ||
+        !write_word(kProposalBase + 5u, as_bits(learning_rate)) ||
+        !write_word(kCommandBase, 124u))
+        return fail("native head train: command transport failed");
+    if (!run_command())
+        return fail("native head train: guest execution failed: " + error_);
+    const auto ok = read_word(kResultBase);
+    const auto loss_bits = read_word(kResultBase + 1u);
+    const auto pred = read_word(kResultBase + 2u);
+    const auto code = read_word(kResultBase + 3u);
+    if (ok == 0u) {
+        if (loss_bits != 0u || pred != 0u || code != 1u)
+            return fail("native head train: malformed rejection");
+        reason = 1u;
+        return true;
+    }
+    if (ok != 1u || pred >= candidates.size() || code != 0u)
+        return fail("native head train: malformed success receipt");
+    std::memcpy(&loss, &loss_bits, sizeof(loss));
+    if (!std::isfinite(loss))
+        return fail("native head train: nonfinite loss");
+    probabilities.resize(candidates.size());
+    for (std::size_t i = 0; i < candidates.size(); ++i) {
+        const auto bits = read_word(kProbabilities + static_cast<std::uint32_t>(i));
+        float value = 0.0f;
+        std::memcpy(&value, &bits, sizeof(value));
+        if (!std::isfinite(value) || value < 0.0f || value > 1.0f)
+            return fail("native head train: invalid probability");
+        probabilities[i] = value;
+    }
+    updated_candidates.resize(candidates.size());
+    for (std::size_t i = 0; i < candidates.size(); ++i) {
+        for (std::uint32_t d = 0; d < 128u; ++d) {
+            const auto bits = read_word(
+                kCandidates + static_cast<std::uint32_t>(i) * 128u + d);
+            float value = 0.0f;
+            std::memcpy(&value, &bits, sizeof(value));
+            if (!std::isfinite(value))
+                return fail("native head train: nonfinite updated candidate");
+            updated_candidates[i][d] = value;
+        }
+    }
+    predicted = static_cast<std::uint8_t>(pred);
+    reason = 0u;
+    return true;
+}
+
 bool RawFieldVM::native_shortlist_batch(
     const std::array<std::uint32_t,6>& context_words,
     std::uint8_t valid_mask, std::uint8_t task,

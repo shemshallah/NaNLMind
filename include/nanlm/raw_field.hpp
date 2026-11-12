@@ -403,6 +403,16 @@ public:
         const std::array<float, 128>& state,
         const std::vector<std::array<float, 128>>& candidates,
         std::vector<float>& scores, std::uint8_t& reason);
+    // Dedicated head-worker opcode124: one guest-side softmax SGD step for
+    // the transported candidate vectors. The host reads back the updated
+    // vectors; no host gradient or loss arithmetic is performed.
+    bool native_head_state_train(
+        const std::array<float, 128>& state,
+        const std::vector<std::array<float, 128>>& candidates,
+        std::uint8_t target, float learning_rate,
+        std::vector<float>& probabilities,
+        std::vector<std::array<float, 128>>& updated_candidates,
+        float& loss, std::uint8_t& predicted, std::uint8_t& reason);
     bool native_shortlist_batch(
         const std::array<std::uint32_t,6>& context_words,
         std::uint8_t valid_mask, std::uint8_t task,

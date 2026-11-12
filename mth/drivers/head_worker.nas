@@ -32,6 +32,9 @@ hw_main:
   MOVI r3,123
   CMP r2,r3
   JMP[EQ] @hw_readout
+  MOVI r3,124
+  CMP r2,r3
+  JMP[EQ] @hw_train
   JMP @hw_return
 hw_block6:
   MOVI r10,0x4001
@@ -48,6 +51,16 @@ hw_readout:
   LD r3,r10,2
   LD r4,r10,3
   CALL @mth_head_state_readout
+  JMP @hw_store
+hw_train:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r4,r10,3
+  LD r5,r10,4
+  LD r6,r10,5
+  CALL @mth_head_state_readout_train
 hw_store:
   MOVI r10,0x4010
   ST r1,r10,0
@@ -64,3 +77,4 @@ hw_link:
 
 .include "../nan16/mth_head_block6.nas"
 .include "../nan16/mth_head_state_readout.nas"
+.include "../nan16/mth_head_state_readout_train.nas"

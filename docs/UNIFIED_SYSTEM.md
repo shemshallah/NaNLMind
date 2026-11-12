@@ -334,3 +334,21 @@ the last-token 128D states with slot and page provenance. An optional
 then computes guest-side dot scores for each selected head. These are linear
 readout values, not trained logits. The adapter performs no host attention or
 model scoring. The readout ABI is frozen in `spec/head_state_readout.v1.json`. `spec/head_worker_cli.v1.json` freezes the ABI.
+
+
+## Native head-state candidate training
+
+Worker opcode **124** performs one guest-side softmax SGD step over the
+transported candidate vectors. It computes the candidate dot scores, softmax,
+cross-entropy loss, predicted index, and updates each candidate vector in
+place. The host reads back the updated vectors and writes the receipt; it does
+not compute gradients or loss.
+
+`build/nanlm-head-readout-train` exposes one step:
+
+```text
+nanlm-head-readout-train <state.f32> <candidates.f32> <target> <lr>   <out-candidates.f32> <out.json>
+```
+
+This is an error-corrective readout step, not BPTT, page-weight training, or
+promotion evidence. The ABI is frozen in `spec/head_state_train.v1.json`.
