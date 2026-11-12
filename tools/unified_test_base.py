@@ -149,6 +149,21 @@ def main() -> int:
     if (ROOT / "tests/test_decoder48m_future3.py").is_file():
         results.append(run("decoder48m_future3",
                            ["python3", "tests/test_decoder48m_future3.py"]))
+    if (BUILD / "byte-baselines").is_file():
+        baseline_out = STATE / "byte_baselines.json"
+        baseline = run("byte_baselines", [
+            str(BUILD / "byte-baselines"), "data/alice_full.txt",
+            str(baseline_out),
+        ])
+        if baseline_out.is_file():
+            receipt = json.loads(baseline_out.read_text())
+            baseline["metrics"] = {
+                "order0": receipt.get("order0"),
+                "bigram": receipt.get("bigram"),
+                "context2": receipt.get("context2"),
+                "metric_scope": receipt.get("metric_scope"),
+            }
+        results.append(baseline)
     if (BUILD / "credit-ablation").is_file():
         credit = run("credit_ablation", [str(BUILD / "credit-ablation")])
         for line in credit["output"].splitlines():

@@ -1,0 +1,17 @@
+{
+  "schema": "nanlm.byte-baselines/1",
+  "corpus": "data/alice_full.txt",
+  "split": "80% train / 20% test by byte position",
+  "metrics": [
+    "bits_per_byte",
+    "top1_accuracy",
+    "top5_accuracy"
+  ],
+  "models": [
+    "order0",
+    "byte bigram",
+    "context2"
+  ],
+  "scope": "byte-level reference baselines; not native head-worker word probabilities",
+  "note": "BPB is evaluated on held-out bytes. Top-5 is over the 256 byte classes, not over words."
+}

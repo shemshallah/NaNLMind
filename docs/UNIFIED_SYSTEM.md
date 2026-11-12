@@ -491,3 +491,18 @@ A 128 MiB guest VM cannot hold full frontier-scale KV. The current recurrent
 path is the correctness/storage stepping stone; the next native step is the
 64-token local block and chunk summarizer. The contract is frozen in
 `spec/long_context.v1.json`.
+
+
+## Byte baselines
+
+`build/byte-baselines` records BPB, top-1 and top-5 on the held-out 20% of
+`data/alice_full.txt` for order-0, byte-bigram and context-2 models:
+
+```text
+state/benchmarks/byte_baselines.json
+```
+
+The top-5 metric is over the 256 byte classes, not words, and is explicitly a
+reference baseline. The byte-bigram reports `3.50947` BPB and the context-2
+baseline reports `3.28056` BPB on this corpus. These values are included in the
+unified report and are not native head-worker word probabilities.
