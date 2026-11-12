@@ -382,3 +382,25 @@ magic. `root_digest()` hashes the sorted present-head records.
 The store permits partial checkpoints and does not claim power-loss ordering
 on every filesystem. It is host storage/provenance only; no page arithmetic or
 training runs here. The format is frozen in `spec/head_page_checkpoint.v1.json`.
+
+
+## Page-checkpoint validation gate
+
+`build/nanlm-head-page-gate` verifies a baseline and candidate page checkpoint,
+loads selected pages through the 16-slot worker, and scores the resulting
+last-token states with the native readout at `lr=0`:
+
+```text
+nanlm-head-page-gate <baseline-dir> <candidate-dir> <context.f32>   <heads> <candidates.f32> <target> <out.json>
+```
+
+Acceptance is a strict finite improvement:
+
+```text
+candidate_average_nll < baseline_average_nll
+```
+
+The receipt includes per-bank state SHA-256 and checkpoint root digests. It
+sets `tensor_promotion:false` and `page_training:false`; the gate validates a
+page checkpoint, it does not train or promote one. The ABI is frozen in
+`spec/head_page_gate.v1.json`.

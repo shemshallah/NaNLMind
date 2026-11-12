@@ -1,0 +1,22 @@
+{
+  "schema": "nanlm.head-page-gate/1",
+  "binary": "build/nanlm-head-page-gate",
+  "usage": "nanlm-head-page-gate <baseline-dir> <candidate-dir> <context.f32> <heads> <candidates.f32> <target> <out.json>",
+  "checkpoint_format": "nanlm.head-page-checkpoint/1",
+  "context": "T*128 f32, T=1..6, shared by selected pages",
+  "heads": "1..16 unique active heads",
+  "evaluation": "load pages -> six-token worker -> last-token state -> opcode124 readout with lr=0",
+  "gate": "candidate average held-out NLL < baseline average held-out NLL, both finite",
+  "outputs": [
+    "baseline/candidate NLL",
+    "nll_delta",
+    "accepted",
+    "per-bank state SHA-256",
+    "checkpoint root digests"
+  ],
+  "scope": "page checkpoint validation and held-out readout NLL gate only",
+  "host_math": false,
+  "tensor_promotion": false,
+  "page_training": false,
+  "note": "The host aggregates reported guest losses and hashes state bytes; no page or tensor mutation occurs."
+}

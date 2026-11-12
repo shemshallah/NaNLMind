@@ -134,6 +134,9 @@ def main() -> int:
     if (ROOT / "tests/test_head_readout_loop.py").is_file():
         results.append(run("head_readout_loop",
                            ["python3", "tests/test_head_readout_loop.py"]))
+    if (ROOT / "tests/test_head_page_gate.py").is_file():
+        results.append(run("head_page_gate",
+                           ["python3", "tests/test_head_page_gate.py"]))
     if (ROOT / "tests/test_decoder48m_candidate.py").is_file():
         results.append(run("decoder48m_candidate",
                            ["python3", "tests/test_decoder48m_candidate.py"]))
