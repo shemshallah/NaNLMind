@@ -1,0 +1,37 @@
+{
+  "schema": "nanlm.head-page-train-gate/1",
+  "script": "tools/head_page_train_gate.py",
+  "steps": [
+    "native final-W2 page training",
+    "candidate checkpoint write",
+    "page-checkpoint validation",
+    "native held-out readout NLL gate"
+  ],
+  "args": [
+    "baseline",
+    "train_context",
+    "train_target",
+    "head",
+    "lr",
+    "epochs",
+    "validation_context",
+    "validation_candidates",
+    "validation_target",
+    "workdir",
+    "accepted_dir",
+    "out_json"
+  ],
+  "acceptance": "candidate held-out NLL < baseline held-out NLL",
+  "publish_policy": "accepted_dir is created only when the gate accepts; rejected candidates remain under workdir for audit",
+  "receipt": [
+    "accepted",
+    "candidate_checkpoint",
+    "accepted_checkpoint",
+    "training receipt",
+    "gate receipt",
+    "host_math=false",
+    "tensor_promotion=false"
+  ],
+  "scope": "single page, local final-W2 update, readout-based held-out NLL gate",
+  "note": "No 48M decoder, full backpropagation, page-bank promotion, or tensor promotion is claimed."
+}

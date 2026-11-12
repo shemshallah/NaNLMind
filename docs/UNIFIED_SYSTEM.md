@@ -426,3 +426,22 @@ epochs, exports the modified slot, and writes a candidate checkpoint with a
 new generation and source/candidate SHA-256. The page gate can then compare
 the source and candidate checkpoints. The ABI is frozen in
 `spec/head_page_train.v1.json`.
+
+
+## Page training-gate transaction
+
+`tools/head_page_train_gate.py` composes the native final-W2 trainer with the
+page-checkpoint NLL gate in one orchestration transaction:
+
+```text
+train candidate page
+  -> write candidate checkpoint
+  -> validate both checkpoints
+  -> native held-out readout NLL gate
+  -> publish accepted_dir only on improvement
+```
+
+Rejected candidates remain under `workdir/candidate` for audit; the accepted
+directory is not created. The receipt embeds the training and gate reports and
+sets `tensor_promotion:false`. The contract is frozen in
+`spec/head_page_train_gate.v1.json`.
