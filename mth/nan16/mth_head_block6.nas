@@ -497,6 +497,39 @@ hw6_cap_hidden_loop:
   ST r12,r0,@hw6_cap_i
   JMP @hw6_cap_hidden_loop
 hw6_cap_hidden_done:
+  ; Retain the layer's last-token attention context.
+  LD r10,r0,@hw6_t
+  MOVI r11,128
+  MUL r10,r10,r11
+  SUB r10,r10,r11
+  LD r12,r0,@hw6_layer
+  MOVI r11,128
+  MUL r11,r12,r11
+  MOVI r12,0x2000
+  MOVHI r12,0x00D1
+  ADD r12,r12,r11
+  ST r12,r0,@hw6_cap_ctx
+  MOVI r12,0x0F00
+  MOVHI r12,0x00D0
+  ADD r12,r12,r10
+  ST r12,r0,@hw6_cap_src
+  MOVI r12,0
+  ST r12,r0,@hw6_cap_i
+hw6_cap_ctx_loop:
+  LD r12,r0,@hw6_cap_i
+  MOVI r13,128
+  CMP r12,r13
+  JMP[GE] @hw6_cap_ctx_done
+  LD r13,r0,@hw6_cap_src
+  ADD r13,r13,r12
+  LD r14,r13,0
+  LD r13,r0,@hw6_cap_ctx
+  ADD r13,r13,r12
+  ST r14,r13,0
+  ADDI r12,r12,1
+  ST r12,r0,@hw6_cap_i
+  JMP @hw6_cap_ctx_loop
+hw6_cap_ctx_done:
   LD r10,r0,@hw6_t
   MOVI r11,128
   MUL r10,r10,r11
@@ -768,6 +801,8 @@ hw6_eps:
 hw6_cap_hidden:
   .word 0
 hw6_cap_xn:
+  .word 0
+hw6_cap_ctx:
   .word 0
 hw6_cap_src:
   .word 0

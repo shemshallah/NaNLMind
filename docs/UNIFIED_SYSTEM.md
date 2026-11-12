@@ -434,7 +434,8 @@ uses `g_ctx = Wo^T e` and the last-query softmax probabilities to update
 `d_q=sum_j d_s[j]*K[j]/sqrt(128)` and
 `d_k[j]=d_s[j]*Q[last]/sqrt(128)`. The `l1w2` mode updates layer-1 W2 using the final output error and the
 retained layer-1 hidden vector. The `l1w1` mode uses layer-1 W2^T error and
-the retained layer-1 pre-MLP LN vector. Both are explicit local
+the retained layer-1 pre-MLP LN vector. The `l1wo` mode updates layer-1 Wo
+from the retained layer-1 attention context. These are explicit local
 approximations, not full layer-2 backpropagation. All are local updates. The page gate can then compare
 the source and candidate checkpoints. The ABI is frozen in
 `spec/head_page_train.v1.json`.
