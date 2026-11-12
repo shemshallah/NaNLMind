@@ -21,11 +21,12 @@
     },
     "l1w2": "W2_layer1[j,k] += lr*(target[j]-state[j])*hidden_layer1[k] (local final-error reuse; no layer-2 backprop)",
     "l1w1": "g_h1=W2_layer1^T(target-state); W1_layer1[k,d] += lr*g_h1[k]*(1-h1[k]^2)*xn1[d] (local final-error reuse)",
-    "l1wo": "Wo_layer1[j,k] += lr*(target[j]-state[j])*context_layer1[k] (local final-error reuse)"
+    "l1wo": "Wo_layer1[j,k] += lr*(target[j]-state[j])*context_layer1[k] (local final-error reuse)",
+    "l1wv": "g_ctx=Wo_layer1^T(target-state); Wv_layer1[k,d] += lr*sum_j p1[j]*g_ctx[k]*xn1[j][d] (local final-error reuse)"
   },
   "precision": "bf16 page weights; f32 guest arithmetic",
   "scope": "one local final-layer projection update; not full three-layer backpropagation, optimizer state, or promotion",
-  "cli": "build/nanlm-head-page-train <checkpoint-dir> <context.f32> <target.f32> <head> <lr> <epochs> <out-dir> <out.json> [w2|wo|w1|wv|qk|l1w2|l1w1|l1wo]",
+  "cli": "build/nanlm-head-page-train <checkpoint-dir> <context.f32> <target.f32> <head> <lr> <epochs> <out-dir> <out.json> [w2|wo|w1|wv|qk|l1w2|l1w1|l1wo|l1wv]",
   "output": "candidate checkpoint page + error norm + source/candidate SHA-256 + generation",
   "host_math": false,
   "tensor_promotion": false,
@@ -38,6 +39,7 @@
     "qk",
     "l1w2",
     "l1w1",
-    "l1wo"
+    "l1wo",
+    "l1wv"
   ]
 }
