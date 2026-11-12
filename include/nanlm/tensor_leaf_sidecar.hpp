@@ -5,6 +5,7 @@
 // Indexed by the EXACT SAME directed h,a,b coordinate and generation.
 // This header is representation/storage ONLY. Math remains in NaN16 guests.
 #pragma once
+#include "nanlm/nlhe2.hpp"
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -22,6 +23,7 @@ enum class TensorLeafKind : std::uint8_t {
     MirrorTriangleCurl=9,        // 32 native U32 words + orientation byte
     MirrorTrianglePoincare128=10, // 128 native F32 coordinates
     MirrorTriangleRepair=11,      // candidate ghat,g observed,residual,epoch
+    HyperedgeRecordV2=12,         // canonical NLHE2 topology record
 };
 struct TensorDataLeaf {
     TensorLeafKind kind=TensorLeafKind::CorpusEvidence;
@@ -48,7 +50,9 @@ inline bool valid_tensor_leaf_payload(const TensorDataLeaf& leaf) {
     if(!valid_tensor_leaf_sha256(leaf.source_sha256) ||
        leaf.payload.empty()||leaf.payload.size()>65536u)return false;
     const unsigned k=static_cast<unsigned>(leaf.kind);
-    if(k<1u||k>11u)return false;
+    if(k<1u||k>12u)return false;
+    if(leaf.kind==TensorLeafKind::HyperedgeRecordV2)
+        return valid_nlhe2_payload(leaf.payload);
     if((leaf.kind==TensorLeafKind::HeadVector128 ||
         leaf.kind==TensorLeafKind::TriheadVector128 ||
         leaf.kind==TensorLeafKind::MirrorTrianglePoincare128) &&

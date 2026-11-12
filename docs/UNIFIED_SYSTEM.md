@@ -272,3 +272,26 @@ trampoline. The 1 MiB page layout is frozen in
 
 `NANLM_STEP_BUDGET` sets the 64-bit native command budget; default
 `4,000,000,000`.
+
+
+## NLHE2 typed hyperedge store
+
+`include/nanlm/nlhe2.hpp` defines the canonical NLHE2 structural hyperedge
+record and codec. It is stored as `TensorLeafKind::HyperedgeRecordV2` (12) at
+`include/nanlm/tensor_point.hpp` point coordinates. Every point is
+`(h,a,b)` with each axis in `0..254`; the encoded reference is
+
+```text
+0x4E000000 | (h << 16) | (tp_reverse8(a) << 8) | b
+```
+
+The record carries a logical edge id, label, Q16 weight, epoch, home point,
+and 2–255 ordered members with role and leaf-kind declarations. It does not
+carry floats, votes, gradients, or active state. Provenance is the enclosing
+typed leaf's `source_generation` and authenticated 64-hex `source_sha256`.
+
+`include/nanlm/nlhe2_arena.hpp` attaches the canonical bytes at the declared
+home coordinate through the existing candidate-leaf gate. Exact replay is a
+no-op, same-generation conflicts are rejected, and per-point quota is enforced
+by the arena. `newest_nlhe2` resolves the highest live revision; an
+equal-generation payload conflict returns no value.

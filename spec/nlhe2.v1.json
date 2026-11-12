@@ -1,0 +1,39 @@
+{
+  "schema": "nanlm.nlhe2/1",
+  "name": "NLHE2 canonical structural hyperedge record",
+  "header_bytes": 48,
+  "member_bytes": 8,
+  "max_members": 255,
+  "max_bytes": 2088,
+  "leaf_kind": 12,
+  "point_ref": {
+    "tag_hex": "0x4E000000",
+    "formula": "tag | (h << 16) | (reverse8(a) << 8) | b",
+    "axes": "h,a,b each 0..254; 255/VOID rejected"
+  },
+  "flags": {
+    "directed": 1,
+    "temporal": 2,
+    "mirror": 4,
+    "cross_space": 8,
+    "learned": 16
+  },
+  "roles": {
+    "member": 1,
+    "representative": 2,
+    "tail": 4,
+    "head": 8,
+    "witness": 16
+  },
+  "storage": "typed tensor leaf at the declared home coordinate",
+  "provenance": "TensorDataLeaf.source_generation + authenticated 64-hex source_sha256",
+  "replay_policy": "exact same generation/kind/id/payload is a no-op; same-generation conflict is rejected; newer generation is appended and newest_nlhe2 selects it",
+  "gates": [
+    "valid NLHE2 codec",
+    "home coordinate in 0..254",
+    "candidate writer authority",
+    "typed leaf payload validation",
+    "per-point leaf quota"
+  ],
+  "note": "Structural topology only; no floats, votes, gradients, active writes, or model updates."
+}
