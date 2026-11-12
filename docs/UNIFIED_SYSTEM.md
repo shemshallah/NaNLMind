@@ -314,3 +314,18 @@ vector, one guest output lane as the candidate scalar, the candidate generation,
 and the authenticated source SHA-256. Any late staging failure aborts the
 candidate, leaving ACTIVE untouched. The scheduler ABI is frozen in
 `spec/head_worker_scheduler.v1.json`.
+
+
+## Head-worker batch CLI
+
+`tools/nanlm_head_worker_batch.cpp` is the first external adapter for the
+paged head worker:
+
+```text
+nanlm-head-worker-batch <pages-dir> <context.f32> <heads> <out.json>
+```
+
+It loads each selected `head-NNN.page` (1 MiB), verifies the SHA-256, selects
+the requested active heads, runs the native six-token worker, and serializes
+the last-token 128D states with slot and page provenance. It performs no host
+attention or model scoring. `spec/head_worker_cli.v1.json` freezes the ABI.

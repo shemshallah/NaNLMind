@@ -1,0 +1,25 @@
+{
+  "schema": "nanlm.head-worker-cli/1",
+  "binary": "build/nanlm-head-worker-batch",
+  "usage": "nanlm-head-worker-batch <pages-dir> <context.f32> <heads> <out.json>",
+  "page_names": [
+    "head-NNN.page",
+    "head-N.page",
+    "NNN.page"
+  ],
+  "page_bytes": 1048576,
+  "heads": "1..16 unique active heads in 0..254",
+  "context": "whitespace-separated f32, T*128 values, T=1..6",
+  "output_schema": "nanlm.head-worker-batch/1",
+  "output_fields": [
+    "accepted",
+    "token_count",
+    "host_math=false",
+    "selected[head,slot,page_sha256,last_state]",
+    "resident",
+    "zero_void_head"
+  ],
+  "page_digest": "SHA-256 over the complete 1 MiB page",
+  "failure": "missing/wrong-size page, invalid floats, rejected worker, duplicate/VOID head all fail closed",
+  "note": "Adapter only; it does not compute model scores or promote candidate tensors."
+}
