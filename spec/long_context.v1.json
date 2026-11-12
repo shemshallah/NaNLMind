@@ -1,0 +1,30 @@
+{
+  "schema": "nanlm.long-context/1",
+  "status": "recurrent-v1",
+  "current_attention_slots": 6,
+  "memory_slots_per_head": 1,
+  "new_tokens_per_chunk": 5,
+  "memory_dim": 128,
+  "head_count": 255,
+  "stream_length": "unbounded; caller supplies token vectors",
+  "mechanism": "worker input [persistent memory, up to five new token vectors]; last-token output becomes next memory",
+  "effective_context": "recurrent state, not full-context attention; exact token detail is not retained beyond the recurrent summary",
+  "guest_math": true,
+  "planned_tiers": {
+    "local_attention_tokens": 64,
+    "chunk_summary_tokens": 256,
+    "global_memory_slots": 256,
+    "target_effective_tokens": [
+      8192,
+      32768,
+      131072
+    ],
+    "required_next_work": [
+      "64-token native local block",
+      "native chunk summarizer",
+      "paged summary/KV bank",
+      "hierarchical top-k retrieval"
+    ]
+  },
+  "hardware_note": "128 MiB guest VM cannot hold full frontier-scale KV/attention; hierarchical paged memory is required."
+}

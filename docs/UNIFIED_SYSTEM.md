@@ -460,3 +460,27 @@ Rejected candidates remain under `workdir/candidate` for audit; the accepted
 directory is not created. The receipt embeds the training and gate reports and
 sets `tensor_promotion:false`. The contract is frozen in
 `spec/head_page_train_gate.v1.json`.
+
+
+## Long-context trajectory
+
+`include/nanlm/long_context_scheduler.hpp` implements the first long-context
+layer: a persistent 128D memory per head plus up to five new token vectors per
+worker call. The six-slot worker attends over `[memory, token0..token4]`, and
+the last-token state becomes the next memory. The stream length is unbounded,
+but this is a **recurrent summary**, not full-context attention.
+
+The frontier trajectory needs hierarchical paged memory:
+
+```text
+64-token native local attention
+  -> 256-token chunk summaries
+  -> 256-slot global summary bank
+  -> top-k summary retrieval
+  -> target 8k / 32k / 128k effective context
+```
+
+A 128 MiB guest VM cannot hold full frontier-scale KV. The current recurrent
+path is the correctness/storage stepping stone; the next native step is the
+64-token local block and chunk summarizer. The contract is frozen in
+`spec/long_context.v1.json`.
