@@ -580,6 +580,73 @@ bool RawFieldVM::native_head_block6(
     return true;
 }
 
+bool RawFieldVM::native_head_state_readout(
+    const std::array<float, 128>& state,
+    const std::vector<std::array<float, 128>>& candidates,
+    std::vector<float>& scores, std::uint8_t& reason) {
+    scores.clear();
+    reason = 0u;
+    if (!vm_) return fail("native head readout: VM unavailable");
+    if (candidates.empty() || candidates.size() > 64u) {
+        reason = 1u;
+        return true;
+    }
+    constexpr std::uint32_t kState = 0x00D03000u;
+    constexpr std::uint32_t kCandidates = 0x00D04000u;
+    constexpr std::uint32_t kScores = 0x00D07000u;
+    auto as_bits = [](float value) {
+        std::uint32_t bits = 0u;
+        std::memcpy(&bits, &value, sizeof(bits));
+        return bits;
+    };
+    for (std::uint32_t d = 0; d < 128u; ++d) {
+        if (!std::isfinite(state[d]))
+            return fail("native head readout: nonfinite state");
+        if (!write_word(kState + d, as_bits(state[d])))
+            return fail("native head readout: state transport failed");
+    }
+    for (std::size_t i = 0; i < candidates.size(); ++i) {
+        for (std::uint32_t d = 0; d < 128u; ++d) {
+            const float value = candidates[i][d];
+            if (!std::isfinite(value))
+                return fail("native head readout: nonfinite candidate");
+            if (!write_word(kCandidates + static_cast<std::uint32_t>(i) * 128u + d,
+                            as_bits(value)))
+                return fail("native head readout: candidate transport failed");
+        }
+    }
+    if (!write_word(kProposalBase + 0u, kState) ||
+        !write_word(kProposalBase + 1u, kCandidates) ||
+        !write_word(kProposalBase + 2u, kScores) ||
+        !write_word(kProposalBase + 3u, static_cast<std::uint32_t>(candidates.size())) ||
+        !write_word(kCommandBase, 123u))
+        return fail("native head readout: command transport failed");
+    if (!run_command())
+        return fail("native head readout: guest execution failed: " + error_);
+    const auto ok = read_word(kResultBase);
+    const auto count = read_word(kResultBase + 1u);
+    const auto code = read_word(kResultBase + 3u);
+    if (ok == 0u) {
+        if (count != 0u || code != 1u)
+            return fail("native head readout: malformed rejection");
+        reason = 1u;
+        return true;
+    }
+    if (ok != 1u || count != candidates.size() || code != 0u)
+        return fail("native head readout: malformed success receipt");
+    scores.resize(candidates.size());
+    for (std::size_t i = 0; i < candidates.size(); ++i) {
+        const auto bits = read_word(kScores + static_cast<std::uint32_t>(i));
+        float value = 0.0f;
+        std::memcpy(&value, &bits, sizeof(value));
+        if (!std::isfinite(value))
+            return fail("native head readout: nonfinite score");
+        scores[i] = value;
+    }
+    reason = 0u;
+    return true;
+}
+
 bool RawFieldVM::native_shortlist_batch(
     const std::array<std::uint32_t,6>& context_words,
     std::uint8_t valid_mask, std::uint8_t task,

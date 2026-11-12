@@ -396,6 +396,13 @@ public:
         const std::array<float, 6 * 128>& input, std::uint8_t token_count,
         std::uint8_t slot, std::array<float, 6 * 128>& output,
         std::uint8_t& reason);
+    // Dedicated head-worker opcode123: guest-side linear readout of a
+    // 128D state against 1..64 transported candidate vectors. This does not
+    // claim trained logits or a promotion decision.
+    bool native_head_state_readout(
+        const std::array<float, 128>& state,
+        const std::vector<std::array<float, 128>>& candidates,
+        std::vector<float>& scores, std::uint8_t& reason);
     bool native_shortlist_batch(
         const std::array<std::uint32_t,6>& context_words,
         std::uint8_t valid_mask, std::uint8_t task,

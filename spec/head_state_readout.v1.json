@@ -1,0 +1,24 @@
+{
+  "schema": "nanlm.head-state-readout/1",
+  "opcode": 123,
+  "image": "build/head_worker.nan",
+  "state": "f32[128] from the six-token worker",
+  "candidates": "f32[N][128], N=1..64, host-transported",
+  "output": "f32[N] guest dot scores",
+  "command_block": "0x4000",
+  "args": {
+    "0x4001": "state pointer",
+    "0x4002": "candidate matrix pointer",
+    "0x4003": "score output pointer",
+    "0x4004": "N"
+  },
+  "result": {
+    "0x4010": "accepted",
+    "0x4011": "N",
+    "0x4012": "0",
+    "0x4013": "reject reason"
+  },
+  "scope": "linear readout only; not trained candidate logits, not a promotion gate",
+  "host_math": false,
+  "note": "Candidate vectors must be sourced and authenticated by the caller; the guest performs all dot arithmetic."
+}

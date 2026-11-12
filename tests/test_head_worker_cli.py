@@ -34,9 +34,15 @@ def main() -> int:
             (tmp / f"head-{head:03d}.page").write_bytes(page())
         context = [0.01 * (i - 128) for i in range(2 * 128)]
         (tmp / "context.txt").write_text(" ".join(map(str, context)) + "\n")
+        candidates = [0.0] * (2 * 128)
+        candidates[0] = 1.0
+        candidates[128 + 1] = 1.0
+        (tmp / "candidates.txt").write_text(
+            " ".join(map(str, candidates)) + "\n")
         out = tmp / "out.json"
         run = subprocess.run(
-            [str(binary), str(tmp), str(tmp / "context.txt"), "1,3", str(out)],
+            [str(binary), str(tmp), str(tmp / "context.txt"), "1,3", str(out),
+             str(tmp / "candidates.txt")],
             cwd=ROOT, text=True, capture_output=True,
         )
         if run.returncode != 0:
@@ -54,6 +60,9 @@ def main() -> int:
             assert len(row["page_sha256"]) == 64
             assert len(row["last_state"]) == 128
             assert all(isinstance(v, (int, float)) for v in row["last_state"])
+            assert len(row["candidate_scores"]) == 2
+            assert all(isinstance(v, (int, float))
+                       for v in row["candidate_scores"])
         print("PASS native head-worker CLI adapter")
         return 0
     finally:

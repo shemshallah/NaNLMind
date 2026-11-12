@@ -329,5 +329,8 @@ nanlm-head-worker-batch <pages-dir> <context.f32> <heads> <out.json>
 
 It loads each selected `head-NNN.page` (1 MiB), verifies the SHA-256, selects
 the requested active heads, runs the native six-token worker, and serializes
-the last-token 128D states with slot and page provenance. It performs no host
-attention or model scoring. `spec/head_worker_cli.v1.json` freezes the ABI.
+the last-token 128D states with slot and page provenance. An optional
+`candidates.f32` file supplies 1..64 transported 128D vectors; opcode **123**
+then computes guest-side dot scores for each selected head. These are linear
+readout values, not trained logits. The adapter performs no host attention or
+model scoring. The readout ABI is frozen in `spec/head_state_readout.v1.json`. `spec/head_worker_cli.v1.json` freezes the ABI.

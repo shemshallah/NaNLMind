@@ -81,9 +81,9 @@ std::string page_path(const std::string& dir, unsigned head) {
 } // namespace
 
 int main(int argc, char** argv) {
-    if (argc != 5) {
+    if (argc != 5 && argc != 6) {
         std::cerr << "Usage: nanlm-head-worker-batch <pages-dir> <context.f32> "
-                     "<heads> <out.json>\n"
+                     "<heads> <out.json> [candidates.f32]\n"
                      "heads: comma-separated 0..254, at most 16\n";
         return 2;
     }
@@ -110,6 +110,20 @@ int main(int argc, char** argv) {
                 throw std::runtime_error("page must be exactly 1 MiB: " + path);
             pages.load_page(heads[i], bytes.data(), bytes.size());
             page_sha[i] = hex(Sha256::hash(bytes.data(), bytes.size()));
+        }
+
+        std::vector<std::array<float, 128>> candidates;
+        if (argc == 6) {
+            const auto values = read_floats(argv[5]);
+            if (values.empty() || values.size() % 128u != 0u)
+                throw std::runtime_error("candidates must contain N*128 floats");
+            const std::size_t n = values.size() / 128u;
+            if (n < 1u || n > 64u)
+                throw std::runtime_error("candidate count must be 1..64");
+            candidates.resize(n);
+            for (std::size_t i = 0; i < n; ++i)
+                for (unsigned d = 0; d < 128u; ++d)
+                    candidates[i][d] = values[i * 128u + d];
         }
 
         std::array<float, 255> credits{};
@@ -141,7 +155,25 @@ int main(int argc, char** argv) {
                 if (d) out << ',';
                 out << state.output[base + d];
             }
-            out << "]}";
+            out << "]";
+            if (!candidates.empty()) {
+                std::array<float, 128> last{};
+                for (unsigned d = 0; d < 128u; ++d)
+                    last[d] = state.output[base + d];
+                std::vector<float> scores;
+                std::uint8_t readout_reason = 0;
+                const bool ok = vm.native_head_state_readout(
+                    last, candidates, scores, readout_reason);
+                if (!ok || readout_reason != 0u)
+                    throw std::runtime_error("native head-state readout failed");
+                out << ",\"candidate_scores\":[";
+                for (std::size_t c = 0; c < scores.size(); ++c) {
+                    if (c) out << ',';
+                    out << scores[c];
+                }
+                out << "]";
+            }
+            out << "}";
         }
         out << "],\"resident\":" << scheduler.resident_count()
             << ",\"zero_void_head\":true}\n";
