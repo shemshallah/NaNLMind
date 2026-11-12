@@ -63,6 +63,22 @@ int main() {
     CHECK(finite);
     CHECK(energy > 1e-6f);
 
+    // Causal check: changing future tokens must not alter earlier outputs.
+    std::array<float, 64 * 128> early = input;
+    std::array<float, 64 * 128> later = input;
+    for (unsigned t = 4; t < 8; ++t)
+        for (unsigned d = 0; d < 128; ++d)
+            later[t * 128 + d] += 0.25f;
+    std::array<float, 64 * 128> early_out{}, later_out{};
+    CHECK(vm.native_head_block64(early, 8, 0, early_out, reason));
+    CHECK_EQ(reason, 0u);
+    CHECK(vm.native_head_block64(later, 8, 0, later_out, reason));
+    CHECK_EQ(reason, 0u);
+    bool causal = true;
+    for (unsigned i = 0; i < 4 * 128; ++i)
+        if (early_out[i] != later_out[i]) causal = false;
+    CHECK(causal);
+
     std::array<float, 64 * 128> rejected{};
     CHECK(vm.native_head_block64(input, 65, 0, rejected, reason));
     CHECK_EQ(reason, 1u);

@@ -35,5 +35,18 @@
     "slot 0..15",
     "finite input/output"
   ],
-  "note": "Dedicated non-overlapping image; host performs transport only."
+  "note": "Opcode122 is the six-token compatibility block; opcode135 is the 64-token causal block. Both use the same 1 MiB page layout.",
+  "blocks": {
+    "block6": {
+      "opcode": 122,
+      "max_tokens": 6,
+      "kernel": "mth_head_block6.nas"
+    },
+    "block64": {
+      "opcode": 135,
+      "max_tokens": 64,
+      "kernel": "mth_head_block64.nas",
+      "attention": "causal local softmax"
+    }
+  }
 }

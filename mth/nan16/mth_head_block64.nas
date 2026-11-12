@@ -1,16 +1,17 @@
 ; Raw NaN16 64-token 128D three-layer bf16 local head block.
 ; Higher-memory local-attention variant of the six-token worker.
 ;
-; This is the low-address standalone version.  It is assembled into
-; mth/drivers/head_worker.nas at word 0, so every JMP/CALL is a normal 16-bit
-; guest transfer and the 0x4000 command block leaves ample code room.
+; This block is assembled into mth/drivers/head_worker.nas in the worker's
+; low code window, so every JMP/CALL is a normal 16-bit guest transfer and the
+; 0x4000 command block remains untouched.
 ;
 ; ABI (worker dispatcher writes args at 0x4001..0x4004):
 ;   r1 = input f32[T][128]
 ;   r2 = output f32[T][128]
 ;   r3 = slot 0..15
-;   r4 = T 1..6
+;   r4 = T 1..64
 ; Returns r1=1, r2=T*128, r3=slot, r4=0 on success.
+; Attention is causal: query i reads keys j <= i.
 ;
 ; Page layout is the same frozen 1 MiB layout as the single-token block:
 ;   +0x00000 Wq, +0x02000 Wk, +0x04000 Wv, +0x06000 Wo,
@@ -186,6 +187,18 @@ hb64_score_loop:
   LD r11,r0,@hb64_t
   CMP r10,r11
   JMP[GE] @hb64_score_done
+  ; Causal local attention: query i cannot read key j > i.
+  LD r12,r0,@hb64_i
+  CMP r10,r12
+  JMP[LE] @hb64_score_compute
+  MOVI r13,0
+  MOVHI r13,0xFF80
+  MOVI r12,0xF000
+  MOVHI r12,0x00E0
+  ADD r12,r12,r10
+  ST r13,r12,0
+  JMP @hb64_score_next
+hb64_score_compute:
   MOVI r12,128
   LD r13,r0,@hb64_i
   MUL r13,r13,r12

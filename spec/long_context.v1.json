@@ -39,5 +39,6 @@
     "retrieval": "native opcode123 guest dot scores; host stable top-k ordering",
     "memory_update": "last local-token output; summaries never become recurrent memory",
     "status": "implemented host-side over native block64"
-  }
+  },
+  "causal": true
 }
