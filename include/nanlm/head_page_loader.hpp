@@ -82,6 +82,24 @@ public:
         last_used_.fill(0);
     }
 
+    // Copy a resident slot back to packed 1 MiB page bytes.  This is host
+    // transport only; the guest remains the writer of any page math.
+    std::vector<std::uint8_t> export_page(std::size_t slot) const {
+        if (slot >= kSlots) throw std::out_of_range("head page slot");
+        const std::uint32_t base = slot_base(slot);
+        std::vector<std::uint8_t> out(kWordsPerPage * 4u);
+        for (std::size_t i = 0; i < kWordsPerPage; ++i) {
+            const std::uint32_t word = vm_.read_payload_word(
+                base + static_cast<std::uint32_t>(i));
+            const std::size_t off = i * 4u;
+            out[off + 0] = static_cast<std::uint8_t>(word & 0xFFu);
+            out[off + 1] = static_cast<std::uint8_t>((word >> 8) & 0xFFu);
+            out[off + 2] = static_cast<std::uint8_t>((word >> 16) & 0xFFu);
+            out[off + 3] = static_cast<std::uint8_t>((word >> 24) & 0xFFu);
+        }
+        return out;
+    }
+
 private:
     void write_page(std::size_t slot, std::size_t head) {
         const std::uint8_t* src = arena_.page(head);

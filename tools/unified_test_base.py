@@ -119,7 +119,7 @@ def main() -> int:
     for name in ("test_raw_field", "test_context_backoff",
                  "test_context_route", "test_native48m_feedback",
                  "test_dual_tensor_arena", "test_head_page_arena",
-                 "test_head_page_loader", "test_head_block", "test_head_worker", "test_head_worker_scheduler", "test_head_readout", "test_head_readout_train", "test_head_page_checkpoint", "test_nlhe2"):
+                 "test_head_page_loader", "test_head_block", "test_head_worker", "test_head_worker_scheduler", "test_head_readout", "test_head_readout_train", "test_head_page_train", "test_head_page_checkpoint", "test_nlhe2"):
         path = BUILD / name
         if path.is_file():
             results.append(run(name, [str(path)]))
@@ -137,6 +137,9 @@ def main() -> int:
     if (ROOT / "tests/test_head_page_gate.py").is_file():
         results.append(run("head_page_gate",
                            ["python3", "tests/test_head_page_gate.py"]))
+    if (ROOT / "tests/test_head_page_train.py").is_file():
+        results.append(run("head_page_train",
+                           ["python3", "tests/test_head_page_train.py"]))
     if (ROOT / "tests/test_decoder48m_candidate.py").is_file():
         results.append(run("decoder48m_candidate",
                            ["python3", "tests/test_decoder48m_candidate.py"]))

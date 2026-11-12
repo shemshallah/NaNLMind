@@ -404,3 +404,25 @@ The receipt includes per-bank state SHA-256 and checkpoint root digests. It
 sets `tensor_promotion:false` and `page_training:false`; the gate validates a
 page checkpoint, it does not train or promote one. The ABI is frozen in
 `spec/head_page_gate.v1.json`.
+
+
+## Final-projection page training
+
+Worker opcode **125** performs one local final-layer W2 update after the
+six-token forward pass:
+
+```text
+e[j] = target[j] - state[j]
+W2[j,k] += lr * e[j] * hidden[k]
+```
+
+The target is a transported 128D state; the hidden vector is the last-token
+tanh MLP activation produced by the guest. Weights are read/written as bf16;
+arithmetic is f32. This is deliberately a **local final-projection update**,
+not full three-layer backpropagation.
+
+`build/nanlm-head-page-train` loads one checkpoint page, runs one or more
+epochs, exports the modified slot, and writes a candidate checkpoint with a
+new generation and source/candidate SHA-256. The page gate can then compare
+the source and candidate checkpoints. The ABI is frozen in
+`spec/head_page_train.v1.json`.
