@@ -471,7 +471,7 @@ pattern to the native 64-slot worker: `[memory, token0..token62]`, with the
 last-token state becoming the next memory. The stream length is unbounded, but
 this is a **recurrent window**, not full-context attention.
 
-The native block64 test exercises all 64 local slots, causal future-token isolation, and exact last-token parity with opcode136. Opcode136 skips the final layer’s unused earlier queries and MLP rows; the long-context scheduler uses it by default. the long-context64 test
+The native block64 test exercises all 64 local slots, causal future-token isolation, and exact last-token parity with opcode136. The bf16 matvec now decodes packed pairs, two MACs per word load; targeted long-context tests improved from ~7.4s to ~6.1s and chunk summaries from ~14s to ~7s. Opcode136 skips the final layer’s unused earlier queries and MLP rows; the long-context scheduler uses it by default. the long-context64 test
 uses 63 new tokens per chunk and arbitrary stream length. `chunk_summary.hpp`
 adds a chunk-summary scheduler and paged summary bank: a chunk is reset and
 processed through the 64-slot worker, and the final per-head memory becomes its
