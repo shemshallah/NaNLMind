@@ -1,0 +1,20 @@
+{
+  "schema": "nanlm.unified-context/1",
+  "binary": "build/nanlm-unified-context",
+  "usage": "nanlm-unified-context <checkpoint-dir> <heads.csv> <credits.f32> <tokens.f32> <out.json> [--bank bank.tsv] [--top-k N] [--summary-k N] [--local-limit N] [--retrieve-head H] [--retrieve-k N] [--query query.f32]",
+  "checkpoint": "nanlm.head-page-checkpoint/1",
+  "bank": "TSV: chunk_id token_count head f0..f127; contiguous identical chunk_id lines form one summary",
+  "flow": "page checkpoint -> unified context runtime -> native worker -> summary retrieval",
+  "output": [
+    "accepted",
+    "host_math=false",
+    "checkpoint",
+    "input",
+    "bank",
+    "advance",
+    "retrieve",
+    "memory"
+  ],
+  "scope": "transport/orchestration only; all attention and scoring are guest-side",
+  "note": "Requires build/head_worker.nan and checkpoint pages."
+}

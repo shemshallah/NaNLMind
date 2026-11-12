@@ -597,3 +597,17 @@ shape, head range/uniqueness, finite states, file size, digest, and manifest
 ordering; `root_digest()` covers sorted present records. `write_bank` supports
 the full 512-slot bank, including slot 511. The format is frozen in
 `spec/summary_bank_checkpoint.v1.json`.
+
+
+## Unified context CLI
+
+`build/nanlm-unified-context` exposes the canonical runtime as one command:
+
+```text
+nanlm-unified-context <checkpoint-dir> <heads.csv> <credits.f32>   <tokens.f32> <out.json> [--bank bank.tsv] [--top-k N] [--summary-k N]   [--local-limit N] [--retrieve-head H] [--retrieve-k N] [--query query.f32]
+```
+
+It loads head pages, runs the unified 64-slot causal context path, optionally
+retrieves from a summary-bank TSV, and emits final states plus retrieval hits.
+The host performs transport, input validation, and JSON only. The contract is
+frozen in `spec/unified_context_cli.v1.json`.
