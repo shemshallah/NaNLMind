@@ -74,6 +74,9 @@ def main() -> int:
         assert report["candidate_heldout_nll"] < report["baseline_heldout_nll"]
         assert len(report["initial_candidate_sha256"]) == 64
         assert len(report["candidate_sha256"]) == 64
+        assert 0.0 <= report["candidate_top1"] <= 1.0
+        assert 0.0 <= report["candidate_top5"] <= 1.0
+        assert report["candidate_top1"] <= report["candidate_top5"] + 1e-12
         assert updated.is_file()
 
         # Zero learning rate must not pass the improvement gate.

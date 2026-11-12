@@ -1,0 +1,11 @@
+{
+  "schema": "nanlm.summary-retrieval/1",
+  "opcode": 123,
+  "bank": "nanlm chunk-summary bank",
+  "query": "128D current head state",
+  "candidates": "up to 64 summary states per native readout batch",
+  "ranking": "guest dot scores; host stable top-k selection only",
+  "top_k": "1..64",
+  "scope": "native summary similarity retrieval; no word probabilities yet",
+  "note": "The host does not compute dot products. Selected summaries can be fed into the 64-slot worker."
+}

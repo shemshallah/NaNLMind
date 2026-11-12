@@ -506,3 +506,16 @@ The top-5 metric is over the 256 byte classes, not words, and is explicitly a
 reference baseline. The byte-bigram reports `3.50947` BPB and the context-2
 baseline reports `3.28056` BPB on this corpus. These values are included in the
 unified report and are not native head-worker word probabilities.
+
+
+## Native summary retrieval
+
+`include/nanlm/summary_retriever.hpp` groups summary-bank records by head and
+scores the current 128D state against up to 64 summary vectors per native
+readout call (opcode123). The guest performs every dot product; the host only
+batches candidates and sorts the returned scores. The selected summaries can
+then be fed into the 64-slot worker. The contract is frozen in
+`spec/summary_retrieval.v1.json`.
+
+The readout training loop now also reports held-out candidate-panel top-1 and
+top-5 accuracy alongside NLL. It still does not claim full-vocabulary BPB.

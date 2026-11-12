@@ -7,6 +7,7 @@
 #include "nanlm/raw_field.hpp"
 #include "nanlm/sha256.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdint>
@@ -118,10 +119,17 @@ void write_candidates(const std::string& path,
     }
 }
 
-double evaluate(RawFieldVM& vm,
-                const std::vector<std::array<float, 128>>& candidates,
-                const std::vector<Sample>& samples) {
+struct EvalResult {
+    double nll = 0.0;
+    double top1 = 0.0;
+    double top5 = 0.0;
+};
+
+EvalResult evaluate(RawFieldVM& vm,
+                    const std::vector<std::array<float, 128>>& candidates,
+                    const std::vector<Sample>& samples) {
     double sum = 0.0;
+    std::size_t top1 = 0, top5 = 0;
     for (const auto& sample : samples) {
         std::vector<float> probabilities;
         std::vector<std::array<float, 128>> updated;
@@ -137,8 +145,23 @@ double evaluate(RawFieldVM& vm,
             throw std::runtime_error("held-out guest rejection reason=" +
                                      std::to_string(reason));
         sum += loss;
+        if (predicted == sample.target) ++top1;
+        std::array<unsigned, 64> order{};
+        for (std::size_t i = 0; i < probabilities.size(); ++i)
+            order[i] = static_cast<unsigned>(i);
+        std::stable_sort(order.begin(),
+                         order.begin() + static_cast<std::ptrdiff_t>(probabilities.size()),
+                         [&](unsigned a, unsigned b) {
+            if (probabilities[a] != probabilities[b])
+                return probabilities[a] > probabilities[b];
+            return a < b;
+        });
+        for (std::size_t i = 0; i < 5u && i < probabilities.size(); ++i)
+            if (order[i] == sample.target) { ++top5; break; }
     }
-    return sum / static_cast<double>(samples.size());
+    const double n = static_cast<double>(samples.size());
+    return {sum / n, static_cast<double>(top1) / n,
+            static_cast<double>(top5) / n};
 }
 } // namespace
 
@@ -164,7 +187,7 @@ int main(int argc, char** argv) {
         RawFieldVM vm("build/head_worker.nan");
         if (!vm.ready()) throw std::runtime_error(vm.error());
         const std::string initial_sha = digest_candidates(candidates);
-        const double baseline_nll = evaluate(vm, candidates, heldout);
+        const auto baseline = evaluate(vm, candidates, heldout);
 
         for (int epoch = 0; epoch < epochs; ++epoch) {
             for (const auto& sample : train) {
@@ -184,10 +207,10 @@ int main(int argc, char** argv) {
             }
         }
 
-        const double candidate_nll = evaluate(vm, candidates, heldout);
+        const auto candidate = evaluate(vm, candidates, heldout);
         const std::string final_sha = digest_candidates(candidates);
-        const bool accepted = std::isfinite(baseline_nll) &&
-            std::isfinite(candidate_nll) && candidate_nll < baseline_nll;
+        const bool accepted = std::isfinite(baseline.nll) &&
+            std::isfinite(candidate.nll) && candidate.nll < baseline.nll;
         write_candidates(argv[6], candidates);
 
         std::ofstream out(argv[7], std::ios::trunc);
@@ -198,17 +221,23 @@ int main(int argc, char** argv) {
             << ",\"heldout_samples\":" << heldout.size()
             << ",\"epochs\":" << epochs
             << ",\"learning_rate\":" << lr
-            << ",\"baseline_heldout_nll\":" << baseline_nll
-            << ",\"candidate_heldout_nll\":" << candidate_nll
-            << ",\"nll_delta\":" << (baseline_nll - candidate_nll)
+            << ",\"baseline_heldout_nll\":" << baseline.nll
+            << ",\"candidate_heldout_nll\":" << candidate.nll
+            << ",\"nll_delta\":" << (baseline.nll - candidate.nll)
+            << ",\"baseline_top1\":" << baseline.top1
+            << ",\"candidate_top1\":" << candidate.top1
+            << ",\"baseline_top5\":" << baseline.top5
+            << ",\"candidate_top5\":" << candidate.top5
             << ",\"accepted\":" << (accepted ? "true" : "false")
             << ",\"initial_candidate_sha256\":\"" << initial_sha << "\""
             << ",\"candidate_sha256\":\"" << final_sha << "\""
             << ",\"host_math\":false,"
                "\"tensor_promotion\":false,"
                "\"scope\":\"readout checkpoint gate only; no 48M or page promotion\"}\n";
-        std::cout << "head_readout_loop baseline=" << baseline_nll
-                  << " candidate=" << candidate_nll
+        std::cout << "head_readout_loop baseline=" << baseline.nll
+                  << " candidate=" << candidate.nll
+                  << " top1=" << candidate.top1
+                  << " top5=" << candidate.top5
                   << " accepted=" << (accepted ? "true" : "false")
                   << " candidates=" << candidate_count
                   << " output=" << argv[6] << "\n";

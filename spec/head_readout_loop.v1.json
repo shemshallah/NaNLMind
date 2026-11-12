@@ -10,6 +10,8 @@
     "updated candidate vectors",
     "baseline/candidate held-out NLL",
     "nll_delta",
+    "baseline/candidate top-1",
+    "baseline/candidate top-5",
     "accepted",
     "initial/final SHA-256"
   ],
