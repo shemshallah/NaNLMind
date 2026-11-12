@@ -83,10 +83,16 @@ $(BUILD)/test_head_block: tests/test_head_block.cpp include/nanlm/head_page_load
 $(BUILD)/test_head_worker: tests/test_head_worker.cpp include/nanlm/head_page_loader.hpp include/nanlm/head_page_arena.hpp $(LIB) $(NAN0S_LIB) $(HEAD_WORKER) | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
+$(BUILD)/test_head_block64: tests/test_head_block64.cpp include/nanlm/head_page_loader.hpp include/nanlm/head_page_arena.hpp $(LIB) $(NAN0S_LIB) $(HEAD_WORKER) | $(BUILD)
+	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
+
 $(BUILD)/test_head_worker_scheduler: tests/test_head_worker_scheduler.cpp include/nanlm/head_worker_scheduler.hpp include/nanlm/head_page_loader.hpp include/nanlm/head_page_arena.hpp $(LIB) $(NAN0S_LIB) $(HEAD_WORKER) | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
 $(BUILD)/test_long_context: tests/test_long_context.cpp include/nanlm/long_context_scheduler.hpp include/nanlm/head_worker_scheduler.hpp $(LIB) $(NAN0S_LIB) $(HEAD_WORKER) | $(BUILD)
+	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
+
+$(BUILD)/test_long_context64: tests/test_long_context64.cpp include/nanlm/long_context64_scheduler.hpp include/nanlm/long_context_scheduler.hpp $(LIB) $(NAN0S_LIB) $(HEAD_WORKER) | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
 $(BUILD)/test_head_readout: tests/test_head_readout.cpp include/nanlm/raw_field.hpp $(LIB) $(NAN0S_LIB) $(HEAD_WORKER) | $(BUILD)
@@ -307,5 +313,5 @@ dual-head-test: $(BUILD)/test_dual_head
 	./$(BUILD)/test_dual_head
 
 
-unified-test-base: $(CLI) $(FIELD_DRIVER) $(BUILD)/test_raw_field $(BUILD)/test_context_backoff $(BUILD)/test_context_route $(BUILD)/test_native48m_feedback $(BUILD)/test_dual_tensor_arena $(BUILD)/test_head_page_arena $(BUILD)/test_head_page_loader $(BUILD)/test_head_block $(BUILD)/test_head_worker $(BUILD)/test_head_worker_scheduler $(BUILD)/test_long_context $(BUILD)/test_head_readout $(BUILD)/test_head_readout_train $(BUILD)/test_head_page_train $(BUILD)/test_head_page_checkpoint $(BUILD)/test_nlhe2 $(BUILD)/credit-ablation $(BUILD)/nanlm48m-native-batch $(BUILD)/nanlm-head-worker-batch $(BUILD)/nanlm-head-readout-train $(BUILD)/nanlm-head-readout-loop $(BUILD)/nanlm-head-page-gate $(BUILD)/nanlm-head-page-train
+unified-test-base: $(CLI) $(FIELD_DRIVER) $(BUILD)/test_raw_field $(BUILD)/test_context_backoff $(BUILD)/test_context_route $(BUILD)/test_native48m_feedback $(BUILD)/test_dual_tensor_arena $(BUILD)/test_head_page_arena $(BUILD)/test_head_page_loader $(BUILD)/test_head_block $(BUILD)/test_head_worker $(BUILD)/test_head_block64 $(BUILD)/test_head_worker_scheduler $(BUILD)/test_long_context $(BUILD)/test_long_context64 $(BUILD)/test_head_readout $(BUILD)/test_head_readout_train $(BUILD)/test_head_page_train $(BUILD)/test_head_page_checkpoint $(BUILD)/test_nlhe2 $(BUILD)/credit-ablation $(BUILD)/nanlm48m-native-batch $(BUILD)/nanlm-head-worker-batch $(BUILD)/nanlm-head-readout-train $(BUILD)/nanlm-head-readout-loop $(BUILD)/nanlm-head-page-gate $(BUILD)/nanlm-head-page-train
 	python3 tools/unified_test_base.py

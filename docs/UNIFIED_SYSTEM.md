@@ -466,9 +466,13 @@ sets `tensor_promotion:false`. The contract is frozen in
 
 `include/nanlm/long_context_scheduler.hpp` implements the first long-context
 layer: a persistent 128D memory per head plus up to five new token vectors per
-worker call. The six-slot worker attends over `[memory, token0..token4]`, and
-the last-token state becomes the next memory. The stream length is unbounded,
-but this is a **recurrent summary**, not full-context attention.
+worker call. `include/nanlm/long_context64_scheduler.hpp` raises the same
+pattern to the native 64-slot worker: `[memory, token0..token62]`, with the
+last-token state becoming the next memory. The stream length is unbounded, but
+this is a **recurrent window**, not full-context attention.
+
+The native block64 test exercises all 64 local slots; the long-context64 test
+uses 63 new tokens per chunk and arbitrary stream length.
 
 The frontier trajectory needs hierarchical paged memory:
 
