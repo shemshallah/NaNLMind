@@ -113,6 +113,9 @@ $(BUILD)/nanlm-head-worker-batch: tools/nanlm_head_worker_batch.cpp include/nanl
 $(BUILD)/nanlm-head-readout-train: tools/nanlm_head_readout_train.cpp include/nanlm/raw_field.hpp $(LIB) $(NAN0S_LIB) $(HEAD_WORKER) | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
+$(BUILD)/nanlm-head-readout-loop: tools/nanlm_head_readout_loop.cpp include/nanlm/raw_field.hpp $(LIB) $(NAN0S_LIB) $(HEAD_WORKER) | $(BUILD)
+	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
+
 $(BUILD)/nanlm48m-native-emit: tools/nanlm48m_native_emit.cpp include/nanlm/native48m_feedback_json.hpp include/nanlm/native48m_feedback.hpp include/nanlm/dual_tensor_arena.hpp $(LIB) $(NAN0S_LIB) $(FIELD_DRIVER) | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
@@ -289,5 +292,5 @@ dual-head-test: $(BUILD)/test_dual_head
 	./$(BUILD)/test_dual_head
 
 
-unified-test-base: $(CLI) $(FIELD_DRIVER) $(BUILD)/test_raw_field $(BUILD)/test_context_backoff $(BUILD)/test_context_route $(BUILD)/test_native48m_feedback $(BUILD)/test_dual_tensor_arena $(BUILD)/test_head_page_arena $(BUILD)/test_head_page_loader $(BUILD)/test_head_block $(BUILD)/test_head_worker $(BUILD)/test_head_worker_scheduler $(BUILD)/test_head_readout $(BUILD)/test_head_readout_train $(BUILD)/test_nlhe2 $(BUILD)/credit-ablation $(BUILD)/nanlm48m-native-batch $(BUILD)/nanlm-head-worker-batch $(BUILD)/nanlm-head-readout-train
+unified-test-base: $(CLI) $(FIELD_DRIVER) $(BUILD)/test_raw_field $(BUILD)/test_context_backoff $(BUILD)/test_context_route $(BUILD)/test_native48m_feedback $(BUILD)/test_dual_tensor_arena $(BUILD)/test_head_page_arena $(BUILD)/test_head_page_loader $(BUILD)/test_head_block $(BUILD)/test_head_worker $(BUILD)/test_head_worker_scheduler $(BUILD)/test_head_readout $(BUILD)/test_head_readout_train $(BUILD)/test_nlhe2 $(BUILD)/credit-ablation $(BUILD)/nanlm48m-native-batch $(BUILD)/nanlm-head-worker-batch $(BUILD)/nanlm-head-readout-train $(BUILD)/nanlm-head-readout-loop
 	python3 tools/unified_test_base.py

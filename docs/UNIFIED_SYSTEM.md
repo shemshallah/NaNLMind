@@ -352,3 +352,20 @@ nanlm-head-readout-train <state.f32> <candidates.f32> <target> <lr>   <out-candi
 
 This is an error-corrective readout step, not BPTT, page-weight training, or
 promotion evidence. The ABI is frozen in `spec/head_state_train.v1.json`.
+
+
+## Head-readout checkpoint loop
+
+`tools/nanlm_head_readout_loop.cpp` runs repeated opcode124 training steps over
+a state/target dataset, evaluates the unchanged candidate vectors on held-out
+examples with `lr=0`, and applies a strict improvement gate:
+
+```text
+candidate_heldout_nll < baseline_heldout_nll
+```
+
+The updated candidate vectors and both NLLs are written for audit, alongside
+initial/final SHA-256 values. The receipt explicitly sets
+`tensor_promotion: false`; this gate accepts or rejects a **readout checkpoint**,
+not a tensor bank, decoder, or page-weight update. The ABI is frozen in
+`spec/head_readout_loop.v1.json`.

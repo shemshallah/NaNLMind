@@ -1,0 +1,19 @@
+{
+  "schema": "nanlm.head-readout-loop/1",
+  "binary": "build/nanlm-head-readout-loop",
+  "usage": "nanlm-head-readout-loop <candidates.f32> <train.dat> <heldout.dat> <epochs> <lr> <out-candidates.f32> <out.json>",
+  "dataset": "one example per line: 128 finite state floats followed by one integer target index",
+  "training": "repeated opcode124 guest softmax SGD steps",
+  "evaluation": "opcode124 with lr=0; per-example guest loss aggregated as a host metric",
+  "gate": "candidate_heldout_nll < baseline_heldout_nll, both finite; strict improvement",
+  "outputs": [
+    "updated candidate vectors",
+    "baseline/candidate held-out NLL",
+    "nll_delta",
+    "accepted",
+    "initial/final SHA-256"
+  ],
+  "scope": "readout checkpoint gate only; tensor_promotion=false; no 48M decoder or 1 MiB page training",
+  "host_math": false,
+  "note": "The guest computes all model loss/gradients; the host only aggregates the reported metric and checks the gate."
+}
