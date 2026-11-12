@@ -689,40 +689,62 @@ hw6_dot_done:
 hw6_mv:
   MOVI r0,0
   ST r15,r0,@hw6_mv_link
-  MOVI r11,0
-hw6_mv_row:
-  CMP r11,r4
-  JMP[GE] @hw6_mv_done
-  MOVI r14,0
+  ST r9,r0,@hw6_mv_save9
+  ST r12,r0,@hw6_mv_save12
+  ST r13,r0,@hw6_mv_save13
+  ST r1,r0,@hw6_mv_mat
+  ST r2,r0,@hw6_mv_vec
+  ST r3,r0,@hw6_mv_out
+  ST r4,r0,@hw6_mv_rows
+  SHR r5,r5,1
+  ST r5,r0,@hw6_mv_pairs
   MOVI r10,0
+hw6_mv_row:
+  LD r9,r0,@hw6_mv_rows
+  CMP r10,r9
+  JMP[GE] @hw6_mv_done
+  LD r5,r0,@hw6_mv_pairs
+  MUL r12,r10,r5
+  LD r1,r0,@hw6_mv_mat
+  ADD r12,r12,r1
+  ST r12,r0,@hw6_mv_rowptr
+  MOVI r14,0
+  MOVI r11,0
 hw6_mv_col:
-  CMP r10,r5
+  LD r5,r0,@hw6_mv_pairs
+  CMP r11,r5
   JMP[GE] @hw6_mv_row_done
-  SHR r6,r5,1
-  MUL r6,r11,r6
-  SHR r7,r10,1
-  ADD r6,r6,r7
-  ADD r6,r6,r1
-  LD r7,r6,0
-  SHL r8,r10,31
-  SHR r8,r8,31
-  CMP r8,r0
-  JMP[EQ] @hw6_mv_low
-  SHR r7,r7,16
-hw6_mv_low:
-  SHL r7,r7,16
-  ADD r8,r2,r10
+  LD r12,r0,@hw6_mv_rowptr
+  ADD r12,r12,r11
+  LD r13,r12,0
+  SHL r6,r13,16
+  SHL r7,r11,1
+  LD r8,r0,@hw6_mv_vec
+  ADD r8,r8,r7
   LD r8,r8,0
-  FMUL r7,r7,r8
+  FMUL r6,r6,r8
+  FADD r14,r14,r6
+  SHR r7,r13,16
+  SHL r7,r7,16
+  SHL r8,r11,1
+  ADDI r8,r8,1
+  LD r9,r0,@hw6_mv_vec
+  ADD r9,r9,r8
+  LD r9,r9,0
+  FMUL r7,r7,r9
   FADD r14,r14,r7
-  ADDI r10,r10,1
+  ADDI r11,r11,1
   JMP @hw6_mv_col
 hw6_mv_row_done:
-  ADD r6,r3,r11
-  ST r14,r6,0
-  ADDI r11,r11,1
+  LD r1,r0,@hw6_mv_out
+  ADD r1,r1,r10
+  ST r14,r1,0
+  ADDI r10,r10,1
   JMP @hw6_mv_row
 hw6_mv_done:
+  LD r9,r0,@hw6_mv_save9
+  LD r12,r0,@hw6_mv_save12
+  LD r13,r0,@hw6_mv_save13
   LD r15,r0,@hw6_mv_link
   RET
 
@@ -888,4 +910,31 @@ hw6_cap_off:
 hw6_cap_n:
   .word 0
 hw6_copy_link:
+  .word 0
+
+hw6_mv_mat:
+  .word 0
+
+hw6_mv_vec:
+  .word 0
+
+hw6_mv_out:
+  .word 0
+
+hw6_mv_rows:
+  .word 0
+
+hw6_mv_pairs:
+  .word 0
+
+hw6_mv_rowptr:
+  .word 0
+
+hw6_mv_save9:
+  .word 0
+
+hw6_mv_save12:
+  .word 0
+
+hw6_mv_save13:
   .word 0
