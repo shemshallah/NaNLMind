@@ -35,7 +35,7 @@ int main(int argc, char** argv) {
     if (argc != 9 && argc != 10) {
         std::cerr << "Usage: nanlm-head-page-train <checkpoint-dir> "
                      "<context.f32> <target.f32> <head> <lr> <epochs> "
-                     "<out-dir> <out.json> [w2|wo|w1|wv|qk|l1w2|l1w1|l1wo|l1wv]\n";
+                     "<out-dir> <out.json> [w2|wo|w1|wv|qk|l1w2|l1w1|l1wo|l1wv|l1qk]\n";
         return 2;
     }
     try {
@@ -46,8 +46,9 @@ int main(int argc, char** argv) {
         const std::string mode = argc == 10 ? argv[9] : "w2";
         if (mode != "w2" && mode != "wo" && mode != "w1" &&
             mode != "wv" && mode != "qk" && mode != "l1w2" &&
-            mode != "l1w1" && mode != "l1wo" && mode != "l1wv")
-            throw std::runtime_error("projection mode must be w2, wo, w1, wv, qk, l1w2, l1w1, l1wo, or l1wv");
+            mode != "l1w1" && mode != "l1wo" && mode != "l1wv" &&
+            mode != "l1qk")
+            throw std::runtime_error("projection mode must be w2, wo, w1, wv, qk, l1w2, l1w1, l1wo, l1wv, or l1qk");
         const bool update_wo = mode == "wo";
         const bool update_w1 = mode == "w1";
         const bool update_wv = mode == "wv";
@@ -56,6 +57,7 @@ int main(int argc, char** argv) {
         const bool update_l1w1 = mode == "l1w1";
         const bool update_l1wo = mode == "l1wo";
         const bool update_l1wv = mode == "l1wv";
+        const bool update_l1qk = mode == "l1qk";
         if (!std::isfinite(lr) || lr < 0.0f)
             throw std::runtime_error("learning rate must be finite and nonnegative");
         if (epochs < 1 || epochs > 10000)
@@ -133,6 +135,11 @@ int main(int argc, char** argv) {
                           context, static_cast<std::uint8_t>(token_count),
                           static_cast<std::uint8_t>(slot), target, lr, output,
                           error_norm, reason)
+                : update_l1qk
+                    ? vm.native_head_page_train_l1qk(
+                          context, static_cast<std::uint8_t>(token_count),
+                          static_cast<std::uint8_t>(slot), target, lr, output,
+                          error_norm, reason)
                     : vm.native_head_page_train(
                           context, static_cast<std::uint8_t>(token_count),
                           static_cast<std::uint8_t>(slot), target, lr, output,
@@ -168,6 +175,7 @@ int main(int argc, char** argv) {
                               : update_l1w1 ? "layer1_W1_local"
                               : update_l1wo ? "layer1_Wo_local"
                               : update_l1wv ? "layer1_Wv_local"
+                              : update_l1qk ? "layer1_Wq_Wk_local"
                               : update_wo ? "final_layer_Wo_only"
                                           : "final_layer_W2_only")
                 << "\","

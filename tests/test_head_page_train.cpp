@@ -213,6 +213,26 @@ int main() {
         if (after_l1wv[i] != before_l1wv[i]) l1wv_changed = true;
     CHECK(l1wv_changed);
 
+    // Fresh page: local layer-1 Q/K update with two tokens.
+    make_page(arena.page(0));
+    loader.clear();
+    CHECK_EQ(loader.load(0), 0u);
+    const auto before_l1qk = loader.export_page(0);
+    CHECK(vm.native_head_page_train_l1qk(context_multi, 2, 0, target, 0.1f,
+                                         output, error_norm, reason));
+    CHECK_EQ(reason, 0u);
+    CHECK(std::isfinite(error_norm));
+    CHECK(error_norm > 0.0f);
+    const auto after_l1qk = loader.export_page(0);
+    CHECK(after_l1qk[0xFCC00] == before_l1qk[0xFCC00]);
+    bool l1wq_changed = false, l1wk_changed = false;
+    for (std::size_t i = 0x50000u; i < 0x58000u; ++i)
+        if (after_l1qk[i] != before_l1qk[i]) l1wq_changed = true;
+    for (std::size_t i = 0x58000u; i < 0x60000u; ++i)
+        if (after_l1qk[i] != before_l1qk[i]) l1wk_changed = true;
+    CHECK(l1wq_changed);
+    CHECK(l1wk_changed);
+
     CHECK(vm.native_head_page_train(context, 1, 16, target, 0.1f,
                                     output, error_norm, reason));
     CHECK_EQ(reason, 1u);
@@ -220,5 +240,5 @@ int main() {
                                     output, error_norm, reason));
     CHECK_EQ(reason, 1u);
 
-    return test_done("native final + layer1 W2/W1/Wo/Wv page training step");
+    return test_done("native final + layer1 W2/W1/Wo/Wv/QK page training step");
 }
