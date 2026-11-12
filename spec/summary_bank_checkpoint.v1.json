@@ -1,0 +1,20 @@
+{
+  "schema": "nanlm.summary-bank-checkpoint/1",
+  "directory": {
+    "record": "summary-NNN.bin",
+    "manifest": "manifest.txt"
+  },
+  "capacity": 512,
+  "record": "NSB1 LE header 40 bytes + head_count x (u16 head,u16 reserved,f32[128] state)",
+  "manifest": "slot generation sha256 chunk_id token_count head_count",
+  "write_protocol": "record temp+rename, then manifest temp+rename",
+  "validation": [
+    "magic/version/header",
+    "exact file size",
+    "SHA-256",
+    "head uniqueness/range",
+    "finite states"
+  ],
+  "root_digest": "SHA-256 over sorted present slots and record digests",
+  "scope": "host summary storage/persistence only; no model arithmetic"
+}

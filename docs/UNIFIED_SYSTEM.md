@@ -587,3 +587,13 @@ persistent memory, chunk summaries, the 512-slot bank, native summary
 retrieval, and hierarchical assembly. No alternate model path is introduced.
 `main` is canonical; older branches are audit-only. The contract is frozen in
 `spec/unified_architecture.v1.json`.
+
+
+## Summary-bank checkpoint
+
+`include/nanlm/summary_bank_checkpoint.hpp` persists the 512-slot summary bank
+as `summary-NNN.bin` records plus a SHA-256 manifest. It validates record
+shape, head range/uniqueness, finite states, file size, digest, and manifest
+ordering; `root_digest()` covers sorted present records. `write_bank` supports
+the full 512-slot bank, including slot 511. The format is frozen in
+`spec/summary_bank_checkpoint.v1.json`.
