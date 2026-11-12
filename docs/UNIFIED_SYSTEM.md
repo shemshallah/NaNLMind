@@ -311,7 +311,9 @@ host.
 `stage_head_worker_batch` transports accepted guest states into the canonical
 candidate tensor at `T[h,h,h]`: a `HeadVector128` leaf carrying the last-token
 vector, one guest output lane as the candidate scalar, the candidate generation,
-and the authenticated source SHA-256. Any late staging failure aborts the
+and the authenticated source SHA-256. `stage_head_worker_tokens` additionally
+writes one `HeadVector128` leaf for every worker token (up to six per head),
+giving the explicit per-token candidate path without touching ACTIVE. Any late staging failure aborts the
 candidate, leaving ACTIVE untouched. The scheduler ABI is frozen in
 `spec/head_worker_scheduler.v1.json`.
 

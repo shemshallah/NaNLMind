@@ -128,6 +128,14 @@ struct HeadWorkerStageResult {
     std::uint64_t generation = 0;
 };
 
+struct HeadWorkerTokenStageResult {
+    std::size_t heads = 0;
+    std::size_t token_leaves = 0;
+    std::size_t fresh_leaves = 0;
+    std::size_t scalar_writes = 0;
+    std::uint64_t generation = 0;
+};
+
 // Transport the worker's last-token 128D state into the candidate tensor as a
 // typed HeadVector128 leaf, plus one guest lane as the candidate scalar.  The
 // scalar is a transport of a guest output, not a host-computed score.
@@ -174,6 +182,66 @@ inline HeadWorkerStageResult stage_head_worker_batch(
                                      state.head, scalar);
             ++result.heads;
             result.fresh_leaves += fresh ? 1u : 0u;
+            ++result.scalar_writes;
+        }
+    } catch (...) {
+        arena.abort_candidate();
+        throw;
+    }
+    return result;
+}
+
+
+// Per-token candidate transport: one HeadVector128 leaf per worker token at
+// T[h,h,h], plus one guest last-token scalar per head.  This is the
+// per-token write path; it never writes the ACTIVE bank.
+inline HeadWorkerTokenStageResult stage_head_worker_tokens(
+    DualTensor256Arena& arena, const HeadWorkerBatch& batch,
+    std::uint64_t expected_generation, std::uint64_t logical_base,
+    const std::string& source_sha256) {
+    if (!batch.accepted)
+        throw std::invalid_argument("head worker batch was not accepted");
+    if (!arena.candidate_open() || arena.generation() != expected_generation)
+        throw std::logic_error("head worker token generation/lease mismatch");
+    if (!valid_tensor_leaf_sha256(source_sha256))
+        throw std::invalid_argument("head worker token source digest invalid");
+    if (batch.heads.size() > HeadWorkerScheduler::kMaxHeads)
+        throw std::invalid_argument("head worker token batch exceeds resident limit");
+    if (logical_base > std::numeric_limits<std::uint64_t>::max() - 255u * 6u)
+        throw std::invalid_argument("head worker token logical id overflow");
+    HeadWorkerTokenStageResult result{};
+    result.generation = arena.generation();
+    try {
+        for (const auto& state : batch.heads) {
+            if (state.head >= 255u || state.token_count == 0u ||
+                state.token_count > 6u)
+                throw std::invalid_argument("head worker token state invalid");
+            if (!arena.candidate_writer_allowed(state.head))
+                throw std::logic_error("head worker token writer not authorized");
+            for (unsigned t = 0; t < state.token_count; ++t) {
+                TensorDataLeaf leaf{};
+                leaf.kind = TensorLeafKind::HeadVector128;
+                leaf.logical_leaf_id = logical_base +
+                    static_cast<std::uint64_t>(state.head) * 6u + t;
+                leaf.source_generation = arena.generation();
+                leaf.source_sha256 = source_sha256;
+                leaf.payload.resize(128u * sizeof(float));
+                std::memcpy(leaf.payload.data(),
+                            state.output.data() + t * 128u,
+                            leaf.payload.size());
+                const bool fresh = arena.attach_candidate_leaf(
+                    state.head, state.head, state.head, state.head, leaf);
+                ++result.token_leaves;
+                if (fresh) ++result.fresh_leaves;
+            }
+            const std::size_t last =
+                (static_cast<std::size_t>(state.token_count) - 1u) * 128u;
+            const float scalar = state.output[last];
+            if (!std::isfinite(scalar))
+                throw std::invalid_argument("head worker token scalar not finite");
+            arena.stage_native_value(state.head, state.head, state.head,
+                                     state.head, scalar);
+            ++result.heads;
             ++result.scalar_writes;
         }
     } catch (...) {

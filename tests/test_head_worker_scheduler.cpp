@@ -109,5 +109,23 @@ int main() {
     CHECK(arena.active(3, 3, 3) == 0.0f);
     arena.abort_candidate();
 
+    // Per-token leaves: one HeadVector128 per worker token at the same point.
+    arena.begin_candidate();
+    saved.generation = arena.generation();
+    const auto tokens = stage_head_worker_tokens(
+        arena, saved, arena.generation(), 2000u, source);
+    CHECK_EQ(tokens.heads, 3u);
+    CHECK_EQ(tokens.token_leaves, 6u);
+    CHECK_EQ(tokens.fresh_leaves, 6u);
+    CHECK_EQ(tokens.scalar_writes, 3u);
+    CHECK_EQ(arena.candidate_leaves(3, 3, 3).size(), 2u);
+    CHECK_EQ(arena.candidate_leaves(2, 2, 2).size(), 2u);
+    CHECK_EQ(arena.candidate_leaves(1, 1, 1).size(), 2u);
+    for (const auto& leaf : arena.candidate_leaves(3, 3, 3))
+        CHECK_EQ(leaf.payload.size(), 128u * sizeof(float));
+    CHECK(arena.active_leaves(3, 3, 3).empty());
+    CHECK(arena.active(3, 3, 3) == 0.0f);
+    arena.abort_candidate();
+
     return test_done("top-k paged head worker scheduler and tensor transport");
 }

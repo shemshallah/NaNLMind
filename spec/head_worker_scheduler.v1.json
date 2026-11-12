@@ -12,10 +12,12 @@
   },
   "tensor_transport": {
     "coordinate": "T[h,h,h]",
+    "last_token_path": "HeadVector128 last-token leaf + guest last-token lane 0 scalar",
+    "per_token_path": "one HeadVector128 leaf per worker token, logical id base + head*6 + token, plus one guest last-token scalar per head",
     "leaf_kind": 12,
-    "leaf_payload": "last-token 128D HeadVector128",
-    "scalar": "guest last-token lane 0",
-    "generation": "candidate-arena generation checked before staging"
+    "payload": "128 f32 guest values per token",
+    "generation": "candidate-arena generation checked before staging",
+    "active_policy": "candidate-only; ACTIVE untouched until existing promotion gate"
   },
   "provenance": "authenticated source SHA-256 and candidate generation",
   "failure_policy": "worker/page/generation failure rejects the batch; staging aborts the candidate on any late failure",
