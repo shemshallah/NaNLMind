@@ -813,6 +813,77 @@ bool RawFieldVM::native_head_page_train(
     return true;
 }
 
+bool RawFieldVM::native_head_page_train_w1(
+    const std::array<float, 6 * 128>& context, std::uint8_t token_count,
+    std::uint8_t slot, const std::array<float, 128>& target,
+    float learning_rate, std::array<float, 6 * 128>& output,
+    float& error_norm, std::uint8_t& reason) {
+    output.fill(0.0f);
+    error_norm = 0.0f;
+    reason = 0u;
+    if (!vm_) return fail("native W1 page train: VM unavailable");
+    if (token_count == 0u || token_count > 6u || slot >= 16u ||
+        !std::isfinite(learning_rate) || learning_rate < 0.0f) {
+        reason = 1u;
+        return true;
+    }
+    constexpr std::uint32_t kContext = 0x00D00000u;
+    constexpr std::uint32_t kOutput = 0x00D02000u;
+    constexpr std::uint32_t kTarget = 0x00D03000u;
+    auto as_bits = [](float value) {
+        std::uint32_t bits = 0u;
+        std::memcpy(&bits, &value, sizeof(bits));
+        return bits;
+    };
+    const std::uint32_t count = static_cast<std::uint32_t>(token_count) * 128u;
+    for (std::uint32_t i = 0; i < count; ++i) {
+        if (!std::isfinite(context[i]))
+            return fail("native W1 page train: nonfinite context");
+        if (!write_word(kContext + i, as_bits(context[i])))
+            return fail("native W1 page train: context transport failed");
+    }
+    for (std::uint32_t d = 0; d < 128u; ++d) {
+        if (!std::isfinite(target[d]))
+            return fail("native W1 page train: nonfinite target");
+        if (!write_word(kTarget + d, as_bits(target[d])))
+            return fail("native W1 page train: target transport failed");
+    }
+    if (!write_word(kProposalBase + 0u, kContext) ||
+        !write_word(kProposalBase + 1u, kOutput) ||
+        !write_word(kProposalBase + 2u, slot) ||
+        !write_word(kProposalBase + 3u, token_count) ||
+        !write_word(kProposalBase + 4u, kTarget) ||
+        !write_word(kProposalBase + 5u, as_bits(learning_rate)) ||
+        !write_word(kCommandBase, 127u))
+        return fail("native W1 page train: command transport failed");
+    if (!run_command())
+        return fail("native W1 page train: guest execution failed: " + error_);
+    const auto ok = read_word(kResultBase);
+    const auto error_bits = read_word(kResultBase + 1u);
+    const auto code = read_word(kResultBase + 3u);
+    if (ok == 0u) {
+        if (error_bits != 0u || code < 1u || code > 2u)
+            return fail("native W1 page train: malformed rejection");
+        reason = static_cast<std::uint8_t>(code);
+        return true;
+    }
+    if (ok != 1u || code != 0u)
+        return fail("native W1 page train: malformed success receipt");
+    std::memcpy(&error_norm, &error_bits, sizeof(error_norm));
+    if (!std::isfinite(error_norm) || error_norm < 0.0f)
+        return fail("native W1 page train: invalid error norm");
+    for (std::uint32_t i = 0; i < count; ++i) {
+        const auto bits = read_word(kOutput + i);
+        float value = 0.0f;
+        std::memcpy(&value, &bits, sizeof(value));
+        if (!std::isfinite(value))
+            return fail("native W1 page train: nonfinite output");
+        output[i] = value;
+    }
+    reason = 0u;
+    return true;
+}
+
 bool RawFieldVM::native_shortlist_batch(
     const std::array<std::uint32_t,6>& context_words,
     std::uint8_t valid_mask, std::uint8_t task,

@@ -99,7 +99,22 @@ def main() -> int:
         assert wo["tensor_promotion"] is False
         wo_updated = (wo_candidate / "head-001.page").read_bytes()
         assert wo_updated != source_page
-        print("PASS native final-W2/Wo page training adapter")
+
+        w1_candidate = tmp / "w1-candidate"
+        w1_receipt = tmp / "w1.json"
+        run = subprocess.run(
+            [str(binary), str(baseline), str(tmp / "context.txt"),
+             str(tmp / "target.txt"), "1", "0.1", "1", str(w1_candidate),
+             str(w1_receipt), "w1"], cwd=ROOT, text=True, capture_output=True)
+        if run.returncode != 0:
+            print(run.stdout)
+            print(run.stderr)
+            return 1
+        w1 = json.loads(w1_receipt.read_text())
+        assert w1["local_scope"] == "final_layer_W1_only"
+        w1_updated = (w1_candidate / "head-001.page").read_bytes()
+        assert w1_updated != source_page
+        print("PASS native final-W2/Wo/W1 page training adapter")
         return 0
     finally:
         shutil.rmtree(tmp, ignore_errors=True)

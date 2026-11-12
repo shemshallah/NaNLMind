@@ -8,17 +8,19 @@
   "learning_rate": "finite nonnegative f32",
   "update": {
     "w2": "W2[j,k] += lr*(target[j]-state[j])*hidden[k]",
-    "wo": "Wo[j,k] += lr*(target[j]-state[j])*context[k]"
+    "wo": "Wo[j,k] += lr*(target[j]-state[j])*context[k]",
+    "w1": "g_h[k]=sum_j W2[j,k]*(target[j]-state[j]); W1[k,d] += lr*g_h[k]*(1-h[k]^2)*xn2[d]"
   },
   "precision": "bf16 page weights; f32 guest arithmetic",
   "scope": "one local final-layer projection update; not full three-layer backpropagation, optimizer state, or promotion",
-  "cli": "build/nanlm-head-page-train <checkpoint-dir> <context.f32> <target.f32> <head> <lr> <epochs> <out-dir> <out.json> [w2|wo]",
+  "cli": "build/nanlm-head-page-train <checkpoint-dir> <context.f32> <target.f32> <head> <lr> <epochs> <out-dir> <out.json> [w2|wo|w1]",
   "output": "candidate checkpoint page + error norm + source/candidate SHA-256 + generation",
   "host_math": false,
   "tensor_promotion": false,
   "note": "The guest performs forward, error, and W2 update; the host exports the modified page slot and writes a candidate checkpoint.",
   "projection_modes": [
     "w2",
-    "wo"
+    "wo",
+    "w1"
   ]
 }

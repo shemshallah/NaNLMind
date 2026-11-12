@@ -424,8 +424,10 @@ not full three-layer backpropagation.
 `build/nanlm-head-page-train` loads one checkpoint page, runs one or more
 epochs, exports the modified slot, and writes a candidate checkpoint with a
 new generation and source/candidate SHA-256. The optional trailing mode
-`w2` (default) or `wo` selects the final MLP W2 projection or the final
-attention output Wo projection. Both are local updates. The page gate can then compare
+`w2` (default), `wo`, or `w1` selects the final MLP W2 projection, the final
+attention output Wo projection, or the hidden W1 projection. W1 uses the
+final W2 gradient to form `g_h`, applies the tanh derivative, and updates
+`W1[k,d] += lr*g_h[k]*(1-h[k]^2)*xn2[d]`. All three are local updates. The page gate can then compare
 the source and candidate checkpoints. The ABI is frozen in
 `spec/head_page_train.v1.json`.
 
