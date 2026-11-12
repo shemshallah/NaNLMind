@@ -1381,6 +1381,63 @@ bool RawFieldVM::native_head_page_train_l1qk(
     return true;
 }
 
+bool RawFieldVM::native_head_block64(
+    const std::array<float, 64 * 128>& input, std::uint8_t token_count,
+    std::uint8_t slot, std::array<float, 64 * 128>& output,
+    std::uint8_t& reason) {
+    output.fill(0.0f);
+    reason = 0u;
+    if (!vm_) return fail("native head block64: VM unavailable");
+    if (token_count == 0u || token_count > 64u || slot >= 16u) {
+        reason = 1u;
+        return true;
+    }
+    constexpr std::uint32_t kInput = 0x00E20000u;
+    constexpr std::uint32_t kOutput = 0x00E22000u;
+    auto as_bits = [](float value) {
+        std::uint32_t bits = 0u;
+        std::memcpy(&bits, &value, sizeof(bits));
+        return bits;
+    };
+    const std::uint32_t count = static_cast<std::uint32_t>(token_count) * 128u;
+    for (std::uint32_t i = 0; i < count; ++i) {
+        if (!std::isfinite(input[i]))
+            return fail("native head block64: nonfinite input");
+        if (!write_word(kInput + i, as_bits(input[i])))
+            return fail("native head block64: input transport failed");
+    }
+    if (!write_word(kProposalBase + 0u, kInput) ||
+        !write_word(kProposalBase + 1u, kOutput) ||
+        !write_word(kProposalBase + 2u, slot) ||
+        !write_word(kProposalBase + 3u, token_count) ||
+        !write_word(kCommandBase, 135u))
+        return fail("native head block64: command transport failed");
+    if (!run_command())
+        return fail("native head block64: guest execution failed: " + error_);
+    const auto ok = read_word(kResultBase);
+    const auto words = read_word(kResultBase + 1u);
+    const auto used_slot = read_word(kResultBase + 2u);
+    const auto code = read_word(kResultBase + 3u);
+    if (ok == 0u) {
+        if (words != 0u || used_slot != 0u || code < 1u || code > 3u)
+            return fail("native head block64: malformed rejection");
+        reason = static_cast<std::uint8_t>(code);
+        return true;
+    }
+    if (ok != 1u || words != count || used_slot != slot || code != 0u)
+        return fail("native head block64: malformed success receipt");
+    for (std::uint32_t i = 0; i < count; ++i) {
+        const auto bits = read_word(kOutput + i);
+        float value = 0.0f;
+        std::memcpy(&value, &bits, sizeof(value));
+        if (!std::isfinite(value))
+            return fail("native head block64: nonfinite output");
+        output[i] = value;
+    }
+    reason = 0u;
+    return true;
+}
+
 bool RawFieldVM::native_shortlist_batch(
     const std::array<std::uint32_t,6>& context_words,
     std::uint8_t valid_mask, std::uint8_t task,

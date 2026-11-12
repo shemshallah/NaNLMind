@@ -396,6 +396,11 @@ public:
         const std::array<float, 6 * 128>& input, std::uint8_t token_count,
         std::uint8_t slot, std::array<float, 6 * 128>& output,
         std::uint8_t& reason);
+    // Opcode135: 64-token local attention head block (same page layout).
+    bool native_head_block64(
+        const std::array<float, 64 * 128>& input, std::uint8_t token_count,
+        std::uint8_t slot, std::array<float, 64 * 128>& output,
+        std::uint8_t& reason);
     // Dedicated head-worker opcode123: guest-side linear readout of a
     // 128D state against 1..64 transported candidate vectors. This does not
     // claim trained logits or a promotion decision.
