@@ -161,6 +161,21 @@ def main() -> int:
         assert l1["local_scope"] == "layer1_W2_local"
         l1_updated = (l1_candidate / "head-001.page").read_bytes()
         assert l1_updated != source_page
+
+        l1w1_candidate = tmp / "l1w1-candidate"
+        l1w1_receipt = tmp / "l1w1.json"
+        run = subprocess.run(
+            [str(binary), str(baseline), str(tmp / "context.txt"),
+             str(tmp / "target.txt"), "1", "0.1", "1", str(l1w1_candidate),
+             str(l1w1_receipt), "l1w1"], cwd=ROOT, text=True, capture_output=True)
+        if run.returncode != 0:
+            print(run.stdout)
+            print(run.stderr)
+            return 1
+        l1w1 = json.loads(l1w1_receipt.read_text())
+        assert l1w1["local_scope"] == "layer1_W1_local"
+        l1w1_updated = (l1w1_candidate / "head-001.page").read_bytes()
+        assert l1w1_updated != source_page
         print("PASS native final + layer1 W2/W1/Wv/QK page training adapter")
         return 0
     finally:

@@ -162,6 +162,23 @@ int main() {
         if (after_l1[i] != before_l1[i]) l1w2_changed = true;
     CHECK(l1w2_changed);
 
+    // Fresh page: local layer-1 W1 update.
+    make_page(arena.page(0));
+    loader.clear();
+    CHECK_EQ(loader.load(0), 0u);
+    const auto before_l1w1 = loader.export_page(0);
+    CHECK(vm.native_head_page_train_l1w1(context, 1, 0, target, 0.1f,
+                                         output, error_norm, reason));
+    CHECK_EQ(reason, 0u);
+    CHECK(std::isfinite(error_norm));
+    CHECK(error_norm > 0.0f);
+    const auto after_l1w1 = loader.export_page(0);
+    CHECK(after_l1w1[0xFCC00] == before_l1w1[0xFCC00]);
+    bool l1w1_changed = false;
+    for (std::size_t i = 0x70000u; i < 0x88000u; ++i)
+        if (after_l1w1[i] != before_l1w1[i]) l1w1_changed = true;
+    CHECK(l1w1_changed);
+
     CHECK(vm.native_head_page_train(context, 1, 16, target, 0.1f,
                                     output, error_norm, reason));
     CHECK_EQ(reason, 1u);
@@ -169,5 +186,5 @@ int main() {
                                     output, error_norm, reason));
     CHECK_EQ(reason, 1u);
 
-    return test_done("native final + layer1 page training step");
+    return test_done("native final + layer1 W2/W1 page training step");
 }
