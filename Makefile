@@ -131,6 +131,9 @@ $(BUILD)/credit-ablation: tools/credit_ablation.cpp $(LIB) $(NAN0S_LIB) $(FIELD_
 $(BUILD)/byte-baselines: tools/nanlm_byte_baselines.cpp $(LIB) | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< $(LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
+$(BUILD)/word-baselines: tools/nanlm_word_baselines.cpp $(LIB) | $(BUILD)
+	$(CXX) $(CXXFLAGS) $< $(LIB) -o $@ $(LDFLAGS) $(LDLIBS)
+
 $(BUILD)/nanlm48m-native-batch: tools/nanlm48m_native_batch.cpp include/nanlm/raw_field.hpp $(LIB) $(NAN0S_LIB) $(FIELD_DRIVER) | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
@@ -328,5 +331,5 @@ dual-head-test: $(BUILD)/test_dual_head
 	./$(BUILD)/test_dual_head
 
 
-unified-test-base: $(CLI) $(FIELD_DRIVER) $(BUILD)/test_raw_field $(BUILD)/test_context_backoff $(BUILD)/test_context_route $(BUILD)/test_native48m_feedback $(BUILD)/test_dual_tensor_arena $(BUILD)/test_head_page_arena $(BUILD)/test_head_page_loader $(BUILD)/test_head_block $(BUILD)/test_head_worker $(BUILD)/test_head_block64 $(BUILD)/test_head_worker_scheduler $(BUILD)/test_long_context $(BUILD)/test_long_context64 $(BUILD)/test_chunk_summary $(BUILD)/test_summary_retrieval $(BUILD)/test_hierarchical_context $(BUILD)/test_head_readout $(BUILD)/test_head_readout_train $(BUILD)/test_head_page_train $(BUILD)/test_head_page_checkpoint $(BUILD)/test_nlhe2 $(BUILD)/credit-ablation $(BUILD)/byte-baselines $(BUILD)/nanlm48m-native-batch $(BUILD)/nanlm-head-worker-batch $(BUILD)/nanlm-head-readout-train $(BUILD)/nanlm-head-readout-loop $(BUILD)/nanlm-head-page-gate $(BUILD)/nanlm-head-page-train $(BUILD)/nanlm-head-chunk-gate
+unified-test-base: $(CLI) $(FIELD_DRIVER) $(BUILD)/test_raw_field $(BUILD)/test_context_backoff $(BUILD)/test_context_route $(BUILD)/test_native48m_feedback $(BUILD)/test_dual_tensor_arena $(BUILD)/test_head_page_arena $(BUILD)/test_head_page_loader $(BUILD)/test_head_block $(BUILD)/test_head_worker $(BUILD)/test_head_block64 $(BUILD)/test_head_worker_scheduler $(BUILD)/test_long_context $(BUILD)/test_long_context64 $(BUILD)/test_chunk_summary $(BUILD)/test_summary_retrieval $(BUILD)/test_hierarchical_context $(BUILD)/test_head_readout $(BUILD)/test_head_readout_train $(BUILD)/test_head_page_train $(BUILD)/test_head_page_checkpoint $(BUILD)/test_nlhe2 $(BUILD)/credit-ablation $(BUILD)/byte-baselines $(BUILD)/word-baselines $(BUILD)/nanlm48m-native-batch $(BUILD)/nanlm-head-worker-batch $(BUILD)/nanlm-head-readout-train $(BUILD)/nanlm-head-readout-loop $(BUILD)/nanlm-head-page-gate $(BUILD)/nanlm-head-page-train $(BUILD)/nanlm-head-chunk-gate
 	python3 tools/unified_test_base.py

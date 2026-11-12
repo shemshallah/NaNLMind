@@ -1,0 +1,19 @@
+{
+  "schema": "nanlm.word-baselines/1",
+  "corpus": "data/alice_full.txt",
+  "split": "80% train / 20% held-out by word order",
+  "tokenization": "lowercase alphanumeric/apostrophe words",
+  "vocabulary": "training vocabulary + <unk>",
+  "models": [
+    "unigram add-alpha",
+    "interpolated bigram add-alpha"
+  ],
+  "metrics": [
+    "bits_per_byte",
+    "top1_accuracy",
+    "top5_accuracy"
+  ],
+  "bpb_denominator": "UTF-8 target word bytes + one separator byte per held-out word",
+  "scope": "word n-gram reference baseline; not the 48M frontier decoder and not the native head worker",
+  "note": "Top-5 ranks the full training vocabulary plus OOV, not a shortlist."
+}

@@ -552,3 +552,15 @@ The default target is a 256-token chunk, but tests use smaller chunks to keep
 the native gate fast. This is a candidate-panel readout gate, not
 full-vocabulary BPB or tensor promotion. The contract is frozen in
 `spec/head_chunk_gate.v1.json`.
+
+
+## Word baselines
+
+`build/word-baselines` records held-out word BPB and full-vocabulary top-1/top-5
+for training-vocabulary unigram and interpolated bigram models. The BPB
+denominator is the target word bytes plus one separator byte per held-out word.
+Top-5 ranks the full training vocabulary plus `<unk>`, not a shortlist.
+
+This is a word-level reference baseline, not the 48M frontier decoder and not
+native head-worker logits. The contract is frozen in
+`spec/word_baselines.v1.json`.

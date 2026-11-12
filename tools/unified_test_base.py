@@ -167,6 +167,22 @@ def main() -> int:
                 "metric_scope": receipt.get("metric_scope"),
             }
         results.append(baseline)
+    if (BUILD / "word-baselines").is_file():
+        word_out = STATE / "word_baselines.json"
+        word = run("word_baselines", [
+            str(BUILD / "word-baselines"), "data/alice_full.txt",
+            str(word_out),
+        ])
+        if word_out.is_file():
+            receipt = json.loads(word_out.read_text())
+            word["metrics"] = {
+                "unigram": receipt.get("unigram"),
+                "bigram": receipt.get("bigram"),
+                "vocab": receipt.get("vocab"),
+                "bytes_denominator": receipt.get("bytes_denominator"),
+                "metric_scope": receipt.get("scope"),
+            }
+        results.append(word)
     if (BUILD / "credit-ablation").is_file():
         credit = run("credit_ablation", [str(BUILD / "credit-ablation")])
         for line in credit["output"].splitlines():
