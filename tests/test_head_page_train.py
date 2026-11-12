@@ -82,7 +82,24 @@ def main() -> int:
         manifest = (candidate / "manifest.txt").read_text().strip().split()
         assert manifest[0] == "1"
         assert manifest[1] == "1"
-        print("PASS native final-W2 page training adapter")
+
+        wo_candidate = tmp / "wo-candidate"
+        wo_receipt = tmp / "wo.json"
+        run = subprocess.run(
+            [str(binary), str(baseline), str(tmp / "context.txt"),
+             str(tmp / "target.txt"), "1", "0.1", "1", str(wo_candidate),
+             str(wo_receipt), "wo"], cwd=ROOT, text=True, capture_output=True)
+        if run.returncode != 0:
+            print(run.stdout)
+            print(run.stderr)
+            return 1
+        wo = json.loads(wo_receipt.read_text())
+        assert wo["local_scope"] == "final_layer_Wo_only"
+        assert wo["page_training"] is True
+        assert wo["tensor_promotion"] is False
+        wo_updated = (wo_candidate / "head-001.page").read_bytes()
+        assert wo_updated != source_page
+        print("PASS native final-W2/Wo page training adapter")
         return 0
     finally:
         shutil.rmtree(tmp, ignore_errors=True)

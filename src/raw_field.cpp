@@ -745,7 +745,8 @@ bool RawFieldVM::native_head_page_train(
     const std::array<float, 6 * 128>& context, std::uint8_t token_count,
     std::uint8_t slot, const std::array<float, 128>& target,
     float learning_rate, std::array<float, 6 * 128>& output,
-    float& error_norm, std::uint8_t& reason) {
+    float& error_norm, std::uint8_t& reason,
+    bool update_output_projection) {
     output.fill(0.0f);
     error_norm = 0.0f;
     reason = 0u;
@@ -782,7 +783,7 @@ bool RawFieldVM::native_head_page_train(
         !write_word(kProposalBase + 3u, token_count) ||
         !write_word(kProposalBase + 4u, kTarget) ||
         !write_word(kProposalBase + 5u, as_bits(learning_rate)) ||
-        !write_word(kCommandBase, 125u))
+        !write_word(kCommandBase, update_output_projection ? 126u : 125u))
         return fail("native page train: command transport failed");
     if (!run_command())
         return fail("native page train: guest execution failed: " + error_);

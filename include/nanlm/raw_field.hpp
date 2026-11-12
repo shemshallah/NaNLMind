@@ -420,7 +420,8 @@ public:
         const std::array<float, 6 * 128>& context, std::uint8_t token_count,
         std::uint8_t slot, const std::array<float, 128>& target,
         float learning_rate, std::array<float, 6 * 128>& output,
-        float& error_norm, std::uint8_t& reason);
+        float& error_norm, std::uint8_t& reason,
+        bool update_output_projection = false);
     bool native_shortlist_batch(
         const std::array<std::uint32_t,6>& context_words,
         std::uint8_t valid_mask, std::uint8_t task,

@@ -32,10 +32,10 @@ std::vector<float> read_floats(const std::string& path) {
 } // namespace
 
 int main(int argc, char** argv) {
-    if (argc != 9) {
+    if (argc != 9 && argc != 10) {
         std::cerr << "Usage: nanlm-head-page-train <checkpoint-dir> "
                      "<context.f32> <target.f32> <head> <lr> <epochs> "
-                     "<out-dir> <out.json>\n";
+                     "<out-dir> <out.json> [w2|wo]\n";
         return 2;
     }
     try {
@@ -43,6 +43,10 @@ int main(int argc, char** argv) {
         if (head >= 255u) throw std::runtime_error("head 255 is VOID");
         const float lr = std::stof(argv[5]);
         const int epochs = std::stoi(argv[6]);
+        const std::string mode = argc == 10 ? argv[9] : "w2";
+        if (mode != "w2" && mode != "wo")
+            throw std::runtime_error("projection mode must be w2 or wo");
+        const bool update_wo = mode == "wo";
         if (!std::isfinite(lr) || lr < 0.0f)
             throw std::runtime_error("learning rate must be finite and nonnegative");
         if (epochs < 1 || epochs > 10000)
@@ -88,7 +92,7 @@ int main(int argc, char** argv) {
             if (!vm.native_head_page_train(
                     context, static_cast<std::uint8_t>(token_count),
                     static_cast<std::uint8_t>(slot), target, lr, output,
-                    error_norm, reason))
+                    error_norm, reason, update_wo))
                 throw std::runtime_error("page train: " + vm.error());
             if (reason != 0u)
                 throw std::runtime_error("page train rejected reason=" +
@@ -111,7 +115,9 @@ int main(int argc, char** argv) {
                 << ",\"candidate_page_sha256\":\""
                 << out.record(head).sha256 << "\""
                 << ",\"host_math\":false,"
-                   "\"local_scope\":\"final_layer_W2_only\","
+                   "\"local_scope\":\""
+                << (update_wo ? "final_layer_Wo_only" : "final_layer_W2_only")
+                << "\","
                    "\"tensor_promotion\":false,"
                    "\"page_training\":true}\n";
         std::cout << "head_page_train head=" << head
