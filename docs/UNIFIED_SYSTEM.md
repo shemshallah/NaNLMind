@@ -472,7 +472,10 @@ last-token state becoming the next memory. The stream length is unbounded, but
 this is a **recurrent window**, not full-context attention.
 
 The native block64 test exercises all 64 local slots; the long-context64 test
-uses 63 new tokens per chunk and arbitrary stream length.
+uses 63 new tokens per chunk and arbitrary stream length. `chunk_summary.hpp`
+adds a chunk-summary scheduler and paged summary bank: a chunk is reset and
+processed through the 64-slot worker, and the final per-head memory becomes its
+summary. The default target is 256 tokens per summary and 256 summary slots.
 
 The frontier trajectory needs hierarchical paged memory:
 

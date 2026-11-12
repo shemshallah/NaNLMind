@@ -1,6 +1,6 @@
 {
   "schema": "nanlm.long-context/1",
-  "status": "block64-recurrent-v1",
+  "status": "block64-summary-v1",
   "current_attention_slots": 64,
   "memory_slots_per_head": 1,
   "new_tokens_per_chunk": 63,
@@ -25,7 +25,9 @@
       "paged summary/KV bank",
       "hierarchical top-k retrieval"
     ],
-    "next": "native 256-token chunk summarizer + paged summary bank; top-k summary retrieval"
+    "next": "native summary retrieval (opcode123) + top-k bank scheduler; full 256-token chunk gate",
+    "summary_bank_capacity": 256,
+    "summary_scheduler": "chunk -> reset memory -> 64-slot recurrent windows -> final per-head memory as chunk summary"
   },
   "hardware_note": "128 MiB guest VM cannot hold full frontier-scale KV/attention; hierarchical paged memory is required."
 }
