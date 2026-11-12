@@ -25,10 +25,19 @@
       "paged summary/KV bank",
       "hierarchical top-k retrieval"
     ],
-    "next": "native summary retrieval (opcode123) + top-k bank scheduler; full 256-token chunk gate",
+    "next": "native 256-token chunk gate, multi-level summary hierarchy, full-vocabulary word metrics",
     "summary_bank_capacity": 512,
     "summary_scheduler": "chunk -> reset memory -> 64-slot recurrent windows -> final per-head memory as chunk summary",
     "summary_coverage_tokens": 131072
   },
-  "hardware_note": "128 MiB guest VM cannot hold full frontier-scale KV/attention; hierarchical paged memory is required."
+  "hardware_note": "128 MiB guest VM cannot hold full frontier-scale KV/attention; hierarchical paged memory is required.",
+  "hierarchical_context": {
+    "layout": "[persistent memory | top-k summaries | local tokens]",
+    "max_slots": 64,
+    "summary_k": "0..62",
+    "local_limit": "<= 63-summary_k",
+    "retrieval": "native opcode123 guest dot scores; host stable top-k ordering",
+    "memory_update": "last local-token output; summaries never become recurrent memory",
+    "status": "implemented host-side over native block64"
+  }
 }

@@ -519,3 +519,23 @@ then be fed into the 64-slot worker. The contract is frozen in
 
 The readout training loop now also reports held-out candidate-panel top-1 and
 top-5 accuracy alongside NLL. It still does not claim full-vocabulary BPB.
+
+
+## Hierarchical context assembler
+
+`LongContext64Scheduler::run_hierarchical` packs:
+
+```text
+[ persistent memory | top-k summary states | local token vectors ]
+```
+
+into the native 64-slot worker, with:
+
+```text
+summary_k + local_tokens + 1 <= 64
+```
+
+Summaries are selected by native opcode123 dot scores; the host only orders
+the returned scores. The last local-token output becomes the next memory.
+Summary states never become the recurrent memory. The assembler is host
+transport/orchestration over the unchanged native block64 kernel.

@@ -5,6 +5,7 @@
 // from 5 to 63 tokens while keeping an unbounded stream and paged head pages.
 #pragma once
 #include "nanlm/head_page_loader.hpp"
+#include "nanlm/summary_retriever.hpp"
 #include "nanlm/long_context_scheduler.hpp"
 #include "nanlm/raw_field.hpp"
 
@@ -88,6 +89,94 @@ public:
                 }
                 const std::size_t base =
                     static_cast<std::size_t>(n + 1u) * 128u - 128u;
+                for (unsigned d = 0; d < 128u; ++d) {
+                    memory_[head][d] = output[base + d];
+                    result.final_states[hi][d] = memory_[head][d];
+                }
+            }
+            pos += n;
+        }
+        result.accepted = true;
+        return result;
+    }
+
+    // Retrieve up to summary_k bank vectors per head and prepend them to the
+    // local window: [memory | summaries | local tokens], T <= 64.
+    LongContextResult run_hierarchical(
+        const std::array<float, 255>& credits,
+        const std::vector<std::array<float, 128>>& token_vectors,
+        SummaryBank& bank, std::size_t top_k = HeadWorkerScheduler::kMaxHeads,
+        std::size_t summary_k = 2, std::size_t local_limit = 0) {
+        LongContextResult result{};
+        if (token_vectors.empty() || top_k == 0u ||
+            top_k > HeadWorkerScheduler::kMaxHeads || summary_k > 62u ||
+            local_limit > kMaxChunkTokens - summary_k) {
+            result.reason = 1u;
+            return result;
+        }
+        for (float credit : credits)
+            if (!std::isfinite(credit)) {
+                result.reason = 1u;
+                return result;
+            }
+        std::array<unsigned, 255> order{};
+        std::iota(order.begin(), order.end(), 0u);
+        std::stable_sort(order.begin(), order.end(), [&](unsigned a, unsigned b) {
+            if (credits[a] != credits[b]) return credits[a] > credits[b];
+            return a < b;
+        });
+        result.heads.assign(order.begin(), order.begin() + top_k);
+        result.final_states.resize(top_k);
+        SummaryRetriever retriever(vm_);
+        const std::size_t local_per_chunk = local_limit == 0u
+            ? kMaxChunkTokens - summary_k : local_limit;
+        std::size_t pos = 0;
+        while (pos < token_vectors.size()) {
+            const std::size_t n = std::min(local_per_chunk,
+                                           token_vectors.size() - pos);
+            ++result.chunks;
+            for (std::size_t hi = 0; hi < result.heads.size(); ++hi) {
+                const unsigned head = result.heads[hi];
+                const auto hits = retriever.query(bank, head, memory_[head],
+                                                  summary_k);
+                const std::size_t k = hits.size();
+                const std::size_t token_count = 1u + k + n;
+                if (token_count > 64u) {
+                    result.reason = 1u;
+                    return result;
+                }
+                std::array<float, 64 * 128> context{};
+                for (unsigned d = 0; d < 128u; ++d)
+                    context[d] = memory_[head][d];
+                for (std::size_t i = 0; i < k; ++i)
+                    for (unsigned d = 0; d < 128u; ++d)
+                        context[(i + 1u) * 128u + d] =
+                            bank.at(hits[i].bank_index).states[
+                                hits[i].head_index][d];
+                for (std::size_t i = 0; i < n; ++i)
+                    for (unsigned d = 0; d < 128u; ++d)
+                        context[(1u + k + i) * 128u + d] =
+                            token_vectors[pos + i][d];
+                std::size_t slot = 0;
+                try {
+                    slot = loader_.load(head);
+                } catch (const std::exception&) {
+                    result.reason = 3u;
+                    return result;
+                }
+                std::array<float, 64 * 128> output{};
+                std::uint8_t reason = 0;
+                if (!vm_.native_head_block64(
+                        context, static_cast<std::uint8_t>(token_count),
+                        static_cast<std::uint8_t>(slot), output, reason)) {
+                    result.reason = 2u;
+                    return result;
+                }
+                if (reason != 0u) {
+                    result.reason = reason;
+                    return result;
+                }
+                const std::size_t base = (token_count - 1u) * 128u;
                 for (unsigned d = 0; d < 128u; ++d) {
                     memory_[head][d] = output[base + d];
                     result.final_states[hi][d] = memory_[head][d];

@@ -1,4 +1,4 @@
-#include "nanlm/chunk_summary.hpp"
+#include "nanlm/chunk_summary_scheduler.hpp"
 #include "test_util.hpp"
 
 #include <array>

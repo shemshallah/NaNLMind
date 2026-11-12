@@ -18,6 +18,7 @@ namespace nanlm {
 
 struct SummaryHit {
     std::size_t bank_index = 0;
+    std::size_t head_index = 0;
     std::uint64_t chunk_id = 0;
     float score = 0.0f;
 };
@@ -34,6 +35,7 @@ public:
         if (top_k == 0u || top_k > 64u)
             throw std::invalid_argument("summary top-k must be 1..64");
         std::vector<std::size_t> bank_indices;
+        std::vector<std::size_t> head_indices;
         std::vector<std::array<float, 128>> candidates;
         for (std::size_t i = 0; i < bank.size(); ++i) {
             const auto& record = bank.at(i);
@@ -42,6 +44,7 @@ public:
             for (std::size_t hi = 0; hi < record.heads.size(); ++hi) {
                 if (record.heads[hi] != head) continue;
                 bank_indices.push_back(i);
+                head_indices.push_back(hi);
                 candidates.push_back(record.states[hi]);
                 break;
             }
@@ -67,7 +70,7 @@ public:
             scores.insert(scores.end(), part.begin(), part.end());
         }
         for (std::size_t i = 0; i < scores.size(); ++i)
-            hits.push_back(SummaryHit{bank_indices[i],
+            hits.push_back(SummaryHit{bank_indices[i], head_indices[i],
                                       bank.at(bank_indices[i]).chunk_id,
                                       scores[i]});
         std::stable_sort(hits.begin(), hits.end(),
