@@ -26,8 +26,9 @@
       "hierarchical top-k retrieval"
     ],
     "next": "native summary retrieval (opcode123) + top-k bank scheduler; full 256-token chunk gate",
-    "summary_bank_capacity": 256,
-    "summary_scheduler": "chunk -> reset memory -> 64-slot recurrent windows -> final per-head memory as chunk summary"
+    "summary_bank_capacity": 512,
+    "summary_scheduler": "chunk -> reset memory -> 64-slot recurrent windows -> final per-head memory as chunk summary",
+    "summary_coverage_tokens": 131072
   },
   "hardware_note": "128 MiB guest VM cannot hold full frontier-scale KV/attention; hierarchical paged memory is required."
 }

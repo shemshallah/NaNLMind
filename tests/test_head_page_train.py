@@ -165,7 +165,7 @@ def main() -> int:
         l1w1_candidate = tmp / "l1w1-candidate"
         l1w1_receipt = tmp / "l1w1.json"
         run = subprocess.run(
-            [str(binary), str(baseline), str(tmp / "context.txt"),
+            [str(binary), str(baseline), str(tmp / "context2.txt"),
              str(tmp / "target.txt"), "1", "0.1", "1", str(l1w1_candidate),
              str(l1w1_receipt), "l1w1"], cwd=ROOT, text=True, capture_output=True)
         if run.returncode != 0:

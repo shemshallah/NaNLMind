@@ -105,14 +105,9 @@ hl1w1_err_done:
   ADD r10,r10,r11
   ST r10,r0,@hl1w1_w2
 
-  ; xn1 for the last token (captured layer-1 pre-MLP LN).
-  LD r10,r0,@hl1w1_t
-  MOVI r11,128
-  MUL r10,r10,r11
-  SUB r10,r10,r11
-  MOVI r11,0x1080
-  MOVHI r11,0x00D1
-  ADD r10,r10,r11
+  ; xn1 for the last token (already captured at layer-1 base + 0x80).
+  MOVI r10,0x1080
+  MOVHI r10,0x00D1
   ST r10,r0,@hl1w1_xn2
 
   MOVI r10,0

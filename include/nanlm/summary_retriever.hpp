@@ -37,6 +37,8 @@ public:
         std::vector<std::array<float, 128>> candidates;
         for (std::size_t i = 0; i < bank.size(); ++i) {
             const auto& record = bank.at(i);
+            if (record.heads.size() != record.states.size())
+                throw std::runtime_error("summary bank record shape mismatch");
             for (std::size_t hi = 0; hi < record.heads.size(); ++hi) {
                 if (record.heads[hi] != head) continue;
                 bank_indices.push_back(i);

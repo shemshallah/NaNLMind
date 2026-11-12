@@ -41,6 +41,21 @@ int main() {
     const auto none = retriever.query(bank, 2, query, 2);
     CHECK(none.empty());
 
+    // More than 64 candidates exercise the native multi-batch path.
+    SummaryBank large(80);
+    for (unsigned i = 0; i < 70u; ++i)
+        large.append(summary(1000u + i, 3, static_cast<float>(i) / 100.0f));
+    const auto many = retriever.query(large, 3, query, 64);
+    CHECK_EQ(many.size(), 64u);
+    CHECK(many[0].score > many[63].score);
+    bool top65_rejected = false;
+    try {
+        (void)retriever.query(large, 3, query, 65);
+    } catch (const std::invalid_argument&) {
+        top65_rejected = true;
+    }
+    CHECK(top65_rejected);
+
     bool rejected = false;
     try {
         (void)retriever.query(bank, 3, query, 0);

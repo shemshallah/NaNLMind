@@ -475,7 +475,7 @@ The native block64 test exercises all 64 local slots; the long-context64 test
 uses 63 new tokens per chunk and arbitrary stream length. `chunk_summary.hpp`
 adds a chunk-summary scheduler and paged summary bank: a chunk is reset and
 processed through the 64-slot worker, and the final per-head memory becomes its
-summary. The default target is 256 tokens per summary and 256 summary slots.
+summary. The default target is 256 tokens per summary and 512 summary slots, covering 131,072 tokens before eviction.
 
 The frontier trajectory needs hierarchical paged memory:
 

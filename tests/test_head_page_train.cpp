@@ -167,7 +167,7 @@ int main() {
     loader.clear();
     CHECK_EQ(loader.load(0), 0u);
     const auto before_l1w1 = loader.export_page(0);
-    CHECK(vm.native_head_page_train_l1w1(context, 1, 0, target, 0.1f,
+    CHECK(vm.native_head_page_train_l1w1(context_multi, 2, 0, target, 0.1f,
                                          output, error_norm, reason));
     CHECK_EQ(reason, 0u);
     CHECK(std::isfinite(error_norm));

@@ -10,6 +10,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <deque>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -53,24 +54,26 @@ private:
 
 class SummaryBank {
 public:
-    explicit SummaryBank(std::size_t capacity = 256)
+    explicit SummaryBank(std::size_t capacity = 512)
         : capacity_(capacity) {
         if (capacity_ == 0) throw std::invalid_argument("summary bank capacity");
     }
 
     void append(ChunkSummary summary) {
-        if (records_.size() >= capacity_) records_.erase(records_.begin());
+        if (summary.heads.size() != summary.states.size())
+            throw std::invalid_argument("summary heads/states mismatch");
+        if (records_.size() >= capacity_) records_.pop_front();
         records_.push_back(std::move(summary));
     }
     std::size_t size() const noexcept { return records_.size(); }
     std::size_t capacity() const noexcept { return capacity_; }
     const ChunkSummary& at(std::size_t i) const { return records_.at(i); }
-    const std::vector<ChunkSummary>& records() const noexcept { return records_; }
+    const std::deque<ChunkSummary>& records() const noexcept { return records_; }
     void clear() { records_.clear(); }
 
 private:
     std::size_t capacity_;
-    std::vector<ChunkSummary> records_;
+    std::deque<ChunkSummary> records_;
 };
 
 } // namespace nanlm
