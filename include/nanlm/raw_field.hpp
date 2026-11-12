@@ -390,6 +390,12 @@ public:
     bool native_head_block(
         const std::array<float,128>& input, std::uint8_t slot,
         std::array<float,128>& output, std::uint8_t& reason);
+    // Dedicated head-worker opcode122: T tokens (1..6), 128D each.  The
+    // worker image performs full six-token Q/K/V softmax attention and MLP.
+    bool native_head_block6(
+        const std::array<float, 6 * 128>& input, std::uint8_t token_count,
+        std::uint8_t slot, std::array<float, 6 * 128>& output,
+        std::uint8_t& reason);
     bool native_shortlist_batch(
         const std::array<std::uint32_t,6>& context_words,
         std::uint8_t valid_mask, std::uint8_t task,

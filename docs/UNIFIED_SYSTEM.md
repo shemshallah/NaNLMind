@@ -258,17 +258,20 @@ VM that OOMs this device. Each 1 MiB page expands to 2 MiB of guest storage
 because a NaN word is 8 bytes. LRU eviction replaces the least recently used
 slot.
 
-The first native consumer is opcode **122**, `mth/nan16/mth_head_block.nas`.
-It reads one resident slot and performs three 128D bf16 QKV/MLP layers with
-guest-side bf16 decode, LayerNorm, tanh, residual updates and page-header
-validation. The block is currently single-token, so its local attention is
-exactly V; Q/K are evaluated but the one-token context has no cross-token
-softmax. The code occupies the free `0x3E60` window below the `0x4000` command
-block; the base command surface is `mth/drivers/field_driver_base.nas` and
-fixtures that append test code include that base directly. The full
-`field_driver.nas` adds the paged block through a low `CALLF 0x3E60`
-trampoline. The 1 MiB page layout is frozen in
-`spec/head_page_memory.v1.json`.
+The main field driver keeps a single-token compatibility route through
+`mth/nan16/mth_head_block.nas`. The six-token path is the dedicated
+`mth/drivers/head_worker.nas` image: it starts at word 0, has its own
+`0x4000` command block, and includes `mth/nan16/mth_head_block6.nas`. The
+worker performs three 128D bf16 layers with Q/K/V, sqrt(128)-scaled
+six-token softmax attention, LayerNorm, tanh MLP, residual updates and page
+header validation. It is 598 emitted words and does not compete with the main
+driver's low code window.
+
+The base command surface is `mth/drivers/field_driver_base.nas`; fixtures that
+append test code include it directly. The full `field_driver.nas` adds the
+single-token compatibility block through a low `CALLF 0x3E60` trampoline. The
+1 MiB page layout is frozen in `spec/head_page_memory.v1.json`; the worker ABI is frozen in
+`spec/head_worker.v1.json`.
 
 `NANLM_STEP_BUDGET` sets the 64-bit native command budget; default
 `4,000,000,000`.

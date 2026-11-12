@@ -15,14 +15,18 @@
     "env": "NANLM_STEP_BUDGET",
     "type": "uint64"
   },
-  "note": "Host transports page bytes and vectors only; the native opcode122 head block performs QKV/MLP arithmetic in the guest.",
+  "note": "Host transports page bytes and token vectors only; the native opcode122 head worker performs QKV/MLP arithmetic in the guest.",
   "native_block": {
     "opcode": 122,
-    "architecture": "single-token 128D three-layer bf16 QKV/MLP head block",
+    "architecture": "six-token 128D three-layer bf16 QKV/MLP head block",
     "layers": 3,
     "d_model": 128,
     "d_hidden": 384,
-    "attention": "single-token local attention is exactly V; Q/K weights are evaluated but do not change the one-token context",
+    "max_tokens": 6,
+    "attention": "per-query softmax over up to six keys; sqrt(128) scaling",
+    "worker_image": "build/head_worker.nan",
+    "worker_code_words": 598,
+    "worker_entry": "mth/drivers/head_worker.nas",
     "page_layout_bytes": {
       "layer_0_wq": 0,
       "layer_0_wk": 32768,
@@ -36,6 +40,6 @@
     },
     "scratch_base_hex": "0x00D00000",
     "page_header_magic_hex": "0x48315233",
-    "note": "The guest validates the page header and performs all bf16 decode, LayerNorm, matvec, tanh, attention and residual updates."
+    "note": "The dedicated worker image owns all six-token attention and MLP arithmetic; the main field driver keeps a single-token compatibility route."
   }
 }

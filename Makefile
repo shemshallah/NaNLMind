@@ -8,6 +8,7 @@ LDLIBS ?= -lm
 BUILD := build
 NAN0S_NMK := third_party/nan0s/tools/nmk.awk
 FIELD_DRIVER := $(BUILD)/field_driver.nan
+HEAD_WORKER := $(BUILD)/head_worker.nan
 
 LIB_SRC := src/sha256.cpp src/journal_forest.cpp src/universe.cpp src/pager.cpp src/resonance.cpp src/ledger.cpp src/ring.cpp src/hypergraph.cpp src/hypermatrix.cpp src/temporal.cpp src/global.cpp src/head.cpp src/clock.cpp src/consolidation.cpp src/schedule.cpp src/handoff.cpp src/router.cpp src/frame_sync.cpp src/meta_index.cpp src/atomic.cpp src/ntf.cpp src/ncr.cpp src/training.cpp src/supercluster.cpp src/byte_model.cpp src/slot_memory.cpp src/context2.cpp src/context2_topology.cpp src/vector_store.cpp src/word_memory.cpp src/bootstrap_router.cpp src/bootstrap_layers.cpp src/overbootstrap.cpp src/learning_mesh.cpp src/word_vector.cpp src/head_gate.cpp src/boolean_spectrum.cpp src/hypervector.cpp src/reversible.cpp src/semiring.cpp src/sparse_exception.cpp src/two_counter.cpp src/limb_counter.cpp src/two_counter_limb.cpp src/turing_machine.cpp src/universal_tm.cpp src/tm_description.cpp src/tape_checkpoint.cpp src/binary_tm_compiler.cpp src/binary_utm.cpp src/logic_session.cpp src/relation_train.cpp src/head_candidate.cpp src/endpoint_evidence.cpp src/ntt257.cpp src/raw_field.cpp src/sparse_field.cpp src/trunk_train.cpp
 LIB_OBJ := $(patsubst src/%.cpp,$(BUILD)/%.o,$(LIB_SRC))
@@ -53,6 +54,11 @@ $(FIELD_DRIVER): mth/drivers/field_driver.nas $(wildcard mth/nan16/*.nas) $(NAN0
 	@test "$$(wc -l < $@.tmp)" -le 1048576 || { echo "field driver exceeds 0x100000-word guest code/data boundary"; rm -f $@.tmp; exit 1; }
 	mv $@.tmp $@
 
+$(HEAD_WORKER): mth/drivers/head_worker.nas mth/nan16/mth_head_block6.nas $(NAN0S_NMK) | $(BUILD)
+	awk -f $(NAN0S_NMK) -v CMD=emit $< > $@.tmp
+	@test "$$(wc -l < $@.tmp)" -le 16384 || { echo "head worker overlaps the 0x4000 command block"; rm -f $@.tmp; exit 1; }
+	mv $@.tmp $@
+
 $(CLI): $(BUILD)/main.o $(LIB) $(NAN0S_LIB) | $(FIELD_DRIVER)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS) $(LDLIBS)
 
@@ -72,6 +78,9 @@ $(BUILD)/test_head_page_loader: tests/test_head_page_loader.cpp include/nanlm/he
 	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
 $(BUILD)/test_head_block: tests/test_head_block.cpp include/nanlm/head_page_loader.hpp include/nanlm/head_page_arena.hpp $(LIB) $(NAN0S_LIB) $(FIELD_DRIVER) | $(BUILD)
+	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
+
+$(BUILD)/test_head_worker: tests/test_head_worker.cpp include/nanlm/head_page_loader.hpp include/nanlm/head_page_arena.hpp $(LIB) $(NAN0S_LIB) $(HEAD_WORKER) | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
 $(BUILD)/test_nlhe2: tests/test_nlhe2.cpp include/nanlm/nlhe2.hpp include/nanlm/nlhe2_arena.hpp include/nanlm/tensor_point.hpp include/nanlm/tensor_leaf_sidecar.hpp include/nanlm/dual_tensor_arena.hpp | $(BUILD)
@@ -265,5 +274,5 @@ dual-head-test: $(BUILD)/test_dual_head
 	./$(BUILD)/test_dual_head
 
 
-unified-test-base: $(CLI) $(FIELD_DRIVER) $(BUILD)/test_raw_field $(BUILD)/test_context_backoff $(BUILD)/test_context_route $(BUILD)/test_native48m_feedback $(BUILD)/test_dual_tensor_arena $(BUILD)/test_head_page_arena $(BUILD)/test_head_page_loader $(BUILD)/test_head_block $(BUILD)/test_nlhe2 $(BUILD)/credit-ablation $(BUILD)/nanlm48m-native-batch
+unified-test-base: $(CLI) $(FIELD_DRIVER) $(BUILD)/test_raw_field $(BUILD)/test_context_backoff $(BUILD)/test_context_route $(BUILD)/test_native48m_feedback $(BUILD)/test_dual_tensor_arena $(BUILD)/test_head_page_arena $(BUILD)/test_head_page_loader $(BUILD)/test_head_block $(BUILD)/test_head_worker $(BUILD)/test_nlhe2 $(BUILD)/credit-ablation $(BUILD)/nanlm48m-native-batch
 	python3 tools/unified_test_base.py

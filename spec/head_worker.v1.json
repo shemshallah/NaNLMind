@@ -1,0 +1,39 @@
+{
+  "schema": "nanlm.head-worker/1",
+  "image": "build/head_worker.nan",
+  "source": "mth/drivers/head_worker.nas",
+  "kernel": "mth/nan16/mth_head_block6.nas",
+  "entry_word": 0,
+  "command_opcode": 122,
+  "command_block": "0x4000",
+  "args": {
+    "0x4001": "input f32[T][128]",
+    "0x4002": "output f32[T][128]",
+    "0x4003": "slot 0..15",
+    "0x4004": "T 1..6"
+  },
+  "result": {
+    "0x4010": "accepted",
+    "0x4011": "T*128",
+    "0x4012": "slot",
+    "0x4013": "reject reason"
+  },
+  "limits": {
+    "max_tokens": 6,
+    "d_model": 128,
+    "d_hidden": 384,
+    "layers": 3,
+    "page_bytes": 1048576,
+    "guest_slots": 16
+  },
+  "arithmetic": "guest-only bf16 decode, QKV, sqrt(128)-scaled six-token softmax, LayerNorm, tanh MLP, residuals",
+  "layout": "same 1 MiB page layout as the single-token compatibility block",
+  "code_words": 598,
+  "validation": [
+    "page header magic",
+    "T 1..6",
+    "slot 0..15",
+    "finite input/output"
+  ],
+  "note": "Dedicated non-overlapping image; host performs transport only."
+}
