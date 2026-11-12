@@ -2,7 +2,7 @@
 ; 128MiB dual-bank address proposal, with no host-language arithmetic.
 .org 0
 JMP @sto_main
-.include "../drivers/field_driver.nas"
+.include "../drivers/field_driver_base.nas"
 
 sto_main:
   MOVI r0,0

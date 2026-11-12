@@ -3,7 +3,7 @@
 ; All Q16.16 arithmetic executes inside the canonical guest.
 .org 0
 JMP @mth_gcf_test_main
-.include "../drivers/field_driver.nas"
+.include "../drivers/field_driver_base.nas"
 
 mth_gcf_test_main:
   MOVI r13,1

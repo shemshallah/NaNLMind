@@ -189,6 +189,7 @@ Restored raw commands:
 | 109 | `mth_context6_window_stream` fused | source stream -> six-slot attention -> Poincare NOW |
 | 118 | `mth_shortlist_batch_proposal` | one native call for an entire candidate shortlist |
 | 120 | `mth_mirror_rail_gradient` | native oriented gradient from both physical mirror rails |
+| 122 | `mth_head_block` | 128D three-layer bf16 QKV/MLP block from a paged head slot |
 
 These are the kernel-level paths removed by the earlier ABI-conflict merge.
 They are now reachable and covered by focused tests. CLI exposure for the
@@ -256,6 +257,18 @@ batch, fits the remaining 128 MiB guest window, and avoids a flat 255 MiB/1 GiB
 VM that OOMs this device. Each 1 MiB page expands to 2 MiB of guest storage
 because a NaN word is 8 bytes. LRU eviction replaces the least recently used
 slot.
+
+The first native consumer is opcode **122**, `mth/nan16/mth_head_block.nas`.
+It reads one resident slot and performs three 128D bf16 QKV/MLP layers with
+guest-side bf16 decode, LayerNorm, tanh, residual updates and page-header
+validation. The block is currently single-token, so its local attention is
+exactly V; Q/K are evaluated but the one-token context has no cross-token
+softmax. The code occupies the free `0x3E60` window below the `0x4000` command
+block; the base command surface is `mth/drivers/field_driver_base.nas` and
+fixtures that append test code include that base directly. The full
+`field_driver.nas` adds the paged block through a low `CALLF 0x3E60`
+trampoline. The 1 MiB page layout is frozen in
+`spec/head_page_memory.v1.json`.
 
 `NANLM_STEP_BUDGET` sets the 64-bit native command budget; default
 `4,000,000,000`.

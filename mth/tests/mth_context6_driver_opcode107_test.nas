@@ -2,7 +2,7 @@
 ; Verify causal future isolation and a legitimate 6-slot bidirectional infill.
 .org 0
 JMP @test_ctx107_main
-.include "../drivers/field_driver.nas"
+.include "../drivers/field_driver_base.nas"
 test_ctx107_main:
   MOVI r0,0
   MOVI r13,1

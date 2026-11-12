@@ -383,6 +383,13 @@ public:
         std::uint32_t epoch,
         const std::array<float,32640>& current_sourced_pair_flows,
         NativeMirrorTriangleRecoveryReceipt& receipt);
+    // Native opcode122: one 128D three-layer bf16 head block on a resident
+    // page slot 0..15. The host only transports the input vector and the page
+    // bytes; LayerNorm, bf16 matvec, attention and residual updates are guest.
+    // The current block is single-token, so its local attention is exactly V.
+    bool native_head_block(
+        const std::array<float,128>& input, std::uint8_t slot,
+        std::array<float,128>& output, std::uint8_t& reason);
     bool native_shortlist_batch(
         const std::array<std::uint32_t,6>& context_words,
         std::uint8_t valid_mask, std::uint8_t task,

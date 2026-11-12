@@ -15,5 +15,27 @@
     "env": "NANLM_STEP_BUDGET",
     "type": "uint64"
   },
-  "note": "Host page transport only; head QKV/MLP remains native guest code."
+  "note": "Host transports page bytes and vectors only; the native opcode122 head block performs QKV/MLP arithmetic in the guest.",
+  "native_block": {
+    "opcode": 122,
+    "architecture": "single-token 128D three-layer bf16 QKV/MLP head block",
+    "layers": 3,
+    "d_model": 128,
+    "d_hidden": 384,
+    "attention": "single-token local attention is exactly V; Q/K weights are evaluated but do not change the one-token context",
+    "page_layout_bytes": {
+      "layer_0_wq": 0,
+      "layer_0_wk": 32768,
+      "layer_0_wv": 65536,
+      "layer_0_wo": 98304,
+      "layer_0_w1": 131072,
+      "layer_0_w2": 229376,
+      "layer_stride": 327680,
+      "wemb": 983040,
+      "header": 1035264
+    },
+    "scratch_base_hex": "0x00D00000",
+    "page_header_magic_hex": "0x48315233",
+    "note": "The guest validates the page header and performs all bf16 decode, LayerNorm, matvec, tanh, attention and residual updates."
+  }
 }

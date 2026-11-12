@@ -22,6 +22,10 @@ def verify(image: Path, phase_source: Path) -> dict:
         raise ValueError(
             f"NaN16 executable spans {code_words} words and crosses the "
             f"0x{CODE_LIMIT:X} code/data boundary")
+    if code_words >= COMMAND_START:
+        raise ValueError(
+            f"NaN16 executable spans {code_words} words and overlaps the "
+            f"0x{COMMAND_START:X} command block")
     phase = phase_source.read_text(encoding="utf-8")
     # Both guest storage and read address must refer to the same reserved table.
     if len(re.findall(r"MOVI r(?:10|7),0x5000\b", phase)) != 2:
@@ -34,7 +38,7 @@ def verify(image: Path, phase_source: Path) -> dict:
             "free_words_before_table": PHASE_TABLE_START-code_words,
             "phase_table_words": PHASE_TABLE_WORDS,
             "command_word_start": COMMAND_START,
-            "program_table_disjoint": True}
+            "program_table_disjoint": code_words < COMMAND_START}
 
 def main():
     p=argparse.ArgumentParser()

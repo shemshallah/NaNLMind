@@ -472,6 +472,58 @@ bool RawFieldVM::native_triad_hotcold_vector(
     return true;
 }
 
+bool RawFieldVM::native_head_block(
+    const std::array<float,128>& input, std::uint8_t slot,
+    std::array<float,128>& output, std::uint8_t& reason) {
+    output.fill(0.0f);
+    reason = 0u;
+    if (!vm_) return fail("native head block: VM unavailable");
+    if (slot >= 16u) { reason = 1u; return true; }
+    constexpr std::uint32_t kInput = 0x00D00000u;
+    constexpr std::uint32_t kOutput = 0x00D02000u;
+    auto as_bits = [](float value) {
+        std::uint32_t bits = 0u;
+        std::memcpy(&bits, &value, sizeof(bits));
+        return bits;
+    };
+    for (std::uint32_t i = 0; i < 128u; ++i) {
+        const float value = input[i];
+        if (!std::isfinite(value))
+            return fail("native head block: nonfinite input");
+        if (!write_word(kInput + i, as_bits(value)))
+            return fail("native head block: input transport failed");
+    }
+    if (!write_word(kProposalBase + 0u, kInput) ||
+        !write_word(kProposalBase + 1u, kOutput) ||
+        !write_word(kProposalBase + 2u, slot) ||
+        !write_word(kCommandBase, 122u))
+        return fail("native head block: command transport failed");
+    if (!run_command())
+        return fail("native head block: guest execution failed: " + error_);
+    const auto ok = read_word(kResultBase);
+    const auto count = read_word(kResultBase + 1u);
+    const auto used_slot = read_word(kResultBase + 2u);
+    const auto code = read_word(kResultBase + 3u);
+    if (ok == 0u) {
+        if (count != 0u || used_slot != 0u || code < 1u || code > 3u)
+            return fail("native head block: malformed rejection");
+        reason = static_cast<std::uint8_t>(code);
+        return true;
+    }
+    if (ok != 1u || count != 128u || used_slot != slot || code != 0u)
+        return fail("native head block: malformed success receipt");
+    for (std::uint32_t i = 0; i < 128u; ++i) {
+        const auto bits = read_word(kOutput + i);
+        float value = 0.0f;
+        std::memcpy(&value, &bits, sizeof(value));
+        if (!std::isfinite(value))
+            return fail("native head block: nonfinite output");
+        output[i] = value;
+    }
+    reason = 0u;
+    return true;
+}
+
 bool RawFieldVM::native_shortlist_batch(
     const std::array<std::uint32_t,6>& context_words,
     std::uint8_t valid_mask, std::uint8_t task,
