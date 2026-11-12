@@ -369,3 +369,16 @@ initial/final SHA-256 values. The receipt explicitly sets
 `tensor_promotion: false`; this gate accepts or rejects a **readout checkpoint**,
 not a tensor bank, decoder, or page-weight update. The ABI is frozen in
 `spec/head_readout_loop.v1.json`.
+
+
+## Head-page checkpoint store
+
+`include/nanlm/head_page_checkpoint.hpp` persists the 255 × 1 MiB page bank as
+a directory of `head-NNN.page` files plus a canonical `manifest.txt` carrying
+each generation and SHA-256. Writes use page-temp/rename followed by
+manifest-temp/rename. Reads verify size, digest, and the canonical page-header
+magic. `root_digest()` hashes the sorted present-head records.
+
+The store permits partial checkpoints and does not claim power-loss ordering
+on every filesystem. It is host storage/provenance only; no page arithmetic or
+training runs here. The format is frozen in `spec/head_page_checkpoint.v1.json`.

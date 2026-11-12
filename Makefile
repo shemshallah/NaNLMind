@@ -92,6 +92,9 @@ $(BUILD)/test_head_readout: tests/test_head_readout.cpp include/nanlm/raw_field.
 $(BUILD)/test_head_readout_train: tests/test_head_readout_train.cpp include/nanlm/raw_field.hpp $(LIB) $(NAN0S_LIB) $(HEAD_WORKER) | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
+$(BUILD)/test_head_page_checkpoint: tests/test_head_page_checkpoint.cpp include/nanlm/head_page_checkpoint.hpp include/nanlm/head_page_arena.hpp include/nanlm/sha256.hpp $(LIB) | $(BUILD)
+	$(CXX) $(CXXFLAGS) $< $(LIB) -o $@ $(LDFLAGS) $(LDLIBS)
+
 $(BUILD)/test_nlhe2: tests/test_nlhe2.cpp include/nanlm/nlhe2.hpp include/nanlm/nlhe2_arena.hpp include/nanlm/tensor_point.hpp include/nanlm/tensor_leaf_sidecar.hpp include/nanlm/dual_tensor_arena.hpp | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< -o $@ $(LDFLAGS) $(LDLIBS)
 
@@ -292,5 +295,5 @@ dual-head-test: $(BUILD)/test_dual_head
 	./$(BUILD)/test_dual_head
 
 
-unified-test-base: $(CLI) $(FIELD_DRIVER) $(BUILD)/test_raw_field $(BUILD)/test_context_backoff $(BUILD)/test_context_route $(BUILD)/test_native48m_feedback $(BUILD)/test_dual_tensor_arena $(BUILD)/test_head_page_arena $(BUILD)/test_head_page_loader $(BUILD)/test_head_block $(BUILD)/test_head_worker $(BUILD)/test_head_worker_scheduler $(BUILD)/test_head_readout $(BUILD)/test_head_readout_train $(BUILD)/test_nlhe2 $(BUILD)/credit-ablation $(BUILD)/nanlm48m-native-batch $(BUILD)/nanlm-head-worker-batch $(BUILD)/nanlm-head-readout-train $(BUILD)/nanlm-head-readout-loop
+unified-test-base: $(CLI) $(FIELD_DRIVER) $(BUILD)/test_raw_field $(BUILD)/test_context_backoff $(BUILD)/test_context_route $(BUILD)/test_native48m_feedback $(BUILD)/test_dual_tensor_arena $(BUILD)/test_head_page_arena $(BUILD)/test_head_page_loader $(BUILD)/test_head_block $(BUILD)/test_head_worker $(BUILD)/test_head_worker_scheduler $(BUILD)/test_head_readout $(BUILD)/test_head_readout_train $(BUILD)/test_head_page_checkpoint $(BUILD)/test_nlhe2 $(BUILD)/credit-ablation $(BUILD)/nanlm48m-native-batch $(BUILD)/nanlm-head-worker-batch $(BUILD)/nanlm-head-readout-train $(BUILD)/nanlm-head-readout-loop
 	python3 tools/unified_test_base.py

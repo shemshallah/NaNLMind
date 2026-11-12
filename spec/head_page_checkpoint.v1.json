@@ -1,0 +1,19 @@
+{
+  "schema": "nanlm.head-page-checkpoint/1",
+  "directory_layout": {
+    "page": "head-NNN.page",
+    "manifest": "manifest.txt"
+  },
+  "page_bytes": 1048576,
+  "manifest": "one line per present head: head generation sha256",
+  "write_protocol": "page temp + rename, then manifest temp + rename",
+  "validation": [
+    "1 MiB size",
+    "SHA-256 against manifest",
+    "page header magic 0x48315233"
+  ],
+  "root_digest": "SHA-256 over sorted (head, generation, page_sha256) entries",
+  "missing_pages": "allowed for partial checkpoints; only present heads are loaded",
+  "scope": "host storage/provenance only; no page arithmetic or training",
+  "note": "Atomic file replacement reduces torn-file exposure; it does not claim power-loss ordering on every filesystem."
+}
