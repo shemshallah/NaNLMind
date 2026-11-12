@@ -539,3 +539,16 @@ Summaries are selected by native opcode123 dot scores; the host only orders
 the returned scores. The last local-token output becomes the next memory.
 Summary states never become the recurrent memory. The assembler is host
 transport/orchestration over the unchanged native block64 kernel.
+
+
+## Long-chunk checkpoint gate
+
+`build/nanlm-head-chunk-gate` evaluates baseline and candidate page
+checkpoints over an arbitrary token-vector chunk through the 64-slot causal
+recurrent worker. Final per-head memory is scored by the native readout at
+`lr=0`; acceptance requires a strict finite NLL improvement.
+
+The default target is a 256-token chunk, but tests use smaller chunks to keep
+the native gate fast. This is a candidate-panel readout gate, not
+full-vocabulary BPB or tensor promotion. The contract is frozen in
+`spec/head_chunk_gate.v1.json`.

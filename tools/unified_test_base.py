@@ -140,6 +140,9 @@ def main() -> int:
     if (ROOT / "tests/test_head_page_train.py").is_file():
         results.append(run("head_page_train",
                            ["python3", "tests/test_head_page_train.py"]))
+    if (ROOT / "tests/test_head_chunk_gate.py").is_file():
+        results.append(run("head_chunk_gate",
+                           ["python3", "tests/test_head_chunk_gate.py"]))
     if (ROOT / "tests/test_head_page_train_gate.py").is_file():
         results.append(run("head_page_train_gate",
                            ["python3", "tests/test_head_page_train_gate.py"]))

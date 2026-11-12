@@ -1,0 +1,13 @@
+{
+  "schema": "nanlm.head-chunk-gate/1",
+  "binary": "build/nanlm-head-chunk-gate",
+  "usage": "nanlm-head-chunk-gate <baseline-dir> <candidate-dir> <tokens.f32> <heads> <candidates.f32> <target> <out.json>",
+  "tokens": "f32[N][128], processed through the 64-slot recurrent worker; default target chunk 256",
+  "heads": "1..16 active checkpoint pages",
+  "evaluation": "64-slot causal worker -> final per-head memory -> native readout lr=0",
+  "gate": "candidate average NLL < baseline average NLL, both finite",
+  "scope": "long-chunk checkpoint gate; candidate-panel readout NLL, not full-vocabulary BPB",
+  "host_math": false,
+  "tensor_promotion": false,
+  "note": "The host transports token/page bytes and aggregates guest-reported losses."
+}
