@@ -197,7 +197,9 @@ public:
         return memory_[head];
     }
     std::size_t chunk_tokens() const noexcept { return chunk_tokens_; }
+    std::size_t resident_count() const { return loader_.resident_count(); }
     void reset_memory() { memory_.fill(std::array<float, 128>{}); }
+    void clear_pages() { loader_.clear(); }
 
 private:
     RawFieldVM& vm_;

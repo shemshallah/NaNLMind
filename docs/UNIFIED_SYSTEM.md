@@ -567,3 +567,23 @@ in-vocabulary bigram top-5 is 33.333%, with OOV rate 7.907%.
 This is a word-level reference baseline, not the 48M frontier decoder and not
 native head-worker logits. The contract is frozen in
 `spec/word_baselines.v1.json`.
+
+
+## Unified context runtime
+
+`include/nanlm/unified_context_runtime.hpp` is the canonical composition point
+for the long-context stack. It owns one shared VM/page arena and exposes only:
+
+```text
+load_checkpoint(...)
+advance(credits, tokens, top_k, bank, summary_k, local_limit)
+summarize(chunk_id, credits, tokens, top_k)
+retrieve(bank, head, query, top_k)
+memory(head)
+```
+
+The runtime composes head checkpoint paging, the 64-token causal worker,
+persistent memory, chunk summaries, the 512-slot bank, native summary
+retrieval, and hierarchical assembly. No alternate model path is introduced.
+`main` is canonical; older branches are audit-only. The contract is frozen in
+`spec/unified_architecture.v1.json`.

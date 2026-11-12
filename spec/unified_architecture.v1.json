@@ -1,0 +1,39 @@
+{
+  "schema": "nanlm.unified-architecture/1",
+  "status": "canonical-main",
+  "entrypoint": "include/nanlm/unified_context_runtime.hpp",
+  "flow": [
+    "head page checkpoint / 16-slot page loader",
+    "64-token causal native worker",
+    "persistent per-head memory",
+    "256-token chunk summaries",
+    "512-slot ring summary bank",
+    "native summary retrieval (opcode123)",
+    "hierarchical [memory|summaries|local] assembly",
+    "candidate/checkpoint gates and readout"
+  ],
+  "native_kernels": [
+    "mth_head_block6.nas",
+    "mth_head_block64.nas",
+    "mth_head_block64_last.nas",
+    "mth_head_state_readout.nas",
+    "mth_head_state_readout_train.nas",
+    "mth_head_page_train*.nas"
+  ],
+  "policy": {
+    "canonical_branch": "main",
+    "separate_model_paths": false,
+    "old_branches": "audit-only; no new architecture may bypass the unified runtime"
+  },
+  "metrics": [
+    "byte BPB/top5",
+    "word n-gram BPB/top5",
+    "candidate-panel NLL/top1/top5",
+    "page/chunk checkpoint gates"
+  ],
+  "blocked": [
+    "full 48M archive metrics",
+    "native full-vocabulary projection",
+    "true dX2 reverse"
+  ]
+}
