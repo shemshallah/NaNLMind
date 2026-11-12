@@ -562,6 +562,62 @@ hw6_cap_xn_loop:
   ST r12,r0,@hw6_cap_i
   JMP @hw6_cap_xn_loop
 hw6_cap_xn_done:
+  ; Bulk retain per-layer Q/K/V/all-token XN/probabilities for later gradients.
+  LD r10,r0,@hw6_layer
+  MOVI r11,0x400
+  MUL r11,r10,r11
+  ST r11,r0,@hw6_cap_off
+  LD r10,r0,@hw6_t
+  MOVI r11,128
+  MUL r10,r10,r11
+  ST r10,r0,@hw6_cap_n
+  ; Q
+  MOVI r1,0x0600
+  MOVHI r1,0x00D0
+  MOVI r2,0x0000
+  MOVHI r2,0x00D2
+  LD r3,r0,@hw6_cap_off
+  ADD r2,r2,r3
+  LD r3,r0,@hw6_cap_n
+  CALL @hw6_cap_copy
+  ; K
+  MOVI r1,0x0900
+  MOVHI r1,0x00D0
+  MOVI r2,0x1000
+  MOVHI r2,0x00D2
+  LD r3,r0,@hw6_cap_off
+  ADD r2,r2,r3
+  LD r3,r0,@hw6_cap_n
+  CALL @hw6_cap_copy
+  ; V
+  MOVI r1,0x0C00
+  MOVHI r1,0x00D0
+  MOVI r2,0x2000
+  MOVHI r2,0x00D2
+  LD r3,r0,@hw6_cap_off
+  ADD r2,r2,r3
+  LD r3,r0,@hw6_cap_n
+  CALL @hw6_cap_copy
+  ; all-token XN
+  MOVI r1,0x0300
+  MOVHI r1,0x00D0
+  MOVI r2,0x3000
+  MOVHI r2,0x00D2
+  LD r3,r0,@hw6_cap_off
+  ADD r2,r2,r3
+  LD r3,r0,@hw6_cap_n
+  CALL @hw6_cap_copy
+  ; last-query probabilities
+  LD r10,r0,@hw6_layer
+  MOVI r11,8
+  MUL r10,r10,r11
+  MOVI r2,0x4000
+  MOVHI r2,0x00D2
+  ADD r2,r2,r10
+  MOVI r1,0x1810
+  MOVHI r1,0x00D0
+  LD r3,r0,@hw6_t
+  CALL @hw6_cap_copy
   LD r10,r0,@hw6_layer
   ADDI r10,r10,1
   ST r10,r0,@hw6_layer
@@ -745,6 +801,24 @@ hw6_ln_done:
   LD r15,r0,@hw6_ln_link
   RET
 
+; Copy r3 words from r1 to r2.
+hw6_cap_copy:
+  MOVI r0,0
+  ST r15,r0,@hw6_copy_link
+  MOVI r10,0
+hw6_cap_copy_loop:
+  CMP r10,r3
+  JMP[GE] @hw6_cap_copy_done
+  ADD r11,r1,r10
+  LD r12,r11,0
+  ADD r13,r2,r10
+  ST r12,r13,0
+  ADDI r10,r10,1
+  JMP @hw6_cap_copy_loop
+hw6_cap_copy_done:
+  LD r15,r0,@hw6_copy_link
+  RET
+
 hw6_link:
   .word 0
 hw6_in:
@@ -807,4 +881,11 @@ hw6_cap_ctx:
 hw6_cap_src:
   .word 0
 hw6_cap_i:
+  .word 0
+
+hw6_cap_off:
+  .word 0
+hw6_cap_n:
+  .word 0
+hw6_copy_link:
   .word 0
