@@ -68,6 +68,9 @@ hw_main:
   MOVI r3,135
   CMP r2,r3
   JMP[EQ] @hw_block64
+  MOVI r3,136
+  CMP r2,r3
+  JMP[EQ] @hw_block64_last
   JMP @hw_return
 hw_block6:
   MOVI r10,0x4001
@@ -202,6 +205,14 @@ hw_block64:
   LD r3,r10,2
   LD r4,r10,3
   CALL @mth_head_block64
+  JMP @hw_store
+hw_block64_last:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r4,r10,3
+  CALL @mth_head_block64_last
 hw_store:
   MOVI r10,0x4010
   ST r1,r10,0
@@ -230,3 +241,4 @@ hw_link:
 .include "../nan16/mth_head_page_train_l1wv.nas"
 .include "../nan16/mth_head_page_train_l1qk.nas"
 .include "../nan16/mth_head_block64.nas"
+.include "../nan16/mth_head_block64_last.nas"

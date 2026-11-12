@@ -1384,7 +1384,7 @@ bool RawFieldVM::native_head_page_train_l1qk(
 bool RawFieldVM::native_head_block64(
     const std::array<float, 64 * 128>& input, std::uint8_t token_count,
     std::uint8_t slot, std::array<float, 64 * 128>& output,
-    std::uint8_t& reason) {
+    std::uint8_t& reason, bool last_token_only) {
     output.fill(0.0f);
     reason = 0u;
     if (!vm_) return fail("native head block64: VM unavailable");
@@ -1410,7 +1410,7 @@ bool RawFieldVM::native_head_block64(
         !write_word(kProposalBase + 1u, kOutput) ||
         !write_word(kProposalBase + 2u, slot) ||
         !write_word(kProposalBase + 3u, token_count) ||
-        !write_word(kCommandBase, 135u))
+        !write_word(kCommandBase, last_token_only ? 136u : 135u))
         return fail("native head block64: command transport failed");
     if (!run_command())
         return fail("native head block64: guest execution failed: " + error_);

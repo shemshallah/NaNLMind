@@ -79,6 +79,12 @@ int main() {
         if (early_out[i] != later_out[i]) causal = false;
     CHECK(causal);
 
+    std::array<float, 64 * 128> last_out{};
+    CHECK(vm.native_head_block64(input, 64, 0, last_out, reason, true));
+    CHECK_EQ(reason, 0u);
+    for (unsigned d = 0; d < 128u; ++d)
+        CHECK_EQ(last_out[63u * 128u + d], output[63u * 128u + d]);
+
     std::array<float, 64 * 128> rejected{};
     CHECK(vm.native_head_block64(input, 65, 0, rejected, reason));
     CHECK_EQ(reason, 1u);

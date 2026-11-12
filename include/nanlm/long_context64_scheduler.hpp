@@ -24,8 +24,10 @@ public:
     static constexpr std::size_t kMaxChunkTokens = 63;
 
     explicit LongContext64Scheduler(RawFieldVM& vm, HeadPageArena& arena,
-                                    std::size_t chunk_tokens = kMaxChunkTokens)
-        : vm_(vm), loader_(vm, arena), chunk_tokens_(chunk_tokens) {
+                                    std::size_t chunk_tokens = kMaxChunkTokens,
+                                    bool last_token_only = true)
+        : vm_(vm), loader_(vm, arena), chunk_tokens_(chunk_tokens),
+          last_token_only_(last_token_only) {
         if (chunk_tokens_ == 0u || chunk_tokens_ > kMaxChunkTokens)
             throw std::invalid_argument("long context64 chunk size");
         memory_.fill(std::array<float, 128>{});
@@ -79,7 +81,8 @@ public:
                 std::uint8_t reason = 0;
                 if (!vm_.native_head_block64(
                         context, static_cast<std::uint8_t>(n + 1u),
-                        static_cast<std::uint8_t>(slot), output, reason)) {
+                        static_cast<std::uint8_t>(slot), output, reason,
+                        last_token_only_)) {
                     result.reason = 2u;
                     return result;
                 }
@@ -168,7 +171,8 @@ public:
                 std::uint8_t reason = 0;
                 if (!vm_.native_head_block64(
                         context, static_cast<std::uint8_t>(token_count),
-                        static_cast<std::uint8_t>(slot), output, reason)) {
+                        static_cast<std::uint8_t>(slot), output, reason,
+                        last_token_only_)) {
                     result.reason = 2u;
                     return result;
                 }
@@ -199,6 +203,7 @@ private:
     RawFieldVM& vm_;
     HeadPageLoader loader_;
     std::size_t chunk_tokens_ = kMaxChunkTokens;
+    bool last_token_only_ = true;
     std::array<std::array<float, 128>, 255> memory_{};
 };
 

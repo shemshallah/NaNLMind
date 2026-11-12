@@ -47,6 +47,13 @@
       "max_tokens": 64,
       "kernel": "mth_head_block64.nas",
       "attention": "causal local softmax"
+    },
+    "block64_last": {
+      "opcode": 136,
+      "max_tokens": 64,
+      "kernel": "mth_head_block64_last.nas",
+      "behavior": "layers 0/1 full causal; layer 2 computes only the last query and MLP",
+      "status": "host ABI wired"
     }
   }
 }

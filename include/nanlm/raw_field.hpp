@@ -400,7 +400,7 @@ public:
     bool native_head_block64(
         const std::array<float, 64 * 128>& input, std::uint8_t token_count,
         std::uint8_t slot, std::array<float, 64 * 128>& output,
-        std::uint8_t& reason);
+        std::uint8_t& reason, bool last_token_only = false);
     // Dedicated head-worker opcode123: guest-side linear readout of a
     // 128D state against 1..64 transported candidate vectors. This does not
     // claim trained logits or a promotion decision.

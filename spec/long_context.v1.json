@@ -7,7 +7,7 @@
   "memory_dim": 128,
   "head_count": 255,
   "stream_length": "unbounded; caller supplies token vectors",
-  "mechanism": "worker input [persistent memory, up to 63 new token vectors]; last-token output becomes next memory",
+  "mechanism": "64-slot causal worker; opcode136 final-layer last-token optimization; persistent memory + summaries + local tokens",
   "effective_context": "recurrent state, not full-context attention; exact token detail is not retained beyond the recurrent summary",
   "guest_math": true,
   "planned_tiers": {
@@ -40,5 +40,6 @@
     "memory_update": "last local-token output; summaries never become recurrent memory",
     "status": "implemented host-side over native block64"
   },
-  "causal": true
+  "causal": true,
+  "last_token_only": true
 }
