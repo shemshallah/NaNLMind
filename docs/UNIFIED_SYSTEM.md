@@ -298,3 +298,19 @@ home coordinate through the existing candidate-leaf gate. Exact replay is a
 no-op, same-generation conflicts are rejected, and per-point quota is enforced
 by the arena. `newest_nlhe2` resolves the highest live revision; an
 equal-generation payload conflict returns no value.
+
+
+## Paged head-worker scheduler
+
+`include/nanlm/head_worker_scheduler.hpp` selects up to 16 active heads from
+external credits, asks the 16-slot LRU page loader for each resident page, and
+invokes the six-token worker once per head. It keeps the last-token 128D state
+for all 255 heads as a host transport bank; no head arithmetic runs on the
+host.
+
+`stage_head_worker_batch` transports accepted guest states into the canonical
+candidate tensor at `T[h,h,h]`: a `HeadVector128` leaf carrying the last-token
+vector, one guest output lane as the candidate scalar, the candidate generation,
+and the authenticated source SHA-256. Any late staging failure aborts the
+candidate, leaving ACTIVE untouched. The scheduler ABI is frozen in
+`spec/head_worker_scheduler.v1.json`.

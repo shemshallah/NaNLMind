@@ -1,0 +1,23 @@
+{
+  "schema": "nanlm.head-worker-scheduler/1",
+  "max_heads": 16,
+  "selection": "stable descending external credit per active head 0..254; head 255 never selected",
+  "state_words": 768,
+  "resident_state": "last-token 128D per head in a 255 x 128 host transport bank",
+  "paging": "existing 16-slot LRU HeadPageLoader; one page resident per selected head",
+  "worker": {
+    "image": "build/head_worker.nan",
+    "opcode": 122,
+    "max_tokens": 6
+  },
+  "tensor_transport": {
+    "coordinate": "T[h,h,h]",
+    "leaf_kind": 12,
+    "leaf_payload": "last-token 128D HeadVector128",
+    "scalar": "guest last-token lane 0",
+    "generation": "candidate-arena generation checked before staging"
+  },
+  "provenance": "authenticated source SHA-256 and candidate generation",
+  "failure_policy": "worker/page/generation failure rejects the batch; staging aborts the candidate on any late failure",
+  "note": "Host selects and transports only; attention, QKV, LayerNorm and MLP are guest-side."
+}
