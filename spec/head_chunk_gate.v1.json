@@ -9,5 +9,7 @@
   "scope": "long-chunk checkpoint gate; candidate-panel readout NLL, not full-vocabulary BPB",
   "host_math": false,
   "tensor_promotion": false,
-  "note": "The host transports token/page bytes and aggregates guest-reported losses."
+  "note": "The host transports token/page bytes and aggregates guest-reported losses.",
+  "chunks": "reported baseline/candidate recurrent chunks",
+  "tested_256_token_chunk": true
 }

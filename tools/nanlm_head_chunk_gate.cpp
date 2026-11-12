@@ -50,6 +50,7 @@ std::vector<unsigned> parse_heads(const std::string& text) {
 }
 struct Result {
     double nll = 0.0;
+    std::size_t chunks = 0;
     std::string state_sha256;
 };
 Result evaluate(RawFieldVM& vm, const std::filesystem::path& dir,
@@ -102,7 +103,7 @@ Result evaluate(RawFieldVM& vm, const std::filesystem::path& dir,
         }
     }
     return {nll_sum / static_cast<double>(run.heads.size()),
-            hex(digest.final())};
+            run.chunks, hex(digest.final())};
 }
 } // namespace
 
@@ -153,6 +154,8 @@ int main(int argc, char** argv) {
             << ",\"candidate_nll\":" << candidate.nll
             << ",\"nll_delta\":" << (baseline.nll - candidate.nll)
             << ",\"accepted\":" << (accepted ? "true" : "false")
+            << ",\"baseline_chunks\":" << baseline.chunks
+            << ",\"candidate_chunks\":" << candidate.chunks
             << ",\"baseline_state_sha256\":\"" << baseline.state_sha256 << "\""
             << ",\"candidate_state_sha256\":\"" << candidate.state_sha256 << "\""
             << ",\"baseline_root\":\"" << bstore.root_digest() << "\""

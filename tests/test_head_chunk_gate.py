@@ -64,7 +64,29 @@ def main() -> int:
         assert len(report["baseline_state_sha256"]) == 64
         assert len(report["candidate_state_sha256"]) == 64
         assert len(report["baseline_root"]) == 64
-        print("PASS native 64-slot long-chunk gate")
+        assert report["baseline_chunks"] == 1
+
+        long_tokens = []
+        for t in range(256):
+            row = [0.0] * 128
+            row[0] = 0.001 * (t + 1)
+            long_tokens.extend(row)
+        (tmp / "long_tokens.txt").write_text(
+            " ".join(map(str, long_tokens)) + "\n")
+        long_receipt = tmp / "long.json"
+        run = subprocess.run(
+            [str(binary), str(baseline), str(candidate),
+             str(tmp / "long_tokens.txt"), "1", str(tmp / "candidates.txt"),
+             "0", str(long_receipt)], cwd=ROOT, text=True, capture_output=True)
+        if run.returncode != 0:
+            print(run.stdout)
+            print(run.stderr)
+            return 1
+        long_report = json.loads(long_receipt.read_text())
+        assert long_report["tokens"] == 256
+        assert long_report["baseline_chunks"] >= 4
+        assert long_report["accepted"] is False
+        print("PASS native 64-slot long-chunk gate (256-token chunk)")
         return 0
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
