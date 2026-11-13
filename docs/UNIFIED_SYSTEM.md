@@ -643,7 +643,10 @@ On `data/alice_full.txt`, matched 80/20 held-out results are:
 The system ranks its full learned 2291-word training vocabulary by its own
 association scores (12107 associations). It beats the unigram baseline, but
 still trails the interpolated bigram by 1.06 points top-1 and 2.62 points top-5.
-This is an honest system-vs-baseline result, not a promotion claim.
+The baseline vocabulary also contains `<unk>` while the system does not, so the
+in-vocabulary row is the closer comparison; the system is still 2.85 points
+behind there. This is an honest system-vs-baseline result, not a promotion
+claim.
 
 Full-Alice word baseline BPB remains: unigram 1.87039, interpolated bigram
 1.61632. System BPB is `null`: association scores are not a normalized

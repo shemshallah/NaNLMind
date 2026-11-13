@@ -82,8 +82,10 @@ def main() -> int:
                               baseline["bigram"]["in_vocab_top5"]),
         },
         "notes": [
-            "The associative layer ranks its full learned training vocabulary; "
-            "its scores are not normalized, so no system BPB is claimed.",
+            "The associative layer ranks only learned training words; the "
+            "baseline vocabulary also contains <unk>. In-vocab top-k is the "
+            "closer apples-to-apples row. System scores are not normalized, so "
+            "no model BPB is claimed.",
             "This is an integer associative-memory system component, not the "
             "native 48M decoder, and must not be presented as a frontier metric.",
         ],

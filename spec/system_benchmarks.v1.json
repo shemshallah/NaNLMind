@@ -78,7 +78,7 @@
       "in_vocab_top5": -0.028486
     },
     "artifact": "state/benchmarks/system_word_bench.json",
-    "limitation": "Association scores are not normalized, so the system BPB is unsupported. The layer is a host associative-memory component, not the native 48M decoder."
+    "limitation": "Association scores are not normalized, so the system BPB is unsupported. The system ranks only learned training words; the baseline vocabulary also contains <unk>. In-vocab top-5 is the closer apples-to-apples row."
   },
   "full_alice_word_baseline": {
     "vocab": 2292,
