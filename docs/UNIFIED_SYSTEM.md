@@ -475,7 +475,7 @@ The native block64 test exercises all 64 local slots, causal future-token isolat
 uses 63 new tokens per chunk and arbitrary stream length. `chunk_summary.hpp`
 adds a chunk-summary scheduler and paged summary bank: a chunk is reset and
 processed through the 64-slot worker, and the final per-head memory becomes its
-summary. The default target is 256 tokens per summary and 512 summary slots, covering 131,072 tokens before eviction.
+summary. The default target is 256 tokens per summary and 512 summary slots, covering 131,072 tokens before eviction. `tests/test_summary_bank_128k.cpp` validates the complete tier shape: 512 records, 131,072 covered tokens, native retrieval over all 512 candidates in 64-candidate batches, and oldest-record eviction on the 513th chunk. This is storage/retrieval tier validation; a full 131,072-token forward replay is still too expensive to run in the standard test base.
 
 The frontier trajectory needs hierarchical paged memory:
 
@@ -593,15 +593,15 @@ same byte positions as matched order-0, byte-bigram and context-2 references:
 
 | model | BPB | top-1 | top-5 |
 |---|---:|---:|---:|
-| native context system | 3.56395 | **56.050%** | 76.031% |
+| native context system | 3.38248 | **56.169%** | 77.298% |
 | order-0 matched | 4.71318 | 15.652% | 42.260% |
 | byte bigram matched | 3.50949 | 32.058% | 69.592% |
 | context-2 matched | **3.28052** | 42.915% | **79.358%** |
 
-The tuned byte route uses 16384 buckets, 16000 exact contexts, five epochs
-and learning rate 0.1. This is a real native byte model: top-1 beats every
-reference floor, top-5 beats order-0 and byte-bigram, but context-2 still has
-lower BPB and higher top-5. The system BPB is higher than its top-1 suggests
+The tuned byte route uses 16384 buckets, 16383 exact contexts, five epochs and
+learning rate 0.1. This is a real native byte model: top-1 beats every
+reference floor, BPB and top-5 beat order-0 and byte-bigram, but context-2
+still has lower BPB (3.28052) and higher top-5 (79.358%). The system BPB is higher than its top-1 suggests
 because the class probabilities are not calibrated; top-1 and BPB are reported
 separately and neither is hidden.
 

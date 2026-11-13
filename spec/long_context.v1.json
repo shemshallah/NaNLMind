@@ -41,5 +41,14 @@
     "status": "implemented host-side over native block64"
   },
   "causal": true,
-  "last_token_only": true
+  "last_token_only": true,
+  "tier_validation": {
+    "test": "tests/test_summary_bank_128k.cpp",
+    "summary_slots": 512,
+    "tokens_per_summary": 256,
+    "covered_tokens": 131072,
+    "eviction": "oldest summary evicted on the 513th 256-token chunk",
+    "retrieval": "native opcode123 scores 512 candidates in batches of 64",
+    "scope": "storage/retrieval tier validation; full 131072-token forward replay remains expensive on the 128 MiB VM"
+  }
 }
