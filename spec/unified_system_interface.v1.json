@@ -9,7 +9,8 @@
     "token-1b": "delegate to build/train-1b",
     "token-full": "delegate to build/train-1b-full",
     "context": "delegate to build/nanlm-unified-context",
-    "check": "run tools/unified_test_base.py"
+    "check": "run tools/unified_test_base.py",
+    "top5": "run build/system-top5 for one-VM byte/word/token top-5"
   },
   "components": [
     "include/nanlm/projection_runtime.hpp",

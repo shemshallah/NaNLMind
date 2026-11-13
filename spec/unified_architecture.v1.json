@@ -58,7 +58,8 @@
     "native_1b_token_trainer": "build/train-1b",
     "native_full_token_trainer": "build/field_driver.nan via ProjectionRuntime",
     "native_projection_runtime": "include/nanlm/projection_runtime.hpp",
-    "system_orchestrator": "tools/nanlm_unified_system.py"
+    "system_orchestrator": "tools/nanlm_unified_system.py",
+    "system_top5_measurement": "build/system-top5"
   },
   "language_model_policy": {
     "native_system": "NaNLMind native context/byte/readout path",

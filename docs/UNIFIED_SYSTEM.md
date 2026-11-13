@@ -854,6 +854,27 @@ state/benchmarks/word_baselines.json
 ```
 
 
+## Combined one-VM top-5 measurement
+
+`build/system-top5` trains and evaluates byte, word and full-GPT-2 token heads
+through one `ProjectionRuntime`/`field_driver.nan` VM:
+
+```sh
+./build/system-top5   data/alice_full.txt   state/lexor/1B_tokens/LLM_training_data_1B.bin   state/benchmarks/system_top5.json 100000 5000
+```
+
+The three tables are disjoint and remain resident together:
+
+```text
+byte  -> 256 classes
+word  -> training vocabulary (max 2292)
+token -> 50,257 GPT-2 IDs, 257 context rows
+```
+
+Reported metrics are per head: byte BPB/top-1/top-5, word BPB/top-1/top-5,
+and token bits/token/top-1/top-5. They are not merged into a false unified
+language metric. Contract: `spec/system_top5.v1.json`.
+
 ## One system entry point
 
 `tools/nanlm_unified_system.py` is the orchestration entry point:

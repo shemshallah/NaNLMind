@@ -1,0 +1,31 @@
+{
+  "schema": "nanlm.system-top5/1",
+  "entrypoint": "tools/nanlm_top5_bench.cpp",
+  "vm": {
+    "count": 1,
+    "image": "build/field_driver.nan",
+    "words": 33554432,
+    "bytes": 268435456
+  },
+  "measurements": {
+    "byte": {
+      "corpus": "data/alice_full.txt",
+      "head": "direct-256",
+      "metrics": ["byte BPB", "byte top-1", "byte top-5"]
+    },
+    "word": {
+      "corpus": "data/alice_full.txt",
+      "head": "full training-vocabulary word projection",
+      "metrics": ["word-byte BPB", "word top-1", "word top-5", "in-vocab top-5"]
+    },
+    "token": {
+      "corpus": "zlatan599/lexor-2026 LLM_training_data_1B.bin",
+      "head": "full GPT-2 vocabulary token projection",
+      "train_tokens": 100000,
+      "eval_tokens": 5000,
+      "metrics": ["bits/token", "token top-1", "token top-5"]
+    }
+  },
+  "scope": "One VM, three resident projection tables; metric units are reported per head and are not combined into a single language metric.",
+  "command": "./build/system-top5 data/alice_full.txt state/lexor/1B_tokens/LLM_training_data_1B.bin state/benchmarks/system_top5.json 100000 5000"
+}

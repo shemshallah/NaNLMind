@@ -60,6 +60,7 @@ def collect_status() -> dict:
             "token_1b": "build/train-1b",
             "token_full": "build/train-1b-full",
             "context": "build/nanlm-unified-context",
+            "top5": "build/system-top5",
             "check": "tools/unified_test_base.py",
         },
     }
@@ -71,6 +72,7 @@ COMMANDS = {
     "token-1b": BUILD / "train-1b",
     "token-full": BUILD / "train-1b-full",
     "context": BUILD / "nanlm-unified-context",
+    "top5": BUILD / "system-top5",
 }
 
 
