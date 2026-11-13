@@ -230,5 +230,13 @@
     "native_commit": "triad 2/3 field 43/85; versioned generation",
     "tensor_promotion": "frozen SHA pair + actual writes + native global/meta + disjoint exact-word NLL improvement; no automatic unreviewed promotion",
     "quality_claim": "no demonstrated held-out improvement from integrated feedback yet"
+  },
+  "runtime_entrypoint": "tools/unified_48m_runtime.py",
+  "runtime_contract": "spec/unified_48m_runtime.v1.json",
+  "language_model_policy": {
+    "trained_word_model": "frozen R25/R27 48M only",
+    "native_candidate_feedback": "phase/trihead/Hodge/MC0 and opcode118 finite shortlist",
+    "second_decoder": false,
+    "candidate_only": true
   }
 }

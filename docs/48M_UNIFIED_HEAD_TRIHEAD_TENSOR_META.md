@@ -1,6 +1,6 @@
 # Unified 48M Decoder -> Heads -> Triheads -> Hypertensor -> Global -> Meta
 
-Status: C++ 128 MiB arena backing and original 48M decoder candidate adapter are implemented and locally exercised. Live native streams, fresh-data improvement and journaled promotion are NOT yet verified. This design retains one trained language model and one NaN16 global state space.
+Status: C++ 128 MiB arena backing and original 48M decoder candidate adapter are implemented and locally exercised. The canonical language entrypoint is now `tools/unified_48m_runtime.py` (contract: `spec/unified_48m_runtime.v1.json`); it composes the frozen 48M distribution with native candidate feedback and fails closed when the original archive is absent. Live native streams, fresh-data improvement and journaled promotion are NOT yet verified. This design retains one trained language model and one NaN16 global state space.
 
 ## Original checkpoint (unchanged)
 - R20 43,000,000-event base: run_v20_new_prose/state.npz. SHA-256: 299a91daf65c8e66fe3489940371d262afef18dd2ef6fef61947ac14c62bb717.

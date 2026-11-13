@@ -1,8 +1,11 @@
 {
   "schema": "nanlm.unified-architecture/1",
-  "status": "canonical-main",
+  "status": "canonical-main-unified-48m-language-path",
   "entrypoint": "include/nanlm/unified_context_runtime.hpp",
   "flow": [
+    "frozen R25/R27 48M exact word model (only trained language model)",
+    "native NaN16 phase / trihead / Hodge / committed MC0 candidate measurement",
+    "finite candidate normalization by the frozen 48M distribution",
     "head page checkpoint / 16-slot page loader",
     "64-token causal native worker",
     "persistent per-head memory",
@@ -18,7 +21,12 @@
     "mth_head_block64_last.nas",
     "mth_head_state_readout.nas",
     "mth_head_state_readout_train.nas",
-    "mth_head_page_train*.nas"
+    "mth_head_page_train*.nas",
+    "mth_context_top5.nas",
+    "mth_global_hodge256_f32.nas",
+    "mth_meta_attention16_f32.nas",
+    "mth_context6_window_stream.nas",
+    "mth_shortlist_batch_proposal.nas"
   ],
   "policy": {
     "canonical_branch": "main",
@@ -26,14 +34,27 @@
     "old_branches": "audit-only; no new architecture may bypass the unified runtime"
   },
   "metrics": [
-    "byte BPB/top5",
-    "word n-gram BPB/top5",
+    "48M finite-candidate normalized top-k (when archive present)",
+    "byte BPB/top5 diagnostic floors",
+    "word n-gram BPB/top5 reference",
     "candidate-panel NLL/top1/top5",
     "page/chunk checkpoint gates"
   ],
   "blocked": [
-    "full 48M archive metrics",
-    "native full-vocabulary projection",
-    "dX2 for T>2 and layers 0/1"
-  ]
+    "full 48M archive metrics on this machine (archive absent)",
+    "full-vocabulary 48M trie argmax",
+    "dX2 for T>2 and layers 0/1",
+    "automatic 48M tensor promotion"
+  ],
+  "entrypoints": {
+    "language_model": "tools/unified_48m_runtime.py",
+    "long_context": "include/nanlm/unified_context_runtime.hpp",
+    "native_candidate_measurement": "include/nanlm/native48m_feedback.hpp"
+  },
+  "language_model_policy": {
+    "trained_word_model": "frozen R25/R27 48M only",
+    "native_role": "candidate feedback and geometry; no second trained decoder",
+    "separate_model_paths": false,
+    "candidate_only": true
+  }
 }

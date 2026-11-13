@@ -229,6 +229,48 @@ that path changed or regressed. Closed-loop learning metrics come from
 `baseline_nll`, `candidate_nll`, `nll_delta` and per-horizon probabilities in
 `tools/decoder48m_future3.py`.
 
+## Unified 48M language entrypoint
+
+The frozen R25/R27 48M emitter is the **only trained word model** in the
+canonical system. Native context/head math does not replace it with a second
+decoder. The language-model entrypoint is:
+
+```sh
+python3 tools/unified_48m_runtime.py \
+  --archive-root /path/to/R27/experiment_archive \
+  --context 'the bright river' \
+  --candidate-file words.txt
+```
+
+The path is:
+
+```text
+text context + finite candidate shortlist
+  -> native NaN16 candidate measurement
+       bridge: phase/triheads/Hodge/committed MC0 (nanlm48m-native-emit)
+       batch:  opcode118 finite shortlist (nanlm48m-native-batch)
+  -> frozen 48M P0(w|context)
+  -> Z=1+sum P0*(exp(delta)-1)
+  -> exact normalized finite-candidate distribution and top-k
+```
+
+Both modes are in one runtime contract:
+`spec/unified_48m_runtime.v1.json`. `--native-mode batch` (the default) uses the
+native opcode118 shortlist; `--native-mode bridge` runs the full
+phase/trihead/Hodge/MC0 path once per candidate.
+
+The original archive is not in this checkout. With a missing archive the
+runtime exits **2** before emitting scores; it never substitutes an n-gram,
+the associative word layer, or another decoder. The current word system and
+byte context benchmarks are diagnostic/reference floors, not replacements for
+the 48M language model.
+
+Top-k from this entrypoint is over the supplied finite candidate shortlist and
+is normalized by the exact 48M `P0`. Full-vocabulary top-5 over the archived
+48M trie is a separate blocked metric; it is not claimed by the shortlist
+runtime. Tensor promotion remains false.
+
+
 ## Closed generation loop
 
 The intended single path is now expressed as one feedback loop:
@@ -580,8 +622,9 @@ native head-worker logits. The contract is frozen in
 ## Matched system benchmarks
 
 Two benchmark surfaces now compare system output with the reference floors on
-the same held-out rows. The contracts and measured values are frozen in
-`spec/system_benchmarks.v1.json`.
+the same held-out rows. These are **diagnostic floors**, not replacements for
+the unified 48M language entrypoint above. The contracts and measured values
+are frozen in `spec/system_benchmarks.v1.json`.
 
 ### Byte system: native full 256-class top-5
 

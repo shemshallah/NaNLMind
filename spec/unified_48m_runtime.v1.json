@@ -1,0 +1,38 @@
+{
+  "schema": "nanlm.unified-48m-runtime/1",
+  "status": "canonical-language-entrypoint",
+  "entrypoint": "tools/unified_48m_runtime.py",
+  "one_model": true,
+  "components": [
+    "frozen R25/R27 48M emitter (only trained word model)",
+    "native NaN16 candidate measurement (phase/triheads/Hodge/MC0 via nanlm48m-native-emit)",
+    "optional native opcode118 shortlist batch",
+    "exact finite-support candidate normalization",
+    "candidate-only tensor staging; no active mutation"
+  ],
+  "frozen_checkpoint": {
+    "base_sha256": "299a91daf65c8e66fe3489940371d262afef18dd2ef6fef61947ac14c62bb717",
+    "overlay_sha256": "62bf1e5defbb8224d795db16a8e6959cc9aa3d7fed8a63346c4cee205a1bea04"
+  },
+  "native_modes": {
+    "bridge": "build/nanlm48m-native-emit, full phase/trihead/Hodge/MC0 candidate path",
+    "batch": "build/nanlm48m-native-batch, opcode118 finite shortlist",
+    "default": "batch"
+  },
+  "normalization": "Z=1+sum_{w in S} P0(w|c)*(exp(delta(w,c))-1); Pcand=P0*exp(delta)/Z",
+  "top_k_scope": "finite supplied candidate shortlist; full 48M trie argmax is not claimed",
+  "missing_archive": "exit 2; no surrogate model or fabricated metrics",
+  "tensor_promotion": false,
+  "full_vocabulary_argmax": false,
+  "tests": [
+    "tests/test_unified_48m.py",
+    "tests/test_native48m_feedback.cpp",
+    "tests/test_decoder48m_candidate.py",
+    "tests/test_decoder48m_future3.py"
+  ],
+  "blocked": [
+    "source-disjoint held-out 48M NLL improvement",
+    "full-vocabulary top-k over the archived trie",
+    "automatic tensor promotion"
+  ]
+}

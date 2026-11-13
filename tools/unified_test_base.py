@@ -155,6 +155,9 @@ def main() -> int:
     if (ROOT / "tests/test_head_page_train_gate.py").is_file():
         results.append(run("head_page_train_gate",
                            ["python3", "tests/test_head_page_train_gate.py"]))
+    if (ROOT / "tests/test_unified_48m.py").is_file():
+        results.append(run("unified_48m_runtime",
+                           ["python3", "tests/test_unified_48m.py"]))
     if (ROOT / "tests/test_decoder48m_candidate.py").is_file():
         results.append(run("decoder48m_candidate",
                            ["python3", "tests/test_decoder48m_candidate.py"]))
