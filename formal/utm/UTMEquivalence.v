@@ -18,7 +18,7 @@
     interpreter.  The latter remains a refinement obligation.
 *)
 
-From Undecidability.TM Require Import UTM UTM_undec.
+From Undecidability.TM Require Import TM UTM UTM_undec.
 From Undecidability.TM.Reductions Require Import
   KrivineMclosed_HALT_to_HaltUTM.
 From Undecidability.L Require Import L.
