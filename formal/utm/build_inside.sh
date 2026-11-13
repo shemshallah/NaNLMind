@@ -24,5 +24,7 @@ cd "$ROOT"
 coqc -Q "$LIB/theories" Undecidability \
   -w -notation-overridden,-stdlib-vector,-notation-incompatible-prefix \
   formal/utm/UTMEquivalence.v
+coqc -w -notation-overridden,-stdlib-vector formal/utm/InterpreterRefinement.v
 coqchk -Q "$LIB/theories" Undecidability formal/utm/UTMEquivalence.vo
-echo "[coq] theorem checked: UTM_halting_equivalence"
+coqchk formal/utm/InterpreterRefinement.vo
+echo "[coq] theorems checked: UTM_halting_equivalence, utm_run_refines"
