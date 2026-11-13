@@ -91,9 +91,10 @@ bytes
   -> local attention -> trihead attention -> meta-global attention
   -> credit bundle (CFT/TRAIL/HOLO/RING/LEAF/TCA/FLUX)
   -> field/vote commit
-  -> native candidate log weights
-  -> frozen 48M exact word distribution P0 and finite candidate normalization
+  -> native direct-256 context readout / candidate gates
 ```
+
+The optional external 48M adapter is not part of this native execution path.
 
 Point `255` is the current-context register. It is **not** an active math
 head, triad member, incidence endpoint, or simplicial face vertex.
@@ -231,11 +232,12 @@ that path changed or regressed. Closed-loop learning metrics come from
 `baseline_nll`, `candidate_nll`, `nll_delta` and per-horizon probabilities in
 `tools/decoder48m_future3.py`.
 
-## Unified 48M language entrypoint
+## External 48M adapter (optional; not part of NaNLMind)
 
-The frozen R25/R27 48M emitter is the **only trained word model** in the
-canonical system. Native context/head math does not replace it with a second
-decoder. The language-model entrypoint is:
+The R27/48M archive is **not** part of NaNLMind and is not a dependency of the
+native frontier path below. The adapter remains available for compatibility
+with an externally supplied archive; it is not the canonical model here. Its
+entrypoint is:
 
 ```sh
 python3 tools/unified_48m_runtime.py \
@@ -261,16 +263,14 @@ Both modes are in one runtime contract:
 phase/trihead/Hodge/MC0 path once per candidate; `--native-mode batch`
 selects the faster native opcode118 shortlist.
 
-The original archive is not in this checkout. With a missing archive the
-runtime exits **2** before emitting scores; it never substitutes an n-gram,
-the associative word layer, or another decoder. The current word system and
-byte context benchmarks are diagnostic/reference floors, not replacements for
-the 48M language model.
+With a missing archive the adapter exits **2** before emitting scores; it never
+substitutes an n-gram, the associative word layer, or another decoder. The
+native byte/context metrics below do not use R27 and are the current NaNLMind
+system results.
 
-Top-k from this entrypoint is over the supplied finite candidate shortlist and
-is normalized by the exact 48M `P0`. Full-vocabulary top-5 over the archived
-48M trie is a separate blocked metric; it is not claimed by the shortlist
-runtime. Tensor promotion remains false.
+Top-k from this optional adapter is over the supplied finite candidate
+shortlist and is normalized by the external 48M `P0`. Full-vocabulary top-5
+over the archived trie is not claimed. Tensor promotion remains false.
 
 For a matched finite-candidate language panel:
 
@@ -284,7 +284,8 @@ The panel row format is `{"context": "...", "candidates": [...],
 "target": "..."}`. The evaluator reports exact-word BPB for `P0` and the
 candidate-normalized `P*`, plus finite-shortlist top-1/top-5. It refuses a
 target outside the declared candidate set and never labels the result
-full-vocabulary. Without the archive it exits 2 and writes no metric.
+full-vocabulary. Without the archive it exits 2 and writes no metric. This is
+not part of the NaNLMind scorecard.
 
 
 ## Closed generation loop

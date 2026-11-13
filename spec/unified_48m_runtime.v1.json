@@ -1,10 +1,10 @@
 {
   "schema": "nanlm.unified-48m-runtime/1",
-  "status": "canonical-language-entrypoint",
+  "status": "optional-external-adapter-not-nanlmind-dependency",
   "entrypoint": "tools/unified_48m_runtime.py",
   "one_model": true,
   "components": [
-    "frozen R25/R27 48M emitter (only trained word model)",
+    "externally supplied R25/R27 48M emitter (not part of NaNLMind)",
     "native NaN16 candidate measurement (phase/triheads/Hodge/MC0 via nanlm48m-native-emit)",
     "optional native opcode118 shortlist batch",
     "exact finite-support candidate normalization",

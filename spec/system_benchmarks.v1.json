@@ -111,14 +111,15 @@
     "The word system ranks its full learned training vocabulary; this is not a frontier metric.",
     "R27/48M archive metrics are not part of NaNLMind and are not claimed."
   ],
-  "canonical_language_model": {
-    "model": "frozen R25/R27 48M decoder",
-    "entrypoint": "tools/unified_48m_runtime.py",
-    "evaluation": "tools/unified_48m_eval.py",
-    "archive_present_on_this_machine": false,
-    "metric_scope": "finite candidate-shortlist probabilities and exact-word NLL/BPB only",
-    "full_vocabulary_top5": false,
-    "status": "ready fail-closed; no 48M metrics produced without the original archive",
-    "diagnostic_rows": "byte and word system rows above are matched diagnostic floors, not 48M language metrics"
+  "canonical_native_system": {
+    "byte_readout": "mth/nan16/mth_context_direct256.nas (opcode 40 mode 8)",
+    "long_context": "include/nanlm/unified_context_runtime.hpp",
+    "metrics_scope": "matched native byte diagnostics; word associative row is a host diagnostic",
+    "r27_dependency": false
+  },
+  "external_48m": {
+    "status": "optional adapter; R27 archive is not part of NaNLMind",
+    "metrics_claimed": false,
+    "entrypoint": "tools/unified_48m_runtime.py"
   }
 }

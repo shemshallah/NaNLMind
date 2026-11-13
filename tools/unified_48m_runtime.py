@@ -2,7 +2,7 @@
 """One runtime path: native NaN16 candidate feedback -> frozen 48M decoder.
 
 This is the language-model entry point of the unified system.  The original
-R25/R27 checkpoint remains the only trained word model.  The NaN16 guest
+R25/R27 checkpoint is an external optional word model.  The NaN16 guest
 supplies finite candidate log weights through ``build/nanlm48m-native-batch``;
 this adapter asks the frozen decoder for P0 and returns the exact normalized
 finite-candidate distribution.
@@ -239,7 +239,7 @@ def unified_48m_readout(
         "native_candidate_weights": dict(native_weights),
         **result,
         "notes": [
-            "The 48M checkpoint is the only trained word model; the native "
+            "The external 48M checkpoint is optional; the native "
             "guest supplies finite candidate log weights.",
             "Top-k is over the supplied finite shortlist. Full-vocabulary "
             "argmax over the 48M trie is not claimed.",
