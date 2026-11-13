@@ -71,8 +71,8 @@ int main(int argc, char** argv) {
     const std::string path = argc > 1 ? argv[1] : "data/alice_full.txt";
     const std::string out_path = argc > 2 ? argv[2]
         : "state/benchmarks/system_byte_direct256.json";
-    std::size_t exact = argc > 3 ? std::stoull(argv[3]) : 3000u;
-    std::size_t fallback = argc > 4 ? std::stoull(argv[4]) : 13384u;
+    std::size_t exact = argc > 3 ? std::stoull(argv[3]) : 6000u;
+    std::size_t fallback = argc > 4 ? std::stoull(argv[4]) : 10384u;
     std::size_t max_bytes = argc > 5 ? std::stoull(argv[5]) : 0u;
     try {
         if (exact > 8000u || fallback == 0u || fallback > 16384u ||

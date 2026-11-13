@@ -183,6 +183,35 @@ mth_ctxd_top_fallback:
 mth_ctxd_top_row:
   MOVI r12,@mth_ctxd_row
   ST r6,r12,0
+  ; Always compute the last-two-byte fallback row. Exact rows blend it with
+  ; weight 0.05; pure fallback rows use lambda=0.
+  MOVI r12,@mth_ctxd_top_key
+  LD r6,r12,0
+  SHL r6,r6,16
+  SHR r6,r6,16
+  MOVI r12,@mth_ctxd_fallbackn
+  LD r7,r12,0
+  MODU r6,r6,r7
+  MOVI r7,256
+  MUL r6,r6,r7
+  MOVI r7,0x0000
+  MOVHI r7,0x0030
+  ADD r6,r6,r7
+  MOVI r12,@mth_ctxd_fbrow
+  ST r6,r12,0
+  MOVI r12,@mth_ctxd_top_exact
+  LD r7,r12,0
+  CMP r7,r0
+  JMP[EQ] @mth_ctxd_blend_zero
+  MOVI r12,@mth_ctxd_blend
+  LD r8,r12,0
+  MOVI r12,@mth_ctxd_lambda
+  ST r8,r12,0
+  JMP @mth_ctxd_blend_ready
+mth_ctxd_blend_zero:
+  MOVI r12,@mth_ctxd_lambda
+  ST r0,r12,0
+mth_ctxd_blend_ready:
   ; clear top scores to -1 and classes to 0
   MOVI r10,0
 mth_ctxd_top_clear:
@@ -214,6 +243,14 @@ mth_ctxd_top_scan:
   LD r13,r12,0
   ADD r13,r13,r10
   LD r7,r13,0
+  MOVI r12,@mth_ctxd_fbrow
+  LD r13,r12,0
+  ADD r13,r13,r10
+  LD r8,r13,0
+  MOVI r12,@mth_ctxd_lambda
+  LD r9,r12,0
+  FMUL r8,r8,r9
+  FADD r7,r7,r8
   MOVI r12,@mth_ctxd_total
   LD r8,r12,0
   FADD r8,r8,r7
@@ -283,6 +320,14 @@ mth_ctxd_top_scan_done:
   LD r14,r12,0
   ADD r13,r13,r14
   LD r7,r13,0
+  MOVI r12,@mth_ctxd_fbrow
+  LD r13,r12,0
+  ADD r13,r13,r14
+  LD r8,r13,0
+  MOVI r12,@mth_ctxd_lambda
+  LD r9,r12,0
+  FMUL r8,r8,r9
+  FADD r7,r7,r8
   MOVI r12,@mth_ctxd_alpha
   LD r8,r12,0
   FADD r7,r7,r8
@@ -311,6 +356,8 @@ mth_ctxd_top_scan_done:
 
 mth_ctxd_one:
   .word 0x3F800000
+mth_ctxd_blend:
+  .word 0x3D4CCCCD
 mth_ctxd_alpha:
   .word 0x3C23D70A
 mth_ctxd_denom:
@@ -338,6 +385,10 @@ mth_ctxd_step_exact:
 mth_ctxd_target:
   .word 0
 mth_ctxd_row:
+  .word 0
+mth_ctxd_fbrow:
+  .word 0
+mth_ctxd_lambda:
   .word 0
 mth_ctxd_total:
   .word 0

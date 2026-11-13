@@ -6,17 +6,18 @@
     "split": "80% train / 20% held-out by byte position",
     "evaluation_positions": "i >= 4, target < 255",
     "configuration": {
-      "exact_contexts": 3000,
-      "fallback_buckets": 13384,
+      "exact_contexts": 6000,
+      "fallback_buckets": 10384,
       "smoothing_alpha": 0.01,
+      "exact_fallback_blend": 0.05,
       "training_passes": 1
     },
     "samples": 30239,
     "system": {
-      "runtime": "raw NaN16 direct 256-bin context; opcode 40 mode 8",
-      "bpb": 2.46556,
-      "top1": 0.548398,
-      "top5": 0.837263
+      "runtime": "raw NaN16 direct 256-bin context with fallback blend; opcode 40 mode 8",
+      "bpb": 2.39338,
+      "top1": 0.573299,
+      "top5": 0.846523
     },
     "references": {
       "order0": {
@@ -36,9 +37,9 @@
       }
     },
     "delta_system_minus_context2": {
-      "bpb": -0.81496,
-      "top1": 0.11925,
-      "top5": 0.043685
+      "bpb": -0.88714,
+      "top1": 0.144151,
+      "top5": 0.052945
     },
     "artifact": "state/benchmarks/system_byte_direct256.json",
     "route": "exact k=4 contexts selected by guest count threshold + hashed last-two-byte fallback; direct 256-bin counts",

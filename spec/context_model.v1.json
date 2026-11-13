@@ -120,19 +120,20 @@
       "7": "count step",
       "8": "top5+loss"
     },
-    "exact_contexts": 3000,
-    "fallback_buckets": 13384,
+    "exact_contexts": 6000,
+    "fallback_buckets": 10384,
     "fallback": "hash of last two bytes",
     "smoothing_alpha": 0.01,
     "training_passes": 1,
     "page_mutation": false,
     "measured_alice": {
-      "bpb": 2.46556,
-      "top1": 0.548398,
-      "top5": 0.837263,
+      "bpb": 2.39338,
+      "top1": 0.573299,
+      "top5": 0.846523,
       "samples": 30239
     },
-    "artifact": "state/benchmarks/system_byte_direct256.json"
+    "artifact": "state/benchmarks/system_byte_direct256.json",
+    "exact_fallback_blend": 0.05
   },
   "canonical_byte_readout": "mth_context_direct256.nas (opcode 40 mode 8)"
 }

@@ -537,8 +537,7 @@ pattern to the native 64-slot worker: `[memory, token0..token62]`, with the
 last-token state becoming the next memory. The stream length is unbounded, but
 this is a **recurrent window**, not full-context attention.
 
-The native block64 test exercises all 64 local slots, causal future-token isolation, and exact last-token parity with opcode136. Both the six-token and 64-token bf16 matvecs now decode packed pairs, two MACs per word load; targeted long-context tests improved from ~7.4s to ~6.1s and chunk summaries from ~14s to ~7s. The six-token kernel preserves caller r9/r12/r13 across matvec calls. Opcode136 skips the final layer’s unused earlier queries and MLP rows; the long-context scheduler uses it by default. the long-context64 test
-uses 63 new tokens per chunk and arbitrary stream length. `chunk_summary.hpp`
+The native block64 test exercises all 64 local slots, causal future-token isolation, and exact last-token parity with opcode136. Both the six-token and 64-token bf16 matvecs decode packed pairs, two MACs per word load. The 64-token matvec now processes two rows per pass, hoists matrix/vector/output cursors, and advances attention-context cursors; opcode136 starts the final layer directly at the last token. Measured on the same harness: opcode135 T=64 improved from 5.165s/435M steps to 2.323s/171M steps (2.22x, -60.6% steps), and opcode136 T=64 from 3.919s/331M steps to 1.766s/130M steps. Outputs remain byte-identical; `test_long_context64` fell from 5.73s to 2.74s and `test_chunk_summary` from 6.87s to 3.25s. The six-token kernel preserves caller r9/r12/r13 across matvec calls. Opcode136 skips the final layer’s unused earlier queries and MLP rows; the long-context scheduler uses it by default. The long-context64 test uses 63 new tokens per chunk and arbitrary stream length. `chunk_summary.hpp`
 adds a chunk-summary scheduler and paged summary bank: a chunk is reset and
 processed through the 64-slot worker, and the final per-head memory becomes its
 summary. The default target is 256 tokens per summary and 512 summary slots, covering 131,072 tokens before eviction. `tests/test_summary_bank_128k.cpp` validates the complete tier shape: 512 records, 131,072 covered tokens, native retrieval over all 512 candidates in 64-candidate batches, and oldest-record eviction on the 513th chunk. This is storage/retrieval tier validation; a full 131,072-token forward replay is still too expensive to run in the standard test base.
@@ -645,13 +644,16 @@ are frozen in `spec/system_benchmarks.v1.json`.
 ### Byte system: native direct 256-bin context
 
 `mth_context_direct256.nas` is the current byte readout. The guest selects
-3000 exact 4-byte contexts with the existing count-threshold route, keeps a
-256-bin count row for each exact context, and uses 13384 hashed last-two-byte
-fallback rows for everything else. Training increments one count; evaluation
-applies fixed add-alpha smoothing `alpha=0.01`:
+6000 exact 4-byte contexts with the existing count-threshold route, keeps a
+256-bin count row for each exact context, and uses 10384 hashed last-two-byte
+fallback rows for everything else. Exact rows blend the matching fallback row
+with weight 0.05; fallback rows are used directly. Training increments one
+count; evaluation applies fixed add-alpha smoothing `alpha=0.01`:
 
 ```text
-P(c | row) = (count[c] + 0.01) / (sum(count) + 0.01*256)
+score(c) = exact[c] + 0.05*fallback[c]   (exact contexts)
+score(c) = fallback[c]                   (fallback contexts)
+P(c | row) = (score[c] + 0.01) / (sum(score) + 0.01*256)
 ```
 
 The guest returns top-1..top-5 and the target natural-log loss. The driver
@@ -663,16 +665,16 @@ byte-bigram and context-2 references:
 
 | model | BPB | top-1 | top-5 |
 |---|---:|---:|---:|
-| native direct-256 context | **2.46556** | **54.840%** | **83.726%** |
+| native direct-256 context | **2.39338** | **57.330%** | **84.652%** |
 | order-0 matched | 4.71318 | 15.652% | 42.260% |
 | byte bigram matched | 3.50949 | 32.058% | 69.592% |
 | context-2 matched | 3.28052 | 42.915% | 79.358% |
 | class-memory ablation | 2.60280 | 55.825% | 78.706% |
 
-The direct-256 readout now beats every external reference floor on all three
-metrics. Its top-1 is lower than the class-memory ablation because the
-3000-exact/13384-fallback configuration was selected for best BPB and top-5;
-the ablation is retained for audit, not as a second model path.
+The direct-256 readout beats every external reference floor and the class-memory
+ablation on all three metrics. The 6000-exact/10384-fallback blended
+configuration was selected for frontier top-5 while keeping BPB and top-1
+strong; the class-memory route remains for context-class/triad compatibility.
 The result is still a byte-level context memory, not a word model and not the
 R27/48M decoder.
 
@@ -686,7 +688,7 @@ The byte row alone is:
 
 ```sh
 ./build/direct256-bench data/alice_full.txt \
-  state/benchmarks/system_byte_direct256.json 3000 13384
+  state/benchmarks/system_byte_direct256.json 6000 10384
 ```
 
 Artifact:

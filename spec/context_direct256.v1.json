@@ -13,14 +13,14 @@
     "exact_max": 8000,
     "fallback_max": 16384
   },
-  "routing": "existing guest exact k=4 compact slots (3000); non-exact keys hash their last two bytes into 13384 fallback rows",
-  "smoothing": "alpha=0.01; P(c|row)=(count[c]+alpha)/(sum+alpha*256)",
+  "routing": "existing guest exact k=4 compact slots (6000); non-exact keys hash last two bytes into 10384 fallback rows; exact rows blend the corresponding fallback row with weight 0.05",
+  "smoothing": "alpha=0.01; exact score=count_exact+0.05*count_fallback; P=(score+alpha)/(sum+alpha*256)",
   "training": "one count increment per training position; no logits or gradients",
   "measured_alice": {
     "samples": 30239,
-    "bpb": 2.46556,
-    "top1": 0.548398,
-    "top5": 0.837263
+    "bpb": 2.39338,
+    "top1": 0.573299,
+    "top5": 0.846523
   },
   "baselines": {
     "order0": {

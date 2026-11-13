@@ -48,7 +48,14 @@
       "max_tokens": 64,
       "kernel": "mth_head_block64.nas",
       "attention": "causal local softmax",
-      "matvec": "packed bf16 pairs, two MACs per word load"
+      "matvec": "packed bf16 pairs, two MACs per word load",
+      "measured": {
+        "t64_seconds_before": 5.165,
+        "t64_seconds_after": 2.323,
+        "t64_steps_before": 435342734,
+        "t64_steps_after": 171463502,
+        "speedup": 2.22
+      }
     },
     "block64_last": {
       "opcode": 136,
@@ -56,7 +63,14 @@
       "kernel": "mth_head_block64_last.nas",
       "behavior": "layers 0/1 full causal; layer 2 computes only the last query and MLP",
       "status": "host ABI wired",
-      "matvec": "packed bf16 pairs, two MACs per word load"
+      "matvec": "packed bf16 pairs, two MACs per word load",
+      "measured": {
+        "t64_seconds_before": 3.919,
+        "t64_seconds_after": 1.766,
+        "t64_steps_before": 330520032,
+        "t64_steps_after": 130346079,
+        "speedup": 2.22
+      }
     },
     "dx2": {
       "opcode": 137,
