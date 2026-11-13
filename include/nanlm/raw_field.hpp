@@ -1017,6 +1017,9 @@ public:
     bool word_projection_clear(std::size_t vocabulary);
     bool word_projection_build(const std::vector<std::uint32_t>& ids,
                                std::size_t vocabulary);
+    bool word_projection_batch(const std::vector<std::uint32_t>& ids,
+                               std::size_t vocabulary,
+                               std::uint32_t previous);
     bool word_projection_top5(
         std::uint32_t target, std::uint32_t context,
         std::size_t vocabulary, std::uint32_t token_count,
