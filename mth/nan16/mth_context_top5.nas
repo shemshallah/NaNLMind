@@ -26,10 +26,10 @@ mth_context_backoff_top5:
 ;
 ; Scratch is private to this route:
 ;   0x30000  one 16-entry softmax scratch
+;   0x32000  top-5 probabilities
+;   0x33000  top-5 classes
 ;   0x34000  high probabilities
 ;   0x34100  low probabilities for the current high group
-;   0x34200  top-5 probabilities
-;   0x34300  top-5 classes
 
 ; r1 = table base, r2 = buckets, r3 = bucket, r4 = float32 output[16].
 ; Returns r1 = argmax class.  No table mutation.
