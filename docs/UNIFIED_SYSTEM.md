@@ -701,11 +701,11 @@ On `data/alice_full.txt`, matched 80/20 held-out results are:
 
 | model | top-1 | top-5 | in-vocab top-5 |
 |---|---:|---:|---:|
-| associative word system | 13.190% | 28.074% | 30.485% |
+| associative diagnostic layer (host) | 13.190% | 28.074% | 30.485% |
 | unigram baseline | 8.216% | 16.834% | 18.279% |
 | interpolated bigram | **14.247%** | **30.698%** | **33.333%** |
 
-The system ranks its full learned 2291-word training vocabulary by its own
+The diagnostic associative layer ranks its full learned 2291-word training vocabulary by its own
 association scores (12107 associations). It beats the unigram baseline, but
 still trails the interpolated bigram by 1.06 points top-1 and 2.62 points top-5.
 The baseline vocabulary also contains `<unk>` while the system does not, so the
