@@ -335,9 +335,12 @@ header validation. It is 598 emitted words and does not compete with the main
 driver's low code window.
 
 The base command surface is `mth/drivers/field_driver_base.nas`; fixtures that
-append test code include it directly. The full `field_driver.nas` adds the
-single-token compatibility block through a low `CALLF 0x3E60` trampoline. The
-1 MiB page layout is frozen in `spec/head_page_memory.v1.json`; the worker ABI is frozen in
+append test code include it directly. The full `field_driver.nas` places byte,
+word and token projection routes at 0x4200/0x5000/0x6000/0x7000 and the
+single-token compatibility block at 0x8020. One guest image owns every
+projection kernel; switching heads changes the shared-arena table
+interpretation, not the VM. The 1 MiB page layout is frozen in
+`spec/head_page_memory.v1.json`; the worker ABI is frozen in
 `spec/head_worker.v1.json`.
 
 `NANLM_STEP_BUDGET` sets the 64-bit native command budget; default
@@ -714,7 +717,7 @@ state/benchmarks/system_byte_direct256.json
 ### Native full-vocabulary word projection
 
 `build/word-native` now runs a complete native word projection in
-`word_worker.nan`. The host only tokenizes, assigns training-vocabulary IDs,
+the unified `field_driver.nan` projection layer. The host only tokenizes, assigns training-vocabulary IDs,
 transports them, and maps returned IDs back to words. The guest owns unigram
 and bigram counts, interpolation, all V-way logits, top-5 and target loss.
 
@@ -757,7 +760,7 @@ train tokens       1,000,000,000
 held-out tokens       180,000
 vocabulary              3,000  (top 2,999 IDs + <unk>)
 unknown rate           21.67%
-worker                  build/word_worker.nan
+worker                  build/field_driver.nan (unified)
 model                   native interpolated token bigram
 train seconds          1033.78
 tokens/second           967,321
@@ -789,7 +792,7 @@ target vocabulary      50,257 GPT-2 tokens
 context rows             257  (256 hottest previous IDs + fallback)
 train tokens         100,000
 held-out sample       20,000
-worker                   build/token_worker.nan
+worker                   build/field_driver.nan (unified)
 kernel                   mth/nan16/mth_token_projection.nas
 ```
 
@@ -872,22 +875,24 @@ model mathematics. `make system-status` prints the same receipt.
 ## Unified projection runtime
 
 `include/nanlm/projection_runtime.hpp` is the common host composition boundary
-for the three native readout heads:
+for the native system layer:
 
 ```text
-byte  -> field_driver.nan  -> direct-256 byte context
-word  -> word_worker.nan   -> native full-training-vocabulary words
-token -> token_worker.nan  -> full GPT-2 vocabulary tokens
+byte    -> field_driver.nan -> direct-256 byte context
+word    -> field_driver.nan -> native full-training-vocabulary words
+token   -> field_driver.nan -> full GPT-2 vocabulary tokens
+context -> head_worker.nan  -> 64-slot long context + summary bank
 ```
 
-Only one projection VM is resident at a time. Switching kind releases the
-previous VM before loading the next, which prevents two count-table layouts
-from aliasing in one 128 MiB guest. The runtime performs no host mathematics:
-it loads the image, transports arguments, and forwards guest receipts.
+There is **one resident VM**, not one VM per subsystem. Byte, word and token
+share the same `field_driver.nan` image and the same 128 MiB table arena; only
+one count-table layout is active at a time. Context switches to the head-worker
+image and page arena. The runtime performs no host mathematics: it loads the
+image, transports arguments, and forwards guest receipts.
 
-`tests/test_projection_runtime.cpp` exercises all three heads through this one
-entry point, including byte-context selection, word batch counting, token
-row-map projection, and VM switching.
+`tests/test_projection_runtime.cpp` exercises all three projection heads and
+context mode through this one entry point, including byte-context selection,
+word batch counting, token row-map projection, and Context/Byte switching.
 
 Contract: `spec/projection_runtime.v1.json`.
 

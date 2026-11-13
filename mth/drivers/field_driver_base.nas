@@ -476,6 +476,9 @@ field_driver_main:
   MOVI r3,122
   CMP r2,r3
   JMP[EQ] @field_driver_head_block
+  MOVI r3,124
+  CMP r2,r3
+  JMP[EQ] @field_driver_projection
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -824,6 +827,94 @@ field_driver_ctxd_top5:
   LD r3,r10,2
   LD r4,r10,3
   CALLF 0x5200
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  ST r4,r10,3
+  ST r5,r10,4
+  ST r6,r10,5
+  JMP @field_driver_return
+
+; Unified projection layer. One image contains byte, word and token heads.
+;   0x4001 = subcommand: 0 word build, 1 word batch, 2 word top5,
+;                         3 token build, 4 token top5
+field_driver_projection:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  CMP r1,r0
+  JMP[EQ] @field_driver_projection_word_build
+  MOVI r2,1
+  CMP r1,r2
+  JMP[EQ] @field_driver_projection_word_batch
+  MOVI r2,2
+  CMP r1,r2
+  JMP[EQ] @field_driver_projection_word_top5
+  MOVI r2,3
+  CMP r1,r2
+  JMP[EQ] @field_driver_projection_token_build
+  MOVI r2,4
+  CMP r1,r2
+  JMP[EQ] @field_driver_projection_token_top5
+  JMP @field_driver_return
+
+field_driver_projection_word_build:
+  MOVI r10,0x4002
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  CALLF 0x6000
+  MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_projection_word_batch:
+  MOVI r10,0x4002
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r4,r10,3
+  CALLF 0x6001
+  MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_projection_word_top5:
+  MOVI r10,0x4002
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r4,r10,3
+  CALLF 0x6002
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  ST r4,r10,3
+  ST r5,r10,4
+  ST r6,r10,5
+  JMP @field_driver_return
+
+field_driver_projection_token_build:
+  MOVI r10,0x4002
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r4,r10,3
+  LD r5,r10,4
+  LD r6,r10,5
+  CALLF 0x7000
+  MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @field_driver_return
+
+field_driver_projection_token_top5:
+  MOVI r10,0x4002
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r4,r10,3
+  CALLF 0x7001
   MOVI r10,0x4010
   ST r1,r10,0
   ST r2,r10,1
@@ -2252,7 +2343,7 @@ field_driver_head_block:
   LD r1,r10,0
   LD r2,r10,1
   LD r3,r10,2
-  CALLF 0x3E60
+  CALLF 0x8020
   MOVI r10,0x4010
   ST r1,r10,0
   ST r2,r10,1

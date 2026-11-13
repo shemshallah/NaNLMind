@@ -16,7 +16,10 @@
     "include/nanlm/unified_context_runtime.hpp",
     "mth/nan16/mth_context_direct256.nas",
     "mth/nan16/mth_word_projection.nas",
-    "mth/nan16/mth_token_projection.nas"
+    "mth/nan16/mth_token_projection.nas",
+    "include/nanlm/projection_runtime.hpp (context + projections, one resident VM)"
   ],
-  "tests": ["tests/test_unified_system_cli.py"]
+  "tests": [
+    "tests/test_unified_system_cli.py"
+  ]
 }

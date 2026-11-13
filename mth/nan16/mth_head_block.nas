@@ -1,4 +1,4 @@
-.org 0x3E40
+.org 0x8000
 mth_hbd_link:
   .word 0
 mth_hbd_in:
@@ -32,7 +32,7 @@ mth_hbd_one:
 mth_hbd_eps:
   .word 0x3727C5AC
 
-.org 0x3E60
+.org 0x8020
 ; Raw NaN16 128D three-layer bf16 head block.
 ;
 ; One head page (1 MiB packed weights, 2 MiB guest words) is consumed from

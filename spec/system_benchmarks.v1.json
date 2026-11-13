@@ -116,7 +116,7 @@
     "long_context": "include/nanlm/unified_context_runtime.hpp",
     "metrics_scope": "matched native byte diagnostics; word associative row is a host diagnostic",
     "r27_dependency": false,
-    "word_projection": "mth/nan16/mth_word_projection.nas / word_worker.nan"
+    "word_projection": "mth/nan16/mth_word_projection.nas in unified field_driver.nan"
   },
   "external_48m": {
     "status": "optional adapter; R27 archive is not part of NaNLMind",
@@ -161,7 +161,7 @@
     "note": "512 KiB prefix only; not the full Gutenberg 150 corpus"
   },
   "word_native_projection": {
-    "worker": "build/word_worker.nan",
+    "worker": "build/field_driver.nan",
     "model": "interpolated add-alpha word bigram",
     "full_vocabulary": true,
     "samples": 5489,
@@ -187,7 +187,8 @@
     "train_seconds": 1033.78,
     "tokens_per_second": 967321.0,
     "artifact": "state/benchmarks/train_1b.json",
-    "scope": "native token-level projection; reduced GPT-2 subword vocabulary; not text-word or byte metrics"
+    "scope": "native token-level projection; reduced GPT-2 subword vocabulary; not text-word or byte metrics",
+    "worker": "build/field_driver.nan"
   },
   "native_full_vocab_100k_pilot": {
     "dataset": "zlatan599/lexor-2026 GPT-2 token stream",

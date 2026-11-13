@@ -3,7 +3,7 @@
 // Full target vocabulary V=50,257; 256 most frequent previous-token IDs get
 // their own context rows, every other previous token shares row 256. The host
 // only performs I/O, frequency selection, row-map construction and transport.
-#include "nanlm/raw_field.hpp"
+#include "nanlm/projection_runtime.hpp"
 
 #include <algorithm>
 #include <array>
@@ -74,14 +74,14 @@ int main(int argc, char** argv) {
         for (std::size_t i = 0; i < 256u; ++i)
             rowmap[order[i]] = static_cast<std::uint16_t>(i);
 
-        RawFieldVM vm("build/token_worker.nan");
-        if (!vm.ready())
-            throw std::runtime_error("token worker unavailable: " + vm.error());
+        ProjectionRuntime runtime("build");
+        if (!runtime.load(ProjectionRuntime::Kind::Token))
+            throw std::runtime_error("token projection unavailable: " + runtime.error());
         const auto started = std::chrono::steady_clock::now();
-        if (!vm.token_projection_clear(kGpt2Vocab, 257))
-            throw std::runtime_error("token clear failed: " + vm.error());
-        if (!vm.token_projection_write_rowmap(rowmap))
-            throw std::runtime_error("token rowmap failed: " + vm.error());
+        if (!runtime.token_clear(kGpt2Vocab, 257))
+            throw std::runtime_error("token clear failed: " + runtime.error());
+        if (!runtime.token_rowmap(rowmap))
+            throw std::runtime_error("token rowmap failed: " + runtime.error());
         std::cout << "full_token_train start train=" << train_limit
                   << " eval=" << eval_limit << " vocab=" << kGpt2Vocab
                   << " rows=257\n";
@@ -97,8 +97,8 @@ int main(int argc, char** argv) {
             const auto raw = read_chunk(in, n);
             ids.clear();
             for (std::uint16_t id : raw) ids.push_back(id);
-            if (!vm.token_projection_batch(ids, kGpt2Vocab, 257, previous))
-                throw std::runtime_error("token batch failed: " + vm.error());
+            if (!runtime.token_batch(ids, kGpt2Vocab, 257, previous))
+                throw std::runtime_error("token batch failed: " + runtime.error());
             previous = ids.back();
             consumed += n;
             if ((consumed % 100000000ull) == 0ull) {
@@ -126,10 +126,10 @@ int main(int argc, char** argv) {
                     ? 256u : rowmap[previous];
                 std::array<std::uint32_t, 5> top{};
                 float loss = 0.0f;
-                if (!vm.token_projection_top5(
+                if (!runtime.token_top5(
                         target, row, kGpt2Vocab,
                         static_cast<std::uint32_t>(train_limit), top, loss))
-                    throw std::runtime_error("token eval failed: " + vm.error());
+                    throw std::runtime_error("token eval failed: " + runtime.error());
                 top1 += top[0] == target ? 1u : 0u;
                 top5 += std::find(top.begin(), top.end(), target) != top.end()
                     ? 1u : 0u;

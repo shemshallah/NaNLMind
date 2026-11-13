@@ -3,8 +3,8 @@
 // The host only tokenizes, assigns the training vocabulary IDs, transports the
 // IDs, and maps returned IDs back to words.  Every unigram/bigram count,
 // interpolation, full-vocabulary scan, top-5 and target loss runs in the
-// word_worker.nan guest image.
-#include "nanlm/raw_field.hpp"
+// unified field_driver.nan projection layer.
+#include "nanlm/projection_runtime.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -60,7 +60,7 @@ int main(int argc, char** argv) {
         std::sort(vocab.begin(), vocab.end());
         vocab.erase(std::unique(vocab.begin(), vocab.end()), vocab.end());
         if (vocab.size() + 1u > 3000u)
-            throw std::runtime_error("word_worker vocabulary limit is 3000");
+            throw std::runtime_error("unified word vocabulary limit is 3000");
         std::unordered_map<std::string, std::uint32_t> ids;
         for (std::uint32_t i = 0; i < vocab.size(); ++i)
             ids[vocab[i]] = i;
@@ -76,13 +76,13 @@ int main(int argc, char** argv) {
             train_ids.push_back(it->second);
         }
 
-        RawFieldVM vm("build/word_worker.nan");
-        if (!vm.ready())
-            throw std::runtime_error("word worker unavailable: " + vm.error());
-        if (!vm.word_projection_clear(V))
-            throw std::runtime_error("word clear failed: " + vm.error());
-        if (!vm.word_projection_build(train_ids, V))
-            throw std::runtime_error("word build failed: " + vm.error());
+        ProjectionRuntime runtime("build");
+        if (!runtime.load(ProjectionRuntime::Kind::Word))
+            throw std::runtime_error("word projection unavailable: " + runtime.error());
+        if (!runtime.word_clear(V))
+            throw std::runtime_error("word clear failed: " + runtime.error());
+        if (!runtime.word_build(train_ids, V))
+            throw std::runtime_error("word build failed: " + runtime.error());
 
         std::size_t n = 0, top1 = 0, top5 = 0;
         std::size_t in_vocab_n = 0, in_top1 = 0, in_top5 = 0, oov = 0;
@@ -98,10 +98,10 @@ int main(int argc, char** argv) {
                 ? unk : ctx_it->second;
             std::array<std::uint32_t, 5> top{};
             float loss = 0.0f;
-            if (!vm.word_projection_top5(
+            if (!runtime.word_top5(
                     target, context, V,
                     static_cast<std::uint32_t>(train_ids.size()), top, loss))
-                throw std::runtime_error("word top5 failed: " + vm.error());
+                throw std::runtime_error("word top5 failed: " + runtime.error());
             const bool hit1 = top[0] == target;
             const bool hit5 = contains(top, target);
             ++n;
@@ -124,7 +124,7 @@ int main(int argc, char** argv) {
         if (!out) throw std::runtime_error("cannot write " + out_path);
         out << "{\"schema\":\"nanlm.word-native/1\","
                "\"corpus\":\"" << path << "\","
-               "\"runtime\":\"word_worker.nan full-vocabulary native projection\","
+               "\"runtime\":\"field_driver.nan unified full-vocabulary native projection\","
                "\"train_tokens\":" << split
             << ",\"test_tokens\":" << n
             << ",\"vocab\":" << V

@@ -1013,28 +1013,28 @@ public:
         std::uint8_t target, std::uint32_t key,
         std::size_t exact_count, std::size_t fallback_count,
         std::array<std::uint8_t, 5>& top, float& loss);
-    // Native full-vocabulary word projection (word_worker.nan).
+    // Native full-vocabulary word projection (unified field driver).
     bool word_projection_clear(std::size_t vocabulary);
-    bool word_projection_build(const std::vector<std::uint32_t>& ids,
-                               std::size_t vocabulary);
-    bool word_projection_batch(const std::vector<std::uint32_t>& ids,
-                               std::size_t vocabulary,
-                               std::uint32_t previous);
-    bool word_projection_top5(
-        std::uint32_t target, std::uint32_t context,
-        std::size_t vocabulary, std::uint32_t token_count,
-        std::array<std::uint32_t, 5>& top, float& loss);
     // Full-vocabulary token projection with top context rows.
     bool token_projection_clear(std::size_t vocabulary, std::size_t rows);
     bool token_projection_write_rowmap(
         const std::array<std::uint16_t, 65536>& rowmap);
-    bool token_projection_batch(
-        const std::vector<std::uint32_t>& ids, std::size_t vocabulary,
-        std::size_t rows, std::uint32_t previous);
-    bool token_projection_top5(
-        std::uint32_t target, std::uint32_t row,
-        std::size_t vocabulary, std::uint32_t token_count,
-        std::array<std::uint32_t, 5>& top, float& loss);
+    // Unified field-driver projection layer (command 124).
+    bool unified_word_build(const std::vector<std::uint32_t>& ids,
+                            std::size_t vocabulary);
+    bool unified_word_batch(const std::vector<std::uint32_t>& ids,
+                            std::size_t vocabulary,
+                            std::uint32_t previous);
+    bool unified_word_top5(std::uint32_t target, std::uint32_t context,
+                           std::size_t vocabulary, std::uint32_t token_count,
+                           std::array<std::uint32_t, 5>& top, float& loss);
+    bool unified_token_build(const std::vector<std::uint32_t>& ids,
+                             std::size_t vocabulary, std::size_t rows,
+                             std::uint32_t previous);
+    bool unified_token_top5(std::uint32_t target, std::uint32_t row,
+                            std::size_t vocabulary,
+                            std::uint32_t token_count,
+                            std::array<std::uint32_t, 5>& top, float& loss);
     void reset_readout();
     bool set_readout_row(std::uint8_t row,
                          const std::array<float, kRawFeatureDim>& values);

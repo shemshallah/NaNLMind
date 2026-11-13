@@ -27,9 +27,8 @@
     "mth_shortlist_batch_proposal.nas",
     "mth_context_direct256.nas",
     "mth_word_projection.nas",
-    "word_worker.nas",
     "mth_token_projection.nas",
-    "token_worker.nas"
+    "unified_projection_entries.nas"
   ],
   "policy": {
     "canonical_branch": "main",
@@ -55,9 +54,9 @@
     "native_byte_readout": "mth/nan16/mth_context_direct256.nas",
     "native_64_token_worker": "mth/drivers/head_worker.nas",
     "external_48m_adapter": "tools/unified_48m_runtime.py (optional; R27 archive is not part of this repository)",
-    "native_word_projection": "build/word_worker.nan",
+    "native_word_projection": "build/field_driver.nan",
     "native_1b_token_trainer": "build/train-1b",
-    "native_full_token_trainer": "build/train-1b-full",
+    "native_full_token_trainer": "build/field_driver.nan via ProjectionRuntime",
     "native_projection_runtime": "include/nanlm/projection_runtime.hpp",
     "system_orchestrator": "tools/nanlm_unified_system.py"
   },

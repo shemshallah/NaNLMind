@@ -2,8 +2,8 @@
 //
 // Host work is limited to file I/O, vocabulary frequency selection, ID
 // remapping for transport, and JSON. Unigram/bigram counts, interpolation,
-// full-vocabulary top-5 and loss all execute in word_worker.nan.
-#include "nanlm/raw_field.hpp"
+// full-vocabulary top-5 and loss all execute in field_driver.nan unified projection.
+#include "nanlm/projection_runtime.hpp"
 
 #include <algorithm>
 #include <array>
@@ -83,12 +83,12 @@ int main(int argc, char** argv) {
         }
         chosen[unk] = 0u;
 
-        RawFieldVM vm("build/word_worker.nan");
-        if (!vm.ready())
-            throw std::runtime_error("word worker unavailable: " + vm.error());
+        ProjectionRuntime runtime("build");
+        if (!runtime.load(ProjectionRuntime::Kind::Word))
+            throw std::runtime_error("word projection unavailable: " + runtime.error());
         const auto started = std::chrono::steady_clock::now();
-        if (!vm.word_projection_clear(vocab_size))
-            throw std::runtime_error("word clear failed: " + vm.error());
+        if (!runtime.word_clear(vocab_size))
+            throw std::runtime_error("word clear failed: " + runtime.error());
         std::cout << "native_train start vocab=" << vocab_size
                   << " train=" << train_limit
                   << " eval=" << eval_limit << "\n";
@@ -104,8 +104,8 @@ int main(int argc, char** argv) {
             mapped.clear();
             for (std::uint16_t id : raw)
                 mapped.push_back(remap[id]);
-            if (!vm.word_projection_batch(mapped, vocab_size, previous))
-                throw std::runtime_error("word batch failed: " + vm.error());
+            if (!runtime.word_batch(mapped, vocab_size, previous))
+                throw std::runtime_error("word batch failed: " + runtime.error());
             previous = mapped.back();
             consumed += n;
             if ((consumed % 100000000ull) == 0ull) {
@@ -132,10 +132,10 @@ int main(int argc, char** argv) {
                 const std::uint32_t ctx = previous == kUnknown ? unk : previous;
                 std::array<std::uint32_t, 5> top{};
                 float loss = 0.0f;
-                if (!vm.word_projection_top5(
+                if (!runtime.word_top5(
                         target, ctx, vocab_size,
                         static_cast<std::uint32_t>(train_limit), top, loss))
-                    throw std::runtime_error("word eval failed: " + vm.error());
+                    throw std::runtime_error("word eval failed: " + runtime.error());
                 top1 += top[0] == target ? 1u : 0u;
                 top5 += std::find(top.begin(), top.end(), target) != top.end()
                     ? 1u : 0u;
@@ -165,7 +165,7 @@ int main(int argc, char** argv) {
             << ",\"top1\":" << static_cast<double>(top1) / n_eval
             << ",\"top5\":" << static_cast<double>(top5) / n_eval
             << ",\"unk_rate\":" << static_cast<double>(oov) / n_eval
-            << ",\"scope\":\"native word_worker token bigram projection; "
+            << ",\"scope\":\"native unified-field word token bigram projection; "
                "top-k on token IDs, not text words or bytes\"}\n";
         std::cout << "native_train done tokens=" << train_limit
                   << " seconds=" << seconds

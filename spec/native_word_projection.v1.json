@@ -1,19 +1,21 @@
 {
   "schema": "nanlm.native-word-projection/1",
-  "worker": "build/word_worker.nan",
+  "worker": "build/field_driver.nan",
   "sources": [
-    "mth/drivers/word_worker.nas",
-    "mth/nan16/mth_word_projection.nas"
+    "mth/drivers/field_driver.nas",
+    "mth/nan16/mth_word_projection.nas",
+    "mth/nan16/unified_projection_entries.nas"
   ],
   "command_modes": {
-    "1": "build unigram and bigram counts from host-transported training IDs",
-    "2": "full V-way interpolated projection, top-5 and target loss"
+    "124/0": "build unigram and bigram counts",
+    "124/1": "streaming count batch",
+    "124/2": "full V-way top-5 and loss"
   },
   "memory": {
-    "unigram_base": "0x00700000",
-    "bigram_base": "0x00800000",
+    "unigram_base": "0x00A00000",
+    "bigram_base": "0x00100000",
     "token_buffer": "0x00060000",
-    "top5_scratch": "0x00701000",
+    "top5_scratch": "0x00A01000",
     "max_vocabulary": 3000
   },
   "model": {

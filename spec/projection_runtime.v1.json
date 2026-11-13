@@ -2,10 +2,12 @@
   "schema": "nanlm.projection-runtime/1",
   "entrypoint": "include/nanlm/projection_runtime.hpp",
   "policy": {
-    "one_resident_projection_vm": true,
+    "one_resident_vm": true,
+    "one_guest_image_for_projections": true,
     "host_role": "load image, transport arguments, forward receipts",
-    "guest_role": "all counts, interpolation, top-k, loss",
-    "simultaneous_projection_heads": false
+    "guest_role": "all counts, interpolation, top-k, loss, context math",
+    "simultaneous_projection_heads": false,
+    "reason": "byte/word/token count layouts share the 128 MiB arena; context needs the head worker and page arena"
   },
   "kinds": {
     "byte": {
@@ -14,17 +16,24 @@
       "output": "byte top-5 and natural-log loss"
     },
     "word": {
-      "image": "build/word_worker.nan",
+      "image": "build/field_driver.nan",
       "kernel": "mth/nan16/mth_word_projection.nas",
       "output": "full training-vocabulary word IDs, top-5 and loss"
     },
     "token": {
-      "image": "build/token_worker.nan",
+      "image": "build/field_driver.nan",
       "kernel": "mth/nan16/mth_token_projection.nas",
       "output": "full GPT-2 vocabulary token IDs, top-5 and loss"
+    },
+    "context": {
+      "image": "build/head_worker.nan",
+      "entrypoint": "UnifiedContextRuntime",
+      "output": "long-context advance/retrieve/memory"
     }
   },
-  "switching": "load(kind) releases the previous VM before constructing the next; an unloaded runtime cannot execute a projection",
-  "tests": ["tests/test_projection_runtime.cpp"],
-  "note": "This is a host-side composition boundary, not host mathematical projection. It prevents two count-table layouts from aliasing in one 128 MiB guest."
+  "switching": "one VM is resident at a time; load(kind) releases the previous image and constructs the selected native runtime. Projection kinds share one field_driver image/table arena; context uses the head worker and page arena.",
+  "tests": [
+    "tests/test_projection_runtime.cpp"
+  ],
+  "note": "The system has one resident VM, not one VM per subsystem. Projection kinds select a shared-arena table layout; context selects the head-worker runtime."
 }

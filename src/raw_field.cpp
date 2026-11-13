@@ -5085,91 +5085,8 @@ bool RawFieldVM::word_projection_clear(std::size_t vocabulary) {
     return true;
 }
 
-bool RawFieldVM::word_projection_build(
-    const std::vector<std::uint32_t>& ids, std::size_t vocabulary) {
-    if (vocabulary < 2u || vocabulary > 3000u)
-        return fail("word projection vocabulary 2..3000");
-    if (ids.size() > 0x60000u)
-        return fail("word projection token stream too long");
-    constexpr std::uint32_t kWordTokenBase = 0x00060000u;
-    for (std::size_t i = 0; i < ids.size(); ++i) {
-        if (ids[i] >= vocabulary)
-            return fail("word projection token id outside vocabulary");
-        if (!write_word(kWordTokenBase + static_cast<std::uint32_t>(i), ids[i]))
-            return fail("cannot write word projection tokens");
-    }
-    if (!write_word(kProposalBase + 0u,
-                    static_cast<std::uint32_t>(ids.size())) ||
-        !write_word(kProposalBase + 1u,
-                    static_cast<std::uint32_t>(vocabulary)) ||
-        !write_word(kProposalBase + 2u, kWordTokenBase) ||
-        !write_word(kCommandBase, 1u))
-        return fail("cannot write word projection build command");
-    if (!run_command()) return false;
-    if (read_word(kResultBase) != ids.size())
-        return fail("word projection build count mismatch");
-    return true;
-}
 
-bool RawFieldVM::word_projection_batch(
-    const std::vector<std::uint32_t>& ids, std::size_t vocabulary,
-    std::uint32_t previous) {
-    if (vocabulary < 2u || vocabulary > 3000u)
-        return fail("word projection vocabulary 2..3000");
-    if (ids.empty() || ids.size() > 262144u)
-        return fail("word projection batch size 1..262144");
-    constexpr std::uint32_t kWordTokenBase = 0x00060000u;
-    for (std::size_t i = 0; i < ids.size(); ++i) {
-        if (ids[i] >= vocabulary)
-            return fail("word projection batch id outside vocabulary");
-        if (!write_word(kWordTokenBase + static_cast<std::uint32_t>(i), ids[i]))
-            return fail("cannot write word projection batch tokens");
-    }
-    if (!write_word(kProposalBase + 0u,
-                    static_cast<std::uint32_t>(ids.size())) ||
-        !write_word(kProposalBase + 1u,
-                    static_cast<std::uint32_t>(vocabulary)) ||
-        !write_word(kProposalBase + 2u, kWordTokenBase) ||
-        !write_word(kProposalBase + 3u, previous) ||
-        !write_word(kCommandBase, 3u))
-        return fail("cannot write word projection batch command");
-    if (!run_command()) return false;
-    if (read_word(kResultBase) != ids.size())
-        return fail("word projection batch count mismatch");
-    return true;
-}
 
-bool RawFieldVM::word_projection_top5(
-    std::uint32_t target, std::uint32_t context,
-    std::size_t vocabulary, std::uint32_t token_count,
-    std::array<std::uint32_t, 5>& top, float& loss) {
-    top.fill(0);
-    loss = 0.0f;
-    if (vocabulary < 2u || vocabulary > 3000u ||
-        target >= vocabulary || context >= vocabulary)
-        return fail("word projection top5 argument outside vocabulary");
-    if (!write_word(kProposalBase + 0u, target) ||
-        !write_word(kProposalBase + 1u, context) ||
-        !write_word(kProposalBase + 2u,
-                    static_cast<std::uint32_t>(vocabulary)) ||
-        !write_word(kProposalBase + 3u, token_count) ||
-        !write_word(kCommandBase, 2u))
-        return fail("cannot write word projection top5 command");
-    if (!run_command()) return false;
-    std::array<bool, 3000> seen{};
-    for (std::size_t i = 0; i < top.size(); ++i) {
-        const auto id = read_word(kResultBase + static_cast<std::uint32_t>(i));
-        if (id >= vocabulary || seen[id])
-            return fail("word projection top5 malformed word list");
-        seen[id] = true;
-        top[i] = id;
-    }
-    const auto bits = read_word(kResultBase + 5u);
-    std::memcpy(&loss, &bits, sizeof(loss));
-    if (!std::isfinite(loss) || loss < 0.0f)
-        return fail("word projection top5 invalid loss");
-    return true;
-}
 
 bool RawFieldVM::token_projection_clear(std::size_t vocabulary,
                                        std::size_t rows) {
@@ -5199,40 +5116,128 @@ bool RawFieldVM::token_projection_write_rowmap(
     return true;
 }
 
-bool RawFieldVM::token_projection_batch(
-    const std::vector<std::uint32_t>& ids, std::size_t vocabulary,
-    std::size_t rows, std::uint32_t previous) {
-    if (vocabulary < 2u || vocabulary > 50257u ||
-        rows < 2u || rows > 257u || rows * vocabulary > 12916049u)
-        return fail("token projection vocabulary/rows exceed memory");
-    if (ids.empty() || ids.size() > 262144u)
-        return fail("token projection batch size 1..262144");
-    constexpr std::uint32_t kTokenBase = 0x00060000u;
-    constexpr std::uint32_t kTokenRowmap = 0x000C0000u;
+
+
+bool RawFieldVM::unified_word_build(
+    const std::vector<std::uint32_t>& ids, std::size_t vocabulary) {
+    if (vocabulary < 2u || vocabulary > 3000u || ids.size() > 0x60000u)
+        return fail("unified word build bounds");
+    constexpr std::uint32_t kBase = 0x00060000u;
     for (std::size_t i = 0; i < ids.size(); ++i) {
         if (ids[i] >= vocabulary)
-            return fail("token projection id outside vocabulary");
-        if (!write_word(kTokenBase + static_cast<std::uint32_t>(i), ids[i]))
-            return fail("cannot write token projection batch");
+            return fail("unified word id outside vocabulary");
+        if (!write_word(kBase + static_cast<std::uint32_t>(i), ids[i]))
+            return fail("cannot write unified word tokens");
     }
-    if (!write_word(kProposalBase + 0u,
-                    static_cast<std::uint32_t>(ids.size())) ||
+    if (!write_word(kProposalBase + 0u, 0u) ||
         !write_word(kProposalBase + 1u,
-                    static_cast<std::uint32_t>(vocabulary)) ||
+                    static_cast<std::uint32_t>(ids.size())) ||
         !write_word(kProposalBase + 2u,
-                    static_cast<std::uint32_t>(rows)) ||
-        !write_word(kProposalBase + 3u, kTokenBase) ||
-        !write_word(kProposalBase + 4u, kTokenRowmap) ||
-        !write_word(kProposalBase + 5u, previous) ||
-        !write_word(kCommandBase, 1u))
-        return fail("cannot write token projection batch command");
+                    static_cast<std::uint32_t>(vocabulary)) ||
+        !write_word(kProposalBase + 3u, kBase) ||
+        !write_word(kCommandBase, 124u))
+        return fail("cannot write unified word build command");
     if (!run_command()) return false;
     if (read_word(kResultBase) != ids.size())
-        return fail("token projection batch count mismatch");
+        return fail("unified word build count mismatch");
     return true;
 }
 
-bool RawFieldVM::token_projection_top5(
+bool RawFieldVM::unified_word_batch(
+    const std::vector<std::uint32_t>& ids, std::size_t vocabulary,
+    std::uint32_t previous) {
+    if (vocabulary < 2u || vocabulary > 3000u ||
+        ids.empty() || ids.size() > 262144u)
+        return fail("unified word batch bounds");
+    constexpr std::uint32_t kBase = 0x00060000u;
+    for (std::size_t i = 0; i < ids.size(); ++i) {
+        if (ids[i] >= vocabulary)
+            return fail("unified word batch id outside vocabulary");
+        if (!write_word(kBase + static_cast<std::uint32_t>(i), ids[i]))
+            return fail("cannot write unified word batch");
+    }
+    if (!write_word(kProposalBase + 0u, 1u) ||
+        !write_word(kProposalBase + 1u,
+                    static_cast<std::uint32_t>(ids.size())) ||
+        !write_word(kProposalBase + 2u,
+                    static_cast<std::uint32_t>(vocabulary)) ||
+        !write_word(kProposalBase + 3u, kBase) ||
+        !write_word(kProposalBase + 4u, previous) ||
+        !write_word(kCommandBase, 124u))
+        return fail("cannot write unified word batch command");
+    if (!run_command()) return false;
+    if (read_word(kResultBase) != ids.size())
+        return fail("unified word batch count mismatch");
+    return true;
+}
+
+bool RawFieldVM::unified_word_top5(
+    std::uint32_t target, std::uint32_t context,
+    std::size_t vocabulary, std::uint32_t token_count,
+    std::array<std::uint32_t, 5>& top, float& loss) {
+    top.fill(0);
+    loss = 0.0f;
+    if (vocabulary < 2u || vocabulary > 3000u ||
+        target >= vocabulary || context >= vocabulary)
+        return fail("unified word top5 bounds");
+    if (!write_word(kProposalBase + 0u, 2u) ||
+        !write_word(kProposalBase + 1u, target) ||
+        !write_word(kProposalBase + 2u, context) ||
+        !write_word(kProposalBase + 3u,
+                    static_cast<std::uint32_t>(vocabulary)) ||
+        !write_word(kProposalBase + 4u, token_count) ||
+        !write_word(kCommandBase, 124u))
+        return fail("cannot write unified word top5 command");
+    if (!run_command()) return false;
+    std::array<bool, 3000> seen{};
+    for (std::size_t i = 0; i < top.size(); ++i) {
+        const auto id = read_word(kResultBase + static_cast<std::uint32_t>(i));
+        if (id >= vocabulary || seen[id])
+            return fail("unified word top5 malformed");
+        seen[id] = true;
+        top[i] = id;
+    }
+    const auto bits = read_word(kResultBase + 5u);
+    std::memcpy(&loss, &bits, sizeof(loss));
+    if (!std::isfinite(loss) || loss < 0.0f)
+        return fail("unified word top5 invalid loss");
+    return true;
+}
+
+bool RawFieldVM::unified_token_build(
+    const std::vector<std::uint32_t>& ids, std::size_t vocabulary,
+    std::size_t rows, std::uint32_t previous) {
+    if (vocabulary < 2u || vocabulary > 50257u ||
+        rows < 2u || rows > 257u || rows * vocabulary > 12916049u ||
+        ids.empty() || ids.size() > 262144u)
+        return fail("unified token build bounds");
+    constexpr std::uint32_t kTokenBase = 0x00060000u;
+    constexpr std::uint32_t kRowmap = 0x000C0000u;
+    for (std::size_t i = 0; i < ids.size(); ++i) {
+        if (ids[i] >= vocabulary)
+            return fail("unified token id outside vocabulary");
+        if (!write_word(kTokenBase + static_cast<std::uint32_t>(i), ids[i]))
+            return fail("cannot write unified token batch");
+    }
+    if (!write_word(kProposalBase + 0u, 3u) ||
+        !write_word(kProposalBase + 1u,
+                    static_cast<std::uint32_t>(ids.size())) ||
+        !write_word(kProposalBase + 2u,
+                    static_cast<std::uint32_t>(vocabulary)) ||
+        !write_word(kProposalBase + 3u,
+                    static_cast<std::uint32_t>(rows)) ||
+        !write_word(kProposalBase + 4u, kTokenBase) ||
+        !write_word(kProposalBase + 5u, kRowmap) ||
+        !write_word(kProposalBase + 6u, previous) ||
+        !write_word(kCommandBase, 124u))
+        return fail("cannot write unified token build command");
+    if (!run_command()) return false;
+    if (read_word(kResultBase) != ids.size())
+        return fail("unified token build count mismatch");
+    return true;
+}
+
+bool RawFieldVM::unified_token_top5(
     std::uint32_t target, std::uint32_t row,
     std::size_t vocabulary, std::uint32_t token_count,
     std::array<std::uint32_t, 5>& top, float& loss) {
@@ -5240,27 +5245,28 @@ bool RawFieldVM::token_projection_top5(
     loss = 0.0f;
     if (vocabulary < 2u || vocabulary > 50257u || target >= vocabulary ||
         row > 256u)
-        return fail("token projection top5 argument outside bounds");
-    if (!write_word(kProposalBase + 0u, target) ||
-        !write_word(kProposalBase + 1u, row) ||
-        !write_word(kProposalBase + 2u,
+        return fail("unified token top5 bounds");
+    if (!write_word(kProposalBase + 0u, 4u) ||
+        !write_word(kProposalBase + 1u, target) ||
+        !write_word(kProposalBase + 2u, row) ||
+        !write_word(kProposalBase + 3u,
                     static_cast<std::uint32_t>(vocabulary)) ||
-        !write_word(kProposalBase + 3u, token_count) ||
-        !write_word(kCommandBase, 2u))
-        return fail("cannot write token projection top5 command");
+        !write_word(kProposalBase + 4u, token_count) ||
+        !write_word(kCommandBase, 124u))
+        return fail("cannot write unified token top5 command");
     if (!run_command()) return false;
     std::array<bool, 50257> seen{};
     for (std::size_t i = 0; i < top.size(); ++i) {
         const auto id = read_word(kResultBase + static_cast<std::uint32_t>(i));
         if (id >= vocabulary || seen[id])
-            return fail("token projection top5 malformed list");
+            return fail("unified token top5 malformed");
         seen[id] = true;
         top[i] = id;
     }
     const auto bits = read_word(kResultBase + 5u);
     std::memcpy(&loss, &bits, sizeof(loss));
     if (!std::isfinite(loss) || loss < 0.0f)
-        return fail("token projection top5 invalid loss");
+        return fail("unified token top5 invalid loss");
     return true;
 }
 

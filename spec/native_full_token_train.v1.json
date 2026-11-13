@@ -16,13 +16,14 @@
     "vocabulary": 50257,
     "context_rows": 257,
     "context_policy": "256 most frequent previous-token IDs plus one shared fallback row",
-    "worker": "build/token_worker.nan",
+    "worker": "build/field_driver.nan",
     "kernel": "mth/nan16/mth_token_projection.nas",
     "model": "native interpolated add-alpha token bigram",
     "alpha": 0.01,
     "lambda": 0.7,
     "token_chunk": 262144,
-    "one_billion_run": "cancelled by user request"
+    "one_billion_run": "cancelled by user request",
+    "command": "124/3 token build; 124/4 token top5"
   },
   "host_scope": "file I/O, frequency selection, row-map construction, transport, JSON",
   "guest_scope": "unigram/bigram counts, interpolation, full 50257-way projection, top-5, loss",

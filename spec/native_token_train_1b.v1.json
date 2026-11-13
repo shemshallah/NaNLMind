@@ -17,12 +17,13 @@
     "vocabulary": 3000,
     "unknown_id": 2999,
     "vocab_selection": "top 2999 token IDs by training frequency plus <unk>",
-    "worker": "build/word_worker.nan",
+    "worker": "build/field_driver.nan",
     "kernel": "mth/nan16/mth_word_projection.nas",
     "model": "native interpolated add-alpha token bigram",
     "alpha": 0.01,
     "lambda": 0.7,
-    "token_chunk": 262144
+    "token_chunk": 262144,
+    "command": "124/1 word batch; 124/2 word top5"
   },
   "host_scope": "file I/O, frequency selection, ID remapping, transport, JSON",
   "guest_scope": "unigram/bigram counts, interpolation, full 3000-way projection, top-5, loss",

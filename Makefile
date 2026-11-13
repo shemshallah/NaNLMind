@@ -9,8 +9,6 @@ BUILD := build
 NAN0S_NMK := third_party/nan0s/tools/nmk.awk
 FIELD_DRIVER := $(BUILD)/field_driver.nan
 HEAD_WORKER := $(BUILD)/head_worker.nan
-WORD_WORKER := $(BUILD)/word_worker.nan
-TOKEN_WORKER := $(BUILD)/token_worker.nan
 
 LIB_SRC := src/sha256.cpp src/journal_forest.cpp src/universe.cpp src/pager.cpp src/resonance.cpp src/ledger.cpp src/ring.cpp src/hypergraph.cpp src/hypermatrix.cpp src/temporal.cpp src/global.cpp src/head.cpp src/clock.cpp src/consolidation.cpp src/schedule.cpp src/handoff.cpp src/router.cpp src/frame_sync.cpp src/meta_index.cpp src/atomic.cpp src/ntf.cpp src/ncr.cpp src/training.cpp src/supercluster.cpp src/byte_model.cpp src/slot_memory.cpp src/context2.cpp src/context2_topology.cpp src/vector_store.cpp src/word_memory.cpp src/bootstrap_router.cpp src/bootstrap_layers.cpp src/overbootstrap.cpp src/learning_mesh.cpp src/word_vector.cpp src/head_gate.cpp src/boolean_spectrum.cpp src/hypervector.cpp src/reversible.cpp src/semiring.cpp src/sparse_exception.cpp src/two_counter.cpp src/limb_counter.cpp src/two_counter_limb.cpp src/turing_machine.cpp src/universal_tm.cpp src/tm_description.cpp src/tape_checkpoint.cpp src/binary_tm_compiler.cpp src/binary_utm.cpp src/logic_session.cpp src/relation_train.cpp src/head_candidate.cpp src/endpoint_evidence.cpp src/ntt257.cpp src/raw_field.cpp src/sparse_field.cpp src/trunk_train.cpp
 LIB_OBJ := $(patsubst src/%.cpp,$(BUILD)/%.o,$(LIB_SRC))
@@ -61,16 +59,6 @@ $(HEAD_WORKER): mth/drivers/head_worker.nas $(wildcard mth/nan16/*.nas) $(NAN0S_
 	@test "$$(wc -l < $@.tmp)" -le 16384 || { echo "head worker overlaps the 0x4000 command block"; rm -f $@.tmp; exit 1; }
 	mv $@.tmp $@
 
-$(WORD_WORKER): mth/drivers/word_worker.nas $(wildcard mth/nan16/*.nas) $(NAN0S_NMK) | $(BUILD)
-	awk -f $(NAN0S_NMK) -v CMD=emit $< > $@.tmp
-	@test "$$(wc -l < $@.tmp)" -le 16384 || { echo "word worker overlaps the 0x4000 command block"; rm -f $@.tmp; exit 1; }
-	mv $@.tmp $@
-
-$(TOKEN_WORKER): mth/drivers/token_worker.nas $(wildcard mth/nan16/*.nas) $(NAN0S_NMK) | $(BUILD)
-	awk -f $(NAN0S_NMK) -v CMD=emit $< > $@.tmp
-	@test "$$(wc -l < $@.tmp)" -le 16384 || { echo "token worker overlaps the 0x4000 command block"; rm -f $@.tmp; exit 1; }
-	mv $@.tmp $@
-
 $(CLI): $(BUILD)/main.o $(LIB) $(NAN0S_LIB) | $(FIELD_DRIVER)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS) $(LDLIBS)
 
@@ -119,13 +107,13 @@ $(BUILD)/test_summary_bank_checkpoint: tests/test_summary_bank_checkpoint.cpp in
 $(BUILD)/test_summary_bank_128k: tests/test_summary_bank_128k.cpp include/nanlm/summary_retriever.hpp include/nanlm/chunk_summary.hpp $(LIB) $(NAN0S_LIB) $(HEAD_WORKER) | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
-$(BUILD)/test_word_projection: tests/test_word_projection.cpp include/nanlm/raw_field.hpp $(LIB) $(NAN0S_LIB) $(WORD_WORKER) | $(BUILD)
+$(BUILD)/test_word_projection: tests/test_word_projection.cpp include/nanlm/projection_runtime.hpp $(LIB) $(NAN0S_LIB) $(FIELD_DRIVER) | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
-$(BUILD)/test_token_projection: tests/test_token_projection.cpp include/nanlm/raw_field.hpp $(LIB) $(NAN0S_LIB) $(TOKEN_WORKER) | $(BUILD)
+$(BUILD)/test_token_projection: tests/test_token_projection.cpp include/nanlm/projection_runtime.hpp $(LIB) $(NAN0S_LIB) $(FIELD_DRIVER) | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
-$(BUILD)/test_projection_runtime: tests/test_projection_runtime.cpp include/nanlm/projection_runtime.hpp $(LIB) $(NAN0S_LIB) $(FIELD_DRIVER) $(WORD_WORKER) $(TOKEN_WORKER) | $(BUILD)
+$(BUILD)/test_projection_runtime: tests/test_projection_runtime.cpp include/nanlm/projection_runtime.hpp $(LIB) $(NAN0S_LIB) $(FIELD_DRIVER) | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
 $(BUILD)/test_hierarchical_context: tests/test_hierarchical_context.cpp include/nanlm/long_context64_scheduler.hpp include/nanlm/summary_retriever.hpp $(LIB) $(NAN0S_LIB) $(HEAD_WORKER) | $(BUILD)
@@ -176,13 +164,13 @@ $(BUILD)/direct256-bench: tools/nanlm_direct256_bench.cpp include/nanlm/raw_fiel
 $(BUILD)/word-system: tools/nanlm_word_system.cpp include/nanlm/word_vector.hpp $(LIB) | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< $(LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
-$(BUILD)/word-native: tools/nanlm_word_native_bench.cpp include/nanlm/raw_field.hpp $(LIB) $(NAN0S_LIB) $(WORD_WORKER) | $(BUILD)
+$(BUILD)/word-native: tools/nanlm_word_native_bench.cpp include/nanlm/projection_runtime.hpp $(LIB) $(NAN0S_LIB) $(FIELD_DRIVER) | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
-$(BUILD)/train-1b: tools/nanlm_train_1b.cpp include/nanlm/raw_field.hpp $(LIB) $(NAN0S_LIB) $(WORD_WORKER) | $(BUILD)
+$(BUILD)/train-1b: tools/nanlm_train_1b.cpp include/nanlm/projection_runtime.hpp $(LIB) $(NAN0S_LIB) $(FIELD_DRIVER) | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
-$(BUILD)/train-1b-full: tools/nanlm_train_1b_full.cpp include/nanlm/raw_field.hpp $(LIB) $(NAN0S_LIB) $(TOKEN_WORKER) | $(BUILD)
+$(BUILD)/train-1b-full: tools/nanlm_train_1b_full.cpp include/nanlm/projection_runtime.hpp $(LIB) $(NAN0S_LIB) $(FIELD_DRIVER) | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
 $(BUILD)/nanlm48m-native-batch: tools/nanlm48m_native_batch.cpp include/nanlm/raw_field.hpp $(LIB) $(NAN0S_LIB) $(FIELD_DRIVER) | $(BUILD)

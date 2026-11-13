@@ -8,6 +8,7 @@
 // transports arguments and forwards receipts.
 #pragma once
 #include "nanlm/raw_field.hpp"
+#include "nanlm/unified_context_runtime.hpp"
 
 #include <array>
 #include <cstdint>
@@ -19,7 +20,7 @@ namespace nanlm {
 
 class ProjectionRuntime {
 public:
-    enum class Kind { None, Byte, Word, Token };
+    enum class Kind { None, Byte, Word, Token, Context };
 
     explicit ProjectionRuntime(std::string build_dir = "build")
         : build_dir_(std::move(build_dir)) {}
@@ -29,29 +30,63 @@ public:
     const std::string& error() const noexcept { return error_; }
 
     bool load(Kind kind) {
-        if (kind == kind_ && vm_) return true;
-        vm_.reset();
-        kind_ = Kind::None;
-        std::string path;
-        switch (kind) {
-        case Kind::Byte: path = build_dir_ + "/field_driver.nan"; break;
-        case Kind::Word: path = build_dir_ + "/word_worker.nan"; break;
-        case Kind::Token: path = build_dir_ + "/token_worker.nan"; break;
-        case Kind::None: return true;
-        }
-        vm_ = std::make_unique<RawFieldVM>(path);
-        if (!vm_->ready()) {
-            error_ = vm_->error();
+        if (kind == Kind::None) { unload(); return true; }
+        if (kind == Kind::Context) {
+            // Context is the only mode that needs the worker image and page
+            // arena; release the projection image first.
             vm_.reset();
-            return false;
+            context_.reset();
+            arena_.reset();
+            vm_ = std::make_unique<RawFieldVM>(build_dir_ + "/head_worker.nan");
+            if (!vm_->ready()) {
+                error_ = vm_->error();
+                vm_.reset();
+                kind_ = Kind::None;
+                return false;
+            }
+            try {
+                arena_ = std::make_unique<HeadPageArena>();
+                context_ = std::make_unique<UnifiedContextRuntime>(*vm_, *arena_);
+            } catch (const std::exception& e) {
+                error_ = e.what();
+                context_.reset();
+                arena_.reset();
+                vm_.reset();
+                kind_ = Kind::None;
+                return false;
+            }
+            kind_ = Kind::Context;
+            error_.clear();
+            return true;
+        }
+        // One field_driver image owns byte, word and token kernels. Switching
+        // kind changes the active table interpretation, not the VM.
+        if (kind_ == Kind::Context) vm_.reset();
+        context_.reset();
+        arena_.reset();
+        if (!vm_) {
+            vm_ = std::make_unique<RawFieldVM>(build_dir_ + "/field_driver.nan");
+            if (!vm_->ready()) {
+                error_ = vm_->error();
+                vm_.reset();
+                kind_ = Kind::None;
+                return false;
+            }
         }
         kind_ = kind;
         error_.clear();
         return true;
     }
     void unload() noexcept {
+        context_.reset();
+        arena_.reset();
         vm_.reset();
         kind_ = Kind::None;
+    }
+    UnifiedContextRuntime& context() {
+        if (kind_ != Kind::Context || !context_)
+            throw std::logic_error("projection runtime is not in context mode");
+        return *context_;
     }
 
     // Byte direct-256 context readout (field_driver).
@@ -87,19 +122,19 @@ public:
     }
     bool word_build(const std::vector<std::uint32_t>& ids, std::size_t vocabulary) {
         if (kind_ != Kind::Word) return wrong("word");
-        return vm_->word_projection_build(ids, vocabulary);
+        return vm_->unified_word_build(ids, vocabulary);
     }
     bool word_batch(const std::vector<std::uint32_t>& ids, std::size_t vocabulary,
                     std::uint32_t previous) {
         if (kind_ != Kind::Word) return wrong("word");
-        return vm_->word_projection_batch(ids, vocabulary, previous);
+        return vm_->unified_word_batch(ids, vocabulary, previous);
     }
     bool word_top5(std::uint32_t target, std::uint32_t context,
                    std::size_t vocabulary, std::uint32_t token_count,
                    std::array<std::uint32_t, 5>& top, float& loss) {
         if (kind_ != Kind::Word) return wrong("word");
-        return vm_->word_projection_top5(target, context, vocabulary,
-                                         token_count, top, loss);
+        return vm_->unified_word_top5(target, context, vocabulary,
+                                      token_count, top, loss);
     }
 
     // Full-vocabulary token projection.
@@ -115,14 +150,14 @@ public:
                      std::size_t vocabulary, std::size_t rows,
                      std::uint32_t previous) {
         if (kind_ != Kind::Token) return wrong("token");
-        return vm_->token_projection_batch(ids, vocabulary, rows, previous);
+        return vm_->unified_token_build(ids, vocabulary, rows, previous);
     }
     bool token_top5(std::uint32_t target, std::uint32_t row,
                     std::size_t vocabulary, std::uint32_t token_count,
                     std::array<std::uint32_t, 5>& top, float& loss) {
         if (kind_ != Kind::Token) return wrong("token");
-        return vm_->token_projection_top5(target, row, vocabulary,
-                                          token_count, top, loss);
+        return vm_->unified_token_top5(target, row, vocabulary,
+                                       token_count, top, loss);
     }
 
     const ContextBackoffSelection& byte_selection() const noexcept {
@@ -142,8 +177,13 @@ private:
     std::string build_dir_;
     Kind kind_ = Kind::None;
     std::unique_ptr<RawFieldVM> vm_;
+    std::unique_ptr<HeadPageArena> arena_;
+    std::unique_ptr<UnifiedContextRuntime> context_;
     ContextBackoffSelection selection_{};
     std::string error_;
 };
+
+// The same single-resident-VM boundary covers projections and long context.
+using UnifiedRuntime = ProjectionRuntime;
 
 } // namespace nanlm
