@@ -47,7 +47,8 @@
     "branch_triage": "docs/BRANCH_TRIAGE.md",
     "unified_48m_runtime": "spec/unified_48m_runtime.v1.json",
     "context_direct256": "spec/context_direct256.v1.json",
-    "native_word_projection": "spec/native_word_projection.v1.json"
+    "native_word_projection": "spec/native_word_projection.v1.json",
+    "native_full_token_train": "spec/native_full_token_train.v1.json"
   },
   "legacy_removed": [
     {

@@ -1,0 +1,34 @@
+{
+  "schema": "nanlm.native-full-token-train/1",
+  "status": "running",
+  "dataset": {
+    "kaggle": "zlatan599/lexor-2026",
+    "file": "1B_tokens/LLM_training_data_1B.bin",
+    "bytes": 2000360716,
+    "format": "uint16 little-endian GPT-2 token IDs",
+    "stream_tokens": 1000180358,
+    "sha256": "d95ce10a5b68c369e0e357c2f212176417e86331e54d9e5b12bb2d89a596faee",
+    "license": "MIT"
+  },
+  "protocol": {
+    "train_tokens": 1000000000,
+    "eval_tokens": 20000,
+    "vocabulary": 50257,
+    "context_rows": 257,
+    "context_policy": "256 most frequent previous-token IDs plus one shared fallback row",
+    "worker": "build/token_worker.nan",
+    "kernel": "mth/nan16/mth_token_projection.nas",
+    "model": "native interpolated add-alpha token bigram",
+    "alpha": 0.01,
+    "lambda": 0.7,
+    "token_chunk": 262144
+  },
+  "host_scope": "file I/O, frequency selection, row-map construction, transport, JSON",
+  "guest_scope": "unigram/bigram counts, interpolation, full 50257-way projection, top-5, loss",
+  "metrics": {
+    "primary": ["bits_per_token", "top1", "top5", "tokens_per_second"],
+    "not_claimed": ["text-word BPB", "byte BPB", "R27/48M metrics"]
+  },
+  "artifact": "state/benchmarks/train_1b_full.json",
+  "command": "./build/train-1b-full state/lexor/1B_tokens/LLM_training_data_1B.bin state/benchmarks/train_1b_full.json 1000000000 20000"
+}

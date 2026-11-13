@@ -10,6 +10,7 @@ NAN0S_NMK := third_party/nan0s/tools/nmk.awk
 FIELD_DRIVER := $(BUILD)/field_driver.nan
 HEAD_WORKER := $(BUILD)/head_worker.nan
 WORD_WORKER := $(BUILD)/word_worker.nan
+TOKEN_WORKER := $(BUILD)/token_worker.nan
 
 LIB_SRC := src/sha256.cpp src/journal_forest.cpp src/universe.cpp src/pager.cpp src/resonance.cpp src/ledger.cpp src/ring.cpp src/hypergraph.cpp src/hypermatrix.cpp src/temporal.cpp src/global.cpp src/head.cpp src/clock.cpp src/consolidation.cpp src/schedule.cpp src/handoff.cpp src/router.cpp src/frame_sync.cpp src/meta_index.cpp src/atomic.cpp src/ntf.cpp src/ncr.cpp src/training.cpp src/supercluster.cpp src/byte_model.cpp src/slot_memory.cpp src/context2.cpp src/context2_topology.cpp src/vector_store.cpp src/word_memory.cpp src/bootstrap_router.cpp src/bootstrap_layers.cpp src/overbootstrap.cpp src/learning_mesh.cpp src/word_vector.cpp src/head_gate.cpp src/boolean_spectrum.cpp src/hypervector.cpp src/reversible.cpp src/semiring.cpp src/sparse_exception.cpp src/two_counter.cpp src/limb_counter.cpp src/two_counter_limb.cpp src/turing_machine.cpp src/universal_tm.cpp src/tm_description.cpp src/tape_checkpoint.cpp src/binary_tm_compiler.cpp src/binary_utm.cpp src/logic_session.cpp src/relation_train.cpp src/head_candidate.cpp src/endpoint_evidence.cpp src/ntt257.cpp src/raw_field.cpp src/sparse_field.cpp src/trunk_train.cpp
 LIB_OBJ := $(patsubst src/%.cpp,$(BUILD)/%.o,$(LIB_SRC))
@@ -65,6 +66,11 @@ $(WORD_WORKER): mth/drivers/word_worker.nas $(wildcard mth/nan16/*.nas) $(NAN0S_
 	@test "$$(wc -l < $@.tmp)" -le 16384 || { echo "word worker overlaps the 0x4000 command block"; rm -f $@.tmp; exit 1; }
 	mv $@.tmp $@
 
+$(TOKEN_WORKER): mth/drivers/token_worker.nas $(wildcard mth/nan16/*.nas) $(NAN0S_NMK) | $(BUILD)
+	awk -f $(NAN0S_NMK) -v CMD=emit $< > $@.tmp
+	@test "$$(wc -l < $@.tmp)" -le 16384 || { echo "token worker overlaps the 0x4000 command block"; rm -f $@.tmp; exit 1; }
+	mv $@.tmp $@
+
 $(CLI): $(BUILD)/main.o $(LIB) $(NAN0S_LIB) | $(FIELD_DRIVER)
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS) $(LDLIBS)
 
@@ -114,6 +120,9 @@ $(BUILD)/test_summary_bank_128k: tests/test_summary_bank_128k.cpp include/nanlm/
 	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
 $(BUILD)/test_word_projection: tests/test_word_projection.cpp include/nanlm/raw_field.hpp $(LIB) $(NAN0S_LIB) $(WORD_WORKER) | $(BUILD)
+	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
+
+$(BUILD)/test_token_projection: tests/test_token_projection.cpp include/nanlm/raw_field.hpp $(LIB) $(NAN0S_LIB) $(TOKEN_WORKER) | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
 $(BUILD)/test_hierarchical_context: tests/test_hierarchical_context.cpp include/nanlm/long_context64_scheduler.hpp include/nanlm/summary_retriever.hpp $(LIB) $(NAN0S_LIB) $(HEAD_WORKER) | $(BUILD)
@@ -168,6 +177,9 @@ $(BUILD)/word-native: tools/nanlm_word_native_bench.cpp include/nanlm/raw_field.
 	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
 $(BUILD)/train-1b: tools/nanlm_train_1b.cpp include/nanlm/raw_field.hpp $(LIB) $(NAN0S_LIB) $(WORD_WORKER) | $(BUILD)
+	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
+
+$(BUILD)/train-1b-full: tools/nanlm_train_1b_full.cpp include/nanlm/raw_field.hpp $(LIB) $(NAN0S_LIB) $(TOKEN_WORKER) | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
 $(BUILD)/nanlm48m-native-batch: tools/nanlm48m_native_batch.cpp include/nanlm/raw_field.hpp $(LIB) $(NAN0S_LIB) $(FIELD_DRIVER) | $(BUILD)
@@ -381,5 +393,5 @@ dual-head-test: $(BUILD)/test_dual_head
 	./$(BUILD)/test_dual_head
 
 
-unified-test-base: $(CLI) $(FIELD_DRIVER) $(BUILD)/test_raw_field $(BUILD)/test_context_backoff $(BUILD)/test_context_route $(BUILD)/test_native48m_feedback $(BUILD)/test_dual_tensor_arena $(BUILD)/test_head_page_arena $(BUILD)/test_head_page_loader $(BUILD)/test_head_block $(BUILD)/test_head_worker $(BUILD)/test_head_block64 $(BUILD)/test_head_worker_scheduler $(BUILD)/test_long_context $(BUILD)/test_long_context64 $(BUILD)/test_chunk_summary $(BUILD)/test_summary_retrieval $(BUILD)/test_summary_bank_checkpoint $(BUILD)/test_summary_bank_128k $(BUILD)/test_hierarchical_context $(BUILD)/test_unified_context_runtime $(BUILD)/test_head_readout $(BUILD)/test_head_readout_train $(BUILD)/test_head_page_train $(BUILD)/test_head_dx2 $(BUILD)/test_head_page_checkpoint $(BUILD)/test_nlhe2 $(BUILD)/test_word_vector_learning $(BUILD)/test_word_projection $(BUILD)/word-native $(BUILD)/credit-ablation $(BUILD)/byte-baselines $(BUILD)/word-baselines $(BUILD)/system-byte-bench $(BUILD)/direct256-bench $(BUILD)/word-system $(BUILD)/nanlm48m-native-batch $(BUILD)/nanlm48m-native-emit $(BUILD)/nanlm-head-worker-batch $(BUILD)/nanlm-head-readout-train $(BUILD)/nanlm-head-readout-loop $(BUILD)/nanlm-head-page-gate $(BUILD)/nanlm-head-page-train $(BUILD)/nanlm-head-chunk-gate $(BUILD)/nanlm-unified-context
+unified-test-base: $(CLI) $(FIELD_DRIVER) $(BUILD)/test_raw_field $(BUILD)/test_context_backoff $(BUILD)/test_context_route $(BUILD)/test_native48m_feedback $(BUILD)/test_dual_tensor_arena $(BUILD)/test_head_page_arena $(BUILD)/test_head_page_loader $(BUILD)/test_head_block $(BUILD)/test_head_worker $(BUILD)/test_head_block64 $(BUILD)/test_head_worker_scheduler $(BUILD)/test_long_context $(BUILD)/test_long_context64 $(BUILD)/test_chunk_summary $(BUILD)/test_summary_retrieval $(BUILD)/test_summary_bank_checkpoint $(BUILD)/test_summary_bank_128k $(BUILD)/test_hierarchical_context $(BUILD)/test_unified_context_runtime $(BUILD)/test_head_readout $(BUILD)/test_head_readout_train $(BUILD)/test_head_page_train $(BUILD)/test_head_dx2 $(BUILD)/test_head_page_checkpoint $(BUILD)/test_nlhe2 $(BUILD)/test_word_vector_learning $(BUILD)/test_word_projection $(BUILD)/test_token_projection $(BUILD)/word-native $(BUILD)/credit-ablation $(BUILD)/byte-baselines $(BUILD)/word-baselines $(BUILD)/system-byte-bench $(BUILD)/direct256-bench $(BUILD)/word-system $(BUILD)/nanlm48m-native-batch $(BUILD)/nanlm48m-native-emit $(BUILD)/nanlm-head-worker-batch $(BUILD)/nanlm-head-readout-train $(BUILD)/nanlm-head-readout-loop $(BUILD)/nanlm-head-page-gate $(BUILD)/nanlm-head-page-train $(BUILD)/nanlm-head-chunk-gate $(BUILD)/nanlm-unified-context
 	python3 tools/unified_test_base.py

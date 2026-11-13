@@ -779,6 +779,32 @@ Artifact: `state/benchmarks/train_1b.json`.
 Contract: `spec/native_token_train_1b.v1.json`.
 
 
+### Full GPT-2 vocabulary 1B run
+
+A second 1B-token run removes the reduced-vocabulary `<unk>` target entirely:
+
+```text
+target vocabulary      50,257 GPT-2 tokens
+context rows             257  (256 hottest previous IDs + fallback)
+train tokens     1,000,000,000
+held-out sample          20,000
+worker                   build/token_worker.nan
+kernel                   mth/nan16/mth_token_projection.nas
+```
+
+The full target vocabulary does not use a dense `V×V` table. The 256 hottest
+previous-token IDs get their own rows; all other previous IDs share row 256.
+This is a native full-vocabulary projection but deliberately lower-capacity
+context modeling than the reduced-vocabulary run. The host only selects the
+hot contexts, writes the row map and transports IDs. All counts, full 50,257-way
+softmax interpolation, top-5 and loss run in NaN16.
+
+This result is token-level, not text-word or byte BPB. Contract:
+`spec/native_full_token_train.v1.json`. Artifact:
+`state/benchmarks/train_1b_full.json`; the result is reported only after the
+background run completes.
+
+
 ### Associative diagnostic top-5
 
 `build/word-system` ranks the full learned vocabulary of the existing integer

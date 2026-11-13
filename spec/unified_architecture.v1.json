@@ -27,7 +27,9 @@
     "mth_shortlist_batch_proposal.nas",
     "mth_context_direct256.nas",
     "mth_word_projection.nas",
-    "word_worker.nas"
+    "word_worker.nas",
+    "mth_token_projection.nas",
+    "token_worker.nas"
   ],
   "policy": {
     "canonical_branch": "main",
@@ -40,7 +42,8 @@
     "candidate-panel NLL/top1/top5",
     "page/chunk checkpoint gates",
     "external 48M finite-candidate adapter (optional, no metrics claimed)",
-    "1B-token native token-level projection (subword tokens, not text-word BPB)"
+    "1B-token native token-level projection (subword tokens, not text-word BPB)",
+    "full GPT-2 vocabulary token-level projection (50,257 targets)"
   ],
   "blocked": [
     "full-vocabulary native word projection",
@@ -53,7 +56,8 @@
     "native_64_token_worker": "mth/drivers/head_worker.nas",
     "external_48m_adapter": "tools/unified_48m_runtime.py (optional; R27 archive is not part of this repository)",
     "native_word_projection": "build/word_worker.nan",
-    "native_1b_token_trainer": "build/train-1b"
+    "native_1b_token_trainer": "build/train-1b",
+    "native_full_token_trainer": "build/train-1b-full"
   },
   "language_model_policy": {
     "native_system": "NaNLMind native context/byte/readout path",
