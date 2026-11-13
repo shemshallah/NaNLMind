@@ -61,7 +61,7 @@
     "cli_pending": [],
     "six_context": "native_context6_attention / native_stream6_attention (3 back, 3 forward, NOW=255)"
   },
-  "note": "73.7821% is same-corpus next-byte accuracy, not held-out language quality. The mode-6 evaluation route computes a full 16x16 top-5 without mutating the class memory.",
+  "note": "73.7821% is same-corpus next-byte accuracy, not held-out language quality. The mode-6 evaluation route computes a full 16x16 top-5 without mutating the class memory. The canonical byte readout is now the direct 256-bin context histogram; the 16x16 class route remains for context-class/triad compatibility.",
   "restored_raw_commands": {
     "30": "mth_context_class",
     "40": "mth_context_backoff",
@@ -112,5 +112,27 @@
     ],
     "ranking": "full 256-class product P(high|bucket)*P(low|high,bucket)",
     "updates": false
-  }
+  },
+  "direct256": {
+    "kernel": "mth_context_direct256.nas",
+    "driver_command": 40,
+    "modes": {
+      "7": "count step",
+      "8": "top5+loss"
+    },
+    "exact_contexts": 3000,
+    "fallback_buckets": 13384,
+    "fallback": "hash of last two bytes",
+    "smoothing_alpha": 0.01,
+    "training_passes": 1,
+    "page_mutation": false,
+    "measured_alice": {
+      "bpb": 2.46556,
+      "top1": 0.548398,
+      "top5": 0.837263,
+      "samples": 30239
+    },
+    "artifact": "state/benchmarks/system_byte_direct256.json"
+  },
+  "canonical_byte_readout": "mth_context_direct256.nas (opcode 40 mode 8)"
 }

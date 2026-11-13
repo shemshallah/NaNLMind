@@ -45,7 +45,8 @@
     "unified_system_doc": "docs/UNIFIED_SYSTEM.md",
     "context_model": "spec/context_model.v1.json",
     "branch_triage": "docs/BRANCH_TRIAGE.md",
-    "unified_48m_runtime": "spec/unified_48m_runtime.v1.json"
+    "unified_48m_runtime": "spec/unified_48m_runtime.v1.json",
+    "context_direct256": "spec/context_direct256.v1.json"
   },
   "legacy_removed": [
     {

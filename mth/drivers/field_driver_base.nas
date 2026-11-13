@@ -717,6 +717,12 @@ field_driver_context_backoff:
   MOVI r3,6
   CMP r1,r3
   JMP[EQ] @field_driver_ctxb_top5
+  MOVI r3,7
+  CMP r1,r3
+  JMP[EQ] @field_driver_ctxd_step
+  MOVI r3,8
+  CMP r1,r3
+  JMP[EQ] @field_driver_ctxd_top5
   JMP @field_driver_return
 
 field_driver_ctxb_build:
@@ -786,6 +792,38 @@ field_driver_ctxb_top5:
   ; field_driver_base.nas fixtures never execute mode 6 and therefore do not
   ; need to link the high-memory route.
   CALLF 0x4200
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  ST r4,r10,3
+  ST r5,r10,4
+  ST r6,r10,5
+  JMP @field_driver_return
+
+; Direct 256-class context histogram (high-memory route).
+;   mode 7: target/key/exact/fallback at 0x4002..0x4005 -> bucket/exact
+;   mode 8: same -> top1..top5 + target loss
+field_driver_ctxd_step:
+  MOVI r10,0x4002
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r4,r10,3
+  CALLF 0x5000
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  JMP @field_driver_return
+
+field_driver_ctxd_top5:
+  MOVI r10,0x4002
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r4,r10,3
+  CALLF 0x5200
   MOVI r10,0x4010
   ST r1,r10,0
   ST r2,r10,1

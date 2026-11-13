@@ -139,5 +139,35 @@ int main() {
     CHECK_EQ(field.triad, 0xFFFFu);
     CHECK_EQ(field.member, 0xFFFFu);
 
+    // Direct 256-class histogram shares the guest exact/fallback route.
+    CHECK(vm.context_backoff_select(buckets, 4, selection));
+    CHECK(vm.reset_context_direct(selection.exact_count, selection.fallback));
+    std::uint32_t direct_bucket = 0;
+    bool direct_exact = false;
+    CHECK(vm.context_direct_step(0x12u, key_a, selection.exact_count,
+                                 selection.fallback, direct_bucket,
+                                 direct_exact));
+    CHECK(direct_exact);
+    CHECK(direct_bucket < selection.exact_count);
+    std::array<std::uint8_t, 5> direct_top{};
+    float direct_loss = 0.0f;
+    CHECK(vm.readout_context_direct_top5(
+        0x12u, key_a, selection.exact_count, selection.fallback,
+        direct_top, direct_loss));
+    CHECK_EQ(direct_top[0], 0x12u);
+    CHECK(std::isfinite(direct_loss));
+    CHECK(direct_loss > 0.0f);
+
+    // Direct fallback rows are selected by the last two bytes.
+    CHECK(vm.context_direct_step(0x34u, key_e, selection.exact_count,
+                                 selection.fallback, direct_bucket,
+                                 direct_exact));
+    CHECK(!direct_exact);
+    CHECK(direct_bucket >= selection.exact_count);
+    CHECK(vm.readout_context_direct_top5(
+        0x34u, key_e, selection.exact_count, selection.fallback,
+        direct_top, direct_loss));
+    CHECK_EQ(direct_top[0], 0x34u);
+
     return test_done("raw context backoff route");
 }

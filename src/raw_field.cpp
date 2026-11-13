@@ -4987,6 +4987,89 @@ bool RawFieldVM::readout_context_top5(std::uint8_t target,
     return true;
 }
 
+bool RawFieldVM::reset_context_direct(std::size_t exact_count,
+                                     std::size_t fallback_count) {
+    if (exact_count > 8000u || fallback_count == 0u ||
+        fallback_count > 16384u) {
+        return fail("direct context exact<=8000 fallback 1..16384");
+    }
+    constexpr std::uint32_t kExactBase = 0x00100000u;
+    constexpr std::uint32_t kFallbackBase = 0x00300000u;
+    const std::size_t exact_words = exact_count * 256u;
+    const std::size_t fallback_words = fallback_count * 256u;
+    for (std::size_t i = 0; i < exact_words; ++i)
+        if (!write_word(kExactBase + static_cast<std::uint32_t>(i), 0u))
+            return fail("cannot reset direct exact context rows");
+    for (std::size_t i = 0; i < fallback_words; ++i)
+        if (!write_word(kFallbackBase + static_cast<std::uint32_t>(i), 0u))
+            return fail("cannot reset direct fallback context rows");
+    return true;
+}
+
+bool RawFieldVM::context_direct_step(std::uint8_t target, std::uint32_t key,
+                                    std::size_t exact_count,
+                                    std::size_t fallback_count,
+                                    std::uint32_t& bucket, bool& exact) {
+    bucket = 0u;
+    exact = false;
+    if (exact_count > 8000u || fallback_count == 0u ||
+        fallback_count > 16384u) {
+        return fail("direct context exact<=8000 fallback 1..16384");
+    }
+    if (!write_word(kProposalBase + 0u, 7u) ||
+        !write_word(kProposalBase + 1u, target) ||
+        !write_word(kProposalBase + 2u, key) ||
+        !write_word(kProposalBase + 3u,
+                    static_cast<std::uint32_t>(exact_count)) ||
+        !write_word(kProposalBase + 4u,
+                    static_cast<std::uint32_t>(fallback_count)) ||
+        !write_word(kCommandBase, kContextBackoffCommand))
+        return fail("cannot write direct context step command");
+    if (!run_command()) return false;
+    if (read_word(kResultBase) != 1u)
+        return fail("direct context step rejected");
+    bucket = read_word(kResultBase + 1u);
+    exact = read_word(kResultBase + 2u) != 0u;
+    if (bucket >= exact_count + fallback_count)
+        return fail("direct context step bucket outside table");
+    return true;
+}
+
+bool RawFieldVM::readout_context_direct_top5(
+    std::uint8_t target, std::uint32_t key,
+    std::size_t exact_count, std::size_t fallback_count,
+    std::array<std::uint8_t, 5>& top, float& loss) {
+    top.fill(0);
+    loss = 0.0f;
+    if (exact_count > 8000u || fallback_count == 0u ||
+        fallback_count > 16384u) {
+        return fail("direct context exact<=8000 fallback 1..16384");
+    }
+    if (!write_word(kProposalBase + 0u, 8u) ||
+        !write_word(kProposalBase + 1u, target) ||
+        !write_word(kProposalBase + 2u, key) ||
+        !write_word(kProposalBase + 3u,
+                    static_cast<std::uint32_t>(exact_count)) ||
+        !write_word(kProposalBase + 4u,
+                    static_cast<std::uint32_t>(fallback_count)) ||
+        !write_word(kCommandBase, kContextBackoffCommand))
+        return fail("cannot write direct context top5 command");
+    if (!run_command()) return false;
+    std::array<bool, 256> seen{};
+    for (std::size_t i = 0; i < top.size(); ++i) {
+        const auto cls = read_word(kResultBase + static_cast<std::uint32_t>(i));
+        if (cls > 255u || seen[cls])
+            return fail("direct context top5 malformed class list");
+        seen[cls] = true;
+        top[i] = static_cast<std::uint8_t>(cls);
+    }
+    const auto bits = read_word(kResultBase + 5u);
+    std::memcpy(&loss, &bits, sizeof(loss));
+    if (!std::isfinite(loss) || loss < 0.0f)
+        return fail("direct context top5 invalid loss");
+    return true;
+}
+
 void RawFieldVM::reset_readout() {
     for (std::uint32_t i = 0; i < 255u * 8u; ++i) {
         (void)write_word(0xB000u + i, 0);

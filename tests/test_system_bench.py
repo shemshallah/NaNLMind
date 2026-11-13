@@ -53,6 +53,19 @@ def main() -> int:
         if "native opcode" not in byte.get("metric_scope", ""):
             raise SystemExit("byte scope does not identify the native system")
 
+        direct_out = tmp_path / "direct.json"
+        run([str(BUILD / "direct256-bench"),
+             "data/alice_excerpt.txt", str(direct_out),
+             "1000", "512", "12000"])
+        direct = json.loads(direct_out.read_text())
+        if direct.get("schema") != "nanlm.system-byte-bench/1":
+            raise SystemExit("bad direct256 benchmark schema")
+        check_metrics(direct["system"], "byte/direct256")
+        if not (direct["system"]["top1"] <= direct["system"]["top5"]):
+            raise SystemExit("direct256 top-k ordering")
+        if "mode 8" not in direct.get("metric_scope", ""):
+            raise SystemExit("direct256 scope does not identify mode 8")
+
         word_out = tmp_path / "word.json"
         run([sys.executable, "tools/system_word_bench.py",
              "--corpus", "data/alice_excerpt.txt", "--out", str(word_out)])
@@ -75,6 +88,9 @@ def main() -> int:
         print("byte_system",
               byte["system"]["bpb"], byte["system"]["top1"],
               byte["system"]["top5"])
+        print("byte_direct256",
+              direct["system"]["bpb"], direct["system"]["top1"],
+              direct["system"]["top5"])
         print("word_system",
               system["top1"], system["top5"], system["in_vocab_top5"])
         print("word_bigram_top5", bigram["top5"])

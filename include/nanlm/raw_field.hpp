@@ -1002,6 +1002,17 @@ public:
                               std::size_t buckets,
                               std::array<std::uint8_t, 5>& top,
                               float& loss);
+    // Direct 256-bin context histogram (mode 7 step, mode 8 top-5).
+    bool reset_context_direct(std::size_t exact_count,
+                              std::size_t fallback_count);
+    bool context_direct_step(std::uint8_t target, std::uint32_t key,
+                             std::size_t exact_count,
+                             std::size_t fallback_count,
+                             std::uint32_t& bucket, bool& exact);
+    bool readout_context_direct_top5(
+        std::uint8_t target, std::uint32_t key,
+        std::size_t exact_count, std::size_t fallback_count,
+        std::array<std::uint8_t, 5>& top, float& loss);
     void reset_readout();
     bool set_readout_row(std::uint8_t row,
                          const std::array<float, kRawFeatureDim>& values);

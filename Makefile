@@ -149,6 +149,9 @@ $(BUILD)/word-baselines: tools/nanlm_word_baselines.cpp $(LIB) | $(BUILD)
 $(BUILD)/system-byte-bench: tools/nanlm_system_byte_bench.cpp include/nanlm/raw_field.hpp $(LIB) $(NAN0S_LIB) $(FIELD_DRIVER) | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
+$(BUILD)/direct256-bench: tools/nanlm_direct256_bench.cpp include/nanlm/raw_field.hpp $(LIB) $(NAN0S_LIB) $(FIELD_DRIVER) | $(BUILD)
+	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
+
 $(BUILD)/word-system: tools/nanlm_word_system.cpp include/nanlm/word_vector.hpp $(LIB) | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< $(LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
@@ -319,8 +322,8 @@ context-routes-test: $(CLI) $(FIELD_DRIVER)
 unified-48m-check: $(BUILD)/nanlm48m-native-batch $(BUILD)/nanlm48m-native-emit
 	python3 tests/test_unified_48m.py
 
-system-benchmarks: $(BUILD)/system-byte-bench $(BUILD)/word-system $(BUILD)/word-baselines
-	./$(BUILD)/system-byte-bench data/alice_full.txt state/benchmarks/system_byte_bench.json 16384 16383 40 0.1
+system-benchmarks: $(BUILD)/direct256-bench $(BUILD)/word-system $(BUILD)/word-baselines
+	./$(BUILD)/direct256-bench data/alice_full.txt state/benchmarks/system_byte_direct256.json
 	python3 tools/system_word_bench.py --corpus data/alice_full.txt
 
 phase-ingest-check: $(CLI)
@@ -362,5 +365,5 @@ dual-head-test: $(BUILD)/test_dual_head
 	./$(BUILD)/test_dual_head
 
 
-unified-test-base: $(CLI) $(FIELD_DRIVER) $(BUILD)/test_raw_field $(BUILD)/test_context_backoff $(BUILD)/test_context_route $(BUILD)/test_native48m_feedback $(BUILD)/test_dual_tensor_arena $(BUILD)/test_head_page_arena $(BUILD)/test_head_page_loader $(BUILD)/test_head_block $(BUILD)/test_head_worker $(BUILD)/test_head_block64 $(BUILD)/test_head_worker_scheduler $(BUILD)/test_long_context $(BUILD)/test_long_context64 $(BUILD)/test_chunk_summary $(BUILD)/test_summary_retrieval $(BUILD)/test_summary_bank_checkpoint $(BUILD)/test_summary_bank_128k $(BUILD)/test_hierarchical_context $(BUILD)/test_unified_context_runtime $(BUILD)/test_head_readout $(BUILD)/test_head_readout_train $(BUILD)/test_head_page_train $(BUILD)/test_head_dx2 $(BUILD)/test_head_page_checkpoint $(BUILD)/test_nlhe2 $(BUILD)/test_word_vector_learning $(BUILD)/credit-ablation $(BUILD)/byte-baselines $(BUILD)/word-baselines $(BUILD)/system-byte-bench $(BUILD)/word-system $(BUILD)/nanlm48m-native-batch $(BUILD)/nanlm48m-native-emit $(BUILD)/nanlm-head-worker-batch $(BUILD)/nanlm-head-readout-train $(BUILD)/nanlm-head-readout-loop $(BUILD)/nanlm-head-page-gate $(BUILD)/nanlm-head-page-train $(BUILD)/nanlm-head-chunk-gate $(BUILD)/nanlm-unified-context
+unified-test-base: $(CLI) $(FIELD_DRIVER) $(BUILD)/test_raw_field $(BUILD)/test_context_backoff $(BUILD)/test_context_route $(BUILD)/test_native48m_feedback $(BUILD)/test_dual_tensor_arena $(BUILD)/test_head_page_arena $(BUILD)/test_head_page_loader $(BUILD)/test_head_block $(BUILD)/test_head_worker $(BUILD)/test_head_block64 $(BUILD)/test_head_worker_scheduler $(BUILD)/test_long_context $(BUILD)/test_long_context64 $(BUILD)/test_chunk_summary $(BUILD)/test_summary_retrieval $(BUILD)/test_summary_bank_checkpoint $(BUILD)/test_summary_bank_128k $(BUILD)/test_hierarchical_context $(BUILD)/test_unified_context_runtime $(BUILD)/test_head_readout $(BUILD)/test_head_readout_train $(BUILD)/test_head_page_train $(BUILD)/test_head_dx2 $(BUILD)/test_head_page_checkpoint $(BUILD)/test_nlhe2 $(BUILD)/test_word_vector_learning $(BUILD)/credit-ablation $(BUILD)/byte-baselines $(BUILD)/word-baselines $(BUILD)/system-byte-bench $(BUILD)/direct256-bench $(BUILD)/word-system $(BUILD)/nanlm48m-native-batch $(BUILD)/nanlm48m-native-emit $(BUILD)/nanlm-head-worker-batch $(BUILD)/nanlm-head-readout-train $(BUILD)/nanlm-head-readout-loop $(BUILD)/nanlm-head-page-gate $(BUILD)/nanlm-head-page-train $(BUILD)/nanlm-head-chunk-gate $(BUILD)/nanlm-unified-context
 	python3 tools/unified_test_base.py

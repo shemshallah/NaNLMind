@@ -642,35 +642,39 @@ the same held-out rows. These are **diagnostic floors**, not replacements for
 the unified 48M language entrypoint above. The contracts and measured values
 are frozen in `spec/system_benchmarks.v1.json`.
 
-### Byte system: native full 256-class top-5
+### Byte system: native direct 256-bin context
 
-`mth_context_top5.nas` is the evaluation companion to the context-memory
-training route. For a routed bucket it evaluates all 16 high groups and all 16
-conditional low groups, then ranks the full 256 byte classes:
+`mth_context_direct256.nas` is the current byte readout. The guest selects
+3000 exact 4-byte contexts with the existing count-threshold route, keeps a
+256-bin count row for each exact context, and uses 13384 hashed last-two-byte
+fallback rows for everything else. Training increments one count; evaluation
+applies fixed add-alpha smoothing `alpha=0.01`:
 
 ```text
-P(byte | bucket) = P(high | bucket) * P(low | high, bucket)
+P(c | row) = (count[c] + 0.01) / (sum(count) + 0.01*256)
 ```
 
-The guest returns top-1..top-5 plus the target natural-log loss; it performs no
-table update. The driver route is context command **40 mode 6**.
+The guest returns top-1..top-5 and the target natural-log loss. The driver
+route is context command **40 mode 8**; no host probability or ranking math is
+used.
 
-`build/system-byte-bench` trains the native context memory and evaluates the
-same byte positions as matched order-0, byte-bigram and context-2 references:
+`build/direct256-bench` evaluates the same byte positions as matched order-0,
+byte-bigram and context-2 references:
 
 | model | BPB | top-1 | top-5 |
 |---|---:|---:|---:|
-| native context system | **2.60280** | **55.825%** | 78.706% |
+| native direct-256 context | **2.46556** | **54.840%** | **83.726%** |
 | order-0 matched | 4.71318 | 15.652% | 42.260% |
 | byte bigram matched | 3.50949 | 32.058% | 69.592% |
-| context-2 matched | 3.28052 | 42.915% | **79.358%** |
+| context-2 matched | 3.28052 | 42.915% | 79.358% |
+| class-memory ablation | 2.60280 | 55.825% | 78.706% |
 
-The tuned byte route uses 16384 buckets, 16383 exact contexts, 40 epochs and
-learning rate 0.1. This is a real native byte model: BPB and top-1 beat every
-reference floor, and top-5 beats order-0 and byte-bigram; context-2 still has a
-small top-5 edge (79.358% vs 78.706%). The system BPB is higher than its top-1 suggests
-because the class probabilities are not calibrated; top-1 and BPB are reported
-separately and neither is hidden.
+The direct-256 readout now beats every external reference floor on all three
+metrics. Its top-1 is lower than the class-memory ablation because the
+3000-exact/13384-fallback configuration was selected for best BPB and top-5;
+the ablation is retained for audit, not as a second model path.
+The result is still a byte-level context memory, not a word model and not the
+R27/48M decoder.
 
 Reproduce both full rows with:
 
@@ -681,14 +685,14 @@ make system-benchmarks
 The byte row alone is:
 
 ```sh
-./build/system-byte-bench data/alice_full.txt \
-  state/benchmarks/system_byte_bench.json 16384 16383 40 0.1
+./build/direct256-bench data/alice_full.txt \
+  state/benchmarks/system_byte_direct256.json 3000 13384
 ```
 
 Artifact:
 
 ```text
-state/benchmarks/system_byte_bench.json
+state/benchmarks/system_byte_direct256.json
 ```
 
 ### Word system: associative top-5

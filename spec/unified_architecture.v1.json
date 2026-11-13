@@ -26,7 +26,8 @@
     "mth_global_hodge256_f32.nas",
     "mth_meta_attention16_f32.nas",
     "mth_context6_window_stream.nas",
-    "mth_shortlist_batch_proposal.nas"
+    "mth_shortlist_batch_proposal.nas",
+    "mth_context_direct256.nas"
   ],
   "policy": {
     "canonical_branch": "main",
@@ -35,7 +36,7 @@
   },
   "metrics": [
     "48M finite-candidate normalized top-k (when archive present)",
-    "byte BPB/top5 diagnostic floors",
+    "byte BPB/top5 (native direct-256 canonical)",
     "word n-gram BPB/top5 reference",
     "candidate-panel NLL/top1/top5",
     "page/chunk checkpoint gates"

@@ -6,17 +6,17 @@
     "split": "80% train / 20% held-out by byte position",
     "evaluation_positions": "i >= 4, target < 255",
     "configuration": {
-      "buckets": 16384,
-      "exact_limit": 16383,
-      "epochs": 40,
-      "learning_rate": 0.1
+      "exact_contexts": 3000,
+      "fallback_buckets": 13384,
+      "smoothing_alpha": 0.01,
+      "training_passes": 1
     },
     "samples": 30239,
     "system": {
-      "runtime": "raw NaN16 context memory; opcode 40 mode 6 top-5",
-      "bpb": 2.6028,
-      "top1": 0.558253,
-      "top5": 0.787063
+      "runtime": "raw NaN16 direct 256-bin context; opcode 40 mode 8",
+      "bpb": 2.46556,
+      "top1": 0.548398,
+      "top5": 0.837263
     },
     "references": {
       "order0": {
@@ -36,11 +36,19 @@
       }
     },
     "delta_system_minus_context2": {
-      "bpb": -0.677715,
-      "top1": 0.129105,
-      "top5": -0.00651477
+      "bpb": -0.81496,
+      "top1": 0.11925,
+      "top5": 0.043685
     },
-    "artifact": "state/benchmarks/system_byte_bench.json"
+    "artifact": "state/benchmarks/system_byte_direct256.json",
+    "route": "exact k=4 contexts selected by guest count threshold + hashed last-two-byte fallback; direct 256-bin counts",
+    "class_readout_ablation": {
+      "runtime": "16x16 class-memory; opcode 40 mode 6",
+      "bpb": 2.6028,
+      "top1": 0.558253,
+      "top5": 0.787063,
+      "note": "prior readout retained for audit, not the canonical byte benchmark"
+    }
   },
   "word": {
     "corpus": "data/alice_full.txt",
@@ -96,10 +104,11 @@
     "artifact": "state/benchmarks/word_baselines.json"
   },
   "claims": [
-    "Byte system top-k is native guest output.",
+    "The canonical byte row is native direct-256 opcode 40 mode 8.",
     "No word system BPB is claimed because association scores are not normalized.",
     "The associative word layer is not the native 48M decoder.",
-    "The word system ranks its full learned training vocabulary; this is not a frontier metric."
+    "The word system ranks its full learned training vocabulary; this is not a frontier metric.",
+    "R27/48M archive metrics are not part of NaNLMind and are not claimed."
   ],
   "canonical_language_model": {
     "model": "frozen R25/R27 48M decoder",
