@@ -851,6 +851,29 @@ state/benchmarks/word_baselines.json
 ```
 
 
+## Unified projection runtime
+
+`include/nanlm/projection_runtime.hpp` is the common host composition boundary
+for the three native readout heads:
+
+```text
+byte  -> field_driver.nan  -> direct-256 byte context
+word  -> word_worker.nan   -> native full-training-vocabulary words
+token -> token_worker.nan  -> full GPT-2 vocabulary tokens
+```
+
+Only one projection VM is resident at a time. Switching kind releases the
+previous VM before loading the next, which prevents two count-table layouts
+from aliasing in one 128 MiB guest. The runtime performs no host mathematics:
+it loads the image, transports arguments, and forwards guest receipts.
+
+`tests/test_projection_runtime.cpp` exercises all three heads through this one
+entry point, including byte-context selection, word batch counting, token
+row-map projection, and VM switching.
+
+Contract: `spec/projection_runtime.v1.json`.
+
+
 ## Unified context runtime
 
 `include/nanlm/unified_context_runtime.hpp` is the canonical composition point
