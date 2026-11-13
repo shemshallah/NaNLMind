@@ -65,8 +65,10 @@ def score_panel(emitter, records, native_weights_by_index) -> dict:
             top1 += 1
         if target in ranked[:5]:
             top5 += 1
-        candidate_mass += sum(row["candidate_probability"]
-                              for row in result["rows"])
+        row_mass = sum(row["candidate_probability"] for row in result["rows"])
+        if row_mass > 1.0 + 1e-6:
+            raise ValueError("candidate mass exceeds one")
+        candidate_mass += row_mass
     n = len(records)
     return {
         "positions": n,
