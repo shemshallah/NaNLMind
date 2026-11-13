@@ -16,8 +16,7 @@
   },
   "native_modes": {
     "bridge": "build/nanlm48m-native-emit, full phase/trihead/Hodge/MC0 candidate path",
-    "batch": "build/nanlm48m-native-batch, opcode118 finite shortlist",
-    "default": "batch"
+    "batch": "build/nanlm48m-native-batch, opcode118 finite shortlist"
   },
   "normalization": "Z=1+sum_{w in S} P0(w|c)*(exp(delta(w,c))-1); Pcand=P0*exp(delta)/Z",
   "top_k_scope": "finite supplied candidate shortlist; full 48M trie argmax is not claimed",
@@ -36,5 +35,6 @@
     "automatic tensor promotion"
   ],
   "evaluation_entrypoint": "tools/unified_48m_eval.py",
-  "evaluation_scope": "finite candidate shortlist exact-word BPB/top-k; no full-vocab argmax"
+  "evaluation_scope": "finite candidate shortlist exact-word BPB/top-k; no full-vocab argmax",
+  "default_native_mode": "batch"
 }
