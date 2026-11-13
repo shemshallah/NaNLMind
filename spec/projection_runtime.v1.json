@@ -2,38 +2,32 @@
   "schema": "nanlm.projection-runtime/1",
   "entrypoint": "include/nanlm/projection_runtime.hpp",
   "policy": {
-    "one_resident_vm": true,
-    "one_guest_image_for_projections": true,
-    "host_role": "load image, transport arguments, forward receipts",
+    "runtime_entrypoint": "include/nanlm/projection_runtime.hpp",
+    "context_layer": "always available; hierarchical 64-token self-attention + summary bank",
+    "projection_layer": "one resident field_driver VM for byte/word/token table heads",
+    "context_mode": false,
+    "host_role": "load images, transport arguments, forward receipts",
     "guest_role": "all counts, interpolation, top-k, loss, context math",
-    "simultaneous_projection_heads": false,
-    "reason": "byte/word/token count layouts share the 128 MiB arena; context needs the head worker and page arena"
+    "multiple_context_modes": false
   },
-  "kinds": {
-    "byte": {
-      "image": "build/field_driver.nan",
-      "kernel": "mth/nan16/mth_context_direct256.nas",
-      "output": "byte top-5 and natural-log loss"
-    },
-    "word": {
-      "image": "build/field_driver.nan",
-      "kernel": "mth/nan16/mth_word_projection.nas",
-      "output": "full training-vocabulary word IDs, top-5 and loss"
-    },
-    "token": {
-      "image": "build/field_driver.nan",
-      "kernel": "mth/nan16/mth_token_projection.nas",
-      "output": "full GPT-2 vocabulary token IDs, top-5 and loss"
-    },
-    "context": {
-      "image": "build/head_worker.nan",
-      "entrypoint": "UnifiedContextRuntime",
-      "output": "long-context advance/retrieve/memory"
-    }
-  },
-  "switching": "one VM is resident at a time; load(kind) releases the previous image and constructs the selected native runtime. Projection kinds share one field_driver image/table arena; context uses the head worker and page arena.",
+  "switching": "context() lazily constructs the persistent context layer; projection load(kind) selects a field_driver table head. There is no context Kind or context mode.",
   "tests": [
     "tests/test_projection_runtime.cpp"
   ],
-  "note": "The system has one resident VM, not one VM per subsystem. Projection kinds select a shared-arena table layout; context selects the head-worker runtime."
+  "note": "One system runtime API. Context and projection use distinct native worker images because 16 head-page slots and the projection count arena do not share a physical layout.",
+  "engines": {
+    "context": {
+      "image": "build/head_worker.nan",
+      "entrypoint": "UnifiedContextRuntime",
+      "layers": "3-layer 64-slot self-attention + hierarchical summaries"
+    },
+    "projection": {
+      "image": "build/field_driver.nan",
+      "kernels": [
+        "mth_context_direct256.nas",
+        "mth_word_projection.nas",
+        "mth_token_projection.nas"
+      ]
+    }
+  }
 }

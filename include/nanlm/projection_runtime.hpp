@@ -20,7 +20,7 @@ namespace nanlm {
 
 class ProjectionRuntime {
 public:
-    enum class Kind { None, Byte, Word, Token, Context };
+    enum class Kind { None, Byte, Word, Token };
 
     explicit ProjectionRuntime(std::string build_dir = "build")
         : build_dir_(std::move(build_dir)) {}
@@ -31,39 +31,8 @@ public:
 
     bool load(Kind kind) {
         if (kind == Kind::None) { unload(); return true; }
-        if (kind == Kind::Context) {
-            // Context is the only mode that needs the worker image and page
-            // arena; release the projection image first.
-            vm_.reset();
-            context_.reset();
-            arena_.reset();
-            vm_ = std::make_unique<RawFieldVM>(build_dir_ + "/head_worker.nan");
-            if (!vm_->ready()) {
-                error_ = vm_->error();
-                vm_.reset();
-                kind_ = Kind::None;
-                return false;
-            }
-            try {
-                arena_ = std::make_unique<HeadPageArena>();
-                context_ = std::make_unique<UnifiedContextRuntime>(*vm_, *arena_);
-            } catch (const std::exception& e) {
-                error_ = e.what();
-                context_.reset();
-                arena_.reset();
-                vm_.reset();
-                kind_ = Kind::None;
-                return false;
-            }
-            kind_ = Kind::Context;
-            error_.clear();
-            return true;
-        }
         // One field_driver image owns byte, word and token kernels. Switching
         // kind changes the active table interpretation, not the VM.
-        if (kind_ == Kind::Context) vm_.reset();
-        context_.reset();
-        arena_.reset();
         if (!vm_) {
             vm_ = std::make_unique<RawFieldVM>(build_dir_ + "/field_driver.nan");
             if (!vm_->ready()) {
@@ -80,14 +49,23 @@ public:
     void unload() noexcept {
         context_.reset();
         arena_.reset();
+        context_vm_.reset();
         vm_.reset();
         kind_ = Kind::None;
     }
+    // Hierarchical context and layered 64-token self-attention are always part
+    // of the runtime, not a selectable projection mode.
     UnifiedContextRuntime& context() {
-        if (kind_ != Kind::Context || !context_)
-            throw std::logic_error("projection runtime is not in context mode");
+        if (!context_) {
+            context_vm_ = std::make_unique<RawFieldVM>(build_dir_ + "/head_worker.nan");
+            if (!context_vm_->ready())
+                throw std::runtime_error(context_vm_->error());
+            arena_ = std::make_unique<HeadPageArena>();
+            context_ = std::make_unique<UnifiedContextRuntime>(*context_vm_, *arena_);
+        }
         return *context_;
     }
+    bool context_ready() const noexcept { return context_ != nullptr; }
 
     // Byte direct-256 context readout (field_driver).
     bool byte_reset(std::size_t exact, std::size_t fallback) {
@@ -177,6 +155,7 @@ private:
     std::string build_dir_;
     Kind kind_ = Kind::None;
     std::unique_ptr<RawFieldVM> vm_;
+    std::unique_ptr<RawFieldVM> context_vm_;
     std::unique_ptr<HeadPageArena> arena_;
     std::unique_ptr<UnifiedContextRuntime> context_;
     ContextBackoffSelection selection_{};

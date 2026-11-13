@@ -67,11 +67,10 @@ int main() {
     CHECK_EQ(byte_top[0], 0x12u);
     CHECK(std::isfinite(byte_loss));
 
-    // Context mode uses the same single-resident-VM rule with the head worker.
-    CHECK(runtime.load(ProjectionRuntime::Kind::Context));
-    CHECK_EQ(static_cast<int>(runtime.kind()), static_cast<int>(ProjectionRuntime::Kind::Context));
+    // Context is always part of the runtime, not a loadable mode.
+    CHECK(!runtime.context_ready());
     CHECK_EQ(runtime.context().resident_pages(), 0u);
-    CHECK(runtime.load(ProjectionRuntime::Kind::Byte));
+    CHECK(runtime.context_ready());
     CHECK_EQ(static_cast<int>(runtime.kind()), static_cast<int>(ProjectionRuntime::Kind::Byte));
 
     runtime.unload();

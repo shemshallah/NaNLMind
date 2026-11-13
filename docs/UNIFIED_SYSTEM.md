@@ -874,25 +874,38 @@ model mathematics. `make system-status` prints the same receipt.
 
 ## Unified projection runtime
 
-`include/nanlm/projection_runtime.hpp` is the common host composition boundary
-for the native system layer:
+`include/nanlm/projection_runtime.hpp` is the common system runtime API.
+
+Context is a **layer**, not a mode:
 
 ```text
-byte    -> field_driver.nan -> direct-256 byte context
-word    -> field_driver.nan -> native full-training-vocabulary words
-token   -> field_driver.nan -> full GPT-2 vocabulary tokens
-context -> head_worker.nan  -> 64-slot long context + summary bank
+context layer
+  -> head_worker.nan
+  -> three 64-slot self-attention layers per chunk
+  -> persistent per-head memory
+  -> 256-token chunk summaries + 512-slot hierarchical bank
+
+projection layer
+  -> field_driver.nan
+  -> direct-256 byte head
+  -> full training-vocabulary word head
+  -> full GPT-2 vocabulary token head
 ```
 
-There is **one resident VM**, not one VM per subsystem. Byte, word and token
-share the same `field_driver.nan` image and the same 128 MiB table arena; only
-one count-table layout is active at a time. Context switches to the head-worker
-image and page arena. The runtime performs no host mathematics: it loads the
-image, transports arguments, and forwards guest receipts.
+`context()` lazily constructs the persistent hierarchical context layer; there
+is no `Kind::Context`. Projection `load(kind)` selects a table head in the
+field-driver projection image. The byte, word, and token heads share one
+field-driver VM and one shared table arena; only one table interpretation is
+active at a time. The context layer uses the head-worker image and page arena
+because its 16 resident pages cannot coexist with the projection table layouts.
 
-`tests/test_projection_runtime.cpp` exercises all three projection heads and
-context mode through this one entry point, including byte-context selection,
-word batch counting, token row-map projection, and Context/Byte switching.
+The runtime performs no host mathematics: it loads images, transports
+arguments, and forwards guest receipts. The context layer always runs the
+hierarchical self-attention loop when `context()` is used; it is not a
+selectable alternative path.
+
+`tests/test_projection_runtime.cpp` exercises byte/word/token heads and the
+always-present context layer through this API.
 
 Contract: `spec/projection_runtime.v1.json`.
 
