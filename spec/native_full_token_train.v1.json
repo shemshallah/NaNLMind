@@ -1,6 +1,6 @@
 {
   "schema": "nanlm.native-full-token-train/1",
-  "status": "running",
+  "status": "completed-100k-pilot",
   "dataset": {
     "kaggle": "zlatan599/lexor-2026",
     "file": "1B_tokens/LLM_training_data_1B.bin",
@@ -11,7 +11,7 @@
     "license": "MIT"
   },
   "protocol": {
-    "train_tokens": 1000000000,
+    "train_tokens": 100000,
     "eval_tokens": 20000,
     "vocabulary": 50257,
     "context_rows": 257,
@@ -21,14 +21,43 @@
     "model": "native interpolated add-alpha token bigram",
     "alpha": 0.01,
     "lambda": 0.7,
-    "token_chunk": 262144
+    "token_chunk": 262144,
+    "one_billion_run": "cancelled by user request"
   },
   "host_scope": "file I/O, frequency selection, row-map construction, transport, JSON",
   "guest_scope": "unigram/bigram counts, interpolation, full 50257-way projection, top-5, loss",
   "metrics": {
-    "primary": ["bits_per_token", "top1", "top5", "tokens_per_second"],
-    "not_claimed": ["text-word BPB", "byte BPB", "R27/48M metrics"]
+    "primary": [
+      "bits_per_token",
+      "top1",
+      "top5",
+      "tokens_per_second"
+    ],
+    "not_claimed": [
+      "text-word BPB",
+      "byte BPB",
+      "R27/48M metrics"
+    ]
   },
   "artifact": "state/benchmarks/train_1b_full.json",
-  "command": "./build/train-1b-full state/lexor/1B_tokens/LLM_training_data_1B.bin state/benchmarks/train_1b_full.json 1000000000 20000"
+  "command": "./build/train-1b-full state/lexor/1B_tokens/LLM_training_data_1B.bin state/benchmarks/train_100k_full.json 100000 20000",
+  "result": {
+    "train_tokens": 100000,
+    "eval_tokens": 20000,
+    "vocab": 50257,
+    "context_rows": 257,
+    "bits_per_token": 10.9498,
+    "top1": 0.1012,
+    "top5": 0.2324,
+    "end_to_end_seconds": 658.718,
+    "end_to_end_tokens_per_second": 151.81,
+    "artifact": "state/benchmarks/train_100k_full.json"
+  },
+  "notes": [
+    "User requested stopping the 1B full-vocabulary run and running 100k instead.",
+    "Full 50,257-way evaluation dominates end-to-end time; this is not a pure training throughput.",
+    "Full target vocabulary has no <unk> target; context is 256 hot previous-token rows plus fallback.",
+    "Token-level GPT-2 subword IDs only; not text-word or byte BPB.",
+    "No R27/48M component used."
+  ]
 }

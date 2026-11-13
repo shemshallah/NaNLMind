@@ -188,5 +188,18 @@
     "tokens_per_second": 967321.0,
     "artifact": "state/benchmarks/train_1b.json",
     "scope": "native token-level projection; reduced GPT-2 subword vocabulary; not text-word or byte metrics"
+  },
+  "native_full_vocab_100k_pilot": {
+    "dataset": "zlatan599/lexor-2026 GPT-2 token stream",
+    "train_tokens": 100000,
+    "eval_tokens": 20000,
+    "vocab": 50257,
+    "context_rows": 257,
+    "bits_per_token": 10.9498,
+    "top1": 0.1012,
+    "top5": 0.2324,
+    "end_to_end_seconds": 658.718,
+    "artifact": "state/benchmarks/train_100k_full.json",
+    "scope": "full GPT-2 vocabulary token-level pilot; 1B full-vocab run cancelled by request"
   }
 }

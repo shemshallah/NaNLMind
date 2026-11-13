@@ -779,30 +779,34 @@ Artifact: `state/benchmarks/train_1b.json`.
 Contract: `spec/native_token_train_1b.v1.json`.
 
 
-### Full GPT-2 vocabulary 1B run
+### Full GPT-2 vocabulary 100k pilot
 
-A second 1B-token run removes the reduced-vocabulary `<unk>` target entirely:
+The full-vocabulary 1B run was stopped by request and replaced with a 100k
+pilot:
 
 ```text
 target vocabulary      50,257 GPT-2 tokens
 context rows             257  (256 hottest previous IDs + fallback)
-train tokens     1,000,000,000
-held-out sample          20,000
+train tokens         100,000
+held-out sample       20,000
 worker                   build/token_worker.nan
 kernel                   mth/nan16/mth_token_projection.nas
 ```
 
-The full target vocabulary does not use a dense `V×V` table. The 256 hottest
-previous-token IDs get their own rows; all other previous IDs share row 256.
-This is a native full-vocabulary projection but deliberately lower-capacity
-context modeling than the reduced-vocabulary run. The host only selects the
-hot contexts, writes the row map and transports IDs. All counts, full 50,257-way
-softmax interpolation, top-5 and loss run in NaN16.
+Result:
 
-This result is token-level, not text-word or byte BPB. Contract:
-`spec/native_full_token_train.v1.json`. Artifact:
-`state/benchmarks/train_1b_full.json`; the result is reported only after the
-background run completes.
+| train tokens | eval | vocab | bits/token | top-1 | top-5 | end-to-end |
+|---:|---:|---:|---:|---:|---:|---:|
+| 100,000 | 20,000 | 50,257 | 10.9498 | 10.120% | 23.240% | 658.7 s |
+
+This is a **pilot**, not a frontier result. Full target vocabulary removes
+`<unk>` targets, but 100k training tokens are insufficient and the 20k ×
+50,257 evaluation scan dominates end-to-end time. The 1B full-vocabulary run
+was cancelled; the separate reduced-vocabulary 1B run remains complete.
+
+Token-level only — not text-word or byte BPB. Contract:
+`spec/native_full_token_train.v1.json`; artifact:
+`state/benchmarks/train_100k_full.json`.
 
 
 ### Associative diagnostic top-5
