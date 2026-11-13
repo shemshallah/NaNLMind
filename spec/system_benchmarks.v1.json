@@ -174,5 +174,19 @@
     "oov_rate": 0.0790672,
     "artifact": "state/benchmarks/word_native.json",
     "note": "native top-1/top-5 exactly match the reference bigram; BPB differs only by guest float32 accumulation"
+  },
+  "native_1b_token_run": {
+    "dataset": "zlatan599/lexor-2026 1B_tokens/LLM_training_data_1B.bin",
+    "train_tokens": 1000000000,
+    "eval_tokens": 180000,
+    "vocab": 3000,
+    "unknown_rate": 0.2167,
+    "bits_per_token": 6.17907,
+    "top1": 0.260456,
+    "top5": 0.487056,
+    "train_seconds": 1033.78,
+    "tokens_per_second": 967321.0,
+    "artifact": "state/benchmarks/train_1b.json",
+    "scope": "native token-level projection; reduced GPT-2 subword vocabulary; not text-word or byte metrics"
   }
 }

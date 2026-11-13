@@ -739,31 +739,43 @@ Reproduce:
 
 ### 1B-token native training run
 
-A 1-billion-token native run is active against the Kaggle dataset
-`zlatan599/lexor-2026`, file:
+Completed against Kaggle dataset `zlatan599/lexor-2026`:
 
 ```text
 1B_tokens/LLM_training_data_1B.bin
+2,000,360,716 bytes
+uint16 little-endian GPT-2 token IDs
+1,000,180,358 stream tokens
+SHA-256 d95ce10a5b68c369e0e357c2f212176417e86331e54d9e5b12bb2d89a596faee
+MIT
 ```
 
-It is 2,000,360,716 bytes of uint16 little-endian GPT-2 token IDs
-(1,000,180,358 tokens, MIT). The run uses:
+Protocol and result:
 
 ```text
-train tokens     1,000,000,000
-held-out tokens    180,000
-vocabulary           3,000  (2,999 most frequent IDs + <unk>)
-worker               build/word_worker.nan
-math                 native interpolated token bigram
+train tokens       1,000,000,000
+held-out tokens       180,000
+vocabulary              3,000  (top 2,999 IDs + <unk>)
+unknown rate           21.67%
+worker                  build/word_worker.nan
+model                   native interpolated token bigram
+train seconds          1033.78
+tokens/second           967,321
+bits/token              6.17907
+top-1                  26.046%
+top-5                  48.706%
 ```
 
-The host only reads the stream, selects the top token IDs, remaps them to
-transport IDs, and writes JSON. All unigram/bigram counts, interpolation, the
-full 3,000-way projection, top-5 and loss execute in NaN16.
+The host only reads the uint16 stream, selects the top token IDs, remaps them,
+and writes JSON. NaN16 owns unigram/bigram counts, interpolation, the full
+3,000-way projection, top-5 and loss.
 
-This is a **token-level** metric: GPT-2 subword tokens, not natural-language
-words and not bytes. It is not an R27/48M metric. Results are written to
-`state/benchmarks/train_1b.json`; until the run completes, no score is claimed.
+This is **GPT-2 subword-token** evaluation, not text-word BPB and not byte BPB.
+The reduced 3,000-token vocabulary is responsible for the 21.67% `<unk>` rate;
+full GPT-2 vocabulary (50,257) does not fit in the 128 MiB guest with the
+current dense count layout. No R27/48M component is used.
+
+Artifact: `state/benchmarks/train_1b.json`.
 Contract: `spec/native_token_train_1b.v1.json`.
 
 

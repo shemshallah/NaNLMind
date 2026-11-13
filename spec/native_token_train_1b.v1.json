@@ -1,6 +1,6 @@
 {
   "schema": "nanlm.native-token-train/1",
-  "status": "running",
+  "status": "completed",
   "dataset": {
     "kaggle": "zlatan599/lexor-2026",
     "file": "1B_tokens/LLM_training_data_1B.bin",
@@ -42,5 +42,23 @@
     ]
   },
   "artifact": "state/benchmarks/train_1b.json",
-  "command": "./build/train-1b state/lexor/1B_tokens/LLM_training_data_1B.bin state/benchmarks/train_1b.json 3000 1000000000 180000"
+  "command": "./build/train-1b state/lexor/1B_tokens/LLM_training_data_1B.bin state/benchmarks/train_1b.json 3000 1000000000 180000",
+  "result": {
+    "train_tokens": 1000000000,
+    "eval_tokens": 180000,
+    "vocab": 3000,
+    "unknown_rate": 0.2167,
+    "bits_per_token": 6.17907,
+    "top1": 0.260456,
+    "top5": 0.487056,
+    "train_seconds": 1033.78,
+    "tokens_per_second": 967321.0,
+    "artifact": "state/benchmarks/train_1b.json"
+  },
+  "notes": [
+    "Exactly 1B training tokens consumed; 180k held-out tokens evaluated.",
+    "Token-level GPT-2 subword IDs only; not text-word BPB or byte BPB.",
+    "Top 3000 token vocabulary plus <unk>; 21.67% of held-out tokens are <unk>.",
+    "No R27/48M component was used."
+  ]
 }
