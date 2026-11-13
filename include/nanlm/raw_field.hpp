@@ -475,6 +475,12 @@ public:
         std::uint8_t slot, const std::array<float, 128>& target,
         float learning_rate, std::array<float, 6 * 128>& output,
         float& error_norm, std::uint8_t& reason);
+    // Opcode137: exact layer-2 dX2 reverse for T=1.
+    bool native_head_page_train_dx2(
+        const std::array<float, 6 * 128>& context, std::uint8_t token_count,
+        std::uint8_t slot, const std::array<float, 128>& target,
+        std::array<float, 128>& output, std::array<float, 128>& dx2,
+        float& error_norm, std::uint8_t& reason);
     bool native_shortlist_batch(
         const std::array<std::uint32_t,6>& context_words,
         std::uint8_t valid_mask, std::uint8_t task,

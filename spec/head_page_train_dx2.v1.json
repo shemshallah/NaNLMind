@@ -1,0 +1,32 @@
+{
+  "schema": "nanlm.head-page-train-dx2/1",
+  "opcode": 137,
+  "tokens": 1,
+  "loss": "0.5*||output-target||^2",
+  "sign": "dY=output-target; dX2=dL/dX2",
+  "captures": [
+    "A1",
+    "inv1",
+    "A2",
+    "inv2",
+    "H",
+    "layer-2 weights"
+  ],
+  "path": [
+    "dH=W2^T dY",
+    "dZ=dH*(1-H^2)",
+    "dXN2=W1^T dZ",
+    "dX1=dY+LNbwd(A2,dXN2,inv2)",
+    "dC=Wo^T dX1",
+    "dXN1=Wv^T dC",
+    "dX2=dX1+LNbwd(A1,dXN1,inv1)"
+  ],
+  "limits": "T=1 only; T>=2 rejected until full reverse attention",
+  "page_mutation": false,
+  "gradient_check": "central difference max relative error < 5e-2 on sampled coordinates",
+  "blocked": [
+    "T=2 all-token dK/dV reverse",
+    "layers 0/1 reverse",
+    "full BPTT"
+  ]
+}

@@ -97,11 +97,36 @@ hw6_ln_tokens:
   ADD r2,r2,r12
   MOVI r3,128
   CALL @hw6_ln
+  ; Save first-LN inverse std for this token.
+  LD r10,r0,@hw6_layer
+  MOVI r11,0x400
+  MUL r11,r10,r11
+  LD r10,r0,@hw6_i
+  ADD r11,r11,r10
+  MOVI r12,0x6000
+  MOVHI r12,0x00D2
+  ADD r12,r12,r11
+  LD r13,r0,@hw6_inv
+  ST r13,r12,0
   LD r10,r0,@hw6_i
   ADDI r10,r10,1
   ST r10,r0,@hw6_i
   JMP @hw6_ln_tokens
 hw6_ln_tokens_done:
+  ; Retain the first-LN output A1 before QKV.
+  LD r10,r0,@hw6_layer
+  MOVI r11,0x400
+  MUL r11,r10,r11
+  MOVI r2,0x5000
+  MOVHI r2,0x00D2
+  ADD r2,r2,r11
+  MOVI r1,0x0300
+  MOVHI r1,0x00D0
+  LD r10,r0,@hw6_t
+  MOVI r11,128
+  MUL r10,r10,r11
+  ADD r3,r10,r0
+  CALL @hw6_cap_copy
 
   ; Layer page = page + layer*0x14000 words.
   LD r10,r0,@hw6_page
@@ -402,6 +427,17 @@ hw6_mlp_tokens:
   ADD r2,r2,r12
   MOVI r3,128
   CALL @hw6_ln
+  ; Save second-LN inverse std for this token.
+  LD r10,r0,@hw6_layer
+  MOVI r11,0x400
+  MUL r11,r10,r11
+  LD r10,r0,@hw6_i
+  ADD r11,r11,r10
+  MOVI r12,0x7000
+  MOVHI r12,0x00D2
+  ADD r12,r12,r11
+  LD r13,r0,@hw6_inv
+  ST r13,r12,0
   LD r10,r0,@hw6_layer_page
   MOVI r12,0x8000
   ADD r1,r10,r12

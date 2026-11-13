@@ -611,3 +611,25 @@ It loads head pages, runs the unified 64-slot causal context path, optionally
 retrieves from a summary-bank TSV, and emits final states plus retrieval hits.
 The host performs transport, input validation, and JSON only. The contract is
 frozen in `spec/unified_context_cli.v1.json`.
+
+
+## Layer-2 dX2 reverse
+
+Worker opcode **137** computes the exact T=1 layer-2 input gradient:
+
+```text
+dY  = output - target
+dH  = W2^T dY
+dZ  = dH * (1 - H^2)
+dXN2 = W1^T dZ
+dX1 = dY + LNbwd(A2, dXN2, inv2)
+dC  = Wo^T dX1
+dXN1 = Wv^T dC
+dX2 = dX1 + LNbwd(A1, dXN1, inv1)
+```
+
+It reads the retained A1/A2, inverse-standard-deviation, hidden, and Q/K/V
+captures; it does not mutate the page. T>=2 is rejected until full reverse
+attention is implemented. The test uses passthrough layers 0/1 and central
+finite differences on the layer-2 input. The contract is frozen in
+`spec/head_page_train_dx2.v1.json`.
