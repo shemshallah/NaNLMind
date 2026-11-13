@@ -57,6 +57,78 @@ int main() {
     CHECK(std::isfinite(loss));
     CHECK(loss > 0.0f);
 
+    // The guest backoff route resolves the compact bucket, then the joint
+    // readout runs on that same bucket.  Greedy backoff still picks high 0,
+    // while the joint head pair selects high 1 / low 0.
+    CHECK(vm.reset_context_readout(kBuckets));
+    CHECK(vm.reset_context_backoff());
+    constexpr std::uint32_t kKey = 0x41424344u;
+    bool inserted = false;
+    for (int step = 0; step < 3; ++step) {
+        CHECK(vm.context_backoff_build(kKey, &inserted));
+        if (step == 0) CHECK(inserted);
+    }
+    ContextBackoffSelection selection;
+    CHECK(vm.context_backoff_select(kBuckets, 1, selection));
+    CHECK_EQ(selection.exact_count, 1u);
+    std::vector<std::uint32_t> selected_keys;
+    CHECK(vm.context_backoff_exact_keys(selection.exact_count, selected_keys));
+    CHECK_EQ(selected_keys.size(), 1u);
+    CHECK_EQ(selected_keys[0], kKey);
+
+    ContextBackoffStep routed;
+    CHECK(vm.readout_context_backoff(target, 0.0f, kKey, kBuckets, routed));
+    CHECK(routed.exact);
+    const std::uint32_t routed_bucket = routed.bucket;
+    CHECK(routed_bucket < kBuckets);
+    for (std::size_t h = 0; h < 16; ++h) {
+        const float value = h == 0 ? high0 : (h == 1 ? high1 : -20.0f);
+        CHECK(vm.set_context_high(routed_bucket, h, value, kBuckets));
+    }
+    for (std::size_t l = 0; l < 16; ++l) {
+        CHECK(vm.set_context_low(routed_bucket, 0, l,
+                                 l == 1 ? low0_wrong : low0_other, kBuckets));
+        CHECK(vm.set_context_low(routed_bucket, 1, l,
+                                 l == 0 ? low1_true : low1_other, kBuckets));
+    }
+    CHECK(vm.readout_context_backoff(target, 0.0f, kKey, kBuckets, routed));
+    CHECK(!routed.correct);
+    CHECK_EQ(routed.predicted_high, 0u);
+    CHECK_EQ(routed.predicted_low, 1u);
+    CHECK(std::isfinite(routed.loss));
+
+    bool joint_correct = false;
+    float joint_loss = 0.0f;
+    std::uint8_t joint_high = 0, joint_low = 0;
+    CHECK(vm.readout_context_joint(target, 0.0f, routed_bucket, kBuckets,
+                                   joint_correct, joint_loss, joint_high,
+                                   joint_low));
+    CHECK(joint_correct);
+    CHECK_EQ(joint_high, 1u);
+    CHECK_EQ(joint_low, 0u);
+    CHECK(std::isfinite(joint_loss));
+    CHECK(joint_loss > 0.0f);
+
+    // The same guest-selected exact key feeds the copy/induction route.
+    CHECK(vm.reset_context_readout(kBuckets));
+    CHECK(vm.reset_context_copy(selected_keys, kBuckets, 4));
+    bool copy_correct = false;
+    float copy_loss = 0.0f;
+    std::uint8_t copy_predicted = 0;
+    for (int step = 0; step < 8; ++step) {
+        CHECK(vm.readout_context_copy(
+            target, 0.5f, kKey, kBuckets, selected_keys.size(), 4, 0.15f,
+            copy_correct, copy_loss, copy_predicted));
+        CHECK(copy_correct);
+        CHECK_EQ(copy_predicted, target);
+    }
+    CHECK(vm.readout_context_copy(
+        target, 0.0f, kKey, kBuckets, selected_keys.size(), 4, 0.15f,
+        copy_correct, copy_loss, copy_predicted));
+    CHECK(copy_correct);
+    CHECK_EQ(copy_predicted, target);
+    CHECK(std::isfinite(copy_loss));
+
     // An out-of-range bucket is rejected consistently in both modes.
     CHECK(!vm.readout_context(target, 0.0f, kBuckets, kBuckets, correct, loss,
                               predicted_high, predicted_low));

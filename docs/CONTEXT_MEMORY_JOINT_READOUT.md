@@ -89,7 +89,11 @@ python3 tools/context_memory_score.py --epochs 3 \
   0 0 100000 11456 4 0.1 1 0.8 backoffjoint 10500 load=state/wn3.ctx
 ```
 
-`state/wordnet_corpus.txt` is not tracked; the score tool records its SHA-256.
+`backoffjoint` normally uses the guest k=4 exact / k=3 fallback route. When
+`load=` names an older checkpoint written by the host `backoff` route, a
+guest-scored probe selects the matching bucket map first; the host only
+compares returned losses. `state/wordnet_corpus.txt` is not tracked; the score
+tool records its SHA-256.
 
 ## NaNLM v1 reference review
 

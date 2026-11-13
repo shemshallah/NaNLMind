@@ -260,6 +260,9 @@ evaluation is about 6.6x slower; see `docs/CONTEXT_MEMORY_JOINT_READOUT.md`.
   0 5 100000 11456 4 0.1 1 0.8 induction 10500 aux=1024 weight=0.15
 ```
 
+`induction` is train/eval only: `load=` and `save=` are rejected until the
+2-byte suffix table has its own checkpoint format.
+
 The opt-in `induction` route reaches `67.8345%` final held-out
 (`67.8771%` best, epoch 4) against the `backoff` baseline's `66.8852%`
 final (`66.8894%` best, epoch 3) on the same split. Weight `0` is

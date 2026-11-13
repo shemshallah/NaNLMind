@@ -54,10 +54,11 @@
       "44": "mth_context_copy",
       "45": "mth_triad_score"
     },
-    "cli_pending": [
-      "backoffjoint",
-      "induction"
-    ],
+    "cli_routes": {
+      "backoffjoint": "guest k=4 exact / k=3 fallback routes the bucket; mth_context_hier_joint selects the evaluation head pair",
+      "induction": "mth_context_copy combines the guest k=4 memory route with a 2-byte suffix copy table; aux=N weight=F; no checkpoint persistence"
+    },
+    "cli_pending": [],
     "six_context": "native_context6_attention / native_stream6_attention (3 back, 3 forward, NOW=255)"
   },
   "note": "73.7821% is same-corpus next-byte accuracy, not held-out language quality. The mode-6 evaluation route computes a full 16x16 top-5 without mutating the class memory.",

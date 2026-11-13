@@ -4791,6 +4791,33 @@ bool RawFieldVM::context_backoff_select(std::size_t buckets,
     return true;
 }
 
+bool RawFieldVM::context_backoff_exact_keys(
+    std::size_t exact_count, std::vector<std::uint32_t>& keys) {
+    if (exact_count > 16384) {
+        return fail("context backoff exact key count is out of range");
+    }
+    keys.assign(exact_count, 0u);
+    if (exact_count == 0) return true;
+    std::vector<std::uint8_t> found(exact_count, 0u);
+    for (std::uint32_t slot = 0; slot < 32768u; ++slot) {
+        const std::uint32_t base = kContextBackoffTable + slot * 3u;
+        if (read_word(base + 1u) == 0) continue;
+        const std::uint32_t compact = read_word(base + 2u);
+        if (compact >= exact_count) continue;
+        if (found[compact]) {
+            return fail("context backoff exact slot collision");
+        }
+        keys[compact] = read_word(base);
+        found[compact] = 1;
+    }
+    for (std::size_t i = 0; i < exact_count; ++i) {
+        if (!found[i]) {
+            return fail("context backoff exact key map is incomplete");
+        }
+    }
+    return true;
+}
+
 bool RawFieldVM::readout_context_backoff(std::uint8_t target,
                                          float learning_rate,
                                          std::uint32_t key,

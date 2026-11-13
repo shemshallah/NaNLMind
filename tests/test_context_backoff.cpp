@@ -53,6 +53,11 @@ int main() {
     CHECK_EQ(selection.fallback, 6u);
     CHECK_EQ(selection.threshold, 3u);
     CHECK_EQ(selection.unique, 4u);
+    std::vector<std::uint32_t> selected_keys;
+    CHECK(vm.context_backoff_exact_keys(selection.exact_count, selected_keys));
+    CHECK_EQ(selected_keys.size(), 2u);
+    CHECK_EQ(selected_keys[0], key_a);
+    CHECK_EQ(selected_keys[1], key_b);
 
     ContextBackoffStep step;
     CHECK(vm.readout_context_backoff(0x12u, 0.0f, key_a, buckets, step));

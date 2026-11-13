@@ -192,9 +192,17 @@ Restored raw commands:
 | 122 | `mth_head_block` | 128D three-layer bf16 QKV/MLP block from a paged head slot |
 
 These are the kernel-level paths removed by the earlier ABI-conflict merge.
-They are now reachable and covered by focused tests. CLI exposure for the
-`backoffjoint` and `induction` routes is the next integration step; the raw
-commands and bridges are already present.
+They are now reachable and covered by focused tests. `context-train` exposes
+both remaining routes:
+
+- `backoffjoint` trains through the same guest k=4 exact / k=3 fallback route
+  as `guestbackoff`, then evaluates with `mth_context_hier_joint` on that same
+  routed bucket. The host only transports the returned bucket.
+- `induction` feeds the guest-selected exact keys into `mth_context_copy` and
+  trains the 2-byte suffix continuation table together with the shared memory
+  table. `aux=N` sets the suffix bucket count and `weight=F` the soft gate.
+  It is train/eval only: `load=`/`save=` are rejected because the suffix table
+  has no checkpoint format yet.
 
 
 ## Unified test base

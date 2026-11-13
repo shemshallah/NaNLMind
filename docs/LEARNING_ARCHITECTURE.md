@@ -150,7 +150,7 @@ score(c) = mem_hi[h] + w*ind_hi[h] + mem_lo[h,l] + w*ind_lo[h,l]
 
 over the two best combined high-nibble groups. Raw NaN16 code owns the
 per-sample routing, suffix hash, gate and scoring; the host only transports
-bytes, the prebuilt exact-key map and the gate weight.
+bytes, the guest-selected exact-key map and the gate weight.
 
 WordNet 80/20, identical split and 5 epochs, `weight=0.15`:
 

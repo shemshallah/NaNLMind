@@ -149,6 +149,9 @@ def main() -> int:
     if (ROOT / "tests/test_unified_context_cli.py").is_file():
         results.append(run("unified_context_cli",
                            ["python3", "tests/test_unified_context_cli.py"]))
+    if (ROOT / "tests/test_context_train_routes.py").is_file():
+        results.append(run("context_train_routes",
+                           ["python3", "tests/test_context_train_routes.py"]))
     if (ROOT / "tests/test_head_page_train_gate.py").is_file():
         results.append(run("head_page_train_gate",
                            ["python3", "tests/test_head_page_train_gate.py"]))

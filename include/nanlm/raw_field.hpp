@@ -973,6 +973,11 @@ public:
                                      std::size_t& inserted);
     bool context_backoff_select(std::size_t buckets, std::size_t exact_limit,
                                 ContextBackoffSelection& out);
+    // Read back the exact-context keys selected by the guest, ordered by the
+    // compact slot the guest assigned.  This only transports guest state; no
+    // key selection or hashing is repeated on the host.
+    bool context_backoff_exact_keys(std::size_t exact_count,
+                                    std::vector<std::uint32_t>& keys);
     bool readout_context_backoff(std::uint8_t target, float learning_rate,
                                  std::uint32_t key, std::size_t buckets,
                                  ContextBackoffStep& out);

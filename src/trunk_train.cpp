@@ -440,12 +440,17 @@ int hier_train_cli(int argc, char** argv) {
 int context_train_cli(int argc, char** argv) {
     if (argc < 3) {
         std::cerr << "usage: nanlm-universal context-train CORPUS [MAX_LINES] [EPOCHS]"
-                     " [REPORT_EVERY] [BUCKETS] [CONTEXT_BYTES] [LR] [EVAL_EVERY] [TRAIN_FRACTION] [backoff|backoffcopy|guestbackoff] [EXACT_BUCKETS] [fallback=N] [eval=PATH]\n"
+                     " [REPORT_EVERY] [BUCKETS] [CONTEXT_BYTES] [LR] [EVAL_EVERY] [TRAIN_FRACTION] [backoff|backoffcopy|guestbackoff|backoffjoint|induction] [EXACT_BUCKETS] [fallback=N] [aux=N] [weight=F] [eval=PATH]\n"
                   << "Trains a raw context-indexed 16x16 class-memory readout.\n"
                   << "TRAIN_FRACTION <1 holds out a random evaluation split.\n"
                   << "backoff uses exact high-frequency 4-byte contexts plus a 3-byte fallback.\n"
                   << "backoffcopy routes unseen 3-byte contexts to a copy/unigram table.\n"
                   << "guestbackoff builds the exact/compact k=4 table and k=3 fallback route in the raw guest.\n"
+                  << "backoffjoint uses the guest backoff route for training but selects the evaluation\n"
+                  << "class by joint P(high|ctx)*max_low P(low|high,ctx) over all 16 low heads.\n"
+                  << "induction adds a raw 2-byte suffix continuation table; the exact/backoff route\n"
+                  << "and combined copy gate run in mth_context_copy.nas (aux=N weight=F). It is\n"
+                  << "train/eval only until the suffix table has a checkpoint format.\n"
                   << "With no explicit route, 4-byte contexts select guestbackoff (the 70%+ path).\n"
                   << "eval=PATH uses a separate held-out corpus instead of a random line split.\n";
         return 2;
@@ -454,12 +459,14 @@ int context_train_cli(int argc, char** argv) {
     std::size_t max_lines = 0, epochs = 3, report_every = 10000;
     std::size_t buckets = 11456, context_bytes = 4, eval_every = 1;
     float base_lr = 0.1f, train_fraction = 1.0f;
-    bool backoff_mode = false;
-    bool copy_backoff = false;
     bool guest_backoff = false;
+    bool joint_readout = false;
+    bool induction_mode = false;
     bool route_explicit = false;
     std::size_t exact_limit_arg = 10500;
     std::size_t fallback_bytes = 3;
+    std::size_t aux_buckets = 1024;
+    float gate_weight = 0.15f;
     std::string load_path;
     std::string save_path;
     std::string eval_path;
@@ -475,10 +482,9 @@ int context_train_cli(int argc, char** argv) {
         if (argc > 11) {
             const std::string route = argv[11];
             route_explicit = true;
-            backoff_mode = route == "backoff" || route == "backoffcopy" ||
-                route == "guestbackoff";
-            copy_backoff = route == "backoffcopy";
-            guest_backoff = route == "guestbackoff";
+            induction_mode = route == "induction";
+            joint_readout = route == "backoffjoint";
+            guest_backoff = route == "guestbackoff" || joint_readout;
         }
         if (argc > 12) exact_limit_arg = static_cast<std::size_t>(std::stoull(argv[12]));
         for (int i = 13; i < argc; ++i) {
@@ -488,26 +494,38 @@ int context_train_cli(int argc, char** argv) {
             else if (arg.rfind("eval=", 0) == 0) eval_path = arg.substr(5);
             else if (arg.rfind("fallback=", 0) == 0) {
                 fallback_bytes = static_cast<std::size_t>(std::stoull(arg.substr(9)));
+            } else if (arg.rfind("aux=", 0) == 0) {
+                aux_buckets = static_cast<std::size_t>(std::stoull(arg.substr(4)));
+            } else if (arg.rfind("weight=", 0) == 0) {
+                gate_weight = std::stof(arg.substr(7));
             }
         }
     } catch (...) { std::cerr << "invalid numeric argument\n"; return 2; }
     if (buckets == 0 || buckets > 16384 || context_bytes == 0 || context_bytes > 8 ||
         fallback_bytes == 0 || fallback_bytes > 8 ||
-        base_lr <= 0.0f || train_fraction <= 0.0f || train_fraction > 1.0f) {
-        std::cerr << "buckets 1..16384, context bytes 1..8, positive LR,"
+        aux_buckets == 0 || aux_buckets > 1024 ||
+        base_lr <= 0.0f || train_fraction <= 0.0f || train_fraction > 1.0f ||
+        gate_weight < 0.0f) {
+        std::cerr << "buckets 1..16384, context bytes 1..8, aux 1..1024,"
+                     " non-negative gate weight, positive LR,"
                      " train fraction in (0,1] required\n";
         return 2;
     }
     // Canonical default: the measured 4-byte exact / 3-byte fallback
     // context memory, with all routing in the raw guest.
     if (!route_explicit && context_bytes == 4 && buckets >= 2) {
-        backoff_mode = true;
         guest_backoff = true;
     }
-    if (guest_backoff && (context_bytes != 4 || fallback_bytes != 3 ||
-                          buckets < 2)) {
-        std::cerr << "guestbackoff requires 4-byte contexts, a 3-byte fallback,"
-                     " and at least 2 buckets\n";
+    if ((guest_backoff || induction_mode) &&
+        (context_bytes != 4 || fallback_bytes != 3 || buckets < 2)) {
+        std::cerr << "guestbackoff/backoffjoint/induction require 4-byte contexts,"
+                     " a 3-byte fallback, and at least 2 buckets\n";
+        return 2;
+    }
+    if (induction_mode && (!load_path.empty() || !save_path.empty())) {
+        std::cerr << "induction does not persist the 2-byte suffix table;"
+                     " load=/save= are rejected because only the 4-byte memory"
+                     " table would be checkpointed\n";
         return 2;
     }
     std::ifstream in(corpus_path, std::ios::binary);
@@ -559,37 +577,28 @@ int context_train_cli(int argc, char** argv) {
             if (line_index < train_line_count) ++train_usable_count;
         }
     }
+    const bool uses_guest_buckets = guest_backoff || induction_mode;
+    // The host bucket map is the existing legacy `backoff` route.  It is
+    // computed only for that route, plus a compatibility probe when a
+    // backoffjoint evaluation loads a checkpoint written by legacy backoff.
+    const bool needs_host_buckets =
+        !uses_guest_buckets || (joint_readout && !load_path.empty());
     std::vector<std::uint32_t> context_buckets;
     std::vector<std::uint32_t> context_keys;
     std::vector<std::uint8_t> targets(usable.size());
-    if (guest_backoff) {
-        context_keys.resize(usable.size());
-        for (std::size_t i = 0; i < usable.size(); ++i) {
-            const auto line = usable[i];
-            targets[i] = static_cast<std::uint8_t>(line[8]);
+    if (uses_guest_buckets) context_keys.resize(usable.size());
+    if (needs_host_buckets) context_buckets.resize(usable.size());
+    for (std::size_t i = 0; i < usable.size(); ++i) {
+        const auto line = usable[i];
+        targets[i] = static_cast<std::uint8_t>(line[8]);
+        if (uses_guest_buckets) {
             context_keys[i] =
                 (static_cast<std::uint32_t>(static_cast<std::uint8_t>(line[4])) << 24) |
                 (static_cast<std::uint32_t>(static_cast<std::uint8_t>(line[5])) << 16) |
                 (static_cast<std::uint32_t>(static_cast<std::uint8_t>(line[6])) << 8) |
                 static_cast<std::uint32_t>(static_cast<std::uint8_t>(line[7]));
         }
-    } else if (backoff_mode) {
-        context_buckets.resize(usable.size());
-        for (std::size_t i = 0; i < usable.size(); ++i) {
-            const auto line = usable[i];
-            targets[i] = static_cast<std::uint8_t>(line[8]);
-            std::uint32_t hash = 2166136261u;
-            for (std::size_t j = 0; j < context_bytes; ++j) {
-                const auto byte = static_cast<std::uint8_t>(line[8 - context_bytes + j]);
-                hash = (hash ^ byte) * 16777619u;
-            }
-            context_buckets[i] = hash % static_cast<std::uint32_t>(buckets);
-        }
-    } else {
-        context_buckets.resize(usable.size());
-        for (std::size_t i = 0; i < usable.size(); ++i) {
-            const auto line = usable[i];
-            targets[i] = static_cast<std::uint8_t>(line[8]);
+        if (needs_host_buckets) {
             std::uint32_t hash = 2166136261u;
             for (std::size_t j = 0; j < context_bytes; ++j) {
                 const auto byte = static_cast<std::uint8_t>(line[8 - context_bytes + j]);
@@ -625,6 +634,8 @@ int context_train_cli(int argc, char** argv) {
         std::cerr << "raw field VM unavailable: " << vm.error() << "\n";
         return 7;
     }
+    std::size_t exact_count = 0;
+    std::vector<std::uint32_t> exact_keys;
     const auto reset_started = std::chrono::steady_clock::now();
     if (!load_path.empty()) {
         if (!vm.load_context_readout(load_path, buckets)) {
@@ -635,7 +646,7 @@ int context_train_cli(int argc, char** argv) {
         std::cerr << "cannot reset context readout: " << vm.error() << "\n";
         return 7;
     }
-    if (guest_backoff) {
+    if (guest_backoff || induction_mode) {
         const auto build_started = std::chrono::steady_clock::now();
         if (!vm.reset_context_backoff()) {
             std::cerr << "cannot reset guest context backoff: " << vm.error() << "\n";
@@ -659,23 +670,144 @@ int context_train_cli(int argc, char** argv) {
                       << vm.error() << "\n";
             return 7;
         }
-        std::cout << "context_guest_backoff exact=" << selection.exact_count
-                  << " fallback=" << selection.fallback
-                  << " threshold=" << selection.threshold
-                  << " unique=" << selection.unique
-                  << " inserted=" << inserted_keys
-                  << " build_seconds="
-                  << std::chrono::duration<double>(
-                         std::chrono::steady_clock::now() - build_started).count()
-                  << "\n";
+        if (!induction_mode) {
+            std::cout << "context_guest_backoff exact=" << selection.exact_count
+                      << " fallback=" << selection.fallback
+                      << " threshold=" << selection.threshold
+                      << " unique=" << selection.unique
+                      << " inserted=" << inserted_keys
+                      << " build_seconds="
+                      << std::chrono::duration<double>(
+                             std::chrono::steady_clock::now() - build_started).count()
+                      << "\n";
+        } else {
+            // The induction copy route shares the guest-selected exact k=4
+            // keys and compact slots.  Read them back; never re-rank keys in
+            // the host.
+            exact_count = selection.exact_count;
+            if (!vm.context_backoff_exact_keys(exact_count, exact_keys)) {
+                std::cerr << "cannot read guest exact context keys: "
+                          << vm.error() << "\n";
+                return 7;
+            }
+            if (!vm.reset_context_copy(exact_keys, buckets, aux_buckets)) {
+                std::cerr << "cannot reset context copy readout: "
+                          << vm.error() << "\n";
+                return 7;
+            }
+            std::cout << "context_induction exact=" << selection.exact_count
+                      << " fallback=" << selection.fallback
+                      << " threshold=" << selection.threshold
+                      << " unique=" << selection.unique
+                      << " aux_buckets=" << aux_buckets
+                      << " weight=" << gate_weight
+                      << " inserted=" << inserted_keys
+                      << " build_seconds="
+                      << std::chrono::duration<double>(
+                             std::chrono::steady_clock::now() - build_started).count()
+                      << "\n";
+        }
+    }
+    bool joint_use_guest_buckets = guest_backoff;
+    if (joint_readout && !load_path.empty() && !context_buckets.empty()) {
+        // Compatibility gate for checkpoints written by the legacy host
+        // `backoff` route.  Both candidate bucket maps are scored by the
+        // guest; the host only compares the returned losses.
+        const std::size_t probe_limit =
+            std::min<std::size_t>(eval_indices.size(), 64);
+        double host_loss = 0.0, guest_loss = 0.0;
+        std::size_t probed = 0;
+        for (std::size_t i = 0; i < probe_limit; ++i) {
+            const std::size_t sample = eval_indices[i];
+            bool correct = false;
+            float loss = 0.0f;
+            std::uint8_t ph = 0, pl = 0;
+            if (!vm.readout_context(targets[sample], 0.0f,
+                                    context_buckets[sample], buckets,
+                                    correct, loss, ph, pl)) {
+                std::cerr << "context route probe failed: " << vm.error()
+                          << "\n";
+                return 7;
+            }
+            host_loss += loss;
+            ContextBackoffStep step;
+            if (!vm.readout_context_backoff(targets[sample], 0.0f,
+                                            context_keys[sample], buckets,
+                                            step)) {
+                std::cerr << "context route probe failed: " << vm.error()
+                          << "\n";
+                return 7;
+            }
+            guest_loss += step.loss;
+            ++probed;
+        }
+        if (probed) {
+            const bool use_host = host_loss < guest_loss;
+            joint_use_guest_buckets = !use_host;
+            std::cout << "context_route_probe samples=" << probed
+                      << " host_loss=" << (host_loss / probed)
+                      << " guest_loss=" << (guest_loss / probed)
+                      << " selected="
+                      << (use_host ? "host_backoff" : "guest_backoff")
+                      << "\n";
+        }
     }
     std::cout << "context_tables buckets=" << buckets
               << " train_samples=" << train_indices.size()
               << " eval_samples=" << eval_indices.size()
-              << " reset_seconds="
+              << " joint_readout=" << (joint_readout ? 1 : 0);
+    if (induction_mode) {
+        std::cout << " route=induction"
+                  << " exact=" << exact_count
+                  << " aux_buckets=" << aux_buckets
+                  << " weight=" << gate_weight;
+    }
+    std::cout << " reset_seconds="
               << std::chrono::duration<double>(
                      std::chrono::steady_clock::now() - reset_started).count()
               << "\n";
+    const auto run_context = [&](std::size_t sample, float learning_rate,
+                                 bool joint_selection, bool& correct,
+                                 float& loss) -> bool {
+        if (induction_mode) {
+            std::uint8_t predicted = 0;
+            return vm.readout_context_copy(
+                targets[sample], learning_rate, context_keys[sample], buckets,
+                exact_count, aux_buckets, gate_weight, correct, loss,
+                predicted);
+        }
+        if (joint_readout && !joint_use_guest_buckets) {
+            std::uint8_t ph = 0, pl = 0;
+            return joint_selection
+                ? vm.readout_context_joint(targets[sample], learning_rate,
+                                           context_buckets[sample], buckets,
+                                           correct, loss, ph, pl)
+                : vm.readout_context(targets[sample], learning_rate,
+                                     context_buckets[sample], buckets,
+                                     correct, loss, ph, pl);
+        }
+        if (guest_backoff) {
+            ContextBackoffStep step;
+            if (!vm.readout_context_backoff(targets[sample], learning_rate,
+                                            context_keys[sample], buckets,
+                                            step)) {
+                return false;
+            }
+            if (joint_readout && joint_selection) {
+                std::uint8_t ph = 0, pl = 0;
+                return vm.readout_context_joint(targets[sample], 0.0f,
+                                                step.bucket, buckets,
+                                                correct, loss, ph, pl);
+            }
+            correct = step.correct;
+            loss = step.loss;
+            return true;
+        }
+        std::uint8_t ph = 0, pl = 0;
+        return vm.readout_context(targets[sample], learning_rate,
+                                  context_buckets[sample], buckets,
+                                  correct, loss, ph, pl);
+    };
     const auto evaluate = [&](std::size_t epoch, bool final) -> bool {
         const auto started = std::chrono::steady_clock::now();
         std::size_t total = 0, correct_count = 0;
@@ -683,23 +815,7 @@ int context_train_cli(int argc, char** argv) {
         for (const std::size_t sample : eval_indices) {
             bool correct = false;
             float loss = 0.0f;
-            std::uint8_t ph = 0, pl = 0;
-            bool ok = false;
-            if (guest_backoff) {
-                ContextBackoffStep step;
-                ok = vm.readout_context_backoff(targets[sample], 0.0f,
-                                                context_keys[sample], buckets,
-                                                step);
-                correct = step.correct;
-                loss = step.loss;
-                ph = step.predicted_high;
-                pl = step.predicted_low;
-            } else {
-                ok = vm.readout_context(targets[sample], 0.0f,
-                                        context_buckets[sample], buckets,
-                                        correct, loss, ph, pl);
-            }
-            if (!ok) {
+            if (!run_context(sample, 0.0f, joint_readout, correct, loss)) {
                 std::cerr << "context eval failed: " << vm.error() << "\n";
                 return false;
             }
@@ -736,23 +852,7 @@ int context_train_cli(int argc, char** argv) {
             const std::size_t sample = order[position];
             bool correct = false;
             float loss = 0.0f;
-            std::uint8_t ph = 0, pl = 0;
-            bool ok = false;
-            if (guest_backoff) {
-                ContextBackoffStep step;
-                ok = vm.readout_context_backoff(targets[sample], base_lr,
-                                                context_keys[sample], buckets,
-                                                step);
-                correct = step.correct;
-                loss = step.loss;
-                ph = step.predicted_high;
-                pl = step.predicted_low;
-            } else {
-                ok = vm.readout_context(targets[sample], base_lr,
-                                        context_buckets[sample], buckets,
-                                        correct, loss, ph, pl);
-            }
-            if (!ok) {
+            if (!run_context(sample, base_lr, false, correct, loss)) {
                 std::cerr << "context step failed: " << vm.error() << "\n";
                 return 7;
             }
