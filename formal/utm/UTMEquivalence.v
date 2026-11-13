@@ -30,7 +30,7 @@ From Undecidability.Shared.Libs.PSL.FiniteTypes Require Import FinTypesDef.
     Krivine term to a binary tape accepted by the fixed [UTM]. *)
 Definition encode_closed
     (x : { t : L.term | L.closed t }) : tape (finType_CS bool) :=
-  proj1_sig (KrivineMclosed_HALT_to_HaltUTM.reduction x).
+  proj1_sig KrivineMclosed_HALT_to_HaltUTM.reduction x.
 
 (** ** Fixed-UTM halting equivalence
 
@@ -43,7 +43,7 @@ Theorem UTM_halting_equivalence
     (x : { t : L.term | L.closed t }) :
   KrivineMclosed_HALT x <-> HaltUTM (encode_closed x).
 Proof.
-  exact (proj2_sig (KrivineMclosed_HALT_to_HaltUTM.reduction x)).
+  exact (proj2_sig KrivineMclosed_HALT_to_HaltUTM.reduction x).
 Qed.
 
 (** The same statement with the encoding written out as a function. *)
