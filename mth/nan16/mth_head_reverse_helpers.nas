@@ -1,9 +1,32 @@
-; Raw NaN16 reverse helpers: transposed bf16 matvec and LayerNorm backward.
+; Raw NaN16 reverse helpers: transposed bf16 matvec, dot product and
+; LayerNorm backward.
 ;
 ; transposed matvec: r1=matrix[rows][cols] bf16 words, r2=f32[rows],
 ;                    r3=f32 output[cols], r4=rows, r5=cols.
+; dot product: r1=a f32[D], r2=b f32[D], r3=D -> hrv_dot_value.
 ; LN backward: r1=XN f32[D], r2=dy f32[D], r3=dx f32[D], r4=D, r5=invstd.
-; Both return via r15; helper scratch is static and non-reentrant.
+; All return via r15; helper scratch is static and non-reentrant.
+hrv_dot:
+  MOVI r0,0
+  ST r15,r0,@hrv_dot_link
+  MOVI r10,0
+  MOVI r14,0
+hrv_dot_loop:
+  CMP r10,r3
+  JMP[GE] @hrv_dot_done
+  ADD r11,r1,r10
+  LD r11,r11,0
+  ADD r12,r2,r10
+  LD r12,r12,0
+  FMUL r11,r11,r12
+  FADD r14,r14,r11
+  ADDI r10,r10,1
+  JMP @hrv_dot_loop
+hrv_dot_done:
+  ST r14,r0,@hrv_dot_value
+  LD r15,r0,@hrv_dot_link
+  RET
+
 hrv_mv_t:
   MOVI r0,0
   ST r15,r0,@hrv_mt_link
@@ -134,6 +157,10 @@ hrv_ln_done:
   LD r15,r0,@hrv_ln_link
   RET
 
+hrv_dot_link:
+  .word 0
+hrv_dot_value:
+  .word 0
 hrv_mt_link:
   .word 0
 hrv_mt_mat:

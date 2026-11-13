@@ -698,7 +698,9 @@ frozen in `spec/unified_context_cli.v1.json`.
 
 ## Layer-2 dX2 reverse
 
-Worker opcode **137** computes the exact T=1 layer-2 input gradient:
+Worker opcode **137** computes exact layer-2 input gradients for T=1 and T=2.
+The loss is `0.5*||Y_last-target||^2`, so `dY` is nonzero only for the last
+token. The T=1 path reduces to:
 
 ```text
 dY  = output - target
@@ -711,8 +713,29 @@ dXN1 = Wv^T dC
 dX2 = dX1 + LNbwd(A1, dXN1, inv1)
 ```
 
-It reads the retained A1/A2, inverse-standard-deviation, hidden, and Q/K/V
-captures; it does not mutate the page. T>=2 is rejected until full reverse
-attention is implemented. The test uses passthrough layers 0/1 and central
-finite differences on the layer-2 input. The contract is frozen in
-`spec/head_page_train_dx2.v1.json`.
+The T=2 path reverses the attention form that `mth_head_block6` actually
+implements: an **unmasked** per-query softmax over all T keys. There is no
+causal mask in that forward, so dK/dV include every key column:
+
+```text
+dH[t]   = W2^T dY[t]
+dZ[t]   = dH[t] * (1 - H[t]^2)
+dXN2[t] = W1^T dZ[t]
+dR1[t]  = dY[t] + LNbwd(A2[t], dXN2[t], inv2[t])
+dctx[t] = Wo^T dR1[t]
+dP[i][j] = dctx[i] . V[j]
+ds[i][j] = p[i][j] * (dP[i][j] - sum_k p[i][k]*dP[i][k])
+dQ[i]   = sum_j ds[i][j] * K[j] / sqrt(128)
+dK[j]   = sum_i ds[i][j] * Q[i] / sqrt(128)
+dV[j]   = sum_i p[i][j] * dctx[i]
+dA1[t]  = Wq^T dQ[t] + Wk^T dK[t] + Wv^T dV[t]
+dX2[t]  = dR1[t] + LNbwd(A1[t], dA1[t], inv1[t])
+```
+
+The forward pass retains A1/inv1, A2/inv2, hidden H, Q/K/V and normalized
+attention probabilities for every token and layer. Opcode 137 does not mutate
+the page. T>2 is rejected; layers 0/1 reverse and full BPTT remain blocked.
+The test uses passthrough layers 0/1, an identity layer 2 and a nonzero second
+token, then checks central finite differences on sampled coordinates
+(measured max relative error: T=1 1.3e-3, T=2 5.0e-3 at eps=1e-2). The
+contract is frozen in `spec/head_page_train_dx2.v1.json`.

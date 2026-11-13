@@ -290,6 +290,19 @@ hw6_norm_loop:
   LD r14,r14,0
   FDIV r13,r13,r14
   ST r13,r12,0
+  ; Retain normalized query probability p[i][j] for reverse attention.
+  MOVI r11,0xE000
+  MOVHI r11,0x00D2
+  LD r14,r0,@hw6_layer
+  MOVI r15,0x40
+  MUL r14,r14,r15
+  ADD r11,r11,r14
+  LD r14,r0,@hw6_i
+  MOVI r15,8
+  MUL r14,r14,r15
+  ADD r11,r11,r14
+  ADD r11,r11,r10
+  ST r13,r11,0
   ADDI r10,r10,1
   ST r10,r0,@hw6_j
   JMP @hw6_norm_loop
@@ -427,6 +440,22 @@ hw6_mlp_tokens:
   ADD r2,r2,r12
   MOVI r3,128
   CALL @hw6_ln
+  ; Retain second-LN output A2 for every token.
+  LD r10,r0,@hw6_layer
+  MOVI r11,0x1000
+  MUL r11,r10,r11
+  LD r10,r0,@hw6_i
+  MOVI r12,128
+  MUL r10,r10,r12
+  ADD r11,r11,r10
+  MOVI r2,0x8000
+  MOVHI r2,0x00D2
+  ADD r2,r2,r11
+  MOVI r1,0x0300
+  MOVHI r1,0x00D0
+  ADD r1,r1,r10
+  MOVI r3,128
+  CALL @hw6_cap_copy
   ; Save second-LN inverse std for this token.
   LD r10,r0,@hw6_layer
   MOVI r11,0x400
@@ -467,6 +496,21 @@ hw6_tanh:
   ADDI r10,r10,1
   JMP @hw6_tanh
 hw6_tanh_done:
+  ; Retain tanh hidden H for every token.
+  LD r10,r0,@hw6_layer
+  MOVI r11,0x1000
+  MUL r11,r10,r11
+  LD r10,r0,@hw6_i
+  MOVI r12,384
+  MUL r10,r10,r12
+  ADD r11,r11,r10
+  MOVI r2,0xB000
+  MOVHI r2,0x00D2
+  ADD r2,r2,r11
+  MOVI r1,0x1500
+  MOVHI r1,0x00D0
+  MOVI r3,384
+  CALL @hw6_cap_copy
   LD r10,r0,@hw6_layer_page
   MOVI r12,0xE000
   ADD r1,r10,r12

@@ -34,6 +34,6 @@
   "blocked": [
     "full 48M archive metrics",
     "native full-vocabulary projection",
-    "dX2 for T>=2 and layers 0/1"
+    "dX2 for T>2 and layers 0/1"
   ]
 }

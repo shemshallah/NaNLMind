@@ -1,18 +1,22 @@
 {
   "schema": "nanlm.head-page-train-dx2/1",
   "opcode": 137,
-  "tokens": 1,
-  "loss": "0.5*||output-target||^2",
-  "sign": "dY=output-target; dX2=dL/dX2",
+  "tokens": [1, 2],
+  "max_tokens": 2,
+  "loss": "0.5*||output-target||^2 on the last token",
+  "sign": "dY=output-target for the last token, zero for earlier tokens; dX2=dL/dX2",
+  "attention": "full per-query softmax over all T keys; mth_head_block6 has no causal mask",
   "captures": [
-    "A1",
-    "inv1",
-    "A2",
-    "inv2",
-    "H",
+    "A1 for every token and layer",
+    "inv1 for every token and layer",
+    "A2 for every token and layer",
+    "inv2 for every token and layer",
+    "H (tanh hidden) for every token and layer",
+    "Q/K/V for every token and layer",
+    "normalized attention probabilities for every query/key pair and layer",
     "layer-2 weights"
   ],
-  "path": [
+  "path_t1": [
     "dH=W2^T dY",
     "dZ=dH*(1-H^2)",
     "dXN2=W1^T dZ",
@@ -21,11 +25,24 @@
     "dXN1=Wv^T dC",
     "dX2=dX1+LNbwd(A1,dXN1,inv1)"
   ],
-  "limits": "T=1 only; T>=2 rejected until full reverse attention",
+  "path_t2": [
+    "dH[t]=W2^T dY[t]",
+    "dZ[t]=dH[t]*(1-H[t]^2)",
+    "dXN2[t]=W1^T dZ[t]",
+    "dR1[t]=dY[t]+LNbwd(A2[t],dXN2[t],inv2[t])",
+    "dctx[t]=Wo^T dR1[t]",
+    "dP[i][j]=dctx[i].V[j]",
+    "ds[i][j]=p[i][j]*(dP[i][j]-sum_k p[i][k]*dP[i][k])",
+    "dQ[i]=sum_j ds[i][j]*K[j]/sqrt(128)",
+    "dK[j]=sum_i ds[i][j]*Q[i]/sqrt(128)",
+    "dV[j]=sum_i p[i][j]*dctx[i]",
+    "dA1[t]=Wq^T dQ[t]+Wk^T dK[t]+Wv^T dV[t]",
+    "dX2[t]=dR1[t]+LNbwd(A1[t],dA1[t],inv1[t])"
+  ],
+  "limits": "T=1 and T=2; T>2 rejected. Layers 0/1 reverse and full BPTT remain blocked.",
   "page_mutation": false,
-  "gradient_check": "central difference max relative error < 5e-2 on sampled coordinates",
+  "gradient_check": "central difference max relative error < 5e-2 on sampled coordinates; measured T=1 1.3e-3, T=2 5.0e-3 at eps=1e-2",
   "blocked": [
-    "T=2 all-token dK/dV reverse",
     "layers 0/1 reverse",
     "full BPTT"
   ]

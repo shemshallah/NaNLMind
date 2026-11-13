@@ -1441,14 +1441,14 @@ bool RawFieldVM::native_head_block64(
 bool RawFieldVM::native_head_page_train_dx2(
     const std::array<float, 6 * 128>& context, std::uint8_t token_count,
     std::uint8_t slot, const std::array<float, 128>& target,
-    std::array<float, 128>& output, std::array<float, 128>& dx2,
+    std::array<float, 6 * 128>& output, std::array<float, 6 * 128>& dx2,
     float& error_norm, std::uint8_t& reason) {
     output.fill(0.0f);
     dx2.fill(0.0f);
     error_norm = 0.0f;
     reason = 0u;
     if (!vm_) return fail("native dX2: VM unavailable");
-    if (token_count != 1u || slot >= 16u) {
+    if ((token_count != 1u && token_count != 2u) || slot >= 16u) {
         reason = 1u;
         return true;
     }
@@ -1456,16 +1456,19 @@ bool RawFieldVM::native_head_page_train_dx2(
     constexpr std::uint32_t kOutput = 0x00D02000u;
     constexpr std::uint32_t kTarget = 0x00D03000u;
     constexpr std::uint32_t kDx2 = 0x00D06000u;
+    const std::uint32_t count = static_cast<std::uint32_t>(token_count) * 128u;
     auto as_bits = [](float value) {
         std::uint32_t bits = 0u;
         std::memcpy(&bits, &value, sizeof(bits));
         return bits;
     };
-    for (std::uint32_t d = 0; d < 128u; ++d) {
-        if (!std::isfinite(context[d]))
+    for (std::uint32_t i = 0; i < count; ++i) {
+        if (!std::isfinite(context[i]))
             return fail("native dX2: nonfinite context");
-        if (!write_word(kContext + d, as_bits(context[d])))
+        if (!write_word(kContext + i, as_bits(context[i])))
             return fail("native dX2: context transport failed");
+    }
+    for (std::uint32_t d = 0; d < 128u; ++d) {
         if (!std::isfinite(target[d]))
             return fail("native dX2: nonfinite target");
         if (!write_word(kTarget + d, as_bits(target[d])))
@@ -1483,6 +1486,7 @@ bool RawFieldVM::native_head_page_train_dx2(
         return fail("native dX2: guest execution failed: " + error_);
     const auto ok = read_word(kResultBase);
     const auto norm_bits = read_word(kResultBase + 1u);
+    const auto used_tokens = read_word(kResultBase + 2u);
     const auto code = read_word(kResultBase + 3u);
     if (ok == 0u) {
         if (norm_bits != 0u || code < 1u || code > 3u)
@@ -1490,24 +1494,51 @@ bool RawFieldVM::native_head_page_train_dx2(
         reason = static_cast<std::uint8_t>(code);
         return true;
     }
-    if (ok != 1u || code != 0u)
+    if (ok != 1u || used_tokens != token_count || code != 0u)
         return fail("native dX2: malformed success receipt");
     std::memcpy(&error_norm, &norm_bits, sizeof(error_norm));
     if (!std::isfinite(error_norm) || error_norm < 0.0f)
         return fail("native dX2: invalid norm");
-    for (std::uint32_t d = 0; d < 128u; ++d) {
-        auto read_float = [&](std::uint32_t base) {
-            const auto bits = read_word(base + d);
+    for (std::uint32_t i = 0; i < count; ++i) {
+        auto read_float = [&](std::uint32_t base, std::uint32_t index) {
+            const auto bits = read_word(base + index);
             float value = 0.0f;
             std::memcpy(&value, &bits, sizeof(value));
             return value;
         };
-        output[d] = read_float(kOutput);
-        dx2[d] = read_float(kDx2);
-        if (!std::isfinite(output[d]) || !std::isfinite(dx2[d]))
+        output[i] = read_float(kOutput, i);
+        dx2[i] = read_float(kDx2, i);
+        if (!std::isfinite(output[i]) || !std::isfinite(dx2[i]))
             return fail("native dX2: nonfinite output/dx2");
     }
     reason = 0u;
+    return true;
+}
+
+bool RawFieldVM::native_head_page_train_dx2(
+    const std::array<float, 6 * 128>& context, std::uint8_t token_count,
+    std::uint8_t slot, const std::array<float, 128>& target,
+    std::array<float, 128>& output, std::array<float, 128>& dx2,
+    float& error_norm, std::uint8_t& reason) {
+    output.fill(0.0f);
+    dx2.fill(0.0f);
+    error_norm = 0.0f;
+    reason = 0u;
+    if (!vm_) return fail("native dX2: VM unavailable");
+    if (token_count != 1u || slot >= 16u) {
+        reason = 1u;
+        return true;
+    }
+    std::array<float, 6 * 128> full_output{}, full_dx2{};
+    if (!native_head_page_train_dx2(context, token_count, slot, target,
+                                    full_output, full_dx2, error_norm, reason))
+        return false;
+    if (reason == 0u) {
+        for (std::uint32_t d = 0; d < 128u; ++d) {
+            output[d] = full_output[d];
+            dx2[d] = full_dx2[d];
+        }
+    }
     return true;
 }
 

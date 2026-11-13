@@ -60,9 +60,11 @@
     },
     "dx2": {
       "opcode": 137,
-      "tokens": 1,
+      "tokens": [1, 2],
       "kernel": "mth_head_page_train_dx2.nas",
-      "outputs": "layer-2 dX2, no page writes"
+      "attention": "full per-query softmax over all keys (block6 has no causal mask)",
+      "outputs": "layer-2 dX2 for all T tokens, no page writes",
+      "limits": "T>2 rejected"
     }
   }
 }
