@@ -613,6 +613,13 @@ small top-5 edge (79.358% vs 78.706%). The system BPB is higher than its top-1 s
 because the class probabilities are not calibrated; top-1 and BPB are reported
 separately and neither is hidden.
 
+Reproduce:
+
+```sh
+./build/system-byte-bench data/alice_full.txt \
+  state/benchmarks/system_byte_bench.json 16384 16383 40 0.1
+```
+
 Artifact:
 
 ```text
@@ -642,6 +649,12 @@ Full-Alice word baseline BPB remains: unigram 1.87039, interpolated bigram
 1.61632. System BPB is `null`: association scores are not a normalized
 distribution and no BPB is fabricated. The system is a host associative-memory
 component, not the native 48M decoder.
+
+Reproduce:
+
+```sh
+python3 tools/system_word_bench.py --corpus data/alice_full.txt
+```
 
 Contract and artifacts:
 
