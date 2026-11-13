@@ -87,6 +87,7 @@ This repository has three layers: provenance, mathematical core, and plan.
 | 79 | [79_NAN0S_TM_PROOF.md](79_NAN0S_TM_PROOF.md) | How do the host UTM proof and the canonical NaN0S native/n16i TM gate run together? |
 | 79 | [79_STAGED_LOGIC_TRAINER.md](79_STAGED_LOGIC_TRAINER.md) | What happens in the Boolean -> deep logic -> word session? |
 | 80 | [80_TRAINING_CORPUS_PIPELINE.md](80_TRAINING_CORPUS_PIPELINE.md) | How do HERMES and Clocked drive the staged corpus? |
+| 81 | [81_MECHANIZED_UTM.md](81_MECHANIZED_UTM.md) | How is the fixed-UTM halting equivalence checked in Coq and run on CI? |
 | 81 | [81_CONVERSATIONAL_TRAINING_LOOP.md](81_CONVERSATIONAL_TRAINING_LOOP.md) | How does the host model close the training conversation loop? |\n| — | [NaNLMind_CLOCKED](https://github.com/shemshallah/NaNLMind_CLOCKED) | Dedicated CLOCKED integration repository: HW3, NaN16, M0–M9, HERMES scratch and runner-ring design. |
 
 The short version:
