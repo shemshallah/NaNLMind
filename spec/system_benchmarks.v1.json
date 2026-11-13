@@ -7,16 +7,16 @@
     "evaluation_positions": "i >= 4, target < 255",
     "configuration": {
       "buckets": 16384,
-      "exact_limit": 16000,
-      "epochs": 5,
+      "exact_limit": 16383,
+      "epochs": 40,
       "learning_rate": 0.1
     },
     "samples": 30239,
     "system": {
       "runtime": "raw NaN16 context memory; opcode 40 mode 6 top-5",
-      "bpb": 3.56395,
-      "top1": 0.560501,
-      "top5": 0.76031
+      "bpb": 2.6028,
+      "top1": 0.558253,
+      "top5": 0.787063
     },
     "references": {
       "order0": {
@@ -36,9 +36,9 @@
       }
     },
     "delta_system_minus_context2": {
-      "bpb": 0.283433,
-      "top1": 0.131354,
-      "top5": -0.0332683
+      "bpb": -0.677715,
+      "top1": 0.129105,
+      "top5": -0.00651477
     },
     "artifact": "state/benchmarks/system_byte_bench.json"
   },

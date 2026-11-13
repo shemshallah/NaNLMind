@@ -601,15 +601,15 @@ same byte positions as matched order-0, byte-bigram and context-2 references:
 
 | model | BPB | top-1 | top-5 |
 |---|---:|---:|---:|
-| native context system | 3.38248 | **56.169%** | 77.298% |
+| native context system | **2.60280** | **55.825%** | 78.706% |
 | order-0 matched | 4.71318 | 15.652% | 42.260% |
 | byte bigram matched | 3.50949 | 32.058% | 69.592% |
-| context-2 matched | **3.28052** | 42.915% | **79.358%** |
+| context-2 matched | 3.28052 | 42.915% | **79.358%** |
 
-The tuned byte route uses 16384 buckets, 16383 exact contexts, five epochs and
-learning rate 0.1. This is a real native byte model: top-1 beats every
-reference floor, BPB and top-5 beat order-0 and byte-bigram, but context-2
-still has lower BPB (3.28052) and higher top-5 (79.358%). The system BPB is higher than its top-1 suggests
+The tuned byte route uses 16384 buckets, 16383 exact contexts, 40 epochs and
+learning rate 0.1. This is a real native byte model: BPB and top-1 beat every
+reference floor, and top-5 beats order-0 and byte-bigram; context-2 still has a
+small top-5 edge (79.358% vs 78.706%). The system BPB is higher than its top-1 suggests
 because the class probabilities are not calibrated; top-1 and BPB are reported
 separately and neither is hidden.
 
