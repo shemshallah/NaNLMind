@@ -257,9 +257,9 @@ text context + finite candidate shortlist
 ```
 
 Both modes are in one runtime contract:
-`spec/unified_48m_runtime.v1.json`. `--native-mode batch` (the default) uses the
-native opcode118 shortlist; `--native-mode bridge` runs the full
-phase/trihead/Hodge/MC0 path once per candidate.
+`spec/unified_48m_runtime.v1.json`. The default `--native-mode bridge` runs the full
+phase/trihead/Hodge/MC0 path once per candidate; `--native-mode batch`
+selects the faster native opcode118 shortlist.
 
 The original archive is not in this checkout. With a missing archive the
 runtime exits **2** before emitting scores; it never substitutes an n-gram,

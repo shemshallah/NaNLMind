@@ -254,7 +254,7 @@ def main() -> int:
     parser.add_argument("--context", required=True)
     parser.add_argument("--candidate-file", type=Path, required=True)
     parser.add_argument("--native-mode", choices=("bridge", "batch"),
-                        default="batch")
+                        default="bridge")
     parser.add_argument("--native-batch", type=Path,
                         default=ROOT / "build" / "nanlm48m-native-batch")
     parser.add_argument("--native-emit", type=Path,

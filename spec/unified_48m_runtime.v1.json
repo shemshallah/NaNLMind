@@ -36,5 +36,5 @@
   ],
   "evaluation_entrypoint": "tools/unified_48m_eval.py",
   "evaluation_scope": "finite candidate shortlist exact-word BPB/top-k; no full-vocab argmax",
-  "default_native_mode": "batch"
+  "default_native_mode": "bridge"
 }
