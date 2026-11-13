@@ -21,6 +21,11 @@ public:
 
     bool train(const std::vector<std::string>& tokens);
     std::string predict(const std::string& previous) const;
+    // Ranked full-association candidate list. The list is ordered by the
+    // existing integer dot-product recall score; it is not a normalized
+    // probability distribution.
+    std::vector<std::string> predict_topk(const std::string& previous,
+                                          std::size_t k = 5) const;
     std::size_t vocab() const { return names_.size(); }
     std::size_t associations() const { return memory_.size(); }
     Hash256 digest() const;

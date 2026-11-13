@@ -36,7 +36,8 @@
     "canonical": [
       "mth_context_hier",
       "mth_context_backoff",
-      "mth_context_class"
+      "mth_context_class",
+      "mth_context_top5"
     ],
     "auxiliary": [
       "mth_context_batch",
@@ -59,7 +60,7 @@
     ],
     "six_context": "native_context6_attention / native_stream6_attention (3 back, 3 forward, NOW=255)"
   },
-  "note": "73.7821% is same-corpus next-byte accuracy, not held-out language quality.",
+  "note": "73.7821% is same-corpus next-byte accuracy, not held-out language quality. The mode-6 evaluation route computes a full 16x16 top-5 without mutating the class memory.",
   "restored_raw_commands": {
     "30": "mth_context_class",
     "40": "mth_context_backoff",
@@ -95,5 +96,20 @@
     "decoder": "frozen 48M exact normalization",
     "scheduler": "tools/decoder48m_future3.py --native-batch",
     "promotion": "blocked until disjoint precommitted NLL gate"
+  },
+  "canonical_evaluation_kernel": "mth_context_top5.nas",
+  "evaluation_route": {
+    "driver_command": 40,
+    "mode": 6,
+    "returns": [
+      "top1",
+      "top2",
+      "top3",
+      "top4",
+      "top5",
+      "target_natural_log_loss"
+    ],
+    "ranking": "full 256-class product P(high|bucket)*P(low|high,bucket)",
+    "updates": false
   }
 }

@@ -569,6 +569,80 @@ native head-worker logits. The contract is frozen in
 `spec/word_baselines.v1.json`.
 
 
+## Matched system benchmarks
+
+Two benchmark surfaces now compare system output with the reference floors on
+the same held-out rows. The contracts and measured values are frozen in
+`spec/system_benchmarks.v1.json`.
+
+### Byte system: native full 256-class top-5
+
+`mth_context_top5.nas` is the evaluation companion to the context-memory
+training route. For a routed bucket it evaluates all 16 high groups and all 16
+conditional low groups, then ranks the full 256 byte classes:
+
+```text
+P(byte | bucket) = P(high | bucket) * P(low | high, bucket)
+```
+
+The guest returns top-1..top-5 plus the target natural-log loss; it performs no
+table update. The driver route is context command **40 mode 6**.
+
+`build/system-byte-bench` trains the native context memory and evaluates the
+same byte positions as matched order-0, byte-bigram and context-2 references:
+
+| model | BPB | top-1 | top-5 |
+|---|---:|---:|---:|
+| native context system | 3.56395 | **56.050%** | 76.031% |
+| order-0 matched | 4.71318 | 15.652% | 42.260% |
+| byte bigram matched | 3.50949 | 32.058% | 69.592% |
+| context-2 matched | **3.28052** | 42.915% | **79.358%** |
+
+The tuned byte route uses 16384 buckets, 16000 exact contexts, five epochs
+and learning rate 0.1. This is a real native byte model: top-1 beats every
+reference floor, top-5 beats order-0 and byte-bigram, but context-2 still has
+lower BPB and higher top-5. The system BPB is higher than its top-1 suggests
+because the class probabilities are not calibrated; top-1 and BPB are reported
+separately and neither is hidden.
+
+Artifact:
+
+```text
+state/benchmarks/system_byte_bench.json
+```
+
+### Word system: associative top-5
+
+`build/word-system` ranks the full learned vocabulary of the existing integer
+associative word layer by its own dot-product recall scores. It does not emit a
+normalized distribution, so its BPB is explicitly unsupported.
+
+On `data/alice_excerpt.txt` (the layer currently requires fewer than 1024
+training types), matched 80/20 held-out results are:
+
+| model | top-1 | top-5 | in-vocab top-5 |
+|---|---:|---:|---:|
+| associative word system | 7.932% | 17.825% | 21.598% |
+| unigram baseline | 6.417% | 16.221% | 19.654% |
+| interpolated bigram | **8.824%** | **23.619%** | **28.618%** |
+
+The system beats unigram top-5, but still trails the bigram baseline. This is
+an honest system-vs-baseline result, not a promotion claim.
+
+Full-Alice word baselines remain: unigram BPB 1.87039 / top-5 16.834%,
+interpolated bigram BPB 1.61632 / top-5 30.698%. Full-Alice **system** word
+top-5 is blocked because the associative layer's dimension limit rejects the
+2292-type training vocabulary; no number is fabricated for that missing row.
+
+Contract and artifacts:
+
+```text
+spec/system_benchmarks.v1.json
+state/benchmarks/system_word_bench.json
+state/benchmarks/word_baselines.json
+```
+
+
 ## Unified context runtime
 
 `include/nanlm/unified_context_runtime.hpp` is the canonical composition point

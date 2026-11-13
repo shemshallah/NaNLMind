@@ -4820,6 +4820,43 @@ bool RawFieldVM::readout_context_backoff(std::uint8_t target,
     return true;
 }
 
+bool RawFieldVM::readout_context_top5(std::uint8_t target,
+                                      std::uint32_t key,
+                                      std::size_t buckets,
+                                      std::array<std::uint8_t, 5>& top,
+                                      float& loss) {
+    if (buckets < 2 || buckets > 16384) {
+        return fail("context top5 buckets outside 2..16384");
+    }
+    top.fill(0);
+    loss = 0.0f;
+    if (!write_word(kProposalBase + 0u, 6u) ||
+        !write_word(kProposalBase + 1u, target) ||
+        !write_word(kProposalBase + 2u, key) ||
+        !write_word(kProposalBase + 3u,
+                    static_cast<std::uint32_t>(buckets)) ||
+        !write_word(kCommandBase, kContextBackoffCommand)) {
+        return fail("cannot write context top5 command");
+    }
+    if (!run_command()) return false;
+    std::array<bool, 256> seen{};
+    for (std::size_t i = 0; i < top.size(); ++i) {
+        const auto cls = read_word(kResultBase + static_cast<std::uint32_t>(i));
+        if (cls > 255u || seen[cls]) {
+            return fail("context top5 returned malformed class list at " +
+                        std::to_string(i) + ": " + std::to_string(cls));
+        }
+        seen[cls] = true;
+        top[i] = static_cast<std::uint8_t>(cls);
+    }
+    const auto loss_bits = read_word(kResultBase + 5u);
+    std::memcpy(&loss, &loss_bits, sizeof(loss));
+    if (!std::isfinite(loss) || loss < 0.0f) {
+        return fail("context top5 returned invalid loss");
+    }
+    return true;
+}
+
 void RawFieldVM::reset_readout() {
     for (std::uint32_t i = 0; i < 255u * 8u; ++i) {
         (void)write_word(0xB000u + i, 0);

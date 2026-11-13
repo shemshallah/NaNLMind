@@ -714,6 +714,9 @@ field_driver_context_backoff:
   MOVI r3,5
   CMP r1,r3
   JMP[EQ] @field_driver_ctxb_reset
+  MOVI r3,6
+  CMP r1,r3
+  JMP[EQ] @field_driver_ctxb_top5
   JMP @field_driver_return
 
 field_driver_ctxb_build:
@@ -762,6 +765,27 @@ field_driver_ctxb_step:
   LD r3,r10,2
   LD r4,r10,3
   CALL @mth_context_backoff
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  ST r4,r10,3
+  ST r5,r10,4
+  ST r6,r10,5
+  JMP @field_driver_return
+
+; Full 16x16 top-5 evaluation route.
+;   0x4002 = target byte, 0x4003 = packed k=4 key, 0x4004 = buckets
+;   0x4010..0x4015 = top-1..top-5 classes and target loss bits
+field_driver_ctxb_top5:
+  MOVI r10,0x4002
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  ; The full driver places this entry at 0x4200, above the command block.
+  ; field_driver_base.nas fixtures never execute mode 6 and therefore do not
+  ; need to link the high-memory route.
+  CALLF 0x4200
   MOVI r10,0x4010
   ST r1,r10,0
   ST r2,r10,1

@@ -143,6 +143,9 @@ def main() -> int:
     if (ROOT / "tests/test_head_chunk_gate.py").is_file():
         results.append(run("head_chunk_gate",
                            ["python3", "tests/test_head_chunk_gate.py"]))
+    if (ROOT / "tests/test_system_bench.py").is_file():
+        results.append(run("system_benchmarks",
+                           ["python3", "tests/test_system_bench.py"]))
     if (ROOT / "tests/test_unified_context_cli.py").is_file():
         results.append(run("unified_context_cli",
                            ["python3", "tests/test_unified_context_cli.py"]))

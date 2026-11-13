@@ -107,10 +107,25 @@ bool WordVectorLayer::train(const std::vector<std::string>& tokens) {
 }
 
 std::string WordVectorLayer::predict(const std::string& previous) const {
+    const auto ranked = predict_topk(previous, 1);
+    return ranked.empty() ? fallback_ : ranked.front();
+}
+
+std::vector<std::string> WordVectorLayer::predict_topk(
+    const std::string& previous, std::size_t k) const {
+    std::vector<std::string> out;
+    if (k == 0) return out;
     const std::uint16_t id = id_for(previous);
-    if (id == 0xFFFFu) return fallback_;
+    if (id == 0xFFFFu) {
+        if (!fallback_.empty()) out.push_back(fallback_);
+        return out;
+    }
+    // Rank the entire association table, not just a shortlist. This makes the
+    // returned top-k a full learned-vocabulary ranking of the system's own
+    // integer scores.
     const auto hits = memory_.recall(
-        std::vector<std::int16_t>(vectors_[id].begin(), vectors_[id].end()), 16);
+        std::vector<std::int16_t>(vectors_[id].begin(), vectors_[id].end()),
+        memory_.size());
     for (const auto& hit : hits) {
         if (hit.values.empty()) continue;
         const BinRef ref = hit.values.front();
@@ -119,9 +134,14 @@ std::string WordVectorLayer::predict(const std::string& previous) const {
         const auto it = std::max_element(value.begin(), value.end());
         if (it == value.end()) continue;
         const std::size_t index = static_cast<std::size_t>(it - value.begin());
-        if (index < names_.size()) return names_[index];
+        if (index >= names_.size()) continue;
+        const std::string& candidate = names_[index];
+        if (std::find(out.begin(), out.end(), candidate) != out.end()) continue;
+        out.push_back(candidate);
+        if (out.size() >= k) break;
     }
-    return fallback_;
+    if (out.empty() && !fallback_.empty()) out.push_back(fallback_);
+    return out;
 }
 
 Hash256 WordVectorLayer::digest() const {

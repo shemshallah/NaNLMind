@@ -2,6 +2,7 @@
 #include "test_util.hpp"
 
 #include <array>
+#include <cmath>
 #include <cstdint>
 
 using namespace nanlm;
@@ -82,6 +83,17 @@ int main() {
     CHECK(step.correct);
     CHECK_EQ(step.predicted_high, 1u);
     CHECK_EQ(step.predicted_low, 2u);
+
+    // The full 16x16 ranking must contain the just-trained target and use the
+    // same routed column as the greedy step.
+    std::array<std::uint8_t, 5> top{};
+    float top_loss = 0.0f;
+    CHECK(vm.readout_context_top5(0x12u, key_c, buckets, top, top_loss));
+    CHECK_EQ(top[0], 0x12u);
+    CHECK(std::isfinite(top_loss));
+    bool contains_target = false;
+    for (std::uint8_t c : top) contains_target |= c == 0x12u;
+    CHECK(contains_target);
 
     // Raising the exact limit selects all four unique k=4 keys.
     CHECK(vm.context_backoff_select(buckets, 4, selection));

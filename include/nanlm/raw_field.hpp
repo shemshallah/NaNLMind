@@ -976,6 +976,12 @@ public:
     bool readout_context_backoff(std::uint8_t target, float learning_rate,
                                  std::uint32_t key, std::size_t buckets,
                                  ContextBackoffStep& out);
+    // Native full 256-class top-5 over the same exact/fallback context route.
+    // The guest returns the ranked byte classes and the target natural-log loss.
+    bool readout_context_top5(std::uint8_t target, std::uint32_t key,
+                              std::size_t buckets,
+                              std::array<std::uint8_t, 5>& top,
+                              float& loss);
     void reset_readout();
     bool set_readout_row(std::uint8_t row,
                          const std::array<float, kRawFeatureDim>& values);
