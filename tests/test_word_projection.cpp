@@ -36,5 +36,23 @@ int main() {
                                   top, loss));
     CHECK_EQ(top[0], 0u);
 
+    // Streaming batch counts must match the single-build counts, including
+    // the bigram pair crossing the chunk boundary.
+    RawFieldVM stream_vm("build/word_worker.nan");
+    CHECK(stream_vm.ready());
+    CHECK(stream_vm.word_projection_clear(vocab));
+    const std::uint32_t sentinel = 0xFFFFFFFFu;
+    std::vector<std::uint32_t> first(ids.begin(), ids.begin() + 7);
+    std::vector<std::uint32_t> second(ids.begin() + 7, ids.end());
+    CHECK(stream_vm.word_projection_batch(first, vocab, sentinel));
+    CHECK(stream_vm.word_projection_batch(second, vocab, first.back()));
+    std::array<std::uint32_t, 5> stream_top{};
+    float stream_loss = 0.0f;
+    CHECK(stream_vm.word_projection_top5(0, 1, vocab,
+                                         static_cast<std::uint32_t>(ids.size()),
+                                         stream_top, stream_loss));
+    CHECK(stream_top == top);
+    CHECK(std::fabs(stream_loss - loss) < 1e-6f);
+
     return test_done("native full-vocabulary word projection");
 }
