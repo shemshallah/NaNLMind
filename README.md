@@ -307,6 +307,7 @@ baseline — a plain RNN matching the 256-head topology — is in
 | `docs/75_SELF_SIMULATION_PROBE.md` | reproducible partial recursive self-simulation run |
 | `docs/76_COMPACT_BINARY_RUNTIME.md` | direct 508-state binary runtime, no Minsky scan |
 | `docs/77_UTM_PROOF_PACKAGE.md` | Minsky universality plus implementation lemma package |
+| `docs/79_NAN0S_TM_PROOF.md` | Host UTM proof + canonical NaN0S native/n16i TM gate (`make utm-proof`) |
 | `docs/78_LOGIC_CURRICULUM.md` | graded logic puzzles through the runner ring |
 | `docs/79_STAGED_LOGIC_TRAINER.md` | Boolean -> deep circuits -> words staged core trainer |
 | `docs/80_TRAINING_CORPUS_PIPELINE.md` | staged N16TXT corpus, budgets, HERMES and Clocked adapters |

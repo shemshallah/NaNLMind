@@ -1,0 +1,33 @@
+{
+  "schema": "nanlm.utm-proof-bridge/1",
+  "entrypoint": "tools/run_utm_proof.py",
+  "make_target": "utm-proof",
+  "host_tests": [
+    "test_turing_machine",
+    "test_universal_tm",
+    "test_utm_proof",
+    "test_small_utm",
+    "test_minsky_utm",
+    "test_minsky_encoded",
+    "test_utm_universal_desc",
+    "test_binary_tm_compiler",
+    "test_binary_utm",
+    "test_binary_utm_self",
+    "test_tape_checkpoint"
+  ],
+  "guest": {
+    "root": "$NAN0S_ROOT or ~/nan0s",
+    "native": "src/tests/tm_test.nas",
+    "nested": "src/tests/tm_n16i_test.nas",
+    "gate": "tools/tm_gate.sh",
+    "required_markers": [
+      "TM GATE PASS",
+      "TM BINARY 1100 PASS",
+      "TM UNARY 1111 PASS",
+      "TM CARRY 1000 PASS",
+      "TM ALL PASS"
+    ]
+  },
+  "artifact": "state/benchmarks/utm_proof.json",
+  "scope": "checked host UTM construction plus canonical NaN0S native/n16i table-driven TM gate; not a mechanized UTM equivalence proof"
+}
