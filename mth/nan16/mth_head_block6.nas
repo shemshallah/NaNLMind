@@ -33,7 +33,7 @@ mth_head_block6:
   MOVI r5,6
   CMP r4,r5
   JMP[GT] @hw6_bad
-  MOVI r5,16
+  MOVI r5,20
   CMP r3,r5
   JMP[GE] @hw6_bad_slot
   SHL r5,r3,18

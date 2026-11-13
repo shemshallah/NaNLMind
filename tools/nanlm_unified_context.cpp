@@ -110,7 +110,7 @@ int main(int argc, char** argv) {
                 tokens[i][d] = token_values[i * 128u + d];
 
         std::string bank_path;
-        std::size_t top_k = 16u, summary_k = 2u, local_limit = 0u;
+        std::size_t top_k = 20u, summary_k = 2u, local_limit = 0u;
         std::size_t retrieve_k = 8u;
         unsigned retrieve_head = heads.front();
         std::vector<float> query_values;

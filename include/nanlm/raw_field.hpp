@@ -384,7 +384,7 @@ public:
         const std::array<float,32640>& current_sourced_pair_flows,
         NativeMirrorTriangleRecoveryReceipt& receipt);
     // Native opcode122: one 128D three-layer bf16 head block on a resident
-    // page slot 0..15. The host only transports the input vector and the page
+    // page slot 0..19. The host only transports the input vector and the page
     // bytes; LayerNorm, bf16 matvec, attention and residual updates are guest.
     // The current block is single-token, so its local attention is exactly V.
     bool native_head_block(

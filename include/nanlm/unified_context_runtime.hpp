@@ -45,7 +45,7 @@ public:
     LongContextResult advance(
         const std::array<float, 255>& credits,
         const std::vector<std::array<float, 128>>& tokens,
-        std::size_t top_k = 16u, SummaryBank* bank = nullptr,
+        std::size_t top_k = 20u, SummaryBank* bank = nullptr,
         std::size_t summary_k = 0, std::size_t local_limit = 0) {
         if (bank && summary_k != 0u)
             return context_.run_hierarchical(credits, tokens, *bank, top_k,
@@ -56,7 +56,7 @@ public:
     ChunkSummary summarize(std::uint64_t chunk_id,
                            const std::array<float, 255>& credits,
                            const std::vector<std::array<float, 128>>& tokens,
-                           std::size_t top_k = 16u) {
+                           std::size_t top_k = 20u) {
         return summarizer_.summarize(chunk_id, credits, tokens, top_k);
     }
 

@@ -71,7 +71,7 @@ mth_head_block:
   JMP[EQ] @mth_hb_bad
   CMP r2,r0
   JMP[EQ] @mth_hb_bad
-  MOVI r4,16
+  MOVI r4,20
   CMP r3,r4
   JMP[GE] @mth_hb_bad_slot
   SHL r4,r3,18

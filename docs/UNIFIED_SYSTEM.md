@@ -317,7 +317,7 @@ blocked until a disjoint precommitted NLL gate passes.
 
 `include/nanlm/head_page_arena.hpp` owns 255 × 1 MiB pages as a demand-paged
 anonymous mapping. `include/nanlm/head_page_loader.hpp` loads a page into one
-of **16 guest slots** at `0x00800000 + slot*0x00040000`.
+of **20 guest slots** at `0x00800000 + slot*0x00040000`.
 
 Sixteen is the chosen optimum: it is a power of two, matches the 16-slot meta
 batch, fits the remaining 128 MiB guest window, and avoids a flat 255 MiB/1 GiB
@@ -897,7 +897,7 @@ is no `Kind::Context`. Projection `load(kind)` selects a table head in the
 field-driver projection image. The byte, word, and token heads share one
 field-driver VM and one shared table arena; only one table interpretation is
 active at a time. The context layer uses the head-worker image and page arena
-because its 16 resident pages cannot coexist with the projection table layouts.
+because its 20 resident pages cannot coexist with the projection table layouts.
 
 The runtime performs no host mathematics: it loads images, transports
 arguments, and forwards guest receipts. The context layer always runs the

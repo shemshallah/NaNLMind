@@ -36,7 +36,7 @@ mth_head_block64_last:
   MOVI r5,64
   CMP r4,r5
   JMP[GT] @hbl64_bad
-  MOVI r5,16
+  MOVI r5,20
   CMP r3,r5
   JMP[GE] @hbl64_bad_slot
   SHL r5,r3,18

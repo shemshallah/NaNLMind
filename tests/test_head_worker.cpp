@@ -86,7 +86,7 @@ int main() {
     std::array<float, 6 * 128> rejected{};
     CHECK(vm.native_head_block6(input, 7, 0, rejected, reason));
     CHECK_EQ(reason, 1u);
-    CHECK(vm.native_head_block6(input, 3, 16, rejected, reason));
+    CHECK(vm.native_head_block6(input, 3, 20, rejected, reason));
     CHECK_EQ(reason, 1u);
 
     arena.clear_page(1);

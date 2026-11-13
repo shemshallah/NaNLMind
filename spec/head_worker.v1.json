@@ -9,7 +9,7 @@
   "args": {
     "0x4001": "input f32[T][128]",
     "0x4002": "output f32[T][128]",
-    "0x4003": "slot 0..15",
+    "0x4003": "slot 0..19",
     "0x4004": "T 1..6"
   },
   "result": {
@@ -32,7 +32,7 @@
   "validation": [
     "page header magic",
     "T 1..6",
-    "slot 0..15",
+    "slot 0..19",
     "finite input/output"
   ],
   "note": "Opcode122 is the six-token compatibility block; opcode135 is the 64-token causal block. Both use the same 1 MiB page layout.",

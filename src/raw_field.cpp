@@ -478,7 +478,7 @@ bool RawFieldVM::native_head_block(
     output.fill(0.0f);
     reason = 0u;
     if (!vm_) return fail("native head block: VM unavailable");
-    if (slot >= 16u) { reason = 1u; return true; }
+    if (slot >= 20u) { reason = 1u; return true; }
     constexpr std::uint32_t kInput = 0x00D00000u;
     constexpr std::uint32_t kOutput = 0x00D02000u;
     auto as_bits = [](float value) {
@@ -532,7 +532,7 @@ bool RawFieldVM::native_head_block6(
     reason = 0u;
     if (!vm_) return fail("native head block6: VM unavailable");
     if (token_count == 0u || token_count > 6u) { reason = 1u; return true; }
-    if (slot >= 16u) { reason = 1u; return true; }
+    if (slot >= 20u) { reason = 1u; return true; }
     constexpr std::uint32_t kInput = 0x00D00000u;
     constexpr std::uint32_t kOutput = 0x00D02000u;
     auto as_bits = [](float value) {
@@ -751,7 +751,7 @@ bool RawFieldVM::native_head_page_train(
     error_norm = 0.0f;
     reason = 0u;
     if (!vm_) return fail("native page train: VM unavailable");
-    if (token_count == 0u || token_count > 6u || slot >= 16u ||
+    if (token_count == 0u || token_count > 6u || slot >= 20u ||
         !std::isfinite(learning_rate) || learning_rate < 0.0f) {
         reason = 1u;
         return true;
@@ -822,7 +822,7 @@ bool RawFieldVM::native_head_page_train_w1(
     error_norm = 0.0f;
     reason = 0u;
     if (!vm_) return fail("native W1 page train: VM unavailable");
-    if (token_count == 0u || token_count > 6u || slot >= 16u ||
+    if (token_count == 0u || token_count > 6u || slot >= 20u ||
         !std::isfinite(learning_rate) || learning_rate < 0.0f) {
         reason = 1u;
         return true;
@@ -893,7 +893,7 @@ bool RawFieldVM::native_head_page_train_wv(
     error_norm = 0.0f;
     reason = 0u;
     if (!vm_) return fail("native Wv page train: VM unavailable");
-    if (token_count == 0u || token_count > 6u || slot >= 16u ||
+    if (token_count == 0u || token_count > 6u || slot >= 20u ||
         !std::isfinite(learning_rate) || learning_rate < 0.0f) {
         reason = 1u;
         return true;
@@ -964,7 +964,7 @@ bool RawFieldVM::native_head_page_train_qk(
     error_norm = 0.0f;
     reason = 0u;
     if (!vm_) return fail("native QK page train: VM unavailable");
-    if (token_count == 0u || token_count > 6u || slot >= 16u ||
+    if (token_count == 0u || token_count > 6u || slot >= 20u ||
         !std::isfinite(learning_rate) || learning_rate < 0.0f) {
         reason = 1u;
         return true;
@@ -1035,7 +1035,7 @@ bool RawFieldVM::native_head_page_train_l1w2(
     error_norm = 0.0f;
     reason = 0u;
     if (!vm_) return fail("native L1W2 page train: VM unavailable");
-    if (token_count == 0u || token_count > 6u || slot >= 16u ||
+    if (token_count == 0u || token_count > 6u || slot >= 20u ||
         !std::isfinite(learning_rate) || learning_rate < 0.0f) {
         reason = 1u;
         return true;
@@ -1106,7 +1106,7 @@ bool RawFieldVM::native_head_page_train_l1w1(
     error_norm = 0.0f;
     reason = 0u;
     if (!vm_) return fail("native L1W1 page train: VM unavailable");
-    if (token_count == 0u || token_count > 6u || slot >= 16u ||
+    if (token_count == 0u || token_count > 6u || slot >= 20u ||
         !std::isfinite(learning_rate) || learning_rate < 0.0f) {
         reason = 1u;
         return true;
@@ -1177,7 +1177,7 @@ bool RawFieldVM::native_head_page_train_l1wo(
     error_norm = 0.0f;
     reason = 0u;
     if (!vm_) return fail("native L1Wo page train: VM unavailable");
-    if (token_count == 0u || token_count > 6u || slot >= 16u ||
+    if (token_count == 0u || token_count > 6u || slot >= 20u ||
         !std::isfinite(learning_rate) || learning_rate < 0.0f) {
         reason = 1u;
         return true;
@@ -1248,7 +1248,7 @@ bool RawFieldVM::native_head_page_train_l1wv(
     error_norm = 0.0f;
     reason = 0u;
     if (!vm_) return fail("native L1Wv page train: VM unavailable");
-    if (token_count == 0u || token_count > 6u || slot >= 16u ||
+    if (token_count == 0u || token_count > 6u || slot >= 20u ||
         !std::isfinite(learning_rate) || learning_rate < 0.0f) {
         reason = 1u;
         return true;
@@ -1319,7 +1319,7 @@ bool RawFieldVM::native_head_page_train_l1qk(
     error_norm = 0.0f;
     reason = 0u;
     if (!vm_) return fail("native L1QK page train: VM unavailable");
-    if (token_count == 0u || token_count > 6u || slot >= 16u ||
+    if (token_count == 0u || token_count > 6u || slot >= 20u ||
         !std::isfinite(learning_rate) || learning_rate < 0.0f) {
         reason = 1u;
         return true;
@@ -1388,7 +1388,7 @@ bool RawFieldVM::native_head_block64(
     output.fill(0.0f);
     reason = 0u;
     if (!vm_) return fail("native head block64: VM unavailable");
-    if (token_count == 0u || token_count > 64u || slot >= 16u) {
+    if (token_count == 0u || token_count > 64u || slot >= 20u) {
         reason = 1u;
         return true;
     }
@@ -1448,7 +1448,7 @@ bool RawFieldVM::native_head_page_train_dx2(
     error_norm = 0.0f;
     reason = 0u;
     if (!vm_) return fail("native dX2: VM unavailable");
-    if ((token_count != 1u && token_count != 2u) || slot >= 16u) {
+    if ((token_count != 1u && token_count != 2u) || slot >= 20u) {
         reason = 1u;
         return true;
     }
@@ -1525,7 +1525,7 @@ bool RawFieldVM::native_head_page_train_dx2(
     error_norm = 0.0f;
     reason = 0u;
     if (!vm_) return fail("native dX2: VM unavailable");
-    if (token_count != 1u || slot >= 16u) {
+    if (token_count != 1u || slot >= 20u) {
         reason = 1u;
         return true;
     }
@@ -1551,7 +1551,7 @@ bool RawFieldVM::native_head_page_train_dx0(
     error_norm = 0.0f;
     reason = 0u;
     if (!vm_) return fail("native dX0: VM unavailable");
-    if ((token_count != 1u && token_count != 2u) || slot >= 16u) {
+    if ((token_count != 1u && token_count != 2u) || slot >= 20u) {
         reason = 1u;
         return true;
     }

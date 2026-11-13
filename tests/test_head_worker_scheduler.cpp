@@ -79,7 +79,7 @@ int main() {
         const auto empty = scheduler.run(credits, context, 2, 0);
         CHECK(empty.accepted);
         CHECK(empty.heads.empty());
-        const auto too_many = scheduler.run(credits, context, 2, 17);
+        const auto too_many = scheduler.run(credits, context, 2, 21);
         CHECK(!too_many.accepted);
         CHECK_EQ(too_many.reason, 1u);
         auto bad_credits = credits;

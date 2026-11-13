@@ -35,7 +35,7 @@ mth_head_block64:
   MOVI r5,64
   CMP r4,r5
   JMP[GT] @hb64_bad
-  MOVI r5,16
+  MOVI r5,20
   CMP r3,r5
   JMP[GE] @hb64_bad_slot
   SHL r5,r3,18

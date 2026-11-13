@@ -1,6 +1,6 @@
 // Host-side page loader for the paged 255 x 1 MiB head bank.
 //
-// The loader copies a file-independent 1 MiB page into one of 16 guest slots.
+// The loader copies a file-independent 1 MiB page into one of 20 guest slots.
 // Guest code remains the only owner of head arithmetic; this class only
 // transports bytes and maintains an LRU slot map.  Each 32-bit payload word is
 // stored in one NaN word, so a 1 MiB page occupies 2 MiB of guest address
@@ -18,7 +18,7 @@ namespace nanlm {
 
 class HeadPageLoader {
 public:
-    static constexpr std::size_t kSlots = 16;  // power of two, matches meta batch
+    static constexpr std::size_t kSlots = 20;  // 16-page baseline + 4 frontier slots
     static constexpr std::size_t kWordsPerPage = 262144; // 1 MiB / 4 bytes
     static constexpr std::uint32_t kSlotBase = 0x00800000u;
     static constexpr std::uint32_t kSlotStride = 0x00040000u;
@@ -35,7 +35,7 @@ public:
     }
 
     // Load head 0..254 into a slot. Returns the slot. Evicts the least
-    // recently used slot when all 16 are occupied.
+    // recently used slot when all 20 are occupied.
     std::size_t load(std::size_t head) {
         if (head >= HeadPageArena::kHeadCount)
             throw std::out_of_range("head page index");

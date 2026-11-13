@@ -1,6 +1,6 @@
 // Top-k paged head scheduler for the dedicated six-token head worker.
 //
-// The host selects up to 16 active heads from external credits, asks the LRU
+// The host selects up to 20 active heads from external credits, asks the LRU
 // page loader for a resident 1 MiB page, and invokes the single native
 // opcode122 worker for each head.  No head arithmetic is performed here.
 #pragma once
@@ -39,7 +39,7 @@ struct HeadWorkerBatch {
 
 class HeadWorkerScheduler {
 public:
-    static constexpr std::size_t kMaxHeads = 16;
+    static constexpr std::size_t kMaxHeads = 20;
     static constexpr std::size_t kStateWords = 6 * 128;
 
     HeadWorkerScheduler(RawFieldVM& vm, HeadPageArena& arena)
