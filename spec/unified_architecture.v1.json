@@ -1,6 +1,6 @@
 {
   "schema": "nanlm.unified-architecture/1",
-  "status": "canonical-main-unified-48m-language-path",
+  "status": "canonical-main-native-frontier",
   "entrypoint": "include/nanlm/unified_context_runtime.hpp",
   "flow": [
     "native byte/context readout (direct 256-bin, opcode 40 mode 8)",
@@ -33,11 +33,11 @@
     "old_branches": "audit-only; no new architecture may bypass the unified runtime"
   },
   "metrics": [
-    "48M finite-candidate normalized top-k (when archive present)",
     "byte BPB/top5 (native direct-256 canonical)",
     "word n-gram BPB/top5 reference",
     "candidate-panel NLL/top1/top5",
-    "page/chunk checkpoint gates"
+    "page/chunk checkpoint gates",
+    "external 48M finite-candidate adapter (optional, no metrics claimed)"
   ],
   "blocked": [
     "full-vocabulary native word projection",

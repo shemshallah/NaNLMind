@@ -679,6 +679,19 @@ strong; the class-memory route remains for context-class/triad compatibility.
 The result is still a byte-level context memory, not a word model and not the
 R27/48M decoder.
 
+The same configuration was run on the first 512 KiB of
+`state/gutenberg_150_clean_corpus.txt` (104,858 held-out positions):
+
+| model | BPB | top-1 | top-5 |
+|---|---:|---:|---:|
+| native direct-256 context | **1.95851** | **60.468%** | **87.726%** |
+| order-0 matched | 4.49992 | 17.434% | 46.364% |
+| byte bigram matched | 3.34382 | 32.224% | 71.096% |
+| context-2 matched | 2.78987 | 47.644% | 81.115% |
+
+Artifact: `state/benchmarks/system_byte_gutenberg_512k.json`. This is a
+512 KiB prefix, not the full Gutenberg 150 corpus.
+
 Reproduce both full rows with:
 
 ```sh

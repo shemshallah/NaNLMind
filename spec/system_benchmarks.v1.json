@@ -121,5 +121,42 @@
     "status": "optional adapter; R27 archive is not part of NaNLMind",
     "metrics_claimed": false,
     "entrypoint": "tools/unified_48m_runtime.py"
+  },
+  "byte_gutenberg_512k": {
+    "corpus": "state/gutenberg_150_clean_corpus.txt",
+    "prefix_bytes": 524288,
+    "split": "80% train / 20% held-out by byte position",
+    "samples": 104858,
+    "configuration": {
+      "exact_contexts": 6000,
+      "fallback_buckets": 10384,
+      "smoothing_alpha": 0.01,
+      "exact_fallback_blend": 0.05,
+      "training_passes": 1
+    },
+    "system": {
+      "bpb": 1.95851,
+      "top1": 0.604675,
+      "top5": 0.877263
+    },
+    "references": {
+      "order0": {
+        "bpb": 4.49992,
+        "top1": 0.174341,
+        "top5": 0.463637
+      },
+      "bigram": {
+        "bpb": 3.34382,
+        "top1": 0.322236,
+        "top5": 0.710961
+      },
+      "context2": {
+        "bpb": 2.78987,
+        "top1": 0.476444,
+        "top5": 0.811145
+      }
+    },
+    "artifact": "state/benchmarks/system_byte_gutenberg_512k.json",
+    "note": "512 KiB prefix only; not the full Gutenberg 150 corpus"
   }
 }
