@@ -44,7 +44,8 @@
     "phase_bank_release": "spec/phase_bank_release.v1.json",
     "unified_system_doc": "docs/UNIFIED_SYSTEM.md",
     "context_model": "spec/context_model.v1.json",
-    "branch_triage": "docs/BRANCH_TRIAGE.md"
+    "branch_triage": "docs/BRANCH_TRIAGE.md",
+    "unified_48m_runtime": "spec/unified_48m_runtime.v1.json"
   },
   "legacy_removed": [
     {
