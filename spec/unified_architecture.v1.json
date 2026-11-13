@@ -25,7 +25,9 @@
     "mth_meta_attention16_f32.nas",
     "mth_context6_window_stream.nas",
     "mth_shortlist_batch_proposal.nas",
-    "mth_context_direct256.nas"
+    "mth_context_direct256.nas",
+    "mth_word_projection.nas",
+    "word_worker.nas"
   ],
   "policy": {
     "canonical_branch": "main",
@@ -48,7 +50,8 @@
     "native_frontier_context": "include/nanlm/unified_context_runtime.hpp",
     "native_byte_readout": "mth/nan16/mth_context_direct256.nas",
     "native_64_token_worker": "mth/drivers/head_worker.nas",
-    "external_48m_adapter": "tools/unified_48m_runtime.py (optional; R27 archive is not part of this repository)"
+    "external_48m_adapter": "tools/unified_48m_runtime.py (optional; R27 archive is not part of this repository)",
+    "native_word_projection": "build/word_worker.nan"
   },
   "language_model_policy": {
     "native_system": "NaNLMind native context/byte/readout path",

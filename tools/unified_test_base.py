@@ -119,7 +119,7 @@ def main() -> int:
     for name in ("test_raw_field", "test_context_backoff",
                  "test_context_route", "test_native48m_feedback",
                  "test_dual_tensor_arena", "test_head_page_arena",
-                 "test_head_page_loader", "test_head_block", "test_head_block64", "test_head_worker", "test_head_worker_scheduler", "test_long_context", "test_long_context64", "test_chunk_summary", "test_summary_retrieval", "test_summary_bank_checkpoint", "test_hierarchical_context", "test_unified_context_runtime", "test_head_readout", "test_head_readout_train", "test_head_page_train", "test_head_dx2", "test_head_page_checkpoint", "test_nlhe2", "test_summary_bank_128k", "test_word_vector_learning"):
+                 "test_head_page_loader", "test_head_block", "test_head_block64", "test_head_worker", "test_head_worker_scheduler", "test_long_context", "test_long_context64", "test_chunk_summary", "test_summary_retrieval", "test_summary_bank_checkpoint", "test_hierarchical_context", "test_unified_context_runtime", "test_head_readout", "test_head_readout_train", "test_head_page_train", "test_head_dx2", "test_head_page_checkpoint", "test_nlhe2", "test_summary_bank_128k", "test_word_vector_learning", "test_word_projection"):
         path = BUILD / name
         if path.is_file():
             results.append(run(name, [str(path)]))

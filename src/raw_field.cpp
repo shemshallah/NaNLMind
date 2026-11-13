@@ -5070,6 +5070,79 @@ bool RawFieldVM::readout_context_direct_top5(
     return true;
 }
 
+bool RawFieldVM::word_projection_clear(std::size_t vocabulary) {
+    if (vocabulary < 2u || vocabulary > 3000u)
+        return fail("word projection vocabulary 2..3000");
+    constexpr std::uint32_t kWordUniBase = 0x00700000u;
+    constexpr std::uint32_t kWordBiBase = 0x00800000u;
+    for (std::size_t i = 0; i < vocabulary; ++i)
+        if (!write_word(kWordUniBase + static_cast<std::uint32_t>(i), 0u))
+            return fail("cannot clear word unigram counts");
+    const std::size_t total = vocabulary * vocabulary;
+    for (std::size_t i = 0; i < total; ++i)
+        if (!write_word(kWordBiBase + static_cast<std::uint32_t>(i), 0u))
+            return fail("cannot clear word bigram counts");
+    return true;
+}
+
+bool RawFieldVM::word_projection_build(
+    const std::vector<std::uint32_t>& ids, std::size_t vocabulary) {
+    if (vocabulary < 2u || vocabulary > 3000u)
+        return fail("word projection vocabulary 2..3000");
+    if (ids.size() > 0x60000u)
+        return fail("word projection token stream too long");
+    constexpr std::uint32_t kWordTokenBase = 0x00060000u;
+    for (std::size_t i = 0; i < ids.size(); ++i) {
+        if (ids[i] >= vocabulary)
+            return fail("word projection token id outside vocabulary");
+        if (!write_word(kWordTokenBase + static_cast<std::uint32_t>(i), ids[i]))
+            return fail("cannot write word projection tokens");
+    }
+    if (!write_word(kProposalBase + 0u,
+                    static_cast<std::uint32_t>(ids.size())) ||
+        !write_word(kProposalBase + 1u,
+                    static_cast<std::uint32_t>(vocabulary)) ||
+        !write_word(kProposalBase + 2u, kWordTokenBase) ||
+        !write_word(kCommandBase, 1u))
+        return fail("cannot write word projection build command");
+    if (!run_command()) return false;
+    if (read_word(kResultBase) != ids.size())
+        return fail("word projection build count mismatch");
+    return true;
+}
+
+bool RawFieldVM::word_projection_top5(
+    std::uint32_t target, std::uint32_t context,
+    std::size_t vocabulary, std::uint32_t token_count,
+    std::array<std::uint32_t, 5>& top, float& loss) {
+    top.fill(0);
+    loss = 0.0f;
+    if (vocabulary < 2u || vocabulary > 3000u ||
+        target >= vocabulary || context >= vocabulary)
+        return fail("word projection top5 argument outside vocabulary");
+    if (!write_word(kProposalBase + 0u, target) ||
+        !write_word(kProposalBase + 1u, context) ||
+        !write_word(kProposalBase + 2u,
+                    static_cast<std::uint32_t>(vocabulary)) ||
+        !write_word(kProposalBase + 3u, token_count) ||
+        !write_word(kCommandBase, 2u))
+        return fail("cannot write word projection top5 command");
+    if (!run_command()) return false;
+    std::array<bool, 3000> seen{};
+    for (std::size_t i = 0; i < top.size(); ++i) {
+        const auto id = read_word(kResultBase + static_cast<std::uint32_t>(i));
+        if (id >= vocabulary || seen[id])
+            return fail("word projection top5 malformed word list");
+        seen[id] = true;
+        top[i] = id;
+    }
+    const auto bits = read_word(kResultBase + 5u);
+    std::memcpy(&loss, &bits, sizeof(loss));
+    if (!std::isfinite(loss) || loss < 0.0f)
+        return fail("word projection top5 invalid loss");
+    return true;
+}
+
 void RawFieldVM::reset_readout() {
     for (std::uint32_t i = 0; i < 255u * 8u; ++i) {
         (void)write_word(0xB000u + i, 0);

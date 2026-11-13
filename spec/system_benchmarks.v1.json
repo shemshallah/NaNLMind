@@ -115,7 +115,8 @@
     "byte_readout": "mth/nan16/mth_context_direct256.nas (opcode 40 mode 8)",
     "long_context": "include/nanlm/unified_context_runtime.hpp",
     "metrics_scope": "matched native byte diagnostics; word associative row is a host diagnostic",
-    "r27_dependency": false
+    "r27_dependency": false,
+    "word_projection": "mth/nan16/mth_word_projection.nas / word_worker.nan"
   },
   "external_48m": {
     "status": "optional adapter; R27 archive is not part of NaNLMind",
@@ -158,5 +159,20 @@
     },
     "artifact": "state/benchmarks/system_byte_gutenberg_512k.json",
     "note": "512 KiB prefix only; not the full Gutenberg 150 corpus"
+  },
+  "word_native_projection": {
+    "worker": "build/word_worker.nan",
+    "model": "interpolated add-alpha word bigram",
+    "full_vocabulary": true,
+    "samples": 5489,
+    "vocab": 2292,
+    "bpb": 1.61621,
+    "top1": 0.142467,
+    "top5": 0.306978,
+    "in_vocab_top1": 0.154698,
+    "in_vocab_top5": 0.333333,
+    "oov_rate": 0.0790672,
+    "artifact": "state/benchmarks/word_native.json",
+    "note": "native top-1/top-5 exactly match the reference bigram; BPB differs only by guest float32 accumulation"
   }
 }

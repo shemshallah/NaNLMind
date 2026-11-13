@@ -711,7 +711,33 @@ Artifact:
 state/benchmarks/system_byte_direct256.json
 ```
 
-### Word system: associative top-5
+### Native full-vocabulary word projection
+
+`build/word-native` now runs a complete native word projection in
+`word_worker.nan`. The host only tokenizes, assigns training-vocabulary IDs,
+transports them, and maps returned IDs back to words. The guest owns unigram
+and bigram counts, interpolation, all V-way logits, top-5 and target loss.
+
+On `data/alice_full.txt` (5,489 held-out words, V=2292):
+
+| model | BPB | top-1 | top-5 | in-vocab top-5 |
+|---|---:|---:|---:|---:|
+| native word projection | 1.61621 | 14.247% | 30.698% | 33.333% |
+| interpolated bigram reference | 1.61632 | 14.247% | 30.698% | 33.333% |
+
+The native top-1/top-5 exactly match the reference; the BPB difference is
+guest float32 accumulation. This is a **working full-vocabulary native
+projection**, but it is an interpolated-bigram parity model, not a new frontier
+word model. Contract: `spec/native_word_projection.v1.json`.
+
+Reproduce:
+
+```sh
+./build/word-native data/alice_full.txt state/benchmarks/word_native.json
+```
+
+
+### Associative diagnostic top-5
 
 `build/word-system` ranks the full learned vocabulary of the existing integer
 associative word layer by its own dot-product recall scores. It does not emit a

@@ -1013,6 +1013,14 @@ public:
         std::uint8_t target, std::uint32_t key,
         std::size_t exact_count, std::size_t fallback_count,
         std::array<std::uint8_t, 5>& top, float& loss);
+    // Native full-vocabulary word projection (word_worker.nan).
+    bool word_projection_clear(std::size_t vocabulary);
+    bool word_projection_build(const std::vector<std::uint32_t>& ids,
+                               std::size_t vocabulary);
+    bool word_projection_top5(
+        std::uint32_t target, std::uint32_t context,
+        std::size_t vocabulary, std::uint32_t token_count,
+        std::array<std::uint32_t, 5>& top, float& loss);
     void reset_readout();
     bool set_readout_row(std::uint8_t row,
                          const std::array<float, kRawFeatureDim>& values);

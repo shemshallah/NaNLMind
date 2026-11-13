@@ -66,6 +66,19 @@ def main() -> int:
         if "mode 8" not in direct.get("metric_scope", ""):
             raise SystemExit("direct256 scope does not identify mode 8")
 
+        native_word_out = tmp_path / "word_native.json"
+        run([str(BUILD / "word-native"),
+             "data/alice_excerpt.txt", str(native_word_out)])
+        native_word = json.loads(native_word_out.read_text())
+        if native_word.get("schema") != "nanlm.word-native/1":
+            raise SystemExit("bad native word projection schema")
+        if not (0.0 <= native_word["top1"] <= native_word["top5"] <= 1.0):
+            raise SystemExit("native word top-k ordering")
+        if native_word["bpb"] <= 0.0:
+            raise SystemExit("native word BPB invalid")
+        if native_word["vocab"] <= 5:
+            raise SystemExit("native word vocabulary too small")
+
         word_out = tmp_path / "word.json"
         run([sys.executable, "tools/system_word_bench.py",
              "--corpus", "data/alice_excerpt.txt", "--out", str(word_out)])
@@ -91,6 +104,9 @@ def main() -> int:
         print("byte_direct256",
               direct["system"]["bpb"], direct["system"]["top1"],
               direct["system"]["top5"])
+        print("word_native",
+              native_word["bpb"], native_word["top1"],
+              native_word["top5"])
         print("word_system",
               system["top1"], system["top5"], system["in_vocab_top5"])
         print("word_bigram_top5", bigram["top5"])
