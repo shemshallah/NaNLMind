@@ -30,7 +30,7 @@
     "summary_scheduler": "chunk -> reset memory -> 64-slot recurrent windows -> final per-head memory as chunk summary",
     "summary_coverage_tokens": 131072
   },
-  "hardware_note": "128 MiB guest VM cannot hold full frontier-scale KV/attention; hierarchical paged memory is required.",
+  "hardware_note": "256 MiB guest VM cannot hold full frontier-scale KV/attention; hierarchical paged memory is required.",
   "hierarchical_context": {
     "layout": "[persistent memory | top-k summaries | local tokens]",
     "max_slots": 64,
@@ -49,6 +49,6 @@
     "covered_tokens": 131072,
     "eviction": "oldest summary evicted on the 513th 256-token chunk",
     "retrieval": "native opcode123 scores 512 candidates in batches of 64",
-    "scope": "storage/retrieval tier validation; full 131072-token forward replay remains expensive on the 128 MiB VM"
+    "scope": "storage/retrieval tier validation; full 131072-token forward replay remains expensive on the 256 MiB VM"
   }
 }

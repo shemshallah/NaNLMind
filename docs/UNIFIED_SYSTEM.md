@@ -173,7 +173,7 @@ cherry-picked. `docs/BRANCH_TRIAGE.md` is the decision list.
 
 ## Guest driver budget and restored context routes
 
-The raw field driver is capped at **0x100000 words** (1,048,576 emitted words) by the code/data boundary; the phase table moved to `[0x395000,0x395200)`, and the VM default is now 16M words (128 MiB). 255 resident 1 MiB pages require a paged external arena; attempting a flat 512 MiB/1 GiB VM has repeatedly OOM-restarted this device.
+The raw field driver is capped at **0x100000 words** (1,048,576 emitted words) by the code/data boundary; the phase table moved to `[0x395000,0x395200)`, and the VM default is now 32M words (256 MiB). 255 resident 1 MiB pages require a paged external arena; attempting a flat 512 MiB/1 GiB VM has repeatedly OOM-restarted this device.
 Adding code past that boundary silently corrupts dispatch/state; the Makefile
 now rejects an over-budget image. To make room for the canonical routes, the
 unused `mth_context_hash` and `mth_context_batch` includes were removed from
@@ -320,7 +320,7 @@ anonymous mapping. `include/nanlm/head_page_loader.hpp` loads a page into one
 of **20 guest slots** at `0x00800000 + slot*0x00040000`.
 
 Sixteen is the chosen optimum: it is a power of two, matches the 16-slot meta
-batch, fits the remaining 128 MiB guest window, and avoids a flat 255 MiB/1 GiB
+batch, fits the 256 MiB guest window, and avoids a flat 255 MiB/1 GiB
 VM that OOMs this device. Each 1 MiB page expands to 2 MiB of guest storage
 because a NaN word is 8 bytes. LRU eviction replaces the least recently used
 slot.
@@ -556,7 +556,7 @@ The frontier trajectory needs hierarchical paged memory:
   -> target 8k / 32k / 128k effective context
 ```
 
-A 128 MiB guest VM cannot hold full frontier-scale KV. The current recurrent
+A 256 MiB guest VM cannot hold full frontier-scale KV. The current recurrent
 path is the correctness/storage stepping stone; the next native step is the
 64-token local block and chunk summarizer. The contract is frozen in
 `spec/long_context.v1.json`.
@@ -775,8 +775,8 @@ and writes JSON. NaN16 owns unigram/bigram counts, interpolation, the full
 
 This is **GPT-2 subword-token** evaluation, not text-word BPB and not byte BPB.
 The reduced 3,000-token vocabulary is responsible for the 21.67% `<unk>` rate;
-full GPT-2 vocabulary (50,257) does not fit in the 128 MiB guest with the
-current dense count layout. No R27/48M component is used.
+full GPT-2 vocabulary (50,257) is resident in the 256 MiB unified guest with
+the full projection table layout. No R27/48M component is used.
 
 Artifact: `state/benchmarks/train_1b.json`.
 Contract: `spec/native_token_train_1b.v1.json`.

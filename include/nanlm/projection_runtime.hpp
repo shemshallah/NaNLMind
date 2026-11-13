@@ -2,7 +2,7 @@
 //
 // The byte context readout uses field_driver.nan; word and token projections
 // use their own worker images. Only one projection VM is resident at a time,
-// which keeps the 128 MiB guest memory budget controlled and prevents two
+// which keeps the 256 MiB guest memory budget controlled and prevents two
 // count tables from silently aliasing. Every mathematical operation still
 // executes in the selected raw NaN16 image. Host code only loads images,
 // transports arguments and forwards receipts.
