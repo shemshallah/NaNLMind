@@ -85,6 +85,15 @@ int main() {
     for (unsigned d = 0; d < 128u; ++d)
         CHECK_EQ(last_out[63u * 128u + d], output[63u * 128u + d]);
 
+    // T=1 is the exact parity case for the last-token opcode.
+    std::array<float, 64 * 128> one_out{}, one_last_out{};
+    CHECK(vm.native_head_block64(input, 1, 0, one_out, reason));
+    CHECK_EQ(reason, 0u);
+    CHECK(vm.native_head_block64(input, 1, 0, one_last_out, reason, true));
+    CHECK_EQ(reason, 0u);
+    for (unsigned d = 0; d < 128u; ++d)
+        CHECK_EQ(one_out[d], one_last_out[d]);
+
     std::array<float, 64 * 128> rejected{};
     CHECK(vm.native_head_block64(input, 65, 0, rejected, reason));
     CHECK_EQ(reason, 1u);
