@@ -1,7 +1,10 @@
 {
   "schema": "nanlm.head-page-train-dx2/1",
   "opcode": 137,
-  "tokens": [1, 2],
+  "tokens": [
+    1,
+    2
+  ],
   "max_tokens": 2,
   "loss": "0.5*||output-target||^2 on the last token",
   "sign": "dY=output-target for the last token, zero for earlier tokens; dX2=dL/dX2",
@@ -45,5 +48,6 @@
   "blocked": [
     "layers 0/1 reverse",
     "full BPTT"
-  ]
+  ],
+  "see_also": "spec/head_page_train_dx0.v1.json (opcode138 full input dX0)"
 }

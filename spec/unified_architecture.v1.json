@@ -43,7 +43,7 @@
   "blocked": [
     "full 48M archive metrics on this machine (archive absent)",
     "full-vocabulary 48M trie argmax",
-    "dX2 for T>2 and layers 0/1",
+    "T>2 reverse and weight gradients (arbitrary-length BPTT)",
     "automatic 48M tensor promotion"
   ],
   "entrypoints": {
