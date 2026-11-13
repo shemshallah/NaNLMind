@@ -2,32 +2,37 @@
   "schema": "nanlm.projection-runtime/1",
   "entrypoint": "include/nanlm/projection_runtime.hpp",
   "policy": {
-    "runtime_entrypoint": "include/nanlm/projection_runtime.hpp",
-    "context_layer": "always available; hierarchical 64-token self-attention + summary bank",
-    "projection_layer": "one resident field_driver VM for byte/word/token table heads",
+    "one_vm": true,
+    "one_guest_image": true,
     "context_mode": false,
-    "host_role": "load images, transport arguments, forward receipts",
-    "guest_role": "all counts, interpolation, top-k, loss, context math",
-    "multiple_context_modes": false
+    "simultaneous_projection_tables": true,
+    "host_role": "load one image, transport arguments, forward receipts",
+    "guest_role": "all counts, interpolation, top-k, loss, context math"
   },
-  "switching": "context() lazily constructs the persistent context layer; projection load(kind) selects a field_driver table head. There is no context Kind or context mode.",
+  "switching": "No projection table switching. The byte, word, token and context layouts are resident together in one 32M-word VM; load(kind) only labels the caller focus.",
   "tests": [
     "tests/test_projection_runtime.cpp"
   ],
-  "note": "One system runtime API. Context and projection use distinct native worker images because 16 head-page slots and the projection count arena do not share a physical layout.",
+  "note": "One 256 MiB guest image holds all full projection tables and 20 context page slots with disjoint address ranges.",
   "engines": {
-    "context": {
-      "image": "build/head_worker.nan",
-      "entrypoint": "UnifiedContextRuntime",
-      "layers": "3-layer 64-slot self-attention + hierarchical summaries"
-    },
-    "projection": {
+    "single": {
       "image": "build/field_driver.nan",
-      "kernels": [
-        "mth_context_direct256.nas",
-        "mth_word_projection.nas",
-        "mth_token_projection.nas"
+      "layers": [
+        "byte direct-256",
+        "word full-vocabulary",
+        "token full GPT-2",
+        "64-token context",
+        "hierarchical summaries"
       ]
     }
+  },
+  "memory": {
+    "nan_words": 33554432,
+    "bytes": 268435456,
+    "head_page_slots": 20,
+    "byte_tables": "0x00100000..0x00700000",
+    "context_pages": "0x00800000..0x00D00000",
+    "word_tables": "0x00E00000..0x01311000",
+    "token_tables": "0x01330000..0x01FAFFFF"
   }
 }

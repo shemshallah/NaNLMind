@@ -1,10 +1,10 @@
 ; Raw NaN16 full-vocabulary word projection.
 ;
 ; One sparse count matrix over word IDs:
-;   0x00A00000  unigram counts, V words
-;   0x00100000  bigram counts, V*V words (row = previous word ID)
+;   0x01310000  unigram counts, V words
+;   0x00E00000  bigram counts, V*V words (row = previous word ID)
 ;   0x00060000  host-supplied training token IDs (N words)
-;   0x00A01000  top-5 scratch
+;   0x01311000  top-5 scratch
 ;
 ; Evaluation is the same interpolated add-alpha model used by the reference
 ; word baseline:
@@ -40,7 +40,7 @@ mwd_uni_loop:
   ADD r13,r13,r10
   LD r14,r13,0
   MOVI r12,0x0000
-  MOVHI r12,0x00A0
+  MOVHI r12,0x0131
   ADD r12,r12,r14
   LD r13,r12,0
   ADDI r13,r13,1
@@ -70,7 +70,7 @@ mwd_bi_loop:
   LD r13,r13,0
   ADD r14,r14,r13
   MOVI r12,0x0000
-  MOVHI r12,0x0010
+  MOVHI r12,0x00E0
   ADD r12,r12,r14
   LD r13,r12,0
   ADDI r13,r13,1
@@ -112,7 +112,7 @@ mwb_uni:
   ADD r13,r13,r10
   LD r14,r13,0
   MOVI r12,0x0000
-  MOVHI r12,0x00A0
+  MOVHI r12,0x0131
   ADD r12,r12,r14
   LD r13,r12,0
   ADDI r13,r13,1
@@ -137,7 +137,7 @@ mwb_uni_done:
   MUL r10,r10,r11
   ADD r10,r10,r13
   MOVI r12,0x0000
-  MOVHI r12,0x0010
+  MOVHI r12,0x00E0
   ADD r12,r12,r10
   LD r13,r12,0
   ADDI r13,r13,1
@@ -165,7 +165,7 @@ mwb_bi:
   LD r13,r13,0
   ADD r14,r14,r13
   MOVI r12,0x0000
-  MOVHI r12,0x0010
+  MOVHI r12,0x00E0
   ADD r12,r12,r14
   LD r13,r12,0
   ADDI r13,r13,1
@@ -199,7 +199,7 @@ mth_word_top5:
   LD r7,r12,0
   MUL r6,r6,r7
   MOVI r7,0x0000
-  MOVHI r7,0x0010
+  MOVHI r7,0x00E0
   ADD r6,r6,r7
   MOVI r12,@mwd_row
   ST r6,r12,0
@@ -258,13 +258,13 @@ mwd_clear:
   CMP r10,r12
   JMP[GE] @mwd_clear_done
   MOVI r12,0x1000
-  MOVHI r12,0x00A0
+  MOVHI r12,0x0131
   ADD r12,r12,r10
   MOVI r13,0
   MOVHI r13,0xBF80
   ST r13,r12,0
   MOVI r12,0x1100
-  MOVHI r12,0x00A0
+  MOVHI r12,0x0131
   ADD r12,r12,r10
   ST r0,r12,0
   ADDI r10,r10,1
@@ -283,7 +283,7 @@ mwd_scan:
 
   ; unigram probability
   MOVI r12,0x0000
-  MOVHI r12,0x00A0
+  MOVHI r12,0x0131
   ADD r12,r12,r10
   LD r14,r12,0
   CVTIF r14,r14
@@ -330,7 +330,7 @@ mwd_find:
   CMPS r11,r0
   JMP[LT] @mwd_insert
   MOVI r12,0x1000
-  MOVHI r12,0x00A0
+  MOVHI r12,0x0131
   ADD r12,r12,r11
   LD r9,r12,0
   FCMP r15,r9
@@ -349,19 +349,19 @@ mwd_shift:
   CMP r9,r11
   JMP[LE] @mwd_shift_done
   MOVI r12,0x1000
-  MOVHI r12,0x00A0
+  MOVHI r12,0x0131
   ADD r12,r12,r9
   MOVI r13,0x1000
-  MOVHI r13,0x00A0
+  MOVHI r13,0x0131
   ADDI r14,r9,-1
   ADD r13,r13,r14
   LD r8,r13,0
   ST r8,r12,0
   MOVI r12,0x1100
-  MOVHI r12,0x00A0
+  MOVHI r12,0x0131
   ADD r12,r12,r9
   MOVI r13,0x1100
-  MOVHI r13,0x00A0
+  MOVHI r13,0x0131
   ADD r13,r13,r14
   LD r8,r13,0
   ST r8,r12,0
@@ -369,11 +369,11 @@ mwd_shift:
   JMP @mwd_shift
 mwd_shift_done:
   MOVI r12,0x1000
-  MOVHI r12,0x00A0
+  MOVHI r12,0x0131
   ADD r12,r12,r11
   ST r15,r12,0
   MOVI r12,0x1100
-  MOVHI r12,0x00A0
+  MOVHI r12,0x0131
   ADD r12,r12,r11
   ST r10,r12,0
 mwd_next:
@@ -388,7 +388,7 @@ mwd_scan_done:
   MOVI r12,@mwd_loss
   ST r7,r12,0
   MOVI r12,0x1100
-  MOVHI r12,0x00A0
+  MOVHI r12,0x0131
   LD r1,r12,0
   LD r2,r12,1
   LD r3,r12,2

@@ -41,5 +41,7 @@
     "scratch_base_hex": "0x00D00000",
     "page_header_magic_hex": "0x48315233",
     "note": "The dedicated worker image owns all six-token attention and MLP arithmetic; the main field driver keeps a single-token compatibility route."
-  }
+  },
+  "guest_words": 33554432,
+  "guest_bytes": 268435456
 }

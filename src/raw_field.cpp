@@ -5073,8 +5073,8 @@ bool RawFieldVM::readout_context_direct_top5(
 bool RawFieldVM::word_projection_clear(std::size_t vocabulary) {
     if (vocabulary < 2u || vocabulary > 3000u)
         return fail("word projection vocabulary 2..3000");
-    constexpr std::uint32_t kWordUniBase = 0x00A00000u;
-    constexpr std::uint32_t kWordBiBase = 0x00100000u;
+    constexpr std::uint32_t kWordUniBase = 0x01310000u;
+    constexpr std::uint32_t kWordBiBase = 0x00E00000u;
     for (std::size_t i = 0; i < vocabulary; ++i)
         if (!write_word(kWordUniBase + static_cast<std::uint32_t>(i), 0u))
             return fail("cannot clear word unigram counts");
@@ -5094,8 +5094,8 @@ bool RawFieldVM::token_projection_clear(std::size_t vocabulary,
         rows < 2u || rows > 257u ||
         rows * vocabulary > 12916049u)
         return fail("token projection vocabulary/rows exceed memory");
-    constexpr std::uint32_t kTokenBiBase = 0x00100000u;
-    constexpr std::uint32_t kTokenUniBase = 0x00E00000u;
+    constexpr std::uint32_t kTokenBiBase = 0x01330000u;
+    constexpr std::uint32_t kTokenUniBase = 0x01FA0000u;
     const std::size_t total = rows * vocabulary;
     for (std::size_t i = 0; i < total; ++i)
         if (!write_word(kTokenBiBase + static_cast<std::uint32_t>(i), 0u))

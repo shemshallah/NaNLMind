@@ -39,7 +39,7 @@ void make_page(std::uint8_t* page) {
 } // namespace
 
 int main() {
-    RawFieldVM vm("build/head_worker.nan");
+    RawFieldVM vm("build/field_driver.nan");
     CHECK(vm.ready());
     HeadPageArena pages;
     make_page(pages.page(1));

@@ -49,7 +49,7 @@ $(BUILD)/nan0s_%.o: third_party/nan0s/core/%.c | $(BUILD)
 $(NAN0S_LIB): $(NAN0S_OBJ)
 	$(AR) rcs $@ $^
 
-$(FIELD_DRIVER): mth/drivers/field_driver.nas $(wildcard mth/nan16/*.nas) $(NAN0S_NMK) | $(BUILD)
+$(FIELD_DRIVER): mth/drivers/field_driver.nas mth/drivers/field_driver_base.nas $(wildcard mth/nan16/*.nas) $(NAN0S_NMK) | $(BUILD)
 	awk -f $(NAN0S_NMK) -v CMD=emit $< > $@.tmp
 	@test "$$(wc -l < $@.tmp)" -le 1048576 || { echo "field driver exceeds 0x100000-word guest code/data boundary"; rm -f $@.tmp; exit 1; }
 	mv $@.tmp $@

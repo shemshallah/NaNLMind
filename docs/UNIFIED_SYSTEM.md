@@ -893,11 +893,11 @@ projection layer
 ```
 
 `context()` lazily constructs the persistent hierarchical context layer; there
-is no `Kind::Context`. Projection `load(kind)` selects a table head in the
-field-driver projection image. The byte, word, and token heads share one
-field-driver VM and one shared table arena; only one table interpretation is
-active at a time. The context layer uses the head-worker image and page arena
-because its 20 resident pages cannot coexist with the projection table layouts.
+is no `Kind::Context`. One 256 MiB `field_driver.nan` VM holds all full
+projection tables, the 20 context page slots, and the 64-token context kernels.
+Byte, word, and token tables are disjoint and remain resident simultaneously.
+The 64-token context blocks and state readout live at 0x9000, 0xB000 and 0xC000
+in the same image.
 
 The runtime performs no host mathematics: it loads images, transports
 arguments, and forwards guest receipts. The context layer always runs the

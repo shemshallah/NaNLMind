@@ -11,7 +11,7 @@
    platform revision raises it toward 2^31 words (16 GB) and then widens the
    index to 64 bits (spec/NANVM_SPEC.md §4.1, §8.1). */
 #ifndef NAN_WORDS
-#define NAN_WORDS 0x1000000u
+#define NAN_WORDS 0x2000000u
 #endif
 #define NAN_VRAM  (16u << 20)
 #define NAN_SER_CAP 262144u

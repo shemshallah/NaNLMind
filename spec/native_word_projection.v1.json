@@ -12,10 +12,10 @@
     "124/2": "full V-way top-5 and loss"
   },
   "memory": {
-    "unigram_base": "0x00A00000",
-    "bigram_base": "0x00100000",
+    "unigram_base": "0x01310000",
+    "bigram_base": "0x00E00000",
     "token_buffer": "0x00060000",
-    "top5_scratch": "0x00A01000",
+    "top5_scratch": "0x01311000",
     "max_vocabulary": 3000
   },
   "model": {

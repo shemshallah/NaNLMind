@@ -67,6 +67,22 @@ int main() {
     CHECK_EQ(byte_top[0], 0x12u);
     CHECK(std::isfinite(byte_loss));
 
+    // The byte, word and token tables are disjoint and remain live in one VM.
+    std::array<std::uint32_t, 5> token_again{};
+    float token_again_loss = 0.0f;
+    CHECK(runtime.token_top5(1, 0, token_v,
+                             static_cast<std::uint32_t>(token_ids.size()),
+                             token_again, token_again_loss));
+    CHECK(token_again == token_top);
+    CHECK(std::fabs(token_again_loss - token_loss) < 1e-6f);
+    std::array<std::uint32_t, 5> word_again{};
+    float word_again_loss = 0.0f;
+    CHECK(runtime.word_top5(1, 0, word_v,
+                            static_cast<std::uint32_t>(word_ids.size()),
+                            word_again, word_again_loss));
+    CHECK(word_again == word_top);
+    CHECK(std::fabs(word_again_loss - word_loss) < 1e-6f);
+
     // Context is always part of the runtime, not a loadable mode.
     CHECK(!runtime.context_ready());
     CHECK_EQ(runtime.context().resident_pages(), 0u);

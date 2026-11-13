@@ -479,6 +479,15 @@ field_driver_main:
   MOVI r3,124
   CMP r2,r3
   JMP[EQ] @field_driver_projection
+  MOVI r3,135
+  CMP r2,r3
+  JMP[EQ] @field_driver_block64
+  MOVI r3,136
+  CMP r2,r3
+  JMP[EQ] @field_driver_block64_last
+  MOVI r3,123
+  CMP r2,r3
+  JMP[EQ] @field_driver_state_readout
   JMP @field_driver_return
 
 field_driver_proposal:
@@ -922,6 +931,48 @@ field_driver_projection_token_top5:
   ST r4,r10,3
   ST r5,r10,4
   ST r6,r10,5
+  JMP @field_driver_return
+
+field_driver_state_readout:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r4,r10,3
+  CALLF 0xC000
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  ST r4,r10,3
+  JMP @field_driver_return
+
+field_driver_block64:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r4,r10,3
+  CALLF 0x9000
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  ST r4,r10,3
+  JMP @field_driver_return
+
+field_driver_block64_last:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r4,r10,3
+  CALLF 0xB000
+  MOVI r10,0x4010
+  ST r1,r10,0
+  ST r2,r10,1
+  ST r3,r10,2
+  ST r4,r10,3
   JMP @field_driver_return
 
 field_driver_triad_score:

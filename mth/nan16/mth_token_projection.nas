@@ -4,11 +4,11 @@
 ; Targets: full V=50,257 GPT-2 token vocabulary. No <unk> target is used.
 ;
 ; Layout:
-;   0x00100000  bigram counts, rows*V words
-;   0x00E00000  unigram counts, V words
+;   0x01330000  bigram counts, rows*V words
+;   0x01FA0000  unigram counts, V words
 ;   0x000C0000  row map, 65,536 words: previous token ID -> 0..256
 ;   0x00060000  host-supplied token IDs (N words)
-;   0x00E10000  top-5 scratch
+;   0x01F90000  top-5 (scores; classes +0x100) scratch
 ;
 ; ABI:
 ;   build: r1=N, r2=V, r3=rows, r4=token base, r5=rowmap base,
@@ -44,7 +44,7 @@ mtp_uni:
   ADD r13,r13,r10
   LD r14,r13,0
   MOVI r12,0x0000
-  MOVHI r12,0x00E0
+  MOVHI r12,0x01FA
   ADD r12,r12,r14
   LD r13,r12,0
   ADDI r13,r13,1
@@ -72,7 +72,7 @@ mtp_uni_done:
   MUL r10,r10,r13
   ADD r10,r10,r14
   MOVI r12,0x0000
-  MOVHI r12,0x0010
+  MOVHI r12,0x0133
   ADD r12,r12,r10
   LD r13,r12,0
   ADDI r13,r13,1
@@ -106,7 +106,7 @@ mtp_bi:
   LD r13,r13,0
   ADD r14,r14,r13
   MOVI r12,0x0000
-  MOVHI r12,0x0010
+  MOVHI r12,0x0133
   ADD r12,r12,r14
   LD r13,r12,0
   ADDI r13,r13,1
@@ -139,7 +139,7 @@ mth_token_top5:
   LD r7,r12,0
   MUL r6,r6,r7
   MOVI r7,0x0000
-  MOVHI r7,0x0010
+  MOVHI r7,0x0133
   ADD r6,r6,r7
   MOVI r12,@mtp_rowp
   ST r6,r12,0
@@ -196,13 +196,13 @@ mtp_clear:
   CMP r10,r12
   JMP[GE] @mtp_clear_done
   MOVI r12,0x0000
-  MOVHI r12,0x00E1
+  MOVHI r12,0x01F9
   ADD r12,r12,r10
   MOVI r13,0
   MOVHI r13,0xBF80
   ST r13,r12,0
   MOVI r12,0x0100
-  MOVHI r12,0x00E1
+  MOVHI r12,0x01F9
   ADD r12,r12,r10
   ST r0,r12,0
   ADDI r10,r10,1
@@ -219,7 +219,7 @@ mtp_scan:
   JMP[GE] @mtp_scan_done
   ; unigram probability
   MOVI r12,0x0000
-  MOVHI r12,0x00E0
+  MOVHI r12,0x01FA
   ADD r12,r12,r10
   LD r14,r12,0
   CVTIF r14,r14
@@ -262,7 +262,7 @@ mtp_find:
   CMPS r11,r0
   JMP[LT] @mtp_insert
   MOVI r12,0x0000
-  MOVHI r12,0x00E1
+  MOVHI r12,0x01F9
   ADD r12,r12,r11
   LD r9,r12,0
   FCMP r15,r9
@@ -281,19 +281,19 @@ mtp_shift:
   CMP r9,r11
   JMP[LE] @mtp_shift_done
   MOVI r12,0x0000
-  MOVHI r12,0x00E1
+  MOVHI r12,0x01F9
   ADD r12,r12,r9
   MOVI r13,0x0000
-  MOVHI r13,0x00E1
+  MOVHI r13,0x01F9
   ADDI r14,r9,-1
   ADD r13,r13,r14
   LD r8,r13,0
   ST r8,r12,0
   MOVI r12,0x0100
-  MOVHI r12,0x00E1
+  MOVHI r12,0x01F9
   ADD r12,r12,r9
   MOVI r13,0x0100
-  MOVHI r13,0x00E1
+  MOVHI r13,0x01F9
   ADD r13,r13,r14
   LD r8,r13,0
   ST r8,r12,0
@@ -301,11 +301,11 @@ mtp_shift:
   JMP @mtp_shift
 mtp_shift_done:
   MOVI r12,0x0000
-  MOVHI r12,0x00E1
+  MOVHI r12,0x01F9
   ADD r12,r12,r11
   ST r15,r12,0
   MOVI r12,0x0100
-  MOVHI r12,0x00E1
+  MOVHI r12,0x01F9
   ADD r12,r12,r11
   ST r10,r12,0
 mtp_next:
@@ -319,7 +319,7 @@ mtp_scan_done:
   MOVI r12,@mtp_loss
   ST r7,r12,0
   MOVI r12,0x0100
-  MOVHI r12,0x00E1
+  MOVHI r12,0x01F9
   LD r1,r12,0
   LD r2,r12,1
   LD r3,r12,2
