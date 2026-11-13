@@ -58,7 +58,8 @@
     "native_word_projection": "build/word_worker.nan",
     "native_1b_token_trainer": "build/train-1b",
     "native_full_token_trainer": "build/train-1b-full",
-    "native_projection_runtime": "include/nanlm/projection_runtime.hpp"
+    "native_projection_runtime": "include/nanlm/projection_runtime.hpp",
+    "system_orchestrator": "tools/nanlm_unified_system.py"
   },
   "language_model_policy": {
     "native_system": "NaNLMind native context/byte/readout path",

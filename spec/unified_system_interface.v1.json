@@ -1,0 +1,22 @@
+{
+  "schema": "nanlm.unified-system-interface/1",
+  "entrypoint": "tools/nanlm_unified_system.py",
+  "policy": "host orchestration only; native binaries perform all model mathematics",
+  "commands": {
+    "status": "read integrated artifacts and report present/missing components",
+    "byte": "delegate to build/direct256-bench",
+    "word": "delegate to build/word-native",
+    "token-1b": "delegate to build/train-1b",
+    "token-full": "delegate to build/train-1b-full",
+    "context": "delegate to build/nanlm-unified-context",
+    "check": "run tools/unified_test_base.py"
+  },
+  "components": [
+    "include/nanlm/projection_runtime.hpp",
+    "include/nanlm/unified_context_runtime.hpp",
+    "mth/nan16/mth_context_direct256.nas",
+    "mth/nan16/mth_word_projection.nas",
+    "mth/nan16/mth_token_projection.nas"
+  ],
+  "tests": ["tests/test_unified_system_cli.py"]
+}

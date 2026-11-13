@@ -851,6 +851,24 @@ state/benchmarks/word_baselines.json
 ```
 
 
+## One system entry point
+
+`tools/nanlm_unified_system.py` is the orchestration entry point:
+
+```sh
+python3 tools/nanlm_unified_system.py status
+python3 tools/nanlm_unified_system.py byte <direct256 args>
+python3 tools/nanlm_unified_system.py word <word-native args>
+python3 tools/nanlm_unified_system.py token-1b <trainer args>
+python3 tools/nanlm_unified_system.py token-full <trainer args>
+python3 tools/nanlm_unified_system.py context <unified-context args>
+python3 tools/nanlm_unified_system.py check
+```
+
+`status` reads the committed artifacts and reports present/missing components.
+Every model command delegates to the native binary; the dispatcher performs no
+model mathematics. `make system-status` prints the same receipt.
+
 ## Unified projection runtime
 
 `include/nanlm/projection_runtime.hpp` is the common host composition boundary

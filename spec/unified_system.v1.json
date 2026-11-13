@@ -49,7 +49,8 @@
     "context_direct256": "spec/context_direct256.v1.json",
     "native_word_projection": "spec/native_word_projection.v1.json",
     "native_full_token_train": "spec/native_full_token_train.v1.json",
-    "projection_runtime": "spec/projection_runtime.v1.json"
+    "projection_runtime": "spec/projection_runtime.v1.json",
+    "unified_system_interface": "spec/unified_system_interface.v1.json"
   },
   "legacy_removed": [
     {
