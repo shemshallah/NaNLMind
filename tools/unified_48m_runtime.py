@@ -144,8 +144,14 @@ def run_native_emit(
             value = float(native[word])
             if not math.isfinite(value) or abs(value) > 8.0:
                 raise RuntimeError("native emit weight outside [-8,8]")
+            native_evidence = receipt.get("native_evidence", {})
+            if (not isinstance(native_evidence, dict) or
+                    native_evidence.get("meta_available") is not True or
+                    native_evidence.get("candidate_staged") is not True or
+                    native_evidence.get("automatic_promotion") is not False):
+                raise RuntimeError("native emit did not provide candidate-only evidence")
             weights[word] = value
-            evidence[word] = receipt.get("native_evidence", {})
+            evidence[word] = native_evidence
     return {
         "native_log_weights": weights,
         "native_accepted": len(weights),
