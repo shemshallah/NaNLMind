@@ -39,7 +39,8 @@
     "word n-gram BPB/top5 reference",
     "candidate-panel NLL/top1/top5",
     "page/chunk checkpoint gates",
-    "external 48M finite-candidate adapter (optional, no metrics claimed)"
+    "external 48M finite-candidate adapter (optional, no metrics claimed)",
+    "1B-token native token-level projection (subword tokens, not text-word BPB)"
   ],
   "blocked": [
     "full-vocabulary native word projection",
@@ -51,7 +52,8 @@
     "native_byte_readout": "mth/nan16/mth_context_direct256.nas",
     "native_64_token_worker": "mth/drivers/head_worker.nas",
     "external_48m_adapter": "tools/unified_48m_runtime.py (optional; R27 archive is not part of this repository)",
-    "native_word_projection": "build/word_worker.nan"
+    "native_word_projection": "build/word_worker.nan",
+    "native_1b_token_trainer": "build/train-1b"
   },
   "language_model_policy": {
     "native_system": "NaNLMind native context/byte/readout path",

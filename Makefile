@@ -167,6 +167,9 @@ $(BUILD)/word-system: tools/nanlm_word_system.cpp include/nanlm/word_vector.hpp 
 $(BUILD)/word-native: tools/nanlm_word_native_bench.cpp include/nanlm/raw_field.hpp $(LIB) $(NAN0S_LIB) $(WORD_WORKER) | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 
+$(BUILD)/train-1b: tools/nanlm_train_1b.cpp include/nanlm/raw_field.hpp $(LIB) $(NAN0S_LIB) $(WORD_WORKER) | $(BUILD)
+	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
+
 $(BUILD)/nanlm48m-native-batch: tools/nanlm48m_native_batch.cpp include/nanlm/raw_field.hpp $(LIB) $(NAN0S_LIB) $(FIELD_DRIVER) | $(BUILD)
 	$(CXX) $(CXXFLAGS) $< $(LIB) $(NAN0S_LIB) -o $@ $(LDFLAGS) $(LDLIBS)
 

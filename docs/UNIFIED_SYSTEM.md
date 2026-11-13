@@ -737,6 +737,36 @@ Reproduce:
 ```
 
 
+### 1B-token native training run
+
+A 1-billion-token native run is active against the Kaggle dataset
+`zlatan599/lexor-2026`, file:
+
+```text
+1B_tokens/LLM_training_data_1B.bin
+```
+
+It is 2,000,360,716 bytes of uint16 little-endian GPT-2 token IDs
+(1,000,180,358 tokens, MIT). The run uses:
+
+```text
+train tokens     1,000,000,000
+held-out tokens    180,000
+vocabulary           3,000  (2,999 most frequent IDs + <unk>)
+worker               build/word_worker.nan
+math                 native interpolated token bigram
+```
+
+The host only reads the stream, selects the top token IDs, remaps them to
+transport IDs, and writes JSON. All unigram/bigram counts, interpolation, the
+full 3,000-way projection, top-5 and loss execute in NaN16.
+
+This is a **token-level** metric: GPT-2 subword tokens, not natural-language
+words and not bytes. It is not an R27/48M metric. Results are written to
+`state/benchmarks/train_1b.json`; until the run completes, no score is claimed.
+Contract: `spec/native_token_train_1b.v1.json`.
+
+
 ### Associative diagnostic top-5
 
 `build/word-system` ranks the full learned vocabulary of the existing integer

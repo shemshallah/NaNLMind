@@ -25,6 +25,9 @@ word_worker_main:
   MOVI r2,2
   CMP r1,r2
   JMP[EQ] @word_worker_top5
+  MOVI r2,3
+  CMP r1,r2
+  JMP[EQ] @word_worker_batch
   JMP @word_worker_return
 
 word_worker_build:
@@ -33,6 +36,17 @@ word_worker_build:
   LD r2,r10,1
   LD r3,r10,2
   CALL @mth_word_build
+  MOVI r10,0x4010
+  ST r1,r10,0
+  JMP @word_worker_return
+
+word_worker_batch:
+  MOVI r10,0x4001
+  LD r1,r10,0
+  LD r2,r10,1
+  LD r3,r10,2
+  LD r4,r10,3
+  CALL @mth_word_batch
   MOVI r10,0x4010
   ST r1,r10,0
   JMP @word_worker_return

@@ -5073,8 +5073,8 @@ bool RawFieldVM::readout_context_direct_top5(
 bool RawFieldVM::word_projection_clear(std::size_t vocabulary) {
     if (vocabulary < 2u || vocabulary > 3000u)
         return fail("word projection vocabulary 2..3000");
-    constexpr std::uint32_t kWordUniBase = 0x00700000u;
-    constexpr std::uint32_t kWordBiBase = 0x00800000u;
+    constexpr std::uint32_t kWordUniBase = 0x00A00000u;
+    constexpr std::uint32_t kWordBiBase = 0x00100000u;
     for (std::size_t i = 0; i < vocabulary; ++i)
         if (!write_word(kWordUniBase + static_cast<std::uint32_t>(i), 0u))
             return fail("cannot clear word unigram counts");
@@ -5108,6 +5108,34 @@ bool RawFieldVM::word_projection_build(
     if (!run_command()) return false;
     if (read_word(kResultBase) != ids.size())
         return fail("word projection build count mismatch");
+    return true;
+}
+
+bool RawFieldVM::word_projection_batch(
+    const std::vector<std::uint32_t>& ids, std::size_t vocabulary,
+    std::uint32_t previous) {
+    if (vocabulary < 2u || vocabulary > 3000u)
+        return fail("word projection vocabulary 2..3000");
+    if (ids.empty() || ids.size() > 262144u)
+        return fail("word projection batch size 1..262144");
+    constexpr std::uint32_t kWordTokenBase = 0x00060000u;
+    for (std::size_t i = 0; i < ids.size(); ++i) {
+        if (ids[i] >= vocabulary)
+            return fail("word projection batch id outside vocabulary");
+        if (!write_word(kWordTokenBase + static_cast<std::uint32_t>(i), ids[i]))
+            return fail("cannot write word projection batch tokens");
+    }
+    if (!write_word(kProposalBase + 0u,
+                    static_cast<std::uint32_t>(ids.size())) ||
+        !write_word(kProposalBase + 1u,
+                    static_cast<std::uint32_t>(vocabulary)) ||
+        !write_word(kProposalBase + 2u, kWordTokenBase) ||
+        !write_word(kProposalBase + 3u, previous) ||
+        !write_word(kCommandBase, 3u))
+        return fail("cannot write word projection batch command");
+    if (!run_command()) return false;
+    if (read_word(kResultBase) != ids.size())
+        return fail("word projection batch count mismatch");
     return true;
 }
 

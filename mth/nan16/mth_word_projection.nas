@@ -1,10 +1,10 @@
 ; Raw NaN16 full-vocabulary word projection.
 ;
 ; One sparse count matrix over word IDs:
-;   0x00700000  unigram counts, V words
-;   0x00800000  bigram counts, V*V words (row = previous word ID)
+;   0x00A00000  unigram counts, V words
+;   0x00100000  bigram counts, V*V words (row = previous word ID)
 ;   0x00060000  host-supplied training token IDs (N words)
-;   0x00701000  top-5 scratch
+;   0x00A01000  top-5 scratch
 ;
 ; Evaluation is the same interpolated add-alpha model used by the reference
 ; word baseline:
@@ -40,7 +40,7 @@ mwd_uni_loop:
   ADD r13,r13,r10
   LD r14,r13,0
   MOVI r12,0x0000
-  MOVHI r12,0x0070
+  MOVHI r12,0x00A0
   ADD r12,r12,r14
   LD r13,r12,0
   ADDI r13,r13,1
@@ -70,7 +70,7 @@ mwd_bi_loop:
   LD r13,r13,0
   ADD r14,r14,r13
   MOVI r12,0x0000
-  MOVHI r12,0x0080
+  MOVHI r12,0x0010
   ADD r12,r12,r14
   LD r13,r12,0
   ADDI r13,r13,1
@@ -81,6 +81,101 @@ mwd_bi_done:
   MOVI r12,@mwd_build_n
   LD r1,r12,0
   MOVI r12,@mwd_build_link
+  LD r15,r12,0
+  RET
+
+; Batch count accumulation for streaming training.
+; r1=N, r2=V, r3=token base, r4=previous token or 0xFFFFFFFF.
+; Counts one unigram per token and one bigram per adjacent pair, including
+; the boundary pair from the previous chunk when prev is not the sentinel.
+mth_word_batch:
+  MOVI r12,@mwb_link
+  ST r15,r12,0
+  MOVI r12,@mwb_n
+  ST r1,r12,0
+  MOVI r12,@mwb_v
+  ST r2,r12,0
+  MOVI r12,@mwb_base
+  ST r3,r12,0
+  MOVI r12,@mwb_prev
+  ST r4,r12,0
+
+  ; unigram pass
+  MOVI r10,0
+mwb_uni:
+  MOVI r12,@mwb_n
+  LD r11,r12,0
+  CMP r10,r11
+  JMP[GE] @mwb_uni_done
+  MOVI r12,@mwb_base
+  LD r13,r12,0
+  ADD r13,r13,r10
+  LD r14,r13,0
+  MOVI r12,0x0000
+  MOVHI r12,0x00A0
+  ADD r12,r12,r14
+  LD r13,r12,0
+  ADDI r13,r13,1
+  ST r13,r12,0
+  ADDI r10,r10,1
+  JMP @mwb_uni
+mwb_uni_done:
+
+  ; boundary pair from the previous chunk
+  MOVI r12,@mwb_prev
+  LD r10,r12,0
+  MOVI r12,0xFFFF
+  MOVHI r12,0xFFFF
+  CMP r10,r12
+  JMP[EQ] @mwb_internal_start
+  ; row = prev*V + first
+  MOVI r12,@mwb_base
+  LD r13,r12,0
+  LD r13,r13,0
+  MOVI r12,@mwb_v
+  LD r11,r12,0
+  MUL r10,r10,r11
+  ADD r10,r10,r13
+  MOVI r12,0x0000
+  MOVHI r12,0x0010
+  ADD r12,r12,r10
+  LD r13,r12,0
+  ADDI r13,r13,1
+  ST r13,r12,0
+mwb_internal_start:
+
+  ; internal pairs
+  MOVI r10,1
+mwb_bi:
+  MOVI r12,@mwb_n
+  LD r11,r12,0
+  CMP r10,r11
+  JMP[GE] @mwb_done
+  MOVI r12,@mwb_base
+  LD r13,r12,0
+  ADDI r14,r10,-1
+  ADD r13,r13,r14
+  LD r14,r13,0
+  MOVI r12,@mwb_v
+  LD r13,r12,0
+  MUL r14,r14,r13
+  MOVI r12,@mwb_base
+  LD r13,r12,0
+  ADD r13,r13,r10
+  LD r13,r13,0
+  ADD r14,r14,r13
+  MOVI r12,0x0000
+  MOVHI r12,0x0010
+  ADD r12,r12,r14
+  LD r13,r12,0
+  ADDI r13,r13,1
+  ST r13,r12,0
+  ADDI r10,r10,1
+  JMP @mwb_bi
+mwb_done:
+  MOVI r12,@mwb_n
+  LD r1,r12,0
+  MOVI r12,@mwb_link
   LD r15,r12,0
   RET
 
@@ -104,7 +199,7 @@ mth_word_top5:
   LD r7,r12,0
   MUL r6,r6,r7
   MOVI r7,0x0000
-  MOVHI r7,0x0080
+  MOVHI r7,0x0010
   ADD r6,r6,r7
   MOVI r12,@mwd_row
   ST r6,r12,0
@@ -163,13 +258,13 @@ mwd_clear:
   CMP r10,r12
   JMP[GE] @mwd_clear_done
   MOVI r12,0x1000
-  MOVHI r12,0x0070
+  MOVHI r12,0x00A0
   ADD r12,r12,r10
   MOVI r13,0
   MOVHI r13,0xBF80
   ST r13,r12,0
   MOVI r12,0x1100
-  MOVHI r12,0x0070
+  MOVHI r12,0x00A0
   ADD r12,r12,r10
   ST r0,r12,0
   ADDI r10,r10,1
@@ -188,7 +283,7 @@ mwd_scan:
 
   ; unigram probability
   MOVI r12,0x0000
-  MOVHI r12,0x0070
+  MOVHI r12,0x00A0
   ADD r12,r12,r10
   LD r14,r12,0
   CVTIF r14,r14
@@ -235,7 +330,7 @@ mwd_find:
   CMPS r11,r0
   JMP[LT] @mwd_insert
   MOVI r12,0x1000
-  MOVHI r12,0x0070
+  MOVHI r12,0x00A0
   ADD r12,r12,r11
   LD r9,r12,0
   FCMP r15,r9
@@ -254,19 +349,19 @@ mwd_shift:
   CMP r9,r11
   JMP[LE] @mwd_shift_done
   MOVI r12,0x1000
-  MOVHI r12,0x0070
+  MOVHI r12,0x00A0
   ADD r12,r12,r9
   MOVI r13,0x1000
-  MOVHI r13,0x0070
+  MOVHI r13,0x00A0
   ADDI r14,r9,-1
   ADD r13,r13,r14
   LD r8,r13,0
   ST r8,r12,0
   MOVI r12,0x1100
-  MOVHI r12,0x0070
+  MOVHI r12,0x00A0
   ADD r12,r12,r9
   MOVI r13,0x1100
-  MOVHI r13,0x0070
+  MOVHI r13,0x00A0
   ADD r13,r13,r14
   LD r8,r13,0
   ST r8,r12,0
@@ -274,11 +369,11 @@ mwd_shift:
   JMP @mwd_shift
 mwd_shift_done:
   MOVI r12,0x1000
-  MOVHI r12,0x0070
+  MOVHI r12,0x00A0
   ADD r12,r12,r11
   ST r15,r12,0
   MOVI r12,0x1100
-  MOVHI r12,0x0070
+  MOVHI r12,0x00A0
   ADD r12,r12,r11
   ST r10,r12,0
 mwd_next:
@@ -293,7 +388,7 @@ mwd_scan_done:
   MOVI r12,@mwd_loss
   ST r7,r12,0
   MOVI r12,0x1100
-  MOVHI r12,0x0070
+  MOVHI r12,0x00A0
   LD r1,r12,0
   LD r2,r12,1
   LD r3,r12,2
@@ -318,6 +413,16 @@ mwd_build_n:
 mwd_build_v:
   .word 0
 mwd_build_base:
+  .word 0
+mwb_link:
+  .word 0
+mwb_n:
+  .word 0
+mwb_v:
+  .word 0
+mwb_base:
+  .word 0
+mwb_prev:
   .word 0
 mwd_top_link:
   .word 0

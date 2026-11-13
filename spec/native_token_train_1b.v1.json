@@ -1,0 +1,45 @@
+{
+  "schema": "nanlm.native-token-train/1",
+  "status": "running",
+  "dataset": {
+    "kaggle": "zlatan599/lexor-2026",
+    "file": "1B_tokens/LLM_training_data_1B.bin",
+    "bytes": 2000360716,
+    "format": "uint16 little-endian GPT-2 token IDs",
+    "stream_tokens": 1000180358,
+    "license": "MIT",
+    "source_model": "gpt2 tokenizer, fineweb-edu base"
+  },
+  "protocol": {
+    "train_tokens": 1000000000,
+    "heldout_tokens": 180000,
+    "vocabulary": 3000,
+    "unknown_id": 2999,
+    "vocab_selection": "top 2999 token IDs by training frequency plus <unk>",
+    "worker": "build/word_worker.nan",
+    "kernel": "mth/nan16/mth_word_projection.nas",
+    "model": "native interpolated add-alpha token bigram",
+    "alpha": 0.01,
+    "lambda": 0.7,
+    "token_chunk": 262144
+  },
+  "host_scope": "file I/O, frequency selection, ID remapping, transport, JSON",
+  "guest_scope": "unigram/bigram counts, interpolation, full 3000-way projection, top-5, loss",
+  "metrics": {
+    "primary": [
+      "bits_per_token",
+      "top1",
+      "top5",
+      "unk_rate",
+      "tokens_per_second"
+    ],
+    "not_claimed": [
+      "text-word BPB",
+      "byte BPB",
+      "1B unique natural-language words",
+      "R27/48M metrics"
+    ]
+  },
+  "artifact": "state/benchmarks/train_1b.json",
+  "command": "./build/train-1b state/lexor/1B_tokens/LLM_training_data_1B.bin state/benchmarks/train_1b.json 3000 1000000000 180000"
+}
