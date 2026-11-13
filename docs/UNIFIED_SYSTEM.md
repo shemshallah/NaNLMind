@@ -613,7 +613,13 @@ small top-5 edge (79.358% vs 78.706%). The system BPB is higher than its top-1 s
 because the class probabilities are not calibrated; top-1 and BPB are reported
 separately and neither is hidden.
 
-Reproduce:
+Reproduce both full rows with:
+
+```sh
+make system-benchmarks
+```
+
+The byte row alone is:
 
 ```sh
 ./build/system-byte-bench data/alice_full.txt \
