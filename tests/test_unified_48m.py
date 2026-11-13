@@ -17,6 +17,10 @@ SPEC = importlib.util.spec_from_file_location(
     "unified_48m_runtime", TOOLS / "unified_48m_runtime.py")
 module = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(module)
+EVAL_SPEC = importlib.util.spec_from_file_location(
+    "unified_48m_eval", TOOLS / "unified_48m_eval.py")
+eval_module = importlib.util.module_from_spec(EVAL_SPEC)
+EVAL_SPEC.loader.exec_module(eval_module)
 
 
 class FrozenFixture:
@@ -104,6 +108,27 @@ def test_native_emit_bridge_abi_fixture():
             "automatic_promotion"] is False
 
 
+def test_finite_candidate_panel_metrics():
+    emitter = FrozenFixture()
+    records = [
+        {"context": "the river", "candidates": ["alpha", "beta"],
+         "target": "alpha"},
+        {"context": "the river", "candidates": ["alpha", "beta"],
+         "target": "beta"},
+    ]
+    weights = [
+        {"alpha": 0.0, "beta": 0.0},
+        {"alpha": 0.0, "beta": 0.0},
+    ]
+    metrics = eval_module.score_panel(emitter, records, weights)
+    assert metrics["positions"] == 2
+    assert metrics["candidate_top1"] == 0.5
+    assert metrics["candidate_top5"] == 1.0
+    assert metrics["baseline_exact_word_bpb"] > 0.0
+    assert abs(metrics["bpb_improvement"]) < 1e-12
+    assert metrics["full_vocabulary_scope"] is False
+
+
 def test_missing_archive_fails_closed():
     with tempfile.TemporaryDirectory(prefix="nanlm-48m-missing-") as tmp:
         tmp_path = Path(tmp)
@@ -118,6 +143,18 @@ def test_missing_archive_fails_closed():
         assert proc.returncode == 2
         assert "original frozen 48M archive is required" in proc.stderr
         assert "{" not in proc.stdout
+        panel = tmp_path / "panel.json"
+        panel.write_text(json.dumps({"records": [{
+            "context": "the river", "candidates": ["alpha"],
+            "target": "alpha"}]}), encoding="utf-8")
+        scored = subprocess.run(
+            [sys.executable, str(TOOLS / "unified_48m_eval.py"),
+             "--archive-root", str(tmp_path / "absent"),
+             "--panel", str(panel)],
+            cwd=ROOT, text=True, capture_output=True)
+        assert scored.returncode == 2
+        assert "no surrogate metric" in scored.stderr
+        assert "{" not in scored.stdout
 
 
 def main():
@@ -125,6 +162,7 @@ def main():
     test_finite_candidate_normalizer()
     test_native_batch_abi_fixture()
     test_native_emit_bridge_abi_fixture()
+    test_finite_candidate_panel_metrics()
     test_missing_archive_fails_closed()
     print("PASS unified 48M language entrypoint")
     return 0

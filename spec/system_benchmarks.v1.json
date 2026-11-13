@@ -100,5 +100,15 @@
     "No word system BPB is claimed because association scores are not normalized.",
     "The associative word layer is not the native 48M decoder.",
     "The word system ranks its full learned training vocabulary; this is not a frontier metric."
-  ]
+  ],
+  "canonical_language_model": {
+    "model": "frozen R25/R27 48M decoder",
+    "entrypoint": "tools/unified_48m_runtime.py",
+    "evaluation": "tools/unified_48m_eval.py",
+    "archive_present_on_this_machine": false,
+    "metric_scope": "finite candidate-shortlist probabilities and exact-word NLL/BPB only",
+    "full_vocabulary_top5": false,
+    "status": "ready fail-closed; no 48M metrics produced without the original archive",
+    "diagnostic_rows": "byte and word system rows above are matched diagnostic floors, not 48M language metrics"
+  }
 }

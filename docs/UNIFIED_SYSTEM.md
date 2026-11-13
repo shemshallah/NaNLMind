@@ -91,6 +91,8 @@ bytes
   -> local attention -> trihead attention -> meta-global attention
   -> credit bundle (CFT/TRAIL/HOLO/RING/LEAF/TCA/FLUX)
   -> field/vote commit
+  -> native candidate log weights
+  -> frozen 48M exact word distribution P0 and finite candidate normalization
 ```
 
 Point `255` is the current-context register. It is **not** an active math
@@ -269,6 +271,20 @@ Top-k from this entrypoint is over the supplied finite candidate shortlist and
 is normalized by the exact 48M `P0`. Full-vocabulary top-5 over the archived
 48M trie is a separate blocked metric; it is not claimed by the shortlist
 runtime. Tensor promotion remains false.
+
+For a matched finite-candidate language panel:
+
+```sh
+python3 tools/unified_48m_eval.py \
+  --archive-root /path/to/R27/experiment_archive \
+  --panel panel.json
+```
+
+The panel row format is `{"context": "...", "candidates": [...],
+"target": "..."}`. The evaluator reports exact-word BPB for `P0` and the
+candidate-normalized `P*`, plus finite-shortlist top-1/top-5. It refuses a
+target outside the declared candidate set and never labels the result
+full-vocabulary. Without the archive it exits 2 and writes no metric.
 
 
 ## Closed generation loop

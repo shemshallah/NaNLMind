@@ -117,6 +117,10 @@ def run_native_emit(
     if len(previous.encode()) > 64 or len(current.encode()) > 64:
         raise ValueError("native emit windows must be 1..64 bytes")
     candidates = list(candidate_words)
+    if not candidates or len(set(candidates)) != len(candidates):
+        raise ValueError("unique nonempty candidates required")
+    if any(not w or w != w.lower() or not w.isalpha() for w in candidates):
+        raise ValueError("candidates must be canonical lowercase alphabetic")
     weights = {}
     evidence = {}
     with tempfile.TemporaryDirectory(prefix="nanlm-unified-48m-emit-") as tmp:
@@ -171,6 +175,10 @@ def run_native_batch(
     if len(previous.encode()) > 64 or len(current.encode()) > 64:
         raise ValueError("native batch windows must be 1..64 bytes")
     candidates = list(candidate_words)
+    if not candidates or len(set(candidates)) != len(candidates):
+        raise ValueError("unique nonempty candidates required")
+    if any(not w or w != w.lower() or not w.isalpha() for w in candidates):
+        raise ValueError("candidates must be canonical lowercase alphabetic")
     import tempfile
     with tempfile.TemporaryDirectory(prefix="nanlm-unified-48m-") as tmp:
         tmp_path = Path(tmp)
