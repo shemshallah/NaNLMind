@@ -8,7 +8,8 @@
     "format": "uint16 little-endian GPT-2 token IDs",
     "stream_tokens": 1000180358,
     "license": "MIT",
-    "source_model": "gpt2 tokenizer, fineweb-edu base"
+    "source_model": "gpt2 tokenizer, fineweb-edu base",
+    "sha256": "d95ce10a5b68c369e0e357c2f212176417e86331e54d9e5b12bb2d89a596faee"
   },
   "protocol": {
     "train_tokens": 1000000000,
