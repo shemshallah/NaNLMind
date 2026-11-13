@@ -5071,8 +5071,8 @@ bool RawFieldVM::readout_context_direct_top5(
 }
 
 bool RawFieldVM::word_projection_clear(std::size_t vocabulary) {
-    if (vocabulary < 2u || vocabulary > 3000u)
-        return fail("word projection vocabulary 2..3000");
+    if (vocabulary < 2u || vocabulary > 2292u)
+        return fail("word projection vocabulary 2..2292");
     constexpr std::uint32_t kWordUniBase = 0x01310000u;
     constexpr std::uint32_t kWordBiBase = 0x00E00000u;
     for (std::size_t i = 0; i < vocabulary; ++i)
@@ -5120,7 +5120,7 @@ bool RawFieldVM::token_projection_write_rowmap(
 
 bool RawFieldVM::unified_word_build(
     const std::vector<std::uint32_t>& ids, std::size_t vocabulary) {
-    if (vocabulary < 2u || vocabulary > 3000u || ids.size() > 0x60000u)
+    if (vocabulary < 2u || vocabulary > 2292u || ids.size() > 0x60000u)
         return fail("unified word build bounds");
     constexpr std::uint32_t kBase = 0x00060000u;
     for (std::size_t i = 0; i < ids.size(); ++i) {
@@ -5146,7 +5146,7 @@ bool RawFieldVM::unified_word_build(
 bool RawFieldVM::unified_word_batch(
     const std::vector<std::uint32_t>& ids, std::size_t vocabulary,
     std::uint32_t previous) {
-    if (vocabulary < 2u || vocabulary > 3000u ||
+    if (vocabulary < 2u || vocabulary > 2292u ||
         ids.empty() || ids.size() > 262144u)
         return fail("unified word batch bounds");
     constexpr std::uint32_t kBase = 0x00060000u;
@@ -5177,7 +5177,7 @@ bool RawFieldVM::unified_word_top5(
     std::array<std::uint32_t, 5>& top, float& loss) {
     top.fill(0);
     loss = 0.0f;
-    if (vocabulary < 2u || vocabulary > 3000u ||
+    if (vocabulary < 2u || vocabulary > 2292u ||
         target >= vocabulary || context >= vocabulary)
         return fail("unified word top5 bounds");
     if (!write_word(kProposalBase + 0u, 2u) ||
@@ -5189,7 +5189,7 @@ bool RawFieldVM::unified_word_top5(
         !write_word(kCommandBase, 124u))
         return fail("cannot write unified word top5 command");
     if (!run_command()) return false;
-    std::array<bool, 3000> seen{};
+    std::array<bool, 2292> seen{};
     for (std::size_t i = 0; i < top.size(); ++i) {
         const auto id = read_word(kResultBase + static_cast<std::uint32_t>(i));
         if (id >= vocabulary || seen[id])

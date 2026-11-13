@@ -13,7 +13,7 @@
   "tests": [
     "tests/test_projection_runtime.cpp"
   ],
-  "note": "One 256 MiB guest image holds all full projection tables and 20 context page slots with disjoint address ranges.",
+  "note": "One 256 MiB guest image holds all full projection tables and 20 context page slots with disjoint address ranges. Word vocabulary is capped at 2292 so its full table remains disjoint from the full token table.",
   "engines": {
     "single": {
       "image": "build/field_driver.nan",
@@ -32,7 +32,7 @@
     "head_page_slots": 20,
     "byte_tables": "0x00100000..0x00700000",
     "context_pages": "0x00800000..0x00D00000",
-    "word_tables": "0x00E00000..0x01311000",
+    "word_tables": "0x00E00000..0x0130FFFF",
     "token_tables": "0x01330000..0x01FAFFFF"
   }
 }

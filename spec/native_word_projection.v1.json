@@ -16,7 +16,7 @@
     "bigram_base": "0x00E00000",
     "token_buffer": "0x00060000",
     "top5_scratch": "0x01311000",
-    "max_vocabulary": 3000
+    "max_vocabulary": 2292
   },
   "model": {
     "type": "interpolated add-alpha word bigram",

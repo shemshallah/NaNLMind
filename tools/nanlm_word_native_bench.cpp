@@ -59,8 +59,8 @@ int main(int argc, char** argv) {
             vocab.push_back(tokens[i]);
         std::sort(vocab.begin(), vocab.end());
         vocab.erase(std::unique(vocab.begin(), vocab.end()), vocab.end());
-        if (vocab.size() + 1u > 3000u)
-            throw std::runtime_error("unified word vocabulary limit is 3000");
+        if (vocab.size() + 1u > 2292u)
+            throw std::runtime_error("unified word vocabulary limit is 2292");
         std::unordered_map<std::string, std::uint32_t> ids;
         for (std::uint32_t i = 0; i < vocab.size(); ++i)
             ids[vocab[i]] = i;

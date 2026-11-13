@@ -1,6 +1,6 @@
 {
   "schema": "nanlm.native-token-train/1",
-  "status": "completed",
+  "status": "historical-run-not-full-layout",
   "dataset": {
     "kaggle": "zlatan599/lexor-2026",
     "file": "1B_tokens/LLM_training_data_1B.bin",
@@ -60,6 +60,7 @@
     "Exactly 1B training tokens consumed; 180k held-out tokens evaluated.",
     "Token-level GPT-2 subword IDs only; not text-word BPB or byte BPB.",
     "Top 3000 token vocabulary plus <unk>; 21.67% of held-out tokens are <unk>.",
-    "No R27/48M component was used."
+    "No R27/48M component was used.",
+    "The V=3000 reduced-vocabulary run predates the full simultaneous 2292-word/50,257-token layout; it is retained as a historical measurement, not the current full-table configuration."
   ]
 }
