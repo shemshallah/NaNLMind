@@ -31,7 +31,7 @@ From Undecidability.Shared.Libs.PSL.FiniteTypes Require Import FinTypesDef.
 Definition encode_closed
     (x : { t : L.term | L.closed t }) : tape (finType_CS bool) :=
   match KrivineMclosed_HALT_to_HaltUTM.reduction with
-  | ex_intro _ f _ => f x
+  | ex_intro f _ => f x
   end.
 
 (** ** Fixed-UTM halting equivalence
