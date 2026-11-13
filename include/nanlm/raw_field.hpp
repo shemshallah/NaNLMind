@@ -488,6 +488,14 @@ public:
         std::uint8_t slot, const std::array<float, 128>& target,
         std::array<float, 6 * 128>& output, std::array<float, 6 * 128>& dx2,
         float& error_norm, std::uint8_t& reason);
+    // Opcode138: exact full input dX0 reverse for T=1..2. It runs the same
+    // forward captures as opcode137, then reverses layers 2, 1 and 0 with each
+    // layer's own page weights. Loss is last-token only; no page mutation.
+    bool native_head_page_train_dx0(
+        const std::array<float, 6 * 128>& context, std::uint8_t token_count,
+        std::uint8_t slot, const std::array<float, 128>& target,
+        std::array<float, 6 * 128>& dx0, float& error_norm,
+        std::uint8_t& reason);
     bool native_shortlist_batch(
         const std::array<std::uint32_t,6>& context_words,
         std::uint8_t valid_mask, std::uint8_t task,

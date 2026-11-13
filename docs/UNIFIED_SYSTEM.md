@@ -815,8 +815,34 @@ dX2[t]  = dR1[t] + LNbwd(A1[t], dA1[t], inv1[t])
 
 The forward pass retains A1/inv1, A2/inv2, hidden H, Q/K/V and normalized
 attention probabilities for every token and layer. Opcode 137 does not mutate
-the page. T>2 is rejected; layers 0/1 reverse and full BPTT remain blocked.
+the page. T>2 is rejected; layers 0/1 reverse remain outside opcode 137.
 The test uses passthrough layers 0/1, an identity layer 2 and a nonzero second
 token, then checks central finite differences on sampled coordinates
 (measured max relative error: T=1 1.3e-3, T=2 5.0e-3 at eps=1e-2). The
 contract is frozen in `spec/head_page_train_dx2.v1.json`.
+
+## Full dX0 reverse
+
+Worker opcode **138** computes the exact gradient of the same last-token loss
+with respect to the original context input. It runs the same forward captures
+as opcode 137, then applies the layer reverse above three times, feeding each
+result into the next stage:
+
+```text
+dX2 = layer_rev(layer 2, dY)
+dX1 = layer_rev(layer 1, dX2)
+dX0 = layer_rev(layer 0, dX1)
+```
+
+Each `layer_rev` uses that layer's own page weights and its own captured
+A1/inv1, A2/inv2, H, Q/K/V and normalized probabilities. The attention reverse
+is the exact reverse of the unmasked per-query softmax in `mth_head_block6`.
+Opcode 138 does not mutate the page. T=1 and T=2 only; T>2 is rejected. Weight
+gradients through all layers and arbitrary-length BPTT remain blocked.
+
+The test uses an all-identity page for all three layers (not passthrough
+layers 0/1), plus a page whose layers are scaled differently so a stage cannot
+silently reuse another layer's weights. Central finite differences on sampled
+context coordinates give a max relative error of 2.3e-3 (T=1) and 7.3e-3
+(T=2) for the all-identity page, and 1.6e-3 / 8.8e-3 for the scaled page, at
+eps=1e-2. The contract is frozen in `spec/head_page_train_dx0.v1.json`.

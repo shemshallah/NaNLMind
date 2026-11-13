@@ -1,0 +1,39 @@
+{
+  "schema": "nanlm.head-page-train-dx0/1",
+  "opcode": 138,
+  "tokens": [1, 2],
+  "max_tokens": 2,
+  "loss": "0.5*||output-target||^2 on the last token",
+  "sign": "dY=output-target for the last token, zero for earlier tokens; dX0=dL/dinput",
+  "attention": "full per-query softmax over all T keys; mth_head_block6 has no causal mask",
+  "captures": [
+    "the same forward captures as opcode137: A1/inv1, A2/inv2, H, Q/K/V and normalized attention probabilities for every token and layer"
+  ],
+  "path": [
+    "dX2 = layer_rev(2, dY)",
+    "dX1 = layer_rev(1, dX2)",
+    "dX0 = layer_rev(0, dX1)"
+  ],
+  "layer_rev": [
+    "dH=W2^T dOut",
+    "dZ=dH*(1-H^2)",
+    "dXN2=W1^T dZ",
+    "dR1=dOut+LNbwd(A2,dXN2,inv2)",
+    "dctx=Wo^T dR1",
+    "dP[i][j]=dctx[i].V[j]",
+    "ds[i][j]=p[i][j]*(dP[i][j]-sum_k p[i][k]*dP[i][k])",
+    "dQ[i]=sum_j ds[i][j]*K[j]/sqrt(128)",
+    "dK[j]=sum_i ds[i][j]*Q[i]/sqrt(128)",
+    "dV[j]=sum_i p[i][j]*dctx[i]",
+    "dA1[t]=Wq^T dQ[t]+Wk^T dK[t]+Wv^T dV[t]",
+    "dIn[t]=dR1[t]+LNbwd(A1[t],dA1[t],inv1[t])"
+  ],
+  "weights": "each layer_rev call uses that layer's own Wq/Wk/Wv/Wo/W1/W2 and captured A1/A2/inv1/inv2/H/Q/K/V/probabilities",
+  "limits": "T=1 and T=2; T>2 rejected. Weight gradients and arbitrary-length BPTT remain blocked.",
+  "page_mutation": false,
+  "gradient_check": "central difference max relative error < 5e-2 on sampled coordinates; measured all-identity page T=1 2.3e-3, T=2 7.3e-3 and per-layer-scaled identity T=1 1.6e-3, T=2 8.8e-3 at eps=1e-2",
+  "blocked": [
+    "weight gradients through all layers",
+    "arbitrary-length BPTT"
+  ]
+}

@@ -1542,6 +1542,78 @@ bool RawFieldVM::native_head_page_train_dx2(
     return true;
 }
 
+bool RawFieldVM::native_head_page_train_dx0(
+    const std::array<float, 6 * 128>& context, std::uint8_t token_count,
+    std::uint8_t slot, const std::array<float, 128>& target,
+    std::array<float, 6 * 128>& dx0, float& error_norm,
+    std::uint8_t& reason) {
+    dx0.fill(0.0f);
+    error_norm = 0.0f;
+    reason = 0u;
+    if (!vm_) return fail("native dX0: VM unavailable");
+    if ((token_count != 1u && token_count != 2u) || slot >= 16u) {
+        reason = 1u;
+        return true;
+    }
+    constexpr std::uint32_t kContext = 0x00D00000u;
+    constexpr std::uint32_t kOutput = 0x00D02000u;
+    constexpr std::uint32_t kTarget = 0x00D03000u;
+    constexpr std::uint32_t kDx0 = 0x00D06000u;
+    const std::uint32_t count = static_cast<std::uint32_t>(token_count) * 128u;
+    auto as_bits = [](float value) {
+        std::uint32_t bits = 0u;
+        std::memcpy(&bits, &value, sizeof(bits));
+        return bits;
+    };
+    for (std::uint32_t i = 0; i < count; ++i) {
+        if (!std::isfinite(context[i]))
+            return fail("native dX0: nonfinite context");
+        if (!write_word(kContext + i, as_bits(context[i])))
+            return fail("native dX0: context transport failed");
+    }
+    for (std::uint32_t d = 0; d < 128u; ++d) {
+        if (!std::isfinite(target[d]))
+            return fail("native dX0: nonfinite target");
+        if (!write_word(kTarget + d, as_bits(target[d])))
+            return fail("native dX0: target transport failed");
+    }
+    if (!write_word(kProposalBase + 0u, kContext) ||
+        !write_word(kProposalBase + 1u, kOutput) ||
+        !write_word(kProposalBase + 2u, slot) ||
+        !write_word(kProposalBase + 3u, token_count) ||
+        !write_word(kProposalBase + 4u, kTarget) ||
+        !write_word(kProposalBase + 5u, kDx0) ||
+        !write_word(kCommandBase, 138u))
+        return fail("native dX0: command transport failed");
+    if (!run_command())
+        return fail("native dX0: guest execution failed: " + error_);
+    const auto ok = read_word(kResultBase);
+    const auto norm_bits = read_word(kResultBase + 1u);
+    const auto used_tokens = read_word(kResultBase + 2u);
+    const auto code = read_word(kResultBase + 3u);
+    if (ok == 0u) {
+        if (norm_bits != 0u || used_tokens != 0u || code < 1u || code > 3u)
+            return fail("native dX0: malformed rejection");
+        reason = static_cast<std::uint8_t>(code);
+        return true;
+    }
+    if (ok != 1u || used_tokens != token_count || code != 0u)
+        return fail("native dX0: malformed success receipt");
+    std::memcpy(&error_norm, &norm_bits, sizeof(error_norm));
+    if (!std::isfinite(error_norm) || error_norm < 0.0f)
+        return fail("native dX0: invalid norm");
+    for (std::uint32_t i = 0; i < count; ++i) {
+        const auto bits = read_word(kDx0 + i);
+        float value = 0.0f;
+        std::memcpy(&value, &bits, sizeof(value));
+        if (!std::isfinite(value))
+            return fail("native dX0: nonfinite dx0");
+        dx0[i] = value;
+    }
+    reason = 0u;
+    return true;
+}
+
 bool RawFieldVM::native_shortlist_batch(
     const std::array<std::uint32_t,6>& context_words,
     std::uint8_t valid_mask, std::uint8_t task,

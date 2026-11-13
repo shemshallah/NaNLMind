@@ -1,11 +1,48 @@
-; Raw NaN16 reverse helpers: transposed bf16 matvec, dot product and
-; LayerNorm backward.
+; Raw NaN16 reverse helpers: transposed bf16 matvec, dot product,
+; LayerNorm backward, zero-fill and scaled add.
 ;
 ; transposed matvec: r1=matrix[rows][cols] bf16 words, r2=f32[rows],
 ;                    r3=f32 output[cols], r4=rows, r5=cols.
 ; dot product: r1=a f32[D], r2=b f32[D], r3=D -> hrv_dot_value.
 ; LN backward: r1=XN f32[D], r2=dy f32[D], r3=dx f32[D], r4=D, r5=invstd.
+; zero: r1=base, r2=count.
+; axpy: r1=dest += r3 * r2, r4=D.
 ; All return via r15; helper scratch is static and non-reentrant.
+hrv_zero:
+  MOVI r0,0
+  ST r15,r0,@hrv_zero_link
+  MOVI r10,0
+hrv_zero_loop:
+  CMP r10,r2
+  JMP[GE] @hrv_zero_done
+  ADD r11,r1,r10
+  ST r0,r11,0
+  ADDI r10,r10,1
+  JMP @hrv_zero_loop
+hrv_zero_done:
+  LD r15,r0,@hrv_zero_link
+  RET
+
+hrv_axpy:
+  MOVI r0,0
+  ST r15,r0,@hrv_axpy_link
+  MOVI r10,0
+hrv_axpy_loop:
+  CMP r10,r4
+  JMP[GE] @hrv_axpy_done
+  ADD r11,r2,r10
+  LD r11,r11,0
+  FMUL r11,r11,r3
+  ADD r12,r1,r10
+  LD r13,r12,0
+  FADD r13,r13,r11
+  ST r13,r12,0
+  ADDI r10,r10,1
+  JMP @hrv_axpy_loop
+hrv_axpy_done:
+  LD r15,r0,@hrv_axpy_link
+  RET
+
 hrv_dot:
   MOVI r0,0
   ST r15,r0,@hrv_dot_link
@@ -157,6 +194,10 @@ hrv_ln_done:
   LD r15,r0,@hrv_ln_link
   RET
 
+hrv_zero_link:
+  .word 0
+hrv_axpy_link:
+  .word 0
 hrv_dot_link:
   .word 0
 hrv_dot_value:
