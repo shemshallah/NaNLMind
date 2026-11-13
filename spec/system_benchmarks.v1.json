@@ -5,7 +5,12 @@
     "corpus": "data/alice_full.txt",
     "split": "80% train / 20% held-out by byte position",
     "evaluation_positions": "i >= 4, target < 255",
-    "configuration": {"buckets": 16384, "exact_limit": 16000, "epochs": 5, "learning_rate": 0.1},
+    "configuration": {
+      "buckets": 16384,
+      "exact_limit": 16000,
+      "epochs": 5,
+      "learning_rate": 0.1
+    },
     "samples": 30239,
     "system": {
       "runtime": "raw NaN16 context memory; opcode 40 mode 6 top-5",
@@ -14,9 +19,21 @@
       "top5": 0.76031
     },
     "references": {
-      "order0": {"bpb": 4.71318, "top1": 0.15652, "top5": 0.4226},
-      "bigram": {"bpb": 3.50949, "top1": 0.320579, "top5": 0.695922},
-      "context2": {"bpb": 3.28052, "top1": 0.429148, "top5": 0.793578}
+      "order0": {
+        "bpb": 4.71318,
+        "top1": 0.15652,
+        "top5": 0.4226
+      },
+      "bigram": {
+        "bpb": 3.50949,
+        "top1": 0.320579,
+        "top5": 0.695922
+      },
+      "context2": {
+        "bpb": 3.28052,
+        "top1": 0.429148,
+        "top5": 0.793578
+      }
     },
     "delta_system_minus_context2": {
       "bpb": 0.283433,
@@ -26,44 +43,62 @@
     "artifact": "state/benchmarks/system_byte_bench.json"
   },
   "word": {
-    "corpus": "data/alice_excerpt.txt",
+    "corpus": "data/alice_full.txt",
     "split": "80% train / 20% held-out by word order",
-    "test_tokens": 1122,
+    "test_tokens": 5489,
     "system": {
       "runtime": "integer associative word layer (host component)",
-      "vocab": 960,
-      "associations": 3240,
-      "top1": 0.0793226,
-      "top5": 0.178253,
-      "in_vocab_top1": 0.0961123,
-      "in_vocab_top5": 0.215983,
+      "vocab": 2291,
+      "associations": 12107,
+      "top1": 0.1319,
+      "top5": 0.280743,
+      "in_vocab_top1": 0.143225,
+      "in_vocab_top5": 0.304847,
       "bpb": null,
       "scope": "full learned-vocabulary ranking by association score; scores are not normalized"
     },
     "references": {
-      "unigram": {"bpb": 1.9446, "top1": 0.0641711, "top5": 0.16221, "in_vocab_top5": 0.196544},
-      "bigram": {"bpb": 1.7087, "top1": 0.0882353, "top5": 0.236185, "in_vocab_top5": 0.286177}
+      "unigram": {
+        "bpb": 1.87039,
+        "top1": 0.0821643,
+        "top5": 0.168337,
+        "in_vocab_top5": 0.182789
+      },
+      "bigram": {
+        "bpb": 1.61632,
+        "top1": 0.142467,
+        "top5": 0.306978,
+        "in_vocab_top5": 0.333333
+      }
     },
     "delta_system_minus_bigram": {
-      "top1": -0.0089127,
-      "top5": -0.057932,
-      "in_vocab_top1": -0.0107987,
-      "in_vocab_top5": -0.070194
+      "top1": -0.010567,
+      "top5": -0.026235,
+      "in_vocab_top1": -0.011473,
+      "in_vocab_top5": -0.028486
     },
     "artifact": "state/benchmarks/system_word_bench.json",
-    "limitation": "The associative layer requires fewer than 1024 training types. Full Alice has 2292 train types, so a full-Alice system word run is blocked; the full-Alice reference top-5 is 30.6978%."
+    "limitation": "Association scores are not normalized, so the system BPB is unsupported. The layer is a host associative-memory component, not the native 48M decoder."
   },
   "full_alice_word_baseline": {
     "vocab": 2292,
     "test_tokens": 5489,
-    "unigram": {"bpb": 1.87039, "top1": 0.0821643, "top5": 0.168337},
-    "bigram": {"bpb": 1.61632, "top1": 0.142467, "top5": 0.306978},
+    "unigram": {
+      "bpb": 1.87039,
+      "top1": 0.0821643,
+      "top5": 0.168337
+    },
+    "bigram": {
+      "bpb": 1.61632,
+      "top1": 0.142467,
+      "top5": 0.306978
+    },
     "artifact": "state/benchmarks/word_baselines.json"
   },
   "claims": [
     "Byte system top-k is native guest output.",
     "No word system BPB is claimed because association scores are not normalized.",
     "The associative word layer is not the native 48M decoder.",
-    "No full-Alice word system metric is claimed."
+    "The word system ranks its full learned training vocabulary; this is not a frontier metric."
   ]
 }

@@ -55,5 +55,20 @@ int main() {
     CHECK(n > 0);
     CHECK(acc >= 0.07);
     CHECK(layer.digest() == layer.digest());
+
+    // Vocabularies larger than the 1024-d vector use a hashed identity
+    // component and must still train and rank candidates.
+    std::vector<std::string> many;
+    many.reserve(2400);
+    for (int repeat = 0; repeat < 2; ++repeat)
+        for (int i = 0; i < 1200; ++i)
+            many.push_back("word_" + std::to_string(i));
+    BinStore large_store;
+    WordVectorLayer large(large_store);
+    CHECK(large.train(many));
+    CHECK(large.vocab() > WordVectorLayer::kDim);
+    const auto ranked = large.predict_topk(many[0], 5);
+    CHECK(!ranked.empty());
+
     return test_done("word-vector expert");
 }

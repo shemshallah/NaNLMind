@@ -54,8 +54,8 @@ def main() -> int:
             raise SystemExit("byte scope does not identify the native system")
 
         word_out = tmp_path / "word.json"
-        run([sys.executable, "tools/system_word_bench.py", "--out",
-             str(word_out)])
+        run([sys.executable, "tools/system_word_bench.py",
+             "--corpus", "data/alice_excerpt.txt", "--out", str(word_out)])
         word = json.loads(word_out.read_text())
         if word.get("schema") != "nanlm.system-word-bench/1":
             raise SystemExit("bad word benchmark schema")

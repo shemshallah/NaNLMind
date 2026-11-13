@@ -60,7 +60,14 @@ bool WordVectorLayer::train(const std::vector<std::string>& tokens) {
     vectors_.assign(names_.size(), Vector{});
     std::vector<std::array<std::int32_t, kDim>> raw(names_.size());
     for (auto& v : raw) v.fill(0);
-    for (std::size_t i = 0; i < names_.size(); ++i) raw[i][i] += 512;
+    for (std::size_t i = 0; i < names_.size(); ++i) {
+        // Preserve the exact diagonal identity for vocabularies that fit the
+        // vector dimension. Larger vocabularies hash the identity component so
+        // the word layer can still rank a full training vocabulary without
+        // growing the vector dimension.
+        const std::size_t diagonal = i < kDim ? i : hash_word(names_[i]) % kDim;
+        raw[i][diagonal] += 512;
+    }
     for (std::size_t i = 0; i < tokens.size(); ++i) {
         const auto id = ids_.at(tokens[i]);
         for (std::size_t d = 1; d <= 2; ++d) {
@@ -75,7 +82,6 @@ bool WordVectorLayer::train(const std::vector<std::string>& tokens) {
         }
     }
 
-    if (names_.size() >= kDim) return false;
     word_bin_ = store_->create(kDim, static_cast<std::uint16_t>(names_.size()));
     value_bin_ = store_->create(static_cast<std::uint16_t>(names_.size()),
                                 static_cast<std::uint16_t>(names_.size()));

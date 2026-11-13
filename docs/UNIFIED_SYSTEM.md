@@ -617,22 +617,23 @@ state/benchmarks/system_byte_bench.json
 associative word layer by its own dot-product recall scores. It does not emit a
 normalized distribution, so its BPB is explicitly unsupported.
 
-On `data/alice_excerpt.txt` (the layer currently requires fewer than 1024
-training types), matched 80/20 held-out results are:
+On `data/alice_full.txt`, matched 80/20 held-out results are:
 
 | model | top-1 | top-5 | in-vocab top-5 |
 |---|---:|---:|---:|
-| associative word system | 7.932% | 17.825% | 21.598% |
-| unigram baseline | 6.417% | 16.221% | 19.654% |
-| interpolated bigram | **8.824%** | **23.619%** | **28.618%** |
+| associative word system | 13.190% | 28.074% | 30.485% |
+| unigram baseline | 8.216% | 16.834% | 18.279% |
+| interpolated bigram | **14.247%** | **30.698%** | **33.333%** |
 
-The system beats unigram top-5, but still trails the bigram baseline. This is
-an honest system-vs-baseline result, not a promotion claim.
+The system ranks its full learned 2291-word training vocabulary by its own
+association scores (12107 associations). It beats the unigram baseline, but
+still trails the interpolated bigram by 1.06 points top-1 and 2.62 points top-5.
+This is an honest system-vs-baseline result, not a promotion claim.
 
-Full-Alice word baselines remain: unigram BPB 1.87039 / top-5 16.834%,
-interpolated bigram BPB 1.61632 / top-5 30.698%. Full-Alice **system** word
-top-5 is blocked because the associative layer's dimension limit rejects the
-2292-type training vocabulary; no number is fabricated for that missing row.
+Full-Alice word baseline BPB remains: unigram 1.87039, interpolated bigram
+1.61632. System BPB is `null`: association scores are not a normalized
+distribution and no BPB is fabricated. The system is a host associative-memory
+component, not the native 48M decoder.
 
 Contract and artifacts:
 

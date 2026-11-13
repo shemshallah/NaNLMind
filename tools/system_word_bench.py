@@ -28,7 +28,7 @@ def run(cmd: list[str]) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--corpus", type=Path,
-                    default=Path("data/alice_excerpt.txt"))
+                    default=Path("data/alice_full.txt"))
     ap.add_argument("--out", type=Path,
                     default=Path("state/benchmarks/system_word_bench.json"))
     args = ap.parse_args()
@@ -82,10 +82,10 @@ def main() -> int:
                               baseline["bigram"]["in_vocab_top5"]),
         },
         "notes": [
-            "The associative layer is currently limited to fewer than 1024 "
-            "training types; full Alice (2292 train types) exceeds that limit.",
-            "This is not the native 48M decoder and must not be presented as a "
-            "frontier word metric.",
+            "The associative layer ranks its full learned training vocabulary; "
+            "its scores are not normalized, so no system BPB is claimed.",
+            "This is an integer associative-memory system component, not the "
+            "native 48M decoder, and must not be presented as a frontier metric.",
         ],
     }
     out.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")

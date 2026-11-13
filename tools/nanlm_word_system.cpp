@@ -58,8 +58,7 @@ int main(int argc, char** argv) {
         BinStore store;
         WordVectorLayer layer(store);
         if (!layer.train(train))
-            throw std::runtime_error("word layer training failed (vocabulary "
-                                     "must be below 1024 for this build)");
+            throw std::runtime_error("word layer training failed");
         if (split >= tokens.size())
             throw std::runtime_error("empty evaluation range");
 
