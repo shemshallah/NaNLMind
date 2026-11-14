@@ -311,6 +311,7 @@ baseline — a plain RNN matching the 256-head topology — is in
 | `docs/81_MECHANIZED_UTM.md` | Coq-checked fixed-UTM halting equivalence (`make mechanized-utm`) |
 | `docs/84_VERIFIED_UTM_SYSTEM.md` | Verified fixed UTM + Minsky table + native/C++ evidence (`make utm-publication`) |
 | `docs/85_CONCRETE_UNIVERSALITY_OBLIGATION.md` | Exact open proof obligation for concrete 23x8 universality |
+| `docs/86_NATIVE_MINSKY_COMPILER.md` | Native NaN16 source-to-Minsky tape encoder prototype |
 | `docs/78_LOGIC_CURRICULUM.md` | graded logic puzzles through the runner ring |
 | `docs/79_STAGED_LOGIC_TRAINER.md` | Boolean -> deep circuits -> words staged core trainer |
 | `docs/80_TRAINING_CORPUS_PIPELINE.md` | staged N16TXT corpus, budgets, HERMES and Clocked adapters |

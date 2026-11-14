@@ -84,6 +84,7 @@ address representation for any zipper and head coordinate.
 native NaN16 Minsky fixture:
   [PASS] minsky_table: steps=21025 marker=MTH MINSKY NATIVE PASS
   [PASS] minsky_encoded: steps=361163 marker=MTH MINSKY NATIVE PASS
+  [PASS] minsky_compiler: steps=362475 marker=MTH MINSKY NATIVE PASS
 
 C++ runtime trace:
   MINSKY C++ TRACE CONFORMANCE PASS (100/100 steps)
@@ -93,8 +94,8 @@ C++ exhaustive chart transitions:
 ```
 
 The native fixtures are `mth/tests/mth_minsky_test.nas` (published trace) and
-`mth/tests/mth_minsky_encoded_test.nas` (normal encoded binary machine),
-assembled and executed
+`mth/tests/mth_minsky_encoded_test.nas` (normal encoded binary machine), and
+`mth/tests/mth_minsky_compiler_test.nas` (source-to-tape encoder), assembled and executed
 by the canonical NaN0S toolchain.  It contains the table, tape, transition
 scan, halt ordering and final 73-cell verification in raw NaN16.
 

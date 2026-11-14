@@ -7,7 +7,10 @@ and input `x` to a tape configuration such that the fixed 23-state/8-symbol
 Minsky table, started in its documented state, simulates `M(x)` step for step
 and halts exactly when `M(x)` halts.
 
-**Status: open. This package does not claim it.**
+**Status: open. This package does not claim it.**  A **restricted native
+encoder prototype** now emits the Minsky tape format from a 4-state/2-symbol
+source contract (`docs/86_NATIVE_MINSKY_COMPILER.md`), but it is not a general
+finite-machine compiler or a mechanized universality theorem.
 
 The current Coq development proves the table transcription, transition lookup,
 halt ordering, published trace, and a signed-address/zipper bisimulation.  None
