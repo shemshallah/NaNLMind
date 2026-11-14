@@ -20,7 +20,7 @@ From Coq Require Import List Arith ZArith Bool Lia.
 Import ListNotations.
 Open Scope Z_scope.
 
-From NaNLM Require Import MinskyTable.
+From NaNLM Require Import MinskyTable MinskyTableData.
 
 Record AddressConfig := {
   a_state : nat;
