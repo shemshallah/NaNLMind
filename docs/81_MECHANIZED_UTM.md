@@ -51,12 +51,23 @@ corollary (`bin_run_refines`).
 gives that table a two-list tape zipper and a finite step function, then checks:
 
 ```coq
-minsky_table_complete   (* every q<23, s<8 has an entry *)
-minsky_step_uses_entry  (* every step is the table entry at (q, read) *)
-minsky_halt_entry       (* the published halt entry is explicit *)
-minsky_trace_100        (* kernel computation of the published 100-step trace *)
-minsky_trace_head       (* state 2, head 38, final 73-cell tape *)
+minsky_table_complete        (* every q<23, s<8 has an entry *)
+minsky_step_uses_entry       (* every step is the table entry at (q, read) *)
+minsky_halt_entry            (* the published halt entry is explicit *)
+step_indexed_scan_agree      (* indexed lookup == literal linear scan *)
+minsky_trace_100             (* kernel computation of the 100-step trace *)
+minsky_trace_100_scan        (* same trace through the scan interpreter *)
+minsky_trace_100_indexed_scan(* indexed and scan executions agree end-to-end *)
+minsky_trace_head            (* state 2, head 38, final 73-cell tape *)
 ```
+
+The Coq step follows the C++ `TuringMachine::step` order exactly: on a
+halting entry it writes the final symbol, updates state/head, and only then sets
+the halted flag.  The earlier model returned `None` before applying the halting
+write/move; that semantic mismatch is fixed.  `step_indexed_scan_agree` proves
+the row-major indexed lookup and a literal linear scan agree for every valid
+state/symbol pair, and the two run functions are checked on the published
+execution.
 
 The table transcription is also audited against the C++ source:
 
@@ -80,8 +91,8 @@ make mechanized-utm
 Remote / long-running:
 
 ```sh
-gh workflow run mechanized-utm.yml -R shemshallah/nanlm_experimental
-gh run watch -R shemshallah/nanlm_experimental
+gh workflow run mechanized-utm.yml -R shemshallah/NaNLMind
+gh run watch -R shemshallah/NaNLMind
 ```
 
 The NaNLMind workflow uses the `coqorg/coq:8.20` container, builds only the
@@ -93,7 +104,7 @@ gate and can run for hours without blocking development.
 Checked run:
 
 ```text
-https://github.com/shemshallah/NaNLMind/actions/runs/43554271782
+https://github.com/shemshallah/NaNLMind/actions/runs/43570079998
 NANLM MECHANIZED UTM + MINSKY PASS
 Closed under the global context
 ```
@@ -109,9 +120,11 @@ harness because the theorem is closed under Coq's kernel.
 
 It is not yet:
 
-- a step-for-step tape refinement of the C++ chart interpreter in
-  `src/universal_tm.cpp`;
-- a mechanization of the Minsky 23×8 table itself in the chart runtime;
+- a mechanized refinement of the C++ source itself: the Coq scan model and the
+  table data are checked against `tests/minsky_table.inc`, but the C++
+  `TuringMachine::step` implementation is not extracted from or linked to Coq;
+- a full universality proof for arbitrary encoded machines through the 23x8
+  table (the 100-step published trace is checked, not every input);
 - a proof-assistant statement about the NaN16 guest machine.
 
 Those remain separate refinement obligations.  Do not describe this result as
