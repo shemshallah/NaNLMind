@@ -35,6 +35,24 @@ GitHub Actions run does not make them interchangeable.
    return convention: a final halting transition is executed but is not
    counted, and `address_cpp_counted_final_agree` proves that the final
    machine configuration is unchanged by this counting convention.
+5. **Six-byte description refinement:** `MinskyChartEncoding.v` models
+   the actual C++ description encoding (count at byte 0, transition records
+   beginning at byte 2, six byte values per record, movement stored as
+   `move+1`). A separate Coq kernel certificate compares every decoded
+   transition against the canonical table. It lifts lookup agreement to
+   single address-space steps, arbitrary finite runs, and the zipper-tape
+   simulation. A general row encoder/decoder roundtrip theorem also covers
+   all representable movement directions.
+
+   **Important address-space precondition:** the C++ runtime uses the same
+   `TuringTape` instance for both description bytes and the working tape,
+   offset by 1,048,576 cells. A working head in
+   `[-1048576, -1047470)` aliases the 1,106-byte description region.
+   `working_address_hits_description_iff` proves that interval exactly.
+   Consequently, this new formal byte-layout theorem is **not yet a proof
+   of unrestricted runtime equivalence**: C++ storage separation, integer
+   bounds, and page allocation still require verification or architectural
+   correction before promoting an arbitrary-execution claim.
 
 The Coq theorems are formal results about the Coq models. The general
 zipper-to-signed-address simulation bridges these two formal representations,
@@ -51,6 +69,8 @@ nonhalting one-step run, and a halting run with a zero returned count; a
 
 - A representation invariant and simulation theorem relating the Coq tape
   to the actual chart pages/registers of `src/universal_tm.cpp`.
+- Eliminate or formally isolate the real description/working-tape overlap;
+  prove the `TuringTape` 4096-cell page layout and 64-bit range conditions.
 - A semantics-preserving connection between the concrete Minsky 23x8 table
   and the certified fixed UTM's simulation chain (or a separate certified
   universality proof for the concrete table). Their universality cannot be

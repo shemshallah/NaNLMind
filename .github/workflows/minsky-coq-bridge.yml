@@ -48,9 +48,13 @@ jobs:
           coqc -Q formal/utm NaNLM \
             -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyAddressRefinement.v
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyChartEncoding.v
           coqchk -Q formal/utm NaNLM formal/utm/MinskyTable.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyAddressRefinement.vo
-          echo 'NANLM MINSKY ALL-CELL BISIMULATION PASS'
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyChartEncoding.vo
+          echo 'NANLM MINSKY CHART-BYTE REFINEMENT PASS'
 
       - name: Upload independent Coq bridge certificate
         if: always()
@@ -64,5 +68,7 @@ jobs:
             formal/utm/MinskyTable.vo
             formal/utm/MinskyAddressRefinement.v
             formal/utm/MinskyAddressRefinement.vo
+            formal/utm/MinskyChartEncoding.v
+            formal/utm/MinskyChartEncoding.vo
           if-no-files-found: warn
           retention-days: 90
