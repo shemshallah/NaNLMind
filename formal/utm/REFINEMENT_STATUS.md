@@ -53,6 +53,14 @@ GitHub Actions run does not make them interchangeable.
    of unrestricted runtime equivalence**: C++ storage separation, integer
    bounds, and page allocation still require verification or architectural
    correction before promoting an arbitrary-execution claim.
+   **Native correction (commit `c5b13eb`):** the executable runtime now uses
+   independent `description_` and working `TuringTape` stores, so the old
+   alias interval is removed.  Signed head addition is checked and fails
+   closed on `int64_t` overflow.  The Coq chart model still models a flat
+   description image and unbounded `Z`; the proof track must therefore add a
+   separated-storage/refinement premise and a finite-integer obligation before
+   claiming equivalence with the updated native runtime.  See
+   `DEEPSEEK_NATIVE_REPLY.md`.
 6. **Sequential C++ chart scan:** `MinskyChartScan.v` decodes each six-byte
    block in order and checks the first matching transition, modeling the
    actual linear search rather than only direct row indexing. Its generic
