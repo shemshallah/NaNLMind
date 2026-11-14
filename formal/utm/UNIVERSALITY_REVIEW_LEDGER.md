@@ -25,8 +25,9 @@ Nature-level completion while any critical obligation below is open.
 | `MinskySourceEncoding.v` | Round trip for arbitrary finite 8-symbol rows; abstract decoded interpreter and arbitrary finite runs | No |
 | `MinskyConcreteEntry.v` | Left-scan induction, first 5/8/10 native-table transitions | No |
 | `MinskyConcreteProgramScan.v` | Entire encoded description is scannable by the unchanged native table for arbitrary row count, provided the exact reversed tape layout | No |
-| `MinskyConcreteDispatch.v` | Unbounded state-2 backward and state-3 forward scans, and first-row branches through step 15/17. The first submitted high-branch proof had a Coq rewrite error at line 322; corrected proof awaits CI | No |
+| `MinskyConcreteDispatch.v` | Unbounded state-2 backward and state-3 forward scans, and first-row branches through step 15/17. Corrected version passed `coqc`/`coqchk` on proof-debug run `43645367780`; targeted backport to `main` requires its own CI | No |
 | `MinskyVariableBuffer.v` | Submitted: exact first-state-bit dispatch after `2*n+4` native steps for all **positive** zero-buffer widths `n`; low return after `3*n+6`; high scan to next X/Y for any finite binary tail | No |
+| `MinskyMacroSimulation.v` | Submitted: conditional arbitrary-run simulation and **both directions** of halting equivalence from explicit, as-yet-unproved native macro-step/encoding hypotheses | No |
 | `MinskyEncodedFixture.v` | Exact 583-transition native-fixture halted configuration, with step 582 still active | No |
 | `UTMEquivalence.v` | Halting equivalence of an independently formalized fixed UTM in the pinned Undecidability Library | Not for this 23×8 table |
 
@@ -35,6 +36,13 @@ GitHub Actions run before its status is elevated from submitted to checked.
 The independent `check_minsky_dispatch.py` currently covers 3,136
 exhaustive/seeded concrete table executions, with buffer widths 1–129.
 Width zero is a real different control path, not a permitted hypothesis.
+
+The new conditional macro theorem is *not* a concrete universality proof:
+its two functions `encode` and `macro_cost`, and three explicit premises
+(`encode_reflects_halt`, `macro_cost_positive`, `actual_table_macro_step`),
+must be constructed or proved against the frozen transition table. Under
+those premises, the theorem rules out premature halting at any intermediate
+native step, not merely at chosen macro boundaries.
 
 ## Crucial semantics gap
 
