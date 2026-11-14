@@ -207,11 +207,11 @@ Proof.
     by (simpl [length]; rewrite app_length, repeat_length; simpl; lia).
   replace (repeat 2 k ++ 0 :: 5 :: prefix)
     with ((repeat 2 k ++ [0]) ++ 5 :: prefix).
-  2:{ rewrite app_assoc. reflexivity. }
+  2:{ rewrite append_singleton_assoc. reflexivity. }
   rewrite (dispatch_left_to_delimiter (repeat 2 k ++ [0]) 4 prefix
     (2 :: tail) (variable_buffer_left_suffix_scannable k)).
   rewrite variable_buffer_left_reverse.
-  rewrite app_assoc.
+  rewrite append_singleton_assoc.
   reflexivity.
 Qed.
 
