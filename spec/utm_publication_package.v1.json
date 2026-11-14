@@ -17,6 +17,7 @@
   ],
   "execution_evidence": [
     "native NaN16 Minsky 100-step fixture",
+    "native NaN16 normal encoded-machine execution",
     "C++ 100-step trace conformance",
     "exhaustive C++ 184-entry chart conformance"
   ],
