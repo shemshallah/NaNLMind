@@ -70,7 +70,7 @@ Definition ref_step (delta : nat -> nat -> option Trans) (c : Config) :
 Fixpoint utm_run (fuel : nat) (d : list Trans) (c : Config) :
     option Config :=
   match fuel with
-  | 0 => Some c
+  | 0%nat => Some c
   | S n =>
       match utm_step d c with
       | None => None
@@ -81,7 +81,7 @@ Fixpoint utm_run (fuel : nat) (d : list Trans) (c : Config) :
 Fixpoint ref_run (fuel : nat) (delta : nat -> nat -> option Trans)
     (c : Config) : option Config :=
   match fuel with
-  | 0 => Some c
+  | 0%nat => Some c
   | S n =>
       match ref_step delta c with
       | None => None
@@ -118,22 +118,22 @@ Qed.
     below establishes the graph condition by computation. *)
 Definition bin_delta (q s : nat) : option Trans :=
   match q, s with
-  | 0, 1 => Some {| t_from := 0; t_read := 1; t_write := 0;
-                    t_move := MoveL; t_to := 0; t_halt := false |}
-  | 0, 0 => Some {| t_from := 0; t_read := 0; t_write := 1;
-                    t_move := MoveS; t_to := 0; t_halt := true |}
-  | 0, 2 => Some {| t_from := 0; t_read := 2; t_write := 1;
-                    t_move := MoveS; t_to := 0; t_halt := true |}
+  | 0%nat, 1%nat => Some {| t_from := 0%nat; t_read := 1%nat; t_write := 0%nat;
+                    t_move := MoveL; t_to := 0%nat; t_halt := false |}
+  | 0%nat, 0%nat => Some {| t_from := 0%nat; t_read := 0%nat; t_write := 1%nat;
+                    t_move := MoveS; t_to := 0%nat; t_halt := true |}
+  | 0%nat, 2%nat => Some {| t_from := 0%nat; t_read := 2%nat; t_write := 1%nat;
+                    t_move := MoveS; t_to := 0%nat; t_halt := true |}
   | _, _ => None
   end.
 
 Definition bin_desc : list Trans :=
-  [ {| t_from := 0; t_read := 1; t_write := 0; t_move := MoveL;
-       t_to := 0; t_halt := false |};
-    {| t_from := 0; t_read := 0; t_write := 1; t_move := MoveS;
-       t_to := 0; t_halt := true |};
-    {| t_from := 0; t_read := 2; t_write := 1; t_move := MoveS;
-       t_to := 0; t_halt := true |} ].
+  [ {| t_from := 0%nat; t_read := 1%nat; t_write := 0%nat; t_move := MoveL;
+       t_to := 0%nat; t_halt := false |};
+    {| t_from := 0%nat; t_read := 0%nat; t_write := 1%nat; t_move := MoveS;
+       t_to := 0%nat; t_halt := true |};
+    {| t_from := 0%nat; t_read := 2%nat; t_write := 1%nat; t_move := MoveS;
+       t_to := 0%nat; t_halt := true |} ].
 
 Lemma bin_graph_ok : graph_ok bin_desc bin_delta.
 Proof.
