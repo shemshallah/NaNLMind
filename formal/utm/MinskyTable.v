@@ -127,7 +127,7 @@ Qed.
 Definition entry_eqb (a b : Entry) : bool :=
   (e_from a =? e_from b) && (e_read a =? e_read b) &&
   (e_write a =? e_write b) && Z.eqb (e_move a) (e_move b) &&
-  (e_to a =? e_to b) && (e_halt a =? e_halt b).
+  (e_to a =? e_to b) && Bool.eqb (e_halt a) (e_halt b).
 
 Definition lookup_eqb (q s : nat) : bool :=
   match find_entry q s, scan_table q s with
