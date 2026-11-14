@@ -9,7 +9,7 @@
     the 23x8 table's entire instruction-simulation macro.
 *)
 
-From Coq Require Import List Arith Bool Lia.
+From Coq Require Import List Arith Bool Lia ZArith.
 Import ListNotations.
 
 From NaNLM Require Import MinskySourceEncoding.
@@ -58,7 +58,7 @@ Proof.
   - reflexivity.
   - cbn [length map app decode_n_bits].
     rewrite parse_source_bit_roundtrip.
-    now rewrite IH.
+    now rewrite (IH suffix Hrest).
 Qed.
 
 Theorem decode_n_bits_framed_roundtrip :
@@ -129,3 +129,224 @@ Proof. reflexivity. Qed.
 Print Assumptions decode_n_bits_roundtrip.
 Print Assumptions decode_n_bits_framed_roundtrip.
 Print Assumptions wide_two_bit_compatibility.
+
+(** ** An actual parser for p-bit source instruction streams
+
+    Unlike a fixed two-bit decoder, this consumes the width supplied by
+    the source-machine description.  It rejects malformed symbols and
+    truncation rather than silently interpreting them as zeros. *)
+Definition decode_wide_row (p : nat) (xs : list nat)
+    : option (WideSourceRow * list nat) :=
+  match xs with
+  | 4 :: rest =>
+      match decode_n_bits p rest with
+      | Some (current, read_token :: after_read) =>
+          match parse_source_bit read_token,
+                decode_n_bits p after_read with
+          | Some scanned, Some (next, write_token :: direction_token :: tail) =>
+              match parse_source_bit write_token,
+                    parse_source_bit direction_token with
+              | Some written, Some direction =>
+                  Some ({| wr_current := current; wr_read := scanned;
+                           wr_next := next; wr_write := written;
+                           wr_right := direction |}, tail)
+              | _, _ => None
+              end
+          | _, _ => None
+          end
+      | _ => None
+      end
+  | _ => None
+  end.
+
+Lemma decode_wide_row_roundtrip :
+  forall p row suffix,
+    wide_row_wellformed p row ->
+    decode_wide_row p (encode_wide_row row ++ suffix) =
+      Some (row, suffix).
+Proof.
+  intros p [current scanned next written direction] suffix [Hc Hn].
+  unfold wide_row_wellformed in *; simpl in Hc, Hn.
+  unfold decode_wide_row, encode_wide_row; simpl.
+  repeat rewrite app_assoc.
+  rewrite <- Hc at 1.
+  rewrite decode_n_bits_roundtrip.
+  simpl.
+  rewrite parse_source_bit_roundtrip.
+  rewrite <- Hn.
+  rewrite decode_n_bits_roundtrip.
+  simpl.
+  now rewrite !parse_source_bit_roundtrip.
+Qed.
+
+Fixpoint decode_wide_prefix (p count : nat) (bytes : list nat)
+    : option (list WideSourceRow * list nat) :=
+  match count with
+  | O => Some ([], bytes)
+  | S n =>
+      match decode_wide_row p bytes with
+      | None => None
+      | Some (row, tail) =>
+          match decode_wide_prefix p n tail with
+          | None => None
+          | Some (rows, suffix) => Some (row :: rows, suffix)
+          end
+      end
+  end.
+
+Definition encode_wide_program (rows : list WideSourceRow) : list nat :=
+  concat (map encode_wide_row rows).
+
+Theorem wide_program_roundtrip :
+  forall p rows suffix,
+    Forall (wide_row_wellformed p) rows ->
+    decode_wide_prefix p (length rows)
+      (encode_wide_program rows ++ suffix) = Some (rows, suffix).
+Proof.
+  intros p rows; induction rows as [|row rows IH]; intros suffix Hwf.
+  - reflexivity.
+  - inversion Hwf as [|? ? Hrow Hrest]; subst.
+    change (decode_wide_prefix p (S (length rows))
+      (encode_wide_row row ++ (encode_wide_program rows ++ suffix)) =
+      Some (row :: rows, suffix)).
+    simpl [decode_wide_prefix].
+    rewrite (decode_wide_row_roundtrip p row
+      (encode_wide_program rows ++ suffix) Hrow).
+    now rewrite IH.
+Qed.
+
+(** ** Unbounded-tape operational semantics for variable-width programs *)
+
+Definition wide_row_matches (r : WideSourceRow)
+    (state : list bool) (bit : bool) : bool :=
+  if list_eq_dec Bool.bool_dec (wr_current r) state
+  then Bool.eqb (wr_read r) bit else false.
+
+Definition wide_source_lookup (rows : list WideSourceRow)
+    (state : list bool) (bit : bool) : option WideSourceRow :=
+  find (fun row => wide_row_matches row state bit) rows.
+
+Record WideSourceConfig := {
+  wc_state : list bool;
+  wc_head : Z;
+  wc_tape : Z -> bool;
+  wc_halted : bool
+}.
+
+Definition wide_source_step (rows : list WideSourceRow)
+    (c : WideSourceConfig) : WideSourceConfig :=
+  if wc_halted c then c else
+    match wide_source_lookup rows (wc_state c)
+                            (wc_tape c (wc_head c)) with
+    | None =>
+        {| wc_state := wc_state c; wc_head := wc_head c;
+           wc_tape := wc_tape c; wc_halted := true |}
+    | Some row =>
+        {| wc_state := wr_next row;
+           wc_head := (wc_head c + (if wr_right row then 1 else -1))%Z;
+           wc_tape := source_write_at (wc_tape c) (wc_head c)
+                                      (wr_write row);
+           wc_halted := false |}
+    end.
+
+Fixpoint wide_source_run (fuel : nat) (rows : list WideSourceRow)
+    (c : WideSourceConfig) : WideSourceConfig :=
+  match fuel with
+  | O => c
+  | S n => wide_source_run n rows (wide_source_step rows c)
+  end.
+
+Definition decoded_wide_step (p count : nat) (bytes : list nat)
+    (c : WideSourceConfig) : option WideSourceConfig :=
+  match decode_wide_prefix p count bytes with
+  | None => None
+  | Some (rows, _) => Some (wide_source_step rows c)
+  end.
+
+Fixpoint decoded_wide_run (fuel p count : nat) (bytes : list nat)
+    (c : WideSourceConfig) : option WideSourceConfig :=
+  match fuel with
+  | O => Some c
+  | S n =>
+      match decoded_wide_step p count bytes c with
+      | None => None
+      | Some next => decoded_wide_run n p count bytes next
+      end
+  end.
+
+Theorem encoded_wide_run_refines :
+  forall fuel p rows suffix c,
+    Forall (wide_row_wellformed p) rows ->
+    decoded_wide_run fuel p (length rows)
+      (encode_wide_program rows ++ suffix) c =
+    Some (wide_source_run fuel rows c).
+Proof.
+  induction fuel as [|n IH]; intros p rows suffix c Hwf; simpl.
+  - reflexivity.
+  - unfold decoded_wide_step.
+    rewrite (wide_program_roundtrip p rows suffix Hwf).
+    apply IH. exact Hwf.
+Qed.
+
+(** The previous four-state interpreter is not replaced: the p=2 case
+    below refines it exactly, including its first-match and halt rules. *)
+Definition lift_binary_config (c : BinarySourceConfig) : WideSourceConfig :=
+  {| wc_state := [sc_state_hi c; sc_state_lo c];
+     wc_head := sc_head c; wc_tape := sc_tape c;
+     wc_halted := sc_halted c |}.
+
+Lemma wide_matches_binary :
+  forall r hi lo bit,
+    wide_row_matches (widen_two_bit_row r) [hi; lo] bit =
+    source_row_matches r hi lo bit.
+Proof.
+  intros [a b c d e f g] hi lo bit.
+  destruct a, b, c, hi, lo, bit; reflexivity.
+Qed.
+
+Lemma wide_lookup_binary :
+  forall rows hi lo bit,
+    wide_source_lookup (map widen_two_bit_row rows) [hi; lo] bit =
+    option_map widen_two_bit_row (source_lookup rows hi lo bit).
+Proof.
+  induction rows as [|row rest IH]; intros hi lo bit; simpl.
+  - reflexivity.
+  - rewrite wide_matches_binary.
+    destruct (source_row_matches row hi lo bit); simpl; auto.
+Qed.
+
+Theorem wide_two_bit_step_refines :
+  forall rows c,
+    wide_source_step (map widen_two_bit_row rows) (lift_binary_config c) =
+    lift_binary_config (source_step rows c).
+Proof.
+  intros rows [hi lo head tape halted].
+  unfold wide_source_step, source_step, lift_binary_config; simpl.
+  destruct halted; [reflexivity |].
+  rewrite wide_lookup_binary.
+  destruct (source_lookup rows hi lo (tape head))
+    as [row|]; reflexivity.
+Qed.
+
+Theorem wide_two_bit_run_refines :
+  forall fuel rows c,
+    wide_source_run fuel (map widen_two_bit_row rows)
+      (lift_binary_config c) =
+    lift_binary_config (source_run fuel rows c).
+Proof.
+  induction fuel as [|n IH]; intros rows c;
+    cbn [wide_source_run source_run].
+  - reflexivity.
+  - rewrite wide_two_bit_step_refines.
+    apply IH.
+Qed.
+
+Example nine_bit_program_parses :
+  decode_wide_prefix 9 1
+    (encode_wide_program [wide_nine_bit_example] ++ [5; 2]) =
+    Some ([wide_nine_bit_example], [5; 2]).
+Proof. reflexivity. Qed.
+
+Print Assumptions wide_program_roundtrip.
+Print Assumptions encoded_wide_run_refines.
+Print Assumptions wide_two_bit_run_refines.
