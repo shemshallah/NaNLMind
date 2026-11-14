@@ -39,7 +39,7 @@ Proof.
   simpl in Hmove.
   unfold decode_chart_row, encode_chart_row; simpl.
   assert (Hm : 0 <= m + 1) by lia.
-  rewrite (Z2Nat.id (m + 1)) by exact Hm.
+  rewrite (Z2Nat.id (m + 1) Hm).
   replace (m + 1 - 1) with m by lia.
   destruct stop; reflexivity.
 Qed.
