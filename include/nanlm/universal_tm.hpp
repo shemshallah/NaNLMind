@@ -38,7 +38,7 @@ public:
     std::uint8_t state() const;
     std::int64_t head() const;
     std::uint8_t symbol(std::int64_t position) const {
-        return tape_.read(kWorkingTapeBase + position);
+        return tape_.read(position);
     }
     std::string tape(std::int64_t begin, std::int64_t end) const;
     std::size_t tape_pages() const { return tape_.pages(); }
@@ -50,6 +50,11 @@ public:
 private:
     std::uint8_t description_count() const;
     Universe* universe_;
+    // Immutable description tape and mutable working tape are deliberately
+    // separate backing stores.  This removes the historical aliasing window
+    // between description bytes [0, len) and working addresses
+    // kWorkingTapeBase + negative head.
+    TuringTape description_;
     TuringTape tape_;
 };
 

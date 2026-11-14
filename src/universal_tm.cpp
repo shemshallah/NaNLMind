@@ -1,5 +1,7 @@
 #include "nanlm/universal_tm.hpp"
 
+#include <limits>
+
 namespace nanlm {
 namespace {
 constexpr std::uint16_t kHaltSlot = 0;
@@ -7,6 +9,13 @@ constexpr std::uint16_t kStateSlot = 1;
 constexpr std::uint16_t kHeadSlot = 2;
 constexpr std::int64_t kEntrySize = 6;
 constexpr std::int64_t kEntryBase = 2;
+
+bool checked_add(std::int64_t a, std::int64_t b, std::int64_t& out) {
+    if (b > 0 && a > std::numeric_limits<std::int64_t>::max() - b) return false;
+    if (b < 0 && a < std::numeric_limits<std::int64_t>::min() - b) return false;
+    out = a + b;
+    return true;
+}
 } // namespace
 
 bool UniversalTuringMachine::load_machine(
@@ -16,21 +25,22 @@ bool UniversalTuringMachine::load_machine(
     for (const auto& t : transitions) {
         if (t.from >= 32 || t.to >= 32 || t.read >= 8 || t.write >= 8 || t.move < -1 || t.move > 1) return false;
     }
+    description_.clear();
     tape_.clear();
-    tape_.write(kDescriptionBase, static_cast<std::uint8_t>(transitions.size()));
+    description_.write(kDescriptionBase, static_cast<std::uint8_t>(transitions.size()));
     for (std::size_t i = 0; i < transitions.size(); ++i) {
         const auto& t = transitions[i];
         const std::int64_t p = kEntryBase + static_cast<std::int64_t>(i) * kEntrySize;
-        tape_.write(p + 0, t.from);
-        tape_.write(p + 1, t.read);
-        tape_.write(p + 2, t.write);
-        tape_.write(p + 3, static_cast<std::uint8_t>(t.move + 1));
-        tape_.write(p + 4, t.to);
-        tape_.write(p + 5, t.halt ? 1 : 0);
+        description_.write(p + 0, t.from);
+        description_.write(p + 1, t.read);
+        description_.write(p + 2, t.write);
+        description_.write(p + 3, static_cast<std::uint8_t>(t.move + 1));
+        description_.write(p + 4, t.to);
+        description_.write(p + 5, t.halt ? 1 : 0);
     }
     for (std::int64_t i = 0; i < static_cast<std::int64_t>(initial_tape.size()); ++i) {
         const char c = initial_tape[static_cast<std::size_t>(i)];
-        tape_.write(kWorkingTapeBase + i, c == '0' ? 0 : c == '1' ? 1 : 2);
+        tape_.write(i, c == '0' ? 0 : c == '1' ? 1 : 2);
     }
     universe_->set_address_meta(kControlBase + kHaltSlot, 0);
     universe_->set_address_meta(kControlBase + kStateSlot, 0);
@@ -47,21 +57,22 @@ bool UniversalTuringMachine::load_machine_symbols(
         if (t.from >= 32 || t.to >= 32 || t.read >= 8 || t.write >= 8 ||
             t.move < -1 || t.move > 1) return false;
     }
+    description_.clear();
     tape_.clear();
-    tape_.write(kDescriptionBase, static_cast<std::uint8_t>(transitions.size()));
+    description_.write(kDescriptionBase, static_cast<std::uint8_t>(transitions.size()));
     for (std::size_t i = 0; i < transitions.size(); ++i) {
         const auto& t = transitions[i];
         const std::int64_t p = kEntryBase + static_cast<std::int64_t>(i) * kEntrySize;
-        tape_.write(p + 0, t.from);
-        tape_.write(p + 1, t.read);
-        tape_.write(p + 2, t.write);
-        tape_.write(p + 3, static_cast<std::uint8_t>(t.move + 1));
-        tape_.write(p + 4, t.to);
-        tape_.write(p + 5, t.halt ? 1 : 0);
+        description_.write(p + 0, t.from);
+        description_.write(p + 1, t.read);
+        description_.write(p + 2, t.write);
+        description_.write(p + 3, static_cast<std::uint8_t>(t.move + 1));
+        description_.write(p + 4, t.to);
+        description_.write(p + 5, t.halt ? 1 : 0);
     }
     for (std::int64_t i = 0;
          i < static_cast<std::int64_t>(initial_tape.size()); ++i) {
-        tape_.write(kWorkingTapeBase + i, initial_tape[static_cast<std::size_t>(i)]);
+        tape_.write(i, initial_tape[static_cast<std::size_t>(i)]);
     }
     universe_->set_address_meta(kControlBase + kHaltSlot, 0);
     universe_->set_address_meta(kControlBase + kStateSlot, 0);
@@ -97,7 +108,7 @@ void UniversalTuringMachine::set_state(std::uint8_t state) {
 }
 
 std::uint8_t UniversalTuringMachine::description_count() const {
-    return tape_.read(kDescriptionBase);
+    return description_.read(kDescriptionBase);
 }
 
 bool UniversalTuringMachine::halted() const {
@@ -113,26 +124,31 @@ std::int64_t UniversalTuringMachine::head() const {
 }
 
 std::string UniversalTuringMachine::tape(std::int64_t begin, std::int64_t end) const {
-    return tape_.slice(kWorkingTapeBase + begin, kWorkingTapeBase + end);
+    return tape_.slice(begin, end);
 }
 
 bool UniversalTuringMachine::step() {
     if (halted()) return false;
     const std::uint8_t s = state();
     const std::int64_t h = head();
-    const std::uint8_t read = tape_.read(kWorkingTapeBase + h);
+    const std::uint8_t read = tape_.read(h);
     const std::size_t count = description_count();
     for (std::size_t i = 0; i < count; ++i) {
         const std::int64_t p = kEntryBase + static_cast<std::int64_t>(i) * kEntrySize;
-        if (tape_.read(p + 0) != s || tape_.read(p + 1) != read) continue;
-        const std::uint8_t write = tape_.read(p + 2);
-        const std::int8_t move = static_cast<std::int8_t>(tape_.read(p + 3)) - 1;
-        const std::uint8_t to = tape_.read(p + 4);
-        const bool halt = tape_.read(p + 5) != 0;
-        tape_.write(kWorkingTapeBase + h, write);
+        if (description_.read(p + 0) != s || description_.read(p + 1) != read) continue;
+        const std::uint8_t write = description_.read(p + 2);
+        const std::int8_t move = static_cast<std::int8_t>(description_.read(p + 3)) - 1;
+        const std::uint8_t to = description_.read(p + 4);
+        const bool halt = description_.read(p + 5) != 0;
+        tape_.write(h, write);
         universe_->set_address_meta(kControlBase + kStateSlot, to);
+        std::int64_t next_head = 0;
+        if (!checked_add(h, move, next_head)) {
+            universe_->set_address_meta(kControlBase + kHaltSlot, 1);
+            return false;
+        }
         universe_->set_address_meta(kControlBase + kHeadSlot,
-                                    static_cast<std::uint64_t>(h + move));
+                                    static_cast<std::uint64_t>(next_head));
         if (halt) {
             universe_->set_address_meta(kControlBase + kHaltSlot, 1);
             return false;

@@ -1,5 +1,7 @@
 #include "nanlm/turing_machine.hpp"
 
+#include <limits>
+
 #include <algorithm>
 #include <cstring>
 
@@ -8,6 +10,13 @@ namespace {
 constexpr std::uint16_t kStateSlot = 0;
 constexpr std::uint16_t kHeadSlot = 1;
 constexpr std::uint16_t kHaltSlot = 2;
+
+bool checked_add(std::int64_t a, std::int64_t b, std::int64_t& out) {
+    if (b > 0 && a > std::numeric_limits<std::int64_t>::max() - b) return false;
+    if (b < 0 && a < std::numeric_limits<std::int64_t>::min() - b) return false;
+    out = a + b;
+    return true;
+}
 
 std::pair<std::int64_t, std::int64_t> split_position(std::int64_t position) {
     std::int64_t page = position / TuringTape::kCellsPerPage;
@@ -170,7 +179,12 @@ bool TuringMachine::step() {
     const std::int8_t move = static_cast<std::int8_t>(static_cast<int>((raw >> 16) & 0x3u) - 1);
     tape_.write(h, write);
     universe_->set_address_meta(kControlBase + kStateSlot, to);
-    universe_->set_address_meta(kControlBase + kHeadSlot, static_cast<std::uint64_t>(h + move));
+    std::int64_t next_head = 0;
+    if (!checked_add(h, move, next_head)) {
+        universe_->set_address_meta(kControlBase + kHaltSlot, 1);
+        return false;
+    }
+    universe_->set_address_meta(kControlBase + kHeadSlot, static_cast<std::uint64_t>(next_head));
     if ((raw & (1ull << 21)) != 0) {
         universe_->set_address_meta(kControlBase + kHaltSlot, 1);
         return false;
