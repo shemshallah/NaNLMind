@@ -1,7 +1,6 @@
 (** Generated from tests/minsky_table.inc.  Do not edit by hand. *)
 Require Import List ZArith.
 Import ListNotations.
-Open Scope Z_scope.
 
 Record Entry := {
   e_from : nat;

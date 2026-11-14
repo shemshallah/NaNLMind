@@ -15,7 +15,6 @@
 
 From Coq Require Import List Arith ZArith Lia.
 Import ListNotations.
-Open Scope Z_scope.
 
 From NaNLM Require Import MinskyTableData.
 
