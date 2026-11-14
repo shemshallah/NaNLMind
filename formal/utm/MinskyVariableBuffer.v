@@ -19,7 +19,8 @@ From NaNLM Require Import MinskyTable MinskySourceEncoding
   MinskyConcreteEntry MinskyConcreteDispatch.
 
 Lemma variable_buffer_repeat_snoc :
-  forall symbol n, repeat symbol n ++ [symbol] = repeat symbol (S n).
+  forall (symbol n : nat),
+    repeat symbol n ++ [symbol] = repeat symbol (S n).
 Proof.
   intros symbol n; induction n as [|n IH]; simpl.
   - reflexivity.
@@ -27,7 +28,8 @@ Proof.
 Qed.
 
 Lemma variable_buffer_rev_repeat :
-  forall symbol n, rev (repeat symbol n) = repeat symbol n.
+  forall (symbol n : nat),
+    rev (repeat symbol n) = repeat symbol n.
 Proof.
   intros symbol n; induction n as [|n IH]; simpl.
   - reflexivity.
