@@ -397,11 +397,13 @@ Proof.
     destruct (c_halted zip) eqn:Hstopped.
     + rewrite <- Hhalt. simpl.
       unfold config_bisim.
-      split; [exact Hstate |]. split; [exact Hhalt |]. exact Htape.
+      split; [exact Hstate |].
+      split; [rewrite Hstopped; exact Hhalt |]. exact Htape.
     + rewrite <- Hhalt. simpl.
       apply IH. apply zipper_address_step_bisim.
       unfold config_bisim.
-      split; [exact Hstate |]. split; [exact Hhalt |]. exact Htape.
+      split; [exact Hstate |].
+      split; [rewrite Hstopped; exact Hhalt |]. exact Htape.
 Qed.
 
 Corollary every_zipper_run_has_address_refinement :
