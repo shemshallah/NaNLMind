@@ -37,7 +37,8 @@ Lemma chart_row_roundtrip :
 Proof.
   intros [q s w m dest stop] Hmove.
   unfold decode_chart_row, encode_chart_row; simpl.
-  rewrite (Z2Nat.id (m + 1)) by lia.
+  assert (Hm : 0 <= m + 1) by lia.
+  rewrite (Z2Nat.id (m + 1)) by exact Hm.
   replace (m + 1 - 1) with m by lia.
   destruct stop; reflexivity.
 Qed.
