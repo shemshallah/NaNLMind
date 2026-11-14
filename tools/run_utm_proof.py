@@ -28,7 +28,7 @@ HOST_TESTS = (
     ("minsky_utm", "build/test_minsky_utm", "Minsky 23-state"),
     ("minsky_encoded", "build/test_minsky_encoded", "Minsky UTM executes"),
     ("utm_universal_desc", "build/test_utm_universal_desc", "encoded Minsky universal description"),
-    ("utm_aliasing", "build/test_utm_aliasing", "description/work separation"),
+    ("utm_aliasing", "build/test_utm_aliasing", "separate stores"),
     ("binary_tm_compiler", "build/test_binary_tm_compiler", "TM-to-binary compiler"),
     ("binary_utm", "build/test_binary_utm", "compact binary runtime"),
     ("binary_utm_self", "build/test_binary_utm_self", "compiled binary Minsky"),
