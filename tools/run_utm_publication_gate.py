@@ -80,12 +80,22 @@ def main(argv: list[str] | None = None) -> int:
                        "marker": marker, "output_tail": output[-2500:]})
         if not passed:
             ok = False
+    trace_hash = ""
+    trace_lines = 0
+    trace_tool = ROOT / "build" / "minsky-trace-dump"
+    if trace_tool.is_file():
+        trace = subprocess.check_output([str(trace_tool)], text=True)
+        trace_hash = hashlib.sha256(trace.encode()).hexdigest()
+        trace_lines = len([line for line in trace.splitlines()
+                           if line.startswith("TRACE ")])
     report = {
         "schema": "nanlm.utm-publication-gate/1",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "status": "pass" if ok else "fail",
         "coq_run_url": args.coq_run_url,
         "checks": checks,
+        "trace_sha256": trace_hash,
+        "trace_lines": trace_lines,
         "theorems": THEOREMS,
         "source_sha256": {p: sha(p) for p in FILES},
         "scope": {
