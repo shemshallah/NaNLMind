@@ -72,12 +72,12 @@ Proof.
   intros remaining.
   induction remaining as [|next rest IH]; intros s prefix suffix Hscan.
   - inversion Hscan as [|? ? Hs _]; subst.
-    rewrite entry_run_successor.
-    rewrite (entry_scan_one s 5 prefix suffix Hs).
-    rewrite entry_run_successor.
-    rewrite entry_cross_delimiter.
-    reflexivity.
+    destruct Hs as [-> | [-> | ->]]; reflexivity.
   - inversion Hscan as [|? ? Hs Hrest]; subst.
+    change (run (S (S (length (next :: rest))))
+        (entry_config 5 (next :: (rest ++ 5 :: prefix)) (s :: suffix)) =
+      entry_config 1 (5 :: prefix)
+        (map entry_rewrite (rev (s :: next :: rest)) ++ suffix)).
     rewrite entry_run_successor.
     rewrite (entry_scan_one s next (rest ++ 5 :: prefix) suffix Hs).
     rewrite (IH next prefix (entry_rewrite s :: suffix) Hrest).
@@ -138,7 +138,7 @@ Lemma encoded_state_high_bit_branch :
     step (entry_config 0 (4 :: prefix) (source_bit high :: tail)) =
     if high then entry_config 3 (3 :: 4 :: prefix) tail
     else entry_config 2 prefix (4 :: 2 :: tail).
-Proof. intros []; reflexivity. Qed.
+Proof. intros high prefix tail; destruct high; reflexivity. Qed.
 
 Definition source_row_tail (row : BinarySourceRow) : list nat :=
   [source_bit (sr_state_lo row); source_bit (sr_read row);
