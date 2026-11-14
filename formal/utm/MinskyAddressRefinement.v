@@ -336,6 +336,53 @@ Proof.
     rewrite (address_step_refines c). apply IH.
 Qed.
 
+(** The native [UniversalTuringMachine::run] increments its returned count
+    only when [step()] returns true.  A halting transition executes and
+    updates the final configuration, but is NOT included in this count.
+    This alternate run semantics models that observable convention. *)
+Fixpoint address_run_cpp_counted (fuel : nat) (c : AddressConfig) :
+    nat * AddressConfig :=
+  match fuel with
+  | 0%nat => (0%nat, c)
+  | S n =>
+      if a_halted c then (0%nat, c)
+      else
+        let next := address_step_scanned c in
+        if a_halted next then (0%nat, next)
+        else
+          let '(completed, final) := address_run_cpp_counted n next in
+          (S completed, final)
+  end.
+
+(** The counted and fuel-driven runs have identical FINAL machine states;
+    only their reported step counts differ on a halting transition. *)
+Theorem address_cpp_counted_final_agree :
+  forall fuel c,
+    snd (address_run_cpp_counted fuel c) =
+    address_run fuel address_step_scanned c.
+Proof.
+  induction fuel as [|n IH]; intros c; simpl.
+  - reflexivity.
+  - destruct (a_halted c) eqn:Hhalt; [reflexivity |].
+    destruct (a_halted (address_step_scanned c)) eqn:Hnext.
+    + destruct n as [|n']; simpl; [reflexivity |].
+      rewrite Hnext. reflexivity.
+    + destruct (address_run_cpp_counted n (address_step_scanned c))
+        as [completed final] eqn:Hrun.
+      simpl. specialize (IH (address_step_scanned c)).
+      rewrite Hrun in IH. simpl in IH. exact IH.
+Qed.
+
+Corollary address_cpp_counted_final_indexed :
+  forall fuel c,
+    snd (address_run_cpp_counted fuel c) =
+    address_run fuel address_step_indexed c.
+Proof.
+  intros fuel c.
+  rewrite (address_cpp_counted_final_agree fuel c).
+  symmetry. apply address_run_refines.
+Qed.
+
 Theorem zipper_address_run_bisim :
   forall fuel zip addr,
     config_bisim zip addr ->
@@ -430,6 +477,8 @@ Qed.
 
 Print Assumptions address_step_refines.
 Print Assumptions address_run_refines.
+Print Assumptions address_cpp_counted_final_agree.
+Print Assumptions address_cpp_counted_final_indexed.
 Print Assumptions zipper_address_step_bisim.
 Print Assumptions zipper_address_run_bisim.
 Print Assumptions zipper_address_scanned_run_bisim.

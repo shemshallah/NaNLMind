@@ -31,6 +31,10 @@ GitHub Actions run does not make them interchangeable.
    `zipper_address_run_bisim` are the corresponding one-step and arbitrary
    finite-execution proof obligations; `embed_config` constructs the
    corresponding address representation for any zipper and signed head.
+   `address_run_cpp_counted` additionally models C++ `run(max_steps)`'s
+   return convention: a final halting transition is executed but is not
+   counted, and `address_cpp_counted_final_agree` proves that the final
+   machine configuration is unchanged by this counting convention.
 
 The Coq theorems are formal results about the Coq models. The general
 zipper-to-signed-address simulation bridges these two formal representations,
@@ -38,6 +42,10 @@ not the concrete chart allocator. The C++ test is an
 executable differential test, **not** a formal verification of the compiled
 C++ runtime. In particular, chart-page layout, 64-bit integer overflow,
 serialization, and compiler behavior are outside these Coq proofs.
+
+The exhaustive native conformance test includes zero-fuel execution, a
+nonhalting one-step run, and a halting run with a zero returned count; a
+`run()` return value is not an unqualified count of transitions executed.
 
 ## Remaining research obligations
 

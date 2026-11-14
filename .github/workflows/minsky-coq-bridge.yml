@@ -1,0 +1,64 @@
+name: Fast Coq Minsky representation bridge
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/minsky-coq-bridge.yml'
+      - 'formal/utm/**'
+
+permissions:
+  contents: read
+
+jobs:
+  bridge:
+    runs-on: ubuntu-latest
+    container:
+      image: coqorg/coq:8.20
+      options: --user root
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Locate pinned Coq 8.20 toolchain
+        run: |
+          set -euo pipefail
+          COQBIN=$(dirname "$(find /home/coq/.opam -name coqc -type f | head -1)")
+          test -x "$COQBIN/coqc"
+          echo "$COQBIN" >> "$GITHUB_PATH"
+          "$COQBIN/coqc" --version
+
+      - name: Check 184-row transcription
+        run: python3 formal/utm/check_minsky_table.py
+
+      - name: Kernel-check table, full-tape bisimulation and run counting
+        run: |
+          set -euo pipefail
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyTableData.v
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyTable.v
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyAddressRefinement.v
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyTable.vo
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyAddressRefinement.vo
+          echo 'NANLM MINSKY ALL-CELL BISIMULATION PASS'
+
+      - name: Upload independent Coq bridge certificate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: minsky-coq-bridge-${{ github.run_id }}
+          path: |
+            formal/utm/MinskyTableData.v
+            formal/utm/MinskyTableData.vo
+            formal/utm/MinskyTable.v
+            formal/utm/MinskyTable.vo
+            formal/utm/MinskyAddressRefinement.v
+            formal/utm/MinskyAddressRefinement.vo
+          if-no-files-found: warn
+          retention-days: 90
