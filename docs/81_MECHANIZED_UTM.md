@@ -72,6 +72,24 @@ agreement to complete runs under the explicit invariant that every iterated
 configuration has an in-range state and current symbol; the published
 100-step execution is also checked directly by kernel computation.
 
+## Native NaN16 execution
+
+The same 23x8 table is implemented in raw NaN16 assembly at
+`mth/tests/mth_minsky_test.nas` (fixed table, tape zipper, indexed scan,
+C++ halting order). It is assembled and run by the canonical NaN0S toolchain:
+
+```sh
+python3 tools/run_nan16_fixtures.py --only minsky_table
+# [PASS] minsky_table: steps=32725 marker=MTH MINSKY NATIVE PASS
+```
+
+The C++ runtime trace is checked independently against the table source:
+
+```sh
+make minsky-trace-check
+# MINSKY C++ TRACE CONFORMANCE PASS (100/100 steps)
+```
+
 The table transcription is also audited against the C++ source:
 
 ```sh
