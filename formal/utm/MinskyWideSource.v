@@ -58,7 +58,7 @@ Proof.
   - reflexivity.
   - cbn [length map app decode_n_bits].
     rewrite parse_source_bit_roundtrip.
-    now rewrite (IH suffix Hrest).
+    now rewrite (IH suffix).
 Qed.
 
 Theorem decode_n_bits_framed_roundtrip :
