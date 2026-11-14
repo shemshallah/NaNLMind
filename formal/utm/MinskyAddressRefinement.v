@@ -159,7 +159,10 @@ Proof.
       (h + Z.of_nat (S i)) by lia.
     destruct i; simpl in *; exact Hr.
   - intros [|i].
-    + simpl. rewrite <- (Hr 0%nat). f_equal. lia.
+    + simpl. specialize (Hr 0%nat). simpl in Hr.
+      transitivity (memory (h + 0)).
+      * f_equal. lia.
+      * exact Hr.
     + simpl. rewrite <- (Hl i). f_equal. lia.
   - intros i.
     specialize (Hr (S i)).
@@ -167,7 +170,10 @@ Proof.
       (h + Z.of_nat (S i)) by lia.
     simpl in Hr. exact Hr.
   - intros [|i].
-    + simpl. rewrite <- (Hr 0%nat). f_equal. lia.
+    + simpl. specialize (Hr 0%nat). simpl in Hr.
+      transitivity (memory (h + 0)).
+      * f_equal. lia.
+      * exact Hr.
     + simpl. rewrite <- (Hl i). f_equal. lia.
 Qed.
 
