@@ -112,7 +112,7 @@ jobs:
             formal/utm/MinskyTable.v
           coqchk -Q coq-library-undecidability/theories Undecidability \
             formal/utm/UTMEquivalence.vo
-          coqchk formal/utm/InterpreterRefinement.vo
+          coqchk -Q formal/utm NaNLM formal/utm/InterpreterRefinement.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyTable.vo
           echo "NANLM MECHANIZED UTM + MINSKY PASS"
 
