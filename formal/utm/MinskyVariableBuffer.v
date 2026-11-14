@@ -198,7 +198,10 @@ Proof.
   rewrite (dispatch_run_add (2 * S k + 4) (S k + 2)
     (entry_config 5 (repeat 0 (S k) ++ 5 :: prefix)
       (4 :: 0 :: tail))).
-  rewrite (positive_buffer_first_bit_at_2n_plus_4 k false prefix tail).
+  pose proof
+    (positive_buffer_first_bit_at_2n_plus_4 k false prefix tail) as Hfirst.
+  cbn [source_bit] in Hfirst.
+  rewrite Hfirst.
   replace (S k + 2) with
     (S (length (4 :: repeat 2 k ++ [0])))
     by (simpl [length]; rewrite app_length, repeat_length; simpl; lia).
