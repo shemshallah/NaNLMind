@@ -57,6 +57,18 @@ Lemma entry_run_successor :
     run fuel (step (entry_config q left right)).
 Proof. reflexivity. Qed.
 
+(** A shape-specific list identity keeps the scan induction independent
+    of the stdlib app_assoc rewrite orientation. *)
+Lemma append_singleton_assoc :
+  forall (xs : list nat) (symbol : nat) suffix,
+    (xs ++ [symbol]) ++ suffix = xs ++ symbol :: suffix.
+Proof.
+  intros xs symbol suffix.
+  induction xs as [|x xs IH]; simpl.
+  - reflexivity.
+  - now rewrite IH.
+Qed.
+
 (** [symbols] is the sequence scanned right-to-left: its head is under
     the machine head, and its tail lies in the reversed left zipper.
     Every scanned cell is rewritten before the delimiter transition;
@@ -84,9 +96,7 @@ Proof.
     cbn [rev].
     repeat rewrite map_app.
     cbn [map].
-    rewrite (app_assoc
-      (map entry_rewrite (rev rest) ++ [entry_rewrite next])
-      [entry_rewrite s] suffix).
+    rewrite append_singleton_assoc.
     reflexivity.
 Qed.
 
