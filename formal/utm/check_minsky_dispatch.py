@@ -82,6 +82,8 @@ def check_branch(
             raise AssertionError((first_bit, tail, next_marker, state, head, halted))
         if tape[1] != 2:
             raise AssertionError("low branch did not mark first state bit")
+        if any(tape[i + 2] != bit for i, bit in enumerate(tail)):
+            raise AssertionError("low branch failed to preserve binary tail")
 
     if [tape[i] for i in (-4, -3, -2, -1, 0)] != [5, 0, 2, 2, 4]:
         raise AssertionError("delimiter, buffer or marker altered")
@@ -100,8 +102,8 @@ def main() -> None:
     for width in (0, 1, 2, 3, 7, 15, 32, 64, 129):
         for _ in range(40):
             bits = tuple(rng.randrange(2) for _ in range(width))
-            for marker in (4, 5):
-                check_branch(table, 1, bits, marker)
+            for high, marker in itertools.product((0, 1), (4, 5)):
+                check_branch(table, high, bits, marker)
                 cases += 1
     print(f"MINSKY CONCRETE DISPATCH PASS ({cases} exhaustive/seeded cases)")
 
