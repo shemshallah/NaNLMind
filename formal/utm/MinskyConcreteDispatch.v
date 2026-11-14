@@ -169,6 +169,74 @@ Proof.
   constructor.
 Qed.
 
+(** This generalizes the first-bit dispatch beyond the old p=2 source
+    record. The following tail can have any finite number of bits. *)
+Theorem encoded_first_bit_any_width_ten_steps :
+  forall high tail prefix suffix,
+    run 10
+      (entry_config 5 ([0; 0; 0; 5] ++ prefix)
+        (4 :: source_bit high :: tail ++ suffix)) =
+    if high then
+      entry_config 3 ([3; 4; 2; 2; 0; 5] ++ prefix)
+        (tail ++ suffix)
+    else
+      entry_config 2 ([2; 2; 0; 5] ++ prefix)
+        (4 :: 2 :: tail ++ suffix).
+Proof. intros [|] tail prefix suffix; reflexivity. Qed.
+
+Lemma source_bit_list_is_right_scannable :
+  forall bits, Forall dispatch_right_symbol (map source_bit bits).
+Proof.
+  induction bits as [|b bits IH]; simpl.
+  - constructor.
+  - constructor; [apply source_bit_is_right_symbol | exact IH].
+Qed.
+
+(** For arbitrarily wide source records, a high first state bit passes
+    every remaining binary bit and returns left on the next X marker.
+    The number of native steps is exactly 11 plus the tail-bit length. *)
+Theorem encoded_any_width_high_branch_next_marker :
+  forall bits prefix suffix,
+    run (10 + (length bits + 1))
+      (entry_config 5 ([0; 0; 0; 5] ++ prefix)
+        (4 :: 1 :: map source_bit bits ++ 4 :: suffix)) =
+    step (entry_config 3
+      (rev (map source_bit bits) ++ [3; 4; 2; 2; 0; 5] ++ prefix)
+      (4 :: suffix)).
+Proof.
+  intros bits prefix suffix.
+  rewrite dispatch_run_add.
+  rewrite (encoded_first_bit_any_width_ten_steps true
+    (map source_bit bits) prefix (4 :: suffix)).
+  rewrite <- (map_length source_bit bits).
+  change (run (length (map source_bit bits) + 1)
+    (entry_config 3 ([3; 4; 2; 2; 0; 5] ++ prefix)
+      (map source_bit bits ++ 4 :: suffix)) = _).
+  apply dispatch_right_reaches_marker.
+  apply source_bit_list_is_right_scannable.
+Qed.
+
+Theorem encoded_any_width_high_branch_halts_on_y :
+  forall bits prefix suffix,
+    run (10 + (length bits + 1))
+      (entry_config 5 ([0; 0; 0; 5] ++ prefix)
+        (4 :: 1 :: map source_bit bits ++ 5 :: suffix)) =
+    dispatch_halt_at_y
+      (rev (map source_bit bits) ++ [3; 4; 2; 2; 0; 5] ++ prefix)
+      suffix.
+Proof.
+  intros bits prefix suffix.
+  rewrite dispatch_run_add.
+  rewrite (encoded_first_bit_any_width_ten_steps true
+    (map source_bit bits) prefix (5 :: suffix)).
+  rewrite <- (map_length source_bit bits).
+  change (run (length (map source_bit bits) + 1)
+    (entry_config 3 ([3; 4; 2; 2; 0; 5] ++ prefix)
+      (map source_bit bits ++ 5 :: suffix)) = _).
+  apply dispatch_right_halts_at_delimiter.
+  apply source_bit_list_is_right_scannable.
+Qed.
+
 (** In the low-state-bit branch the table returns across the original X
     and three buffer cells to the Y delimiter, preserving the row tail. *)
 Theorem encoded_program_low_branch_returns_at_step_15 :
@@ -260,6 +328,9 @@ Qed.
 
 Print Assumptions dispatch_left_to_delimiter.
 Print Assumptions dispatch_right_preserves_scan.
+Print Assumptions encoded_first_bit_any_width_ten_steps.
+Print Assumptions encoded_any_width_high_branch_next_marker.
+Print Assumptions encoded_any_width_high_branch_halts_on_y.
 Print Assumptions encoded_program_low_branch_returns_at_step_15.
 Print Assumptions encoded_program_high_branch_reaches_next_row_at_step_17.
 Print Assumptions encoded_program_high_branch_halts_at_step_17.
