@@ -58,6 +58,8 @@ about the concrete 23x8 table.
   (`run_indexed_scan_agree_all`);
 - the C++ halt order: write, update state/head, then set halted
   (`minsky_halt_updates_before_flag`);
+- the native C++ description/work storage separation and signed-head
+  overflow fail-closed behavior (`test_utm_aliasing`);
 - the published 100-step zipper execution (`minsky_trace_100`).
 
 ### 3. Signed-address refinement
@@ -130,7 +132,8 @@ Closed under the global context
 | Halt order | Coq write/state/head-before-flag theorem | pass |
 | Signed address | Coq zipper/address bisimulation for all finite runs | pass |
 | Published trace | Coq kernel computation in both representations | pass |
-| Native NaN16 | 100-step guest execution, 32,725 guest steps | pass |
+| Native NaN16 | published trace and normal encoded-machine execution | pass |
+| C++ alias/overflow | negative-head and INT64 boundary tests | pass |
 | C++ trace | 100/100 step conformance | pass |
 | C++ chart | all 184 entries, malformed/negative/repeated-halt cases | pass |
 
