@@ -19,6 +19,7 @@
     "native NaN16 Minsky 100-step fixture",
     "native NaN16 normal encoded-machine execution",
     "native NaN16 p-bit source-to-Minsky tape compiler",
+    "native NaN16 arbitrary-transition binary-input compiler fixture",
     "C++ 100-step trace conformance",
     "exhaustive C++ 184-entry chart conformance"
   ],

@@ -7,9 +7,10 @@ and input `x` to a tape configuration such that the fixed 23-state/8-symbol
 Minsky table, started in its documented state, simulates `M(x)` step for step
 and halts exactly when `M(x)` halts.
 
-**Status: open. This package does not claim it.** A **restricted native
-encoder** emits the Minsky tape format from a 4-state/2-symbol source
-contract (`docs/86_NATIVE_MINSKY_COMPILER.md`). The Coq model
+**Status: open. This package does not claim it.** A **general native
+encoder** now emits the Minsky tape format from an arbitrary `p`-bit state
+width, an arbitrary finite transition list, and an arbitrary finite binary
+input tape (`docs/86_NATIVE_MINSKY_COMPILER.md`). The Coq model
 `MinskySourceEncoding.v` proves arbitrary-list round trips and a finite-run
 refinement **for its decoded source interpreter**, not for the 23x8 table.
 `MinskyConcreteEntry.v` goes one step further: it proves the actual fixed
@@ -99,8 +100,9 @@ A native NaN16 compiler/refinement would need to:
 - decode the final tape and state;
 - compare against an independent source-machine trace.
 
-The native NaN16 compiler fixture now emits a restricted two-row source
-program, executes the fixed table, and checks its final tape. This is useful
+The native NaN16 compiler fixtures now emit both the original two-row source
+program and a general `p = 9`, three-transition, nonblank-input machine,
+execute the fixed table, and check their final tapes. This is useful
 conformance evidence, not arbitrary-source-machine equivalence.
 
 ## Publication rule
