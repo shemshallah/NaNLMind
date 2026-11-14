@@ -164,9 +164,10 @@ Proof.
   apply andb_true_iff in H; destruct H as [H H4].
   apply andb_true_iff in H; destruct H as [H H3].
   apply andb_true_iff in H; destruct H as [H1 H2].
-  simpl in H1, H2, H3, H4, H5.
-  apply Nat.eqb_eq in H1. apply Nat.eqb_eq in H2. apply Nat.eqb_eq in H3.
-  apply Z.eqb_eq in H4. apply Nat.eqb_eq in H5.
+  apply andb_true_iff in H1; destruct H1 as [Hfrom Hread].
+  simpl in Hfrom, Hread, H2, H3, H4.
+  apply Nat.eqb_eq in Hfrom. apply Nat.eqb_eq in Hread.
+  apply Nat.eqb_eq in H2. apply Z.eqb_eq in H3. apply Nat.eqb_eq in H4.
   subst. reflexivity.
 Qed.
 
