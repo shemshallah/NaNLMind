@@ -105,6 +105,15 @@ Fixpoint run (fuel : nat) (c : Config) : Config :=
   | S n => if c_halted c then c else run n (step c)
   end.
 
+Definition state_read_valid (c : Config) : Prop :=
+  c_state c < 23%nat /\ read (c_tape c) < 8%nat.
+
+Fixpoint iterate (n : nat) (c : Config) : Config :=
+  match n with
+  | 0%nat => c
+  | S k => iterate k (step c)
+  end.
+
 (** ** Table completeness *)
 
 Lemma minsky_table_length : length minsky_entries = 184%nat.
@@ -305,6 +314,25 @@ Proof. vm_compute. reflexivity. Qed.
 Theorem minsky_trace_100_indexed_scan :
   run 100 initial_config = run_scan 100 initial_config.
 Proof. vm_compute. reflexivity. Qed.
+
+(** Generic execution lift: if every iterated configuration has an in-range
+    state and current symbol, the indexed and scan runs are identical. *)
+Theorem run_indexed_scan_agree :
+  forall fuel c,
+    (forall i, i <= fuel -> state_read_valid (iterate i c)) ->
+    run fuel c = run_scan fuel c.
+Proof.
+  induction fuel as [|fuel IH]; intros c Hvalid; simpl.
+  - reflexivity.
+  - destruct (c_halted c) eqn:Hh.
+    + reflexivity.
+    + assert (H0 := Hvalid 0 (le_0_n fuel)).
+      destruct H0 as [Hq Hs].
+      rewrite (step_indexed_scan_agree c Hh Hq Hs).
+      apply IH. intros i Hi.
+      specialize (Hvalid (S i) (le_n_S i fuel Hi)).
+      simpl in Hvalid. exact Hvalid.
+Qed.
 
 Print Assumptions minsky_trace_100.
 Print Assumptions step_indexed_scan_agree.
