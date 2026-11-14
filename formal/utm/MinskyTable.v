@@ -159,16 +159,16 @@ Lemma entry_eqb_sound :
 Proof.
   intros a b H. destruct a as [a1 a2 a3 a4 a5 a6].
   destruct b as [b1 b2 b3 b4 b5 b6]. simpl in H.
-  destruct a6; destruct b6; simpl in H; try discriminate.
+  apply andb_true_iff in H; destruct H as [H H6].
   apply andb_true_iff in H; destruct H as [H H5].
   apply andb_true_iff in H; destruct H as [H H4].
   apply andb_true_iff in H; destruct H as [H H3].
   apply andb_true_iff in H; destruct H as [H1 H2].
-  apply andb_true_iff in H1; destruct H1 as [Hfrom Hread].
-  simpl in Hfrom, Hread, H2, H3, H4.
-  apply Nat.eqb_eq in Hfrom. apply Nat.eqb_eq in Hread.
-  apply Nat.eqb_eq in H2. apply Z.eqb_eq in H3. apply Nat.eqb_eq in H4.
-  subst. all: reflexivity.
+  simpl in H1, H2, H3, H4, H5, H6.
+  apply Nat.eqb_eq in H1. apply Nat.eqb_eq in H2. apply Nat.eqb_eq in H3.
+  apply Z.eqb_eq in H4. apply Nat.eqb_eq in H5.
+  assert (H6' : a6 = b6) by (apply Bool.eqb_eq; apply Is_true_eq_left; exact H6).
+  subst. reflexivity.
 Qed.
 
 Lemma lookup_eqb_sound :
