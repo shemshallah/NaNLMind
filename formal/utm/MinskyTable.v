@@ -13,7 +13,7 @@
     [None] exactly at a halting entry or outside the table.
 *)
 
-From Coq Require Import List Arith ZArith Lia.
+From Coq Require Import List Arith ZArith Lia Bool.
 Import ListNotations.
 
 From NaNLM Require Import MinskyTableData.
