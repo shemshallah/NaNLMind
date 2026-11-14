@@ -138,8 +138,11 @@ Proof.
       specialize (Hl 0%nat).
       simpl in Hl. exact Hl.
     + simpl. rewrite <- (Hr i). f_equal. lia.
-  - intros i. simpl.
-    rewrite <- (Hl (S i)). f_equal. lia.
+  - intros i.
+    specialize (Hl (S i)).
+    replace (h - 1 - Z.of_nat (S i)) with
+      (h - Z.of_nat (S (S i))) by lia.
+    simpl in Hl. exact Hl.
 Qed.
 
 Lemma tape_bisim_move_right :
@@ -161,8 +164,11 @@ Proof.
       specialize (Hr 0%nat).
       simpl in Hr. exact Hr.
     + simpl. rewrite <- (Hl i). f_equal. lia.
-  - intros i. simpl.
-    rewrite <- (Hr (S i)). f_equal. lia.
+  - intros i.
+    specialize (Hr (S i)).
+    replace (h + 1 + Z.of_nat i) with
+      (h + Z.of_nat (S i)) by lia.
+    simpl in Hr. exact Hr.
   - intros [|i].
     + simpl. replace (h + 1 - Z.of_nat 1) with
         (h + Z.of_nat 0) by lia.
