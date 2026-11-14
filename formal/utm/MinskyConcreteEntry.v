@@ -96,7 +96,9 @@ Proof.
     cbn [rev].
     repeat rewrite map_app.
     cbn [map].
-    rewrite append_singleton_assoc.
+    rewrite (append_singleton_assoc
+      (map entry_rewrite (rev rest) ++ [entry_rewrite next])
+      (entry_rewrite s) suffix).
     reflexivity.
 Qed.
 
