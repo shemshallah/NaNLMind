@@ -68,8 +68,7 @@ Lemma decode_n_bits_roundtrip_left :
 Proof.
   induction bits as [|b bits IH]; intros rest suffix; simpl.
   - reflexivity.
-  - rewrite parse_source_bit_roundtrip.
-    apply IH.
+  - destruct b; simpl; apply IH.
 Qed.
 
 Theorem decode_n_bits_framed_roundtrip :
