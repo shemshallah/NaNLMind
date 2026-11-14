@@ -24,6 +24,8 @@ CHECKS = [
      "MTH MINSKY NATIVE PASS"),
     ("native_minsky_encoded", ["python3", "tools/run_nan16_fixtures.py", "--only", "minsky_encoded"],
      "MTH MINSKY NATIVE PASS"),
+    ("native_minsky_compiler", ["python3", "tools/run_nan16_fixtures.py", "--only", "minsky_compiler"],
+     "MTH MINSKY NATIVE PASS"),
     ("cpp_trace", ["python3", "tools/check_minsky_trace.py"],
      "MINSKY C++ TRACE CONFORMANCE PASS"),
     ("cpp_chart", ["make", "-j2", "minsky-bridge-check"],
