@@ -159,8 +159,11 @@ Lemma entry_eqb_sound :
 Proof.
   intros a b H. destruct a as [a1 a2 a3 a4 a5 a6].
   destruct b as [b1 b2 b3 b4 b5 b6]. simpl in H.
-  repeat rewrite andb_true_iff in H.
-  destruct H as [H1 [H2 [H3 [H4 [H5 H6]]]]].
+  apply andb_true_iff in H; destruct H as [H1 H].
+  apply andb_true_iff in H; destruct H as [H2 H].
+  apply andb_true_iff in H; destruct H as [H3 H].
+  apply andb_true_iff in H; destruct H as [H4 H].
+  apply andb_true_iff in H; destruct H as [H5 H6].
   apply Nat.eqb_eq in H1. apply Nat.eqb_eq in H2. apply Nat.eqb_eq in H3.
   apply Z.eqb_eq in H4. apply Nat.eqb_eq in H5. apply Bool.eqb_eq in H6.
   subst. reflexivity.
