@@ -25,6 +25,7 @@ Nature-level completion while any critical obligation below is open.
 | `MinskySourceEncoding.v` | Round trip for arbitrary finite 8-symbol rows; abstract decoded interpreter and arbitrary finite runs | No |
 | `MinskyConcreteEntry.v` | Left-scan induction, first 5/8/10 native-table transitions | No |
 | `MinskyConcreteProgramScan.v` | Entire encoded description is scannable by the unchanged native table for arbitrary row count, provided the exact reversed tape layout | No |
+| `MinskyConcreteDispatch.v` | Submitted: unbounded state-2 backward and state-3 forward scans, and concrete first-row branches through step 15/17; certification pending CI | No |
 | `MinskyEncodedFixture.v` | Exact 583-transition native-fixture halted configuration, with step 582 still active | No |
 | `UTMEquivalence.v` | Halting equivalence of an independently formalized fixed UTM in the pinned Undecidability Library | Not for this 23×8 table |
 
