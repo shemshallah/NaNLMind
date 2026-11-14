@@ -25,6 +25,10 @@ coqc -Q "$LIB/theories" Undecidability \
   -w -notation-overridden,-stdlib-vector,-notation-incompatible-prefix \
   formal/utm/UTMEquivalence.v
 coqc -w -notation-overridden,-stdlib-vector formal/utm/InterpreterRefinement.v
+coqc -Q formal/utm NaNLM -w -notation-overridden,-stdlib-vector formal/utm/MinskyTableData.v
+coqc -Q formal/utm NaNLM -w -notation-overridden,-stdlib-vector formal/utm/MinskyTable.v
 coqchk -Q "$LIB/theories" Undecidability formal/utm/UTMEquivalence.vo
-coqchk formal/utm/InterpreterRefinement.vo
-echo "[coq] theorems checked: UTM_halting_equivalence, utm_run_refines"
+coqchk -Q formal/utm NaNLM formal/utm/InterpreterRefinement.vo
+coqchk -Q formal/utm NaNLM formal/utm/MinskyTable.vo
+python3 formal/utm/check_minsky_table.py
+echo "[coq] theorems checked: UTM_halting_equivalence, utm_run_refines, minsky_trace_100"

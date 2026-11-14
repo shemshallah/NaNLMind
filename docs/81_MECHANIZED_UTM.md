@@ -44,6 +44,27 @@ This is the scanner/step refinement for a description that is a graph of an
 independent reference transition function, plus a concrete binary-increment
 corollary (`bin_run_refines`).
 
+## Minsky 23x8 table
+
+`formal/utm/MinskyTableData.v` is generated from the canonical
+`tests/minsky_table.inc` and contains all 184 entries.  `formal/utm/MinskyTable.v`
+gives that table a two-list tape zipper and a finite step function, then checks:
+
+```coq
+minsky_table_complete   (* every q<23, s<8 has an entry *)
+minsky_step_uses_entry  (* every step is the table entry at (q, read) *)
+minsky_halt_entry       (* the published halt entry is explicit *)
+minsky_trace_100        (* kernel computation of the published 100-step trace *)
+minsky_trace_head       (* state 2, head 38, final 73-cell tape *)
+```
+
+The table transcription is also audited against the C++ source:
+
+```sh
+python3 formal/utm/check_minsky_table.py
+# MINSKY TABLE TRANSCRIPTION PASS (184/184 entries)
+```
+
 The file also exports `UTM_halting_undecidable`, and ends with
 `Print Assumptions`, so the CI log shows the theorem is closed under the global
 context (no axioms, parameters, or admits introduced by this file).
@@ -63,19 +84,17 @@ gh workflow run mechanized-utm.yml -R shemshallah/nanlm_experimental
 gh run watch -R shemshallah/nanlm_experimental
 ```
 
-The workflow uses the `coqorg/coq:8.20` container, builds only the fixed-UTM
-dependency cone, checks `UTMEquivalence.v`, runs `coqchk`, and uploads the
-`.vo`/`.glob` artifact.  A parallel `step-refinement` job checks
-`InterpreterRefinement.v` without waiting for the library build.  The workflow
-is intentionally separate from the fast NaN0S TM gate and can run for hours
-without blocking development.
+The NaNLMind workflow uses the `coqorg/coq:8.20` container, builds only the
+fixed-UTM dependency cone, checks `UTMEquivalence.v`, the step-level
+`InterpreterRefinement.v`, and the Minsky table, runs `coqchk`, and uploads the
+`.vo`/`.glob` artifacts.  It is intentionally separate from the fast NaN0S TM
+gate and can run for hours without blocking development.
 
 Checked run:
 
 ```text
-https://github.com/shemshallah/nanlm_experimental/actions/runs/43537700690
-MECHANIZED UTM THEOREM PASS
-STEP-LEVEL REFINEMENT PASS
+https://github.com/shemshallah/NaNLMind/actions/runs/43553448912
+NANLM MECHANIZED UTM + MINSKY PASS
 Closed under the global context
 ```
 
