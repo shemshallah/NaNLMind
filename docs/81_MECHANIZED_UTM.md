@@ -125,7 +125,7 @@ gate and can run for hours without blocking development.
 Checked run:
 
 ```text
-https://github.com/shemshallah/NaNLMind/actions/runs/43573059226
+https://github.com/shemshallah/NaNLMind/actions/runs/43604543532
 NANLM MECHANIZED UTM + MINSKY PASS
 Closed under the global context
 ```
