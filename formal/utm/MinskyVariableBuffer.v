@@ -83,8 +83,8 @@ Proof.
     replace (repeat 2 n ++ (2 :: left))
       with (repeat 2 (S n) ++ left).
     + reflexivity.
-    + change (repeat 2 n ++ ([2] ++ left) =
-        repeat 2 (S n) ++ left).
+    + change (repeat 2 (S n) ++ left =
+        repeat 2 n ++ ([2] ++ left)).
       rewrite <- app_assoc.
       now rewrite variable_buffer_repeat_snoc.
 Qed.
