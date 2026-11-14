@@ -395,10 +395,10 @@ Proof.
   - exact Hsim.
   - destruct Hsim as [Hstate [Hhalt Htape]].
     destruct (c_halted zip) eqn:Hstopped.
-    + rewrite <- Hhalt. rewrite Hstopped.
+    + rewrite <- Hhalt. simpl.
       unfold config_bisim.
       split; [exact Hstate |]. split; [exact Hhalt |]. exact Htape.
-    + rewrite <- Hhalt. rewrite Hstopped.
+    + rewrite <- Hhalt. simpl.
       apply IH. apply zipper_address_step_bisim.
       unfold config_bisim.
       split; [exact Hstate |]. split; [exact Hhalt |]. exact Htape.
