@@ -231,8 +231,10 @@ Proof.
   rewrite (dispatch_run_add (2 * S k + 4) (length bits + 1)
     (entry_config 5 (repeat 0 (S k) ++ 5 :: prefix)
       (4 :: 1 :: map source_bit bits ++ 4 :: suffix))).
-  rewrite (positive_buffer_first_bit_at_2n_plus_4 k true prefix
-    (map source_bit bits ++ 4 :: suffix)).
+  pose proof (positive_buffer_first_bit_at_2n_plus_4 k true prefix
+    (map source_bit bits ++ 4 :: suffix)) as Hfirst.
+  cbn [source_bit] in Hfirst.
+  rewrite Hfirst.
   rewrite <- (map_length source_bit bits).
   apply dispatch_right_reaches_marker.
   apply source_bit_list_is_right_scannable.
@@ -251,8 +253,10 @@ Proof.
   rewrite (dispatch_run_add (2 * S k + 4) (length bits + 1)
     (entry_config 5 (repeat 0 (S k) ++ 5 :: prefix)
       (4 :: 1 :: map source_bit bits ++ 5 :: suffix))).
-  rewrite (positive_buffer_first_bit_at_2n_plus_4 k true prefix
-    (map source_bit bits ++ 5 :: suffix)).
+  pose proof (positive_buffer_first_bit_at_2n_plus_4 k true prefix
+    (map source_bit bits ++ 5 :: suffix)) as Hfirst.
+  cbn [source_bit] in Hfirst.
+  rewrite Hfirst.
   rewrite <- (map_length source_bit bits).
   apply dispatch_right_halts_at_delimiter.
   apply source_bit_list_is_right_scannable.
