@@ -82,8 +82,9 @@ Proof.
     rewrite (entry_scan_one s next (rest ++ 5 :: prefix) suffix Hs).
     rewrite (IH next prefix (entry_rewrite s :: suffix) Hrest).
     cbn [rev].
-    rewrite map_app.
+    repeat rewrite map_app.
     cbn [map].
+    repeat rewrite app_assoc.
     reflexivity.
 Qed.
 
