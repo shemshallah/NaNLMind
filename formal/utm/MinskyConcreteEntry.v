@@ -81,10 +81,10 @@ Proof.
     rewrite entry_run_successor.
     rewrite (entry_scan_one s next (rest ++ 5 :: prefix) suffix Hs).
     rewrite (IH next prefix (entry_rewrite s :: suffix) Hrest).
-    simpl [rev].
+    cbn [rev].
     rewrite map_app.
-    simpl [map].
-    now rewrite app_assoc.
+    cbn [map].
+    reflexivity.
 Qed.
 
 (** The actual first five table transitions on the native source format.
