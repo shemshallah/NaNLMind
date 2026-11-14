@@ -61,6 +61,16 @@ Proof.
     now rewrite (IH suffix).
 Qed.
 
+Lemma decode_n_bits_roundtrip_left :
+  forall bits rest suffix,
+    decode_n_bits (length bits) ((map source_bit bits ++ rest) ++ suffix) =
+    Some (bits, rest ++ suffix).
+Proof.
+  intros bits rest suffix.
+  rewrite app_assoc.
+  apply decode_n_bits_roundtrip.
+Qed.
+
 Theorem decode_n_bits_framed_roundtrip :
   forall prefix bits suffix,
     decode_n_bits (length bits)
@@ -170,13 +180,15 @@ Proof.
   assert (Hp : p = length current) by lia.
   subst p.
   unfold decode_wide_row, encode_wide_row; simpl.
-  rewrite app_assoc.
-  rewrite decode_n_bits_roundtrip.
+  rewrite (decode_n_bits_roundtrip_left current
+    (source_bit scanned ::
+       map source_bit next ++ [source_bit written; source_bit direction])
+    suffix).
   simpl.
   rewrite parse_source_bit_roundtrip.
   rewrite <- Hn.
-  rewrite app_assoc.
-  rewrite decode_n_bits_roundtrip.
+  rewrite (decode_n_bits_roundtrip_left next
+    [source_bit written; source_bit direction] suffix).
   simpl.
   now rewrite !parse_source_bit_roundtrip.
 Qed.
