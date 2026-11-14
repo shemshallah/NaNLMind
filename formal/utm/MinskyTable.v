@@ -326,7 +326,7 @@ Proof.
   - reflexivity.
   - destruct (c_halted c) eqn:Hh.
     + reflexivity.
-    + assert (H0 := Hvalid 0 (le_0_n fuel)).
+    + assert (H0 := Hvalid 0 (le_0_n (S fuel))).
       destruct H0 as [Hq Hs].
       rewrite (step_indexed_scan_agree c Hh Hq Hs).
       apply IH. intros i Hi.
