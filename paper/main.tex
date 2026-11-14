@@ -1,0 +1,107 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{geometry}
+\geometry{margin=1in}
+\title{A Checked Fixed UTM with a Mechanized Minsky Table\\and Native Execution Evidence}
+\author{NaNLMind}
+\date{2026-11-14}
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We describe a layered verification package for a fixed, binary, single-tape
+universal Turing machine.  The package combines (i) a Coq-checked fixed-UTM
+halting equivalence obtained from a certified simulation chain, (ii) a
+mechanized 23-state/8-symbol Minsky table transcribed from the executable
+source, (iii) an indexed/linear-scan equivalence theorem for all state-symbol
+pairs and all fuel-bounded runs, (iv) a signed-address refinement of the table
+interpreter with a whole-tape representation invariant, and (v) independent
+native and C++ execution evidence.  We state precisely what is proved and what
+is not: the concrete table's full universality and a formal refinement of the
+compiled C++ binary remain open.
+\end{abstract}
+
+\section{Introduction}
+Universal Turing machines are usually presented as existence theorems.  A
+verified implementation additionally needs a fixed transition table, a
+mechanized semantics, and an executable artifact that can be compared with the
+proof model.  This package separates those claims.
+
+\section{Formal development}
+The Coq library of undecidability proofs supplies the chain
+\[
+\text{Krivine} \to \text{5-register Minsky} \to \text{multi-tape TM}
+\to \text{single-tape TM} \to \text{binary TM}.
+\]
+We expose the fixed machine's halting equivalence:
+\begin{verbatim}
+Theorem UTM_halting_equivalence :
+  exists encode, forall x,
+    KrivineMclosed_HALT x <-> HaltUTM (encode x).
+\end{verbatim}
+\texttt{Print Assumptions} reports that the theorem is closed under the global
+context.
+
+The concrete table \texttt{MinskyTableData.v} is generated from
+\texttt{tests/minsky\_table.inc}; all 184 entries are checked.  The zipper
+model proves table completeness, indexed/linear-scan agreement, halt-write
+ordering, and the published 100-step trace.  The signed-address model
+\texttt{MinskyAddressRefinement.v} proves a one-step and arbitrary
+fuel-bounded bisimulation between the zipper and signed-address
+representations, including final writes before the halted flag.
+
+\section{Executable evidence}
+The same 184-entry table is implemented in raw NaN16 assembly
+(\texttt{mth/tests/mth\_minsky\_test.nas}) and executed by the canonical NaN0S
+toolchain.  The fixture reaches the documented final configuration in 32,725
+guest steps.  A C++ trace of the actual \texttt{TuringMachine} is compared
+step-by-step with the table source for all 100 steps, and an exhaustive C++
+chart test covers all 184 entries together with malformed, negative-tape and
+repeated-halt cases.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}lll@{}}
+\toprule
+Layer & Evidence & Status\\
+\midrule
+Fixed UTM & Coq halting equivalence, closed assumptions & pass\\
+Minsky table & 184/184 transcription audit & pass\\
+Indexed/scan & Coq equality for all pairs and runs & pass\\
+Halt order & Coq write/state/head-before-flag & pass\\
+Signed address & Coq zipper/address bisimulation & pass\\
+Published trace & Coq kernel computation, both models & pass\\
+Native NaN16 & 100-step guest execution & pass\\
+C++ trace & 100/100 step conformance & pass\\
+C++ chart & exhaustive 184-entry conformance & pass\\
+\bottomrule
+\end{tabular}
+\caption{Evidence layers.}
+\end{table}
+
+\section{Limitations}
+We do not claim a universality theorem for the concrete 23x8 table, nor a
+formal refinement of the compiled C++ binary or chart allocator.  The C++ tests
+are executable conformance evidence, not compiler verification.  The fixed-UTM
+library theorem and the concrete table are distinct formal objects.  The
+decisive next theorem is a mechanized encoding/simulation proof for the concrete
+table over arbitrary finite machines.
+
+\section{Reproducibility}
+The source package is \texttt{NaNLMind}.  The local publication gate is
+\begin{verbatim}
+make utm-publication
+\end{verbatim}
+and writes \texttt{state/benchmarks/utm\_publication\_gate.json}.  The Coq
+workflow is \texttt{.github/workflows/mechanized-utm.yml}; the checked run is
+\url{https://github.com/shemshallah/NaNLMind/actions/runs/43618170188}.
+
+\section{Conclusion}
+The package provides a kernel-checked fixed-UTM construction with a mechanized
+concrete table, signed-address refinement, and independent native/C++ evidence.
+It is a checked construction and experimental evidence package, not a claim of
+a completed universality theorem for the concrete table.
+
+\end{document}
