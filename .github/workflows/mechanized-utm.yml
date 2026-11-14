@@ -1,0 +1,134 @@
+name: Mechanized UTM and Minsky proof
+
+on:
+  workflow_dispatch:
+    inputs:
+      jobs:
+        description: 'Parallel Coq jobs'
+        default: '2'
+        type: string
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/mechanized-utm.yml'
+      - 'formal/utm/**'
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: mechanized-utm-nanlmind
+  cancel-in-progress: false
+
+jobs:
+  coq-utm:
+    runs-on: ubuntu-latest
+    container:
+      image: coqorg/coq:8.20
+      options: --user root
+    timeout-minutes: 360
+    env:
+      LIB_COMMIT: 70dfc56f33a6e4835281044e68aa68279989047e
+      JOBS: ${{ inputs.jobs || '2' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install git
+        run: |
+          if ! command -v git >/dev/null 2>&1; then
+            apt-get update -qq && apt-get install -y -qq git
+          fi
+
+      - name: Locate Coq toolchain
+        run: |
+          set -euo pipefail
+          COQBIN=$(dirname "$(find /home/coq/.opam -name coq_makefile -type f | head -1)")
+          test -n "$COQBIN"
+          echo "$COQBIN" >> "$GITHUB_PATH"
+          "$COQBIN/coqc" --version | head -1
+
+      - name: Cache Coq library
+        uses: actions/cache@v4
+        with:
+          path: coq-library-undecidability
+          key: nanlmind-coq-utm-${{ env.LIB_COMMIT }}-v1
+
+      - name: Fetch pinned undecidability library
+        run: |
+          set -euo pipefail
+          if [ ! -f coq-library-undecidability/theories/_CoqProject ]; then
+            rm -rf coq-library-undecidability
+            git clone --depth 1 --branch coq-8.20 \
+              https://github.com/uds-psl/coq-library-undecidability.git \
+              coq-library-undecidability
+          fi
+          cd coq-library-undecidability
+          test "$(git rev-parse HEAD)" = "$LIB_COMMIT" || {
+            echo "library commit mismatch: $(git rev-parse HEAD) != $LIB_COMMIT" >&2
+            exit 2
+          }
+
+      - name: Cache Coq opam switch
+        uses: actions/cache@v4
+        with:
+          path: /home/coq/.opam
+          key: nanlmind-coq820-metacoq-v1
+
+      - name: Ensure MetaCoq template plugin
+        run: |
+          set -euo pipefail
+          export OPAMROOT=/home/coq/.opam
+          export OPAMSWITCH=4.13.1+flambda
+          if ! opam list --installed --short 2>/dev/null | grep -qx coq-metacoq-template; then
+            opam install -y coq-metacoq-template
+          fi
+
+      - name: Build fixed-UTM dependency cone
+        run: |
+          set -euo pipefail
+          cd coq-library-undecidability/theories
+          if [ ! -f Makefile.rocq ]; then
+            coq_makefile -f _CoqProject -o Makefile.rocq
+          fi
+          make -f Makefile.rocq -j"$JOBS" \
+            TM/UTM.vo TM/UTM_undec.vo \
+            TM/Reductions/KrivineMclosed_HALT_to_HaltUTM.vo
+
+      - name: Check fixed UTM theorem and Minsky table
+        run: |
+          set -euo pipefail
+          coqc -Q coq-library-undecidability/theories Undecidability \
+            -w -notation-overridden,-stdlib-vector,-notation-incompatible-prefix \
+            formal/utm/UTMEquivalence.v
+          coqc -Q formal/utm NaNLM -w -notation-overridden,-stdlib-vector \
+            formal/utm/InterpreterRefinement.v
+          coqc -Q formal/utm NaNLM -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyTable.v
+          coqchk -Q coq-library-undecidability/theories Undecidability \
+            formal/utm/UTMEquivalence.vo
+          coqchk formal/utm/InterpreterRefinement.vo
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyTable.vo
+          echo "NANLM MECHANIZED UTM + MINSKY PASS"
+
+      - name: Upload proof artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nanlmind-mechanized-utm-${{ github.run_id }}
+          path: |
+            formal/utm/UTMEquivalence.v
+            formal/utm/UTMEquivalence.vo
+            formal/utm/UTMEquivalence.glob
+            formal/utm/InterpreterRefinement.v
+            formal/utm/InterpreterRefinement.vo
+            formal/utm/InterpreterRefinement.glob
+            formal/utm/MinskyTable.v
+            formal/utm/MinskyTableData.v
+            formal/utm/MinskyTable.vo
+            formal/utm/MinskyTable.glob
+          if-no-files-found: warn
+          retention-days: 90
