@@ -98,8 +98,10 @@ jobs:
             TM/UTM.vo TM/UTM_undec.vo \
             TM/Reductions/KrivineMclosed_HALT_to_HaltUTM.vo
 
-      - name: Check Minsky table transcription
-        run: python3 formal/utm/check_minsky_table.py
+      - name: Check 184-row and native NaN16 transcriptions
+        run: |
+          python3 formal/utm/check_minsky_table.py
+          python3 formal/utm/check_minsky_nan16_words.py
 
       - name: Check fixed UTM theorem and Minsky table
         run: |
@@ -119,6 +121,10 @@ jobs:
             formal/utm/MinskyChartEncoding.v
           coqc -Q formal/utm NaNLM -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyChartScan.v
+          coqc -Q formal/utm NaNLM -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyNativeBounds.v
+          coqc -Q formal/utm NaNLM -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyNaN16Words.v
           coqchk -Q coq-library-undecidability/theories Undecidability \
             formal/utm/UTMEquivalence.vo
           coqchk -Q formal/utm NaNLM formal/utm/InterpreterRefinement.vo
@@ -126,6 +132,8 @@ jobs:
           coqchk -Q formal/utm NaNLM formal/utm/MinskyAddressRefinement.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyChartEncoding.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyChartScan.vo
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyNativeBounds.vo
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyNaN16Words.vo
           echo "NANLM MECHANIZED UTM + MINSKY ADDRESS REFINEMENT PASS"
 
       - name: Upload proof artifacts
@@ -153,6 +161,11 @@ jobs:
             formal/utm/MinskyChartEncoding.glob
             formal/utm/MinskyChartScan.v
             formal/utm/MinskyChartScan.vo
+            formal/utm/MinskyNativeBounds.v
+            formal/utm/MinskyNativeBounds.vo
+            formal/utm/MinskyNaN16Words.v
+            formal/utm/MinskyNaN16Words.vo
+            formal/utm/check_minsky_nan16_words.py
             formal/utm/MinskyChartScan.glob
           if-no-files-found: warn
           retention-days: 90

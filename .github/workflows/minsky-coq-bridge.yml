@@ -33,8 +33,10 @@ jobs:
           echo "$COQBIN" >> "$GITHUB_PATH"
           "$COQBIN/coqc" --version
 
-      - name: Check 184-row transcription
-        run: python3 formal/utm/check_minsky_table.py
+      - name: Check 184-row and native NaN16 transcriptions
+        run: |
+          python3 formal/utm/check_minsky_table.py
+          python3 formal/utm/check_minsky_nan16_words.py
 
       - name: Kernel-check table, full-tape bisimulation and run counting
         run: |
@@ -54,10 +56,18 @@ jobs:
           coqc -Q formal/utm NaNLM \
             -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyChartScan.v
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyNativeBounds.v
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyNaN16Words.v
           coqchk -Q formal/utm NaNLM formal/utm/MinskyTable.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyAddressRefinement.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyChartEncoding.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyChartScan.vo
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyNativeBounds.vo
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyNaN16Words.vo
           echo 'NANLM MINSKY SIX-BYTE LINEAR SCAN REFINEMENT PASS'
 
       - name: Upload independent Coq bridge certificate
@@ -76,5 +86,10 @@ jobs:
             formal/utm/MinskyChartEncoding.vo
             formal/utm/MinskyChartScan.v
             formal/utm/MinskyChartScan.vo
+            formal/utm/MinskyNativeBounds.v
+            formal/utm/MinskyNativeBounds.vo
+            formal/utm/MinskyNaN16Words.v
+            formal/utm/MinskyNaN16Words.vo
+            formal/utm/check_minsky_nan16_words.py
           if-no-files-found: warn
           retention-days: 90
