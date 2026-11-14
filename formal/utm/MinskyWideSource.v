@@ -167,9 +167,9 @@ Lemma decode_wide_row_roundtrip :
 Proof.
   intros p [current scanned next written direction] suffix [Hc Hn].
   unfold wide_row_wellformed in *; simpl in Hc, Hn.
+  assert (Hp : p = length current) by lia.
+  subst p.
   unfold decode_wide_row, encode_wide_row; simpl.
-  repeat rewrite app_assoc.
-  rewrite <- Hc at 1.
   rewrite decode_n_bits_roundtrip.
   simpl.
   rewrite parse_source_bit_roundtrip.
