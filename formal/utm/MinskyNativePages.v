@@ -15,7 +15,7 @@ From Coq Require Import List Arith ZArith Bool Lia.
 Import ListNotations.
 Open Scope Z_scope.
 
-From NaNLM Require Import MinskyTable MinskyAddressRefinement
+From NaNLM Require Import MinskyTableData MinskyTable MinskyAddressRefinement
   MinskyChartEncoding MinskyChartScan MinskyNativeBounds.
 
 Definition page_size : Z := 4096.
@@ -225,7 +225,8 @@ Proof.
   unfold paged_step, address_step_indexed, address_step_with.
   rewrite Hhalt.
   destruct (a_halted a) eqn:Ha.
-  - repeat split; assumption.
+  - unfold paged_refines; simpl.
+    repeat split; try assumption; reflexivity.
   - rewrite Hlookup.
     destruct (find_entry (a_state a) (a_tape a (a_head a)))
       as [e |] eqn:He.
@@ -235,10 +236,10 @@ Proof.
         destruct Hmove as [-> | [-> | ->]]; lia. }
       rewrite Hvalid.
       unfold paged_refines; simpl.
-      repeat split; try assumption; try reflexivity.
+      repeat split; try assumption; try reflexivity; try lia.
       now apply page_write_refines.
     + unfold paged_refines; simpl.
-      repeat split; assumption.
+      repeat split; try assumption; reflexivity.
 Qed.
 
 Theorem paged_step_description_immutable :
@@ -277,7 +278,9 @@ Proof.
   - exact Href.
   - destruct (a_halted a) eqn:Ha.
     + destruct Href as [Hd [Hs [Hh [Hhalt Hwork]]]].
-      rewrite Hhalt, Ha. repeat split; assumption.
+      assert (Hp : p_halted c = true).
+      { rewrite Hhalt. exact Ha. }
+      rewrite Hp. repeat split; assumption.
     + assert (Hnative : p_halted c = false).
       { destruct Href as [_ [_ [_ [Hhalt _]]]].
         rewrite Hhalt. exact Ha. }
