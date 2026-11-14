@@ -238,7 +238,7 @@ Proof.
       rewrite Hvalid.
       unfold paged_refines; simpl.
       repeat split; try assumption; try reflexivity; try lia.
-      now apply page_write_refines.
+      rewrite Hhead. now apply page_write_refines.
     + unfold paged_refines; simpl.
       repeat split; try assumption; reflexivity.
 Qed.
