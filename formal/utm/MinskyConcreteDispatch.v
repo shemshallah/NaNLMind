@@ -15,6 +15,10 @@ Import ListNotations.
 From NaNLM Require Import MinskyTable MinskySourceEncoding
   MinskyConcreteEntry.
 
+Lemma encode_source_program_single :
+  forall row, encode_source_program [row] = encode_source_row row.
+Proof. reflexivity. Qed.
+
 (** Exact splitting of a concrete run, including runs that halt early. *)
 Lemma dispatch_halted_run :
   forall fuel c, c_halted c = true -> run fuel c = c.
@@ -319,19 +323,15 @@ Proof.
   rewrite encoded_program_first_decision_ten_steps.
   rewrite Hhi.
   change 7 with (length (source_row_tail row) + 1).
-  (* Normalize the next record's X marker explicitly.  In particular,
-     the source-program concatenation and the suffix must be associated
-     identically for the unbounded marker-scan theorem to apply. *)
-  change (run (length (source_row_tail row) + 1)
-    (entry_config 3 ([3; 4; 2; 2; 0; 5] ++ prefix)
-      (source_row_tail row ++ 4 :: source_row_tail next ++
-        encode_source_program rows ++ suffix)) =
-    step (entry_config 3
-      (rev (source_row_tail row) ++
-       [3; 4; 2; 2; 0; 5] ++ prefix)
-      (4 :: source_row_tail next ++ encode_source_program rows ++ suffix))).
-  apply dispatch_right_reaches_marker.
-  apply source_row_tail_is_right_scannable.
+  rewrite (dispatch_run_add (length (source_row_tail row)) 1
+    (entry_config 3 (3 :: 4 :: 2 :: 2 :: 0 :: 5 :: prefix)
+      (source_row_tail row ++
+        encode_source_program (next :: rows) ++ suffix))).
+  rewrite (dispatch_right_preserves_scan
+    (source_row_tail row) (3 :: 4 :: 2 :: 2 :: 0 :: 5 :: prefix)
+    (encode_source_program (next :: rows) ++ suffix)
+    (source_row_tail_is_right_scannable row)).
+  reflexivity.
 Qed.
 
 (** With no additional row, the same branch finds Y and stops. This is
@@ -350,9 +350,13 @@ Proof.
   change 17 with (10 + 7).
   rewrite (dispatch_run_add 10 7
     (entry_config 5 ([0; 0; 0; 5] ++ prefix)
-      (encode_source_program [row] ++ 5 :: suffix))).
+      (encode_source_row row ++ 5 :: suffix))).
+  rewrite <- (encode_source_program_single row).
   rewrite encoded_program_first_decision_ten_steps.
   rewrite Hhi.
+  change 7 with (length (source_row_tail row) + 1).
+  change (source_row_tail row ++ encode_source_program [] ++ 5 :: suffix)
+    with (source_row_tail row ++ 5 :: suffix).
   apply dispatch_right_halts_at_delimiter.
   apply source_row_tail_is_right_scannable.
 Qed.
