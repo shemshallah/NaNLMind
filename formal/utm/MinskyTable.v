@@ -124,12 +124,72 @@ Proof.
 Qed.
 
 (** Every in-range state/symbol has exactly one table entry. *)
+Definition entry_eqb (a b : Entry) : bool :=
+  (e_from a =? e_from b) && (e_read a =? e_read b) &&
+  (e_write a =? e_write b) && Z.eqb (e_move a) (e_move b) &&
+  (e_to a =? e_to b) && (e_halt a =? e_halt b).
+
+Definition lookup_eqb (q s : nat) : bool :=
+  match find_entry q s, scan_table q s with
+  | None, None => true
+  | Some a, Some b => entry_eqb a b
+  | _, _ => false
+  end.
+
+Definition check_lookup (q : nat) : bool :=
+  forallb (fun s => lookup_eqb q s) (seq 0 8).
+
+Definition check_all_lookups : bool :=
+  forallb check_lookup (seq 0 23).
+
+Lemma forallb_forall :
+  forall (A : Type) (f : A -> bool) (l : list A),
+    forallb f l = true -> forall x, In x l -> f x = true.
+Proof.
+  intros A f l. induction l as [|a l IH]; intros H x Hin.
+  - contradiction.
+  - simpl in H. apply andb_true_iff in H. destruct H as [Hfa Hfl].
+    destruct Hin as [-> | Hin].
+    + exact Hfa.
+    + apply IH; assumption.
+Qed.
+
+Lemma entry_eqb_sound :
+  forall a b, entry_eqb a b = true -> a = b.
+Proof.
+  intros a b H. destruct a as [af ar aw am at ah].
+  destruct b as [bf br bw bm bt bh]. simpl in H.
+  repeat rewrite andb_true_iff in H.
+  destruct H as [[[[[H1 H2] H3] H4] H5] H6].
+  apply Nat.eqb_eq in H1. apply Nat.eqb_eq in H2. apply Nat.eqb_eq in H3.
+  apply Z.eqb_eq in H4. apply Nat.eqb_eq in H5. apply Bool.eqb_eq in H6.
+  subst. reflexivity.
+Qed.
+
+Lemma lookup_eqb_sound :
+  forall q s, lookup_eqb q s = true ->
+    find_entry q s = scan_table q s.
+Proof.
+  intros q s H. unfold lookup_eqb in H.
+  destruct (find_entry q s) as [a|] eqn:Ea;
+  destruct (scan_table q s) as [b|] eqn:Eb; try discriminate.
+  - apply entry_eqb_sound in H. subst. reflexivity.
+  - reflexivity.
+Qed.
+
+Lemma check_all_lookups_true : check_all_lookups = true.
+Proof. vm_compute. reflexivity. Qed.
+
 Lemma find_entry_scan_valid :
   forall (q s : nat), q < 23%nat -> s < 8%nat ->
     find_entry q s = scan_table q s.
 Proof.
-  intros q s Hq Hs. unfold find_entry, scan_table.
-  interval_cases q; interval_cases s; reflexivity.
+  intros q s Hq Hs.
+  assert (Hqin : In q (seq 0 23)) by (apply in_seq; lia).
+  assert (Hsin : In s (seq 0 8)) by (apply in_seq; lia).
+  pose proof (forallb_forall _ _ _ check_all_lookups_true q Hqin) as Hqok.
+  pose proof (forallb_forall _ _ _ Hqok s Hsin) as Hsok.
+  apply lookup_eqb_sound. exact Hsok.
 Qed.
 
 Definition step_scan (c : Config) : Config :=
