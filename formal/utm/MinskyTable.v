@@ -328,10 +328,12 @@ Proof.
     + reflexivity.
     + assert (H0 := Hvalid 0 (le_0_n (S fuel))).
       destruct H0 as [Hq Hs].
-      rewrite (step_indexed_scan_agree c Hh Hq Hs).
+      assert (Hstep : step c = step_scan c) by
+        (apply step_indexed_scan_agree; assumption).
+      rewrite Hstep.
       apply IH. intros i Hi.
       specialize (Hvalid (S i) (le_n_S i fuel Hi)).
-      simpl in Hvalid. exact Hvalid.
+      simpl in Hvalid. rewrite Hstep in Hvalid. exact Hvalid.
 Qed.
 
 Print Assumptions minsky_trace_100.
