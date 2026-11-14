@@ -105,7 +105,9 @@ Proof.
     + unfold write. simpl.
       rewrite write_at_frame by lia.
       specialize (Hr (S i)).
-      destruct (t_right t) as [|x xs]; simpl in *; exact Hr.
+      destruct (t_right t) as [|x xs].
+      * destruct i; simpl in *; exact Hr.
+      * simpl in *; exact Hr.
   - intros i. unfold write. simpl.
     rewrite write_at_frame by lia.
     apply Hl.
