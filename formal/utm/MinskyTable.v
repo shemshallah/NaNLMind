@@ -157,8 +157,8 @@ Qed.
 Lemma entry_eqb_sound :
   forall a b, entry_eqb a b = true -> a = b.
 Proof.
-  intros a b H. destruct a as [af ar aw am at ah].
-  destruct b as [bf br bw bm bt bh]. simpl in H.
+  intros a b H. destruct a as [a1 a2 a3 a4 a5 a6].
+  destruct b as [b1 b2 b3 b4 b5 b6]. simpl in H.
   repeat rewrite andb_true_iff in H.
   destruct H as [[[[[H1 H2] H3] H4] H5] H6].
   apply Nat.eqb_eq in H1. apply Nat.eqb_eq in H2. apply Nat.eqb_eq in H3.
