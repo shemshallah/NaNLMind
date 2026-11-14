@@ -157,7 +157,7 @@ Proof.
   rewrite (entry_scan_unbounded (repeat 0 (S k)) 4 prefix
     (source_bit high :: tail) (variable_buffer_entry_scannable (S k))).
   rewrite variable_buffer_entry_shape.
-  rewrite app_assoc.
+  rewrite <- app_assoc.
   apply variable_buffer_state_one_dispatch.
 Qed.
 
