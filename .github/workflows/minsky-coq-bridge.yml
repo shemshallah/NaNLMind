@@ -46,7 +46,13 @@ jobs:
             formal/utm/MinskyTableData.v
           coqc -Q formal/utm NaNLM \
             -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskySourceEncoding.v
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyTable.v
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyConcreteEntry.v
           coqc -Q formal/utm NaNLM \
             -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyAddressRefinement.v
@@ -66,6 +72,8 @@ jobs:
             -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyNaN16Words.v
           coqchk -Q formal/utm NaNLM formal/utm/MinskyTable.vo
+          coqchk -Q formal/utm NaNLM formal/utm/MinskySourceEncoding.vo
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyConcreteEntry.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyAddressRefinement.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyChartEncoding.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyChartScan.vo
@@ -84,6 +92,10 @@ jobs:
             formal/utm/MinskyTableData.vo
             formal/utm/MinskyTable.v
             formal/utm/MinskyTable.vo
+            formal/utm/MinskySourceEncoding.v
+            formal/utm/MinskySourceEncoding.vo
+            formal/utm/MinskyConcreteEntry.v
+            formal/utm/MinskyConcreteEntry.vo
             formal/utm/MinskyAddressRefinement.v
             formal/utm/MinskyAddressRefinement.vo
             formal/utm/MinskyChartEncoding.v
