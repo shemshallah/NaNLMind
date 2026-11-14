@@ -20,8 +20,17 @@ GitHub Actions run does not make them interchangeable.
    write/move/state/halt effects and subsequent short runs. It also checks
    invalid states/symbols, negative tape positions and repeated halting.
    The existing 100-step native trace gate provides another concrete check.
+4. **Signed-address Coq semantics:** `MinskyAddressRefinement.v` models a
+   symbolic tape as `Z -> nat`, a signed head coordinate and an observable
+   halted flag. It proves that indexed and scanning transition lookup yield
+   identical states for every fuel-bounded address-space execution, including
+   final writes on halting transitions, and independently checks the published
+   100-step tape in this representation.
 
-The Coq theorems are formal results about the Coq models. The C++ test is an
+The Coq theorems are formal results about the Coq models. In particular,
+the zipper and signed-address trace checks use two different tape layouts,
+but a fully quantified zipper-to-address bisimulation still remains to be
+established. The C++ test is an
 executable differential test, **not** a formal verification of the compiled
 C++ runtime. In particular, chart-page layout, 64-bit integer overflow,
 serialization, and compiler behavior are outside these Coq proofs.
