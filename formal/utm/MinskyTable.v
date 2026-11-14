@@ -171,10 +171,13 @@ Lemma lookup_eqb_sound :
     find_entry q s = scan_table q s.
 Proof.
   intros q s H. unfold lookup_eqb in H.
-  destruct (find_entry q s) as [a|] eqn:Ea;
-  destruct (scan_table q s) as [b|] eqn:Eb; try discriminate.
-  - apply entry_eqb_sound in H. subst. reflexivity.
-  - reflexivity.
+  destruct (find_entry q s) as [a|] eqn:Ea.
+  - destruct (scan_table q s) as [b|] eqn:Eb.
+    + apply entry_eqb_sound in H. subst. reflexivity.
+    + discriminate.
+  - destruct (scan_table q s) as [b|] eqn:Eb.
+    + discriminate.
+    + reflexivity.
 Qed.
 
 Lemma check_all_lookups_true : check_all_lookups = true.
