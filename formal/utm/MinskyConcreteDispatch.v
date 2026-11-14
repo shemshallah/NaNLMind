@@ -319,15 +319,19 @@ Proof.
   rewrite encoded_program_first_decision_ten_steps.
   rewrite Hhi.
   change 7 with (length (source_row_tail row) + 1).
-  rewrite (dispatch_run_add (length (source_row_tail row)) 1
+  (* Normalize the next record's X marker explicitly.  In particular,
+     the source-program concatenation and the suffix must be associated
+     identically for the unbounded marker-scan theorem to apply. *)
+  change (run (length (source_row_tail row) + 1)
     (entry_config 3 ([3; 4; 2; 2; 0; 5] ++ prefix)
-      (source_row_tail row ++
-        encode_source_program (next :: rows) ++ suffix))).
-  rewrite (dispatch_right_preserves_scan
-    (source_row_tail row) ([3; 4; 2; 2; 0; 5] ++ prefix)
-    (encode_source_program (next :: rows) ++ suffix)
-    (source_row_tail_is_right_scannable row)).
-  reflexivity.
+      (source_row_tail row ++ 4 :: source_row_tail next ++
+        encode_source_program rows ++ suffix)) =
+    step (entry_config 3
+      (rev (source_row_tail row) ++
+       [3; 4; 2; 2; 0; 5] ++ prefix)
+      (4 :: source_row_tail next ++ encode_source_program rows ++ suffix))).
+  apply dispatch_right_reaches_marker.
+  apply source_row_tail_is_right_scannable.
 Qed.
 
 (** With no additional row, the same branch finds Y and stops. This is
