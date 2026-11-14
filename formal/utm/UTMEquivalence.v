@@ -18,6 +18,7 @@
     interpreter.  The latter remains a refinement obligation.
 *)
 
+From Stdlib Require Import Vector.
 From Undecidability.TM Require Import TM UTM UTM_undec.
 From Undecidability.TM.Reductions Require Import
   KrivineMclosed_HALT_to_HaltUTM.
@@ -26,13 +27,18 @@ From Undecidability.LambdaCalculus Require Import Lambda Krivine.
 From Undecidability.Synthetic Require Import Undecidability.
 From Undecidability.Shared.Libs.PSL.FiniteTypes Require Import FinTypesDef.
 
-(** The encoding used by the certified reduction.  It maps every closed
-    Krivine term to a binary tape accepted by the fixed [UTM]. *)
+Import VectorNotations.
+
+(** The explicit encoding used by the certified reduction.  This is the same
+    chain as the library's reduction, but written as a transparent function so
+    the theorem below can state the encoding directly. *)
 Definition encode_closed
     (x : { t : L.term | Lambda.closed t }) : tape (finType_CS bool) :=
-  match KrivineMclosed_HALT_to_HaltUTM.reduction with
-  | ex_intro f _ => f x
-  end.
+  let tm := proj1_sig x in
+  let cs := KrivineMclosed_HALT_to_HaltUTM.KM_MMA.input tm in
+  let ts := KrivineMclosed_HALT_to_HaltUTM.MMA_TM.encode_counters cs in
+  let t := KrivineMclosed_HALT_to_HaltUTM.MTM_TM.ts' ts in
+  Vector.hd (KrivineMclosed_HALT_to_HaltUTM.TM_BTM.ts' t).
 
 (** ** Fixed-UTM halting equivalence
 
@@ -45,9 +51,12 @@ Theorem UTM_halting_equivalence
     (x : { t : L.term | Lambda.closed t }) :
   KrivineMclosed_HALT x <-> HaltUTM (encode_closed x).
 Proof.
-  unfold encode_closed.
-  destruct KrivineMclosed_HALT_to_HaltUTM.reduction as [f Hf].
-  apply Hf.
+  destruct x as [tm Htm].
+  unfold encode_closed; simpl.
+  apply (iff_trans (KrivineMclosed_HALT_to_HaltUTM.KM_MMA_iff Htm)).
+  apply (iff_trans KrivineMclosed_HALT_to_HaltUTM.MMA_TM_iff).
+  apply (iff_trans KrivineMclosed_HALT_to_HaltUTM.MTM_TM_iff).
+  apply KrivineMclosed_HALT_to_HaltUTM.TM_BTM_iff.
 Qed.
 
 (** The same statement with the encoding written out as a function. *)
