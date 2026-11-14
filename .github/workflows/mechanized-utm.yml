@@ -139,6 +139,19 @@ jobs:
           if-no-files-found: warn
           retention-days: 90
 
+  chart-refinement:
+    name: Exhaustive C++ Minsky chart conformance
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build canonical chart and Minsky trace gates
+        run: make -j2 build/test_minsky_chart_refinement build/minsky-trace-dump
+      - name: Exhaust all Minsky state-symbol entries and terminal states
+        run: make minsky-bridge-check
+      - name: Verify 100-step executable Minsky trace
+        run: make minsky-trace-check
+
   cpp-trace:
     runs-on: ubuntu-latest
     timeout-minutes: 30

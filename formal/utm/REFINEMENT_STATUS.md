@@ -1,0 +1,51 @@
+# NaNLMind Minsky chart refinement: exact scope
+
+This directory separates three different verification claims.  A successful
+GitHub Actions run does not make them interchangeable.
+
+1. **Certified fixed binary UTM:** `UTMEquivalence.v` exposes the existing
+   fixed-machine halting equivalence from the pinned Coq Undecidability
+   Library. This is a theorem about that library's fixed UTM, not automatically
+   about the concrete 23-state/8-symbol machine below.
+2. **Concrete Minsky table:** `MinskyTableData.v` matches all 184 entries in
+   `tests/minsky_table.inc`, checked by `check_minsky_table.py`.
+   `MinskyTable.v` proves completeness, guards against out-of-domain
+   index aliasing, proves indexed/linear-scan lookup equivalence **for all
+   states and symbols**, and lifts this to every fuel-bounded formal run.
+   Halting transitions first write/move/update the state, then set the halted
+   flag. The published 100-step trace is checked by the Coq kernel.
+3. **Executable C++ conformance:** `tests/test_minsky_chart_refinement.cpp`
+   runs all 184 state-symbol entries through the chart-backed
+   `UniversalTuringMachine` and the direct `TuringMachine`, comparing
+   write/move/state/halt effects and subsequent short runs. It also checks
+   invalid states/symbols, negative tape positions and repeated halting.
+   The existing 100-step native trace gate provides another concrete check.
+
+The Coq theorems are formal results about the Coq models. The C++ test is an
+executable differential test, **not** a formal verification of the compiled
+C++ runtime. In particular, chart-page layout, 64-bit integer overflow,
+serialization, and compiler behavior are outside these Coq proofs.
+
+## Remaining research obligations
+
+- A representation invariant and simulation theorem relating the Coq tape
+  to the actual chart pages/registers of `src/universal_tm.cpp`.
+- A semantics-preserving connection between the concrete Minsky 23x8 table
+  and the certified fixed UTM's simulation chain (or a separate certified
+  universality proof for the concrete table). Their universality cannot be
+  inferred from matching a finite trace.
+- A sufficiently formal C++/machine-code refinement framework if the claim
+  is to cover the compiled native executable, rather than its modeled
+  transition logic plus exhaustive regression tests.
+
+## Reproduction
+
+```
+make minsky-bridge-check minsky-trace-check
+make mechanized-utm
+# or trigger .github/workflows/mechanized-utm.yml remotely
+```
+
+The Coq job also runs `coqchk` and emits `Print Assumptions` for the
+key Minsky correspondence theorems. Its source and compiled artifacts are
+uploaded by the workflow. No theorem is claimed until CI has actually passed.

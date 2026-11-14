@@ -62,9 +62,13 @@ Record Config := {
   c_halted : bool
 }.
 
-(** Flat row-major table lookup: entry [q,s] is at index [q*8+s]. *)
+(** Flat row-major table lookup: entry [q,s] is at index [q*8+s].
+    Bounds are essential: without the symbol check, [q,8] aliases [q+1,0],
+    which the C++ runtime correctly treats as an invalid symbol. *)
 Definition find_entry (q s : nat) : option Entry :=
-  nth_error minsky_entries (q * 8 + s).
+  if (q <? 23) && (s <? 8)
+  then nth_error minsky_entries (q * 8 + s)
+  else None.
 
 (** A literal linear scan of the transition list.  This is the executable
     interpreter's transition search, kept separate from the indexed table. *)
@@ -123,6 +127,9 @@ Lemma minsky_table_complete :
   forall (q s : nat), q < 23%nat -> s < 8%nat -> exists e, find_entry q s = Some e.
 Proof.
   intros q s Hq Hs. unfold find_entry.
+  assert (Hqb : (q <? 23) = true) by (apply Nat.ltb_lt; exact Hq).
+  assert (Hsb : (s <? 8) = true) by (apply Nat.ltb_lt; exact Hs).
+  rewrite Hqb, Hsb. simpl.
   assert (Hlt : q * 8 + s < length minsky_entries).
   { rewrite minsky_table_length. nia. }
   assert (Hsome : nth_error minsky_entries (q * 8 + s) <> None).
@@ -209,6 +216,81 @@ Proof.
   apply lookup_eqb_sound. exact Hsok.
 Qed.
 
+(** Every source key in the concrete 184-entry description is in range.  This
+    computed certificate also rules out an out-of-range scan match. *)
+Definition entry_key_in_range (e : Entry) : bool :=
+  (e_from e <? 23) && (e_read e <? 8).
+
+Lemma all_entry_keys_in_range :
+  forallb entry_key_in_range minsky_entries = true.
+Proof. vm_compute. reflexivity. Qed.
+
+Lemma minsky_entry_key_in_range :
+  forall e, In e minsky_entries ->
+    e_from e < 23%nat /\ e_read e < 8%nat.
+Proof.
+  intros e Hin.
+  pose proof (forallb_forall _ _ _ all_entry_keys_in_range e Hin) as H.
+  unfold entry_key_in_range in H.
+  apply andb_true_iff in H as [Hq Hs].
+  split; apply Nat.ltb_lt; assumption.
+Qed.
+
+Lemma scan_entry_outside :
+  forall l q s,
+    (forall e, In e l ->
+      e_from e < 23%nat /\ e_read e < 8%nat) ->
+    (23 <= q \/ 8 <= s)%nat ->
+    scan_entry q s l = None.
+Proof.
+  induction l as [|a rest IH]; intros q s Hrange Hout; simpl.
+  - reflexivity.
+  - assert (Ha : e_from a < 23%nat /\ e_read a < 8%nat).
+    { apply Hrange. now left. }
+    destruct Ha as [Haq Has].
+    assert (Hkey : (e_from a =? q) && (e_read a =? s) = false).
+    { destruct Hout as [Hq | Hs].
+      - assert (Hne : e_from a <> q) by lia.
+        apply Nat.eqb_neq in Hne. rewrite Hne. reflexivity.
+      - assert (Hne : e_read a <> s) by lia.
+        apply Nat.eqb_neq in Hne. rewrite Hne.
+        destruct (e_from a =? q); reflexivity. }
+    rewrite Hkey.
+    apply IH.
+    + intros e He. apply Hrange. now right.
+    + exact Hout.
+Qed.
+
+Lemma scan_table_outside :
+  forall q s, (23 <= q \/ 8 <= s)%nat -> scan_table q s = None.
+Proof.
+  intros q s H.
+  unfold scan_table.
+  apply scan_entry_outside.
+  - exact minsky_entry_key_in_range.
+  - exact H.
+Qed.
+
+(** The indexed table and literal C++-style scan agree even for malformed
+    states and symbols; neither may alias a different transition. *)
+Theorem find_entry_scan_all :
+  forall q s, find_entry q s = scan_table q s.
+Proof.
+  intros q s.
+  destruct (q <? 23) eqn:Hq; destruct (s <? 8) eqn:Hs.
+  - apply Nat.ltb_lt in Hq. apply Nat.ltb_lt in Hs.
+    apply find_entry_scan_valid; assumption.
+  - unfold find_entry. rewrite Hq, Hs. simpl.
+    symmetry. apply scan_table_outside. right.
+    apply Nat.ltb_ge. exact Hs.
+  - unfold find_entry. rewrite Hq. simpl.
+    symmetry. apply scan_table_outside. left.
+    apply Nat.ltb_ge. exact Hq.
+  - unfold find_entry. rewrite Hq. simpl.
+    symmetry. apply scan_table_outside. left.
+    apply Nat.ltb_ge. exact Hq.
+Qed.
+
 Definition step_scan (c : Config) : Config :=
   if c_halted c then c
   else
@@ -232,6 +314,29 @@ Proof.
   intros c Hh Hq Hs. unfold step, step_scan.
   rewrite Hh.
   rewrite (find_entry_scan_valid (c_state c) (read (c_tape c)) Hq Hs).
+  reflexivity.
+Qed.
+
+Theorem step_indexed_scan_agree_all :
+  forall c, step c = step_scan c.
+Proof.
+  intros c. unfold step, step_scan.
+  destruct (c_halted c) eqn:Hh; [reflexivity |].
+  rewrite find_entry_scan_all. reflexivity.
+Qed.
+
+Theorem minsky_halt_updates_before_flag :
+  forall c e,
+    c_halted c = false ->
+    find_entry (c_state c) (read (c_tape c)) = Some e ->
+    e_halt e = true ->
+    step c = {| c_state := e_to e;
+                c_tape := move_tape
+                  (write (c_tape c) (e_write e)) (e_move e);
+                c_halted := true |}.
+Proof.
+  intros c e Hrunning Hentry Hhalt.
+  unfold step. rewrite Hrunning, Hentry, Hhalt.
   reflexivity.
 Qed.
 
@@ -305,6 +410,19 @@ Fixpoint run_scan (fuel : nat) (c : Config) : Config :=
   | S n => if c_halted c then c else run_scan n (step_scan c)
   end.
 
+(** No trace-specific hypothesis is needed: the indexed table and the
+    scanning interpreter agree for every finite run, including halting and
+    malformed state/symbol inputs. *)
+Theorem run_indexed_scan_agree_all :
+  forall fuel c, run fuel c = run_scan fuel c.
+Proof.
+  induction fuel as [|fuel IH]; intros c; simpl.
+  - reflexivity.
+  - destruct (c_halted c) eqn:Hh; [reflexivity |].
+    rewrite (step_indexed_scan_agree_all c).
+    apply IH.
+Qed.
+
 (** The same published execution through the literal scan interpreter. *)
 Theorem minsky_trace_100_scan :
   run_scan 100 initial_config = expected_config.
@@ -338,3 +456,6 @@ Qed.
 
 Print Assumptions minsky_trace_100.
 Print Assumptions step_indexed_scan_agree.
+Print Assumptions find_entry_scan_all.
+Print Assumptions run_indexed_scan_agree_all.
+Print Assumptions minsky_halt_updates_before_flag.
