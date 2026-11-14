@@ -7,10 +7,15 @@ and input `x` to a tape configuration such that the fixed 23-state/8-symbol
 Minsky table, started in its documented state, simulates `M(x)` step for step
 and halts exactly when `M(x)` halts.
 
-**Status: open. This package does not claim it.**  A **restricted native
-encoder prototype** now emits the Minsky tape format from a 4-state/2-symbol
-source contract (`docs/86_NATIVE_MINSKY_COMPILER.md`), but it is not a general
-finite-machine compiler or a mechanized universality theorem.
+**Status: open. This package does not claim it.** A **restricted native
+encoder** emits the Minsky tape format from a 4-state/2-symbol source
+contract (`docs/86_NATIVE_MINSKY_COMPILER.md`). The Coq model
+`MinskySourceEncoding.v` proves arbitrary-list round trips and a finite-run
+refinement **for its decoded source interpreter**, not for the 23x8 table.
+`MinskyConcreteEntry.v` goes one step further: it proves the actual fixed
+table's left-scan/delimiter macro for an unbounded family of tape contents
+and its first five transitions for every encoded source row. Neither result
+is a universality theorem.
 
 The current Coq development proves the table transcription, transition lookup,
 halt ordering, published trace, and a signed-address/zipper bisimulation.  None
@@ -29,8 +34,13 @@ not a mechanized theorem for this artifact.
 - Native/C++ tests: executable conformance on the published input and a short
   encoded machine.
 
-None of these quantifies over an arbitrary encoded machine or proves the
-encoder/decoder round trip.
+The new restricted source encoder **does** prove a round trip over any
+finite list of its seven-bit records. The table-level entry macro also
+quantifies over arbitrary such source rows and surrounding tape. However,
+no theorem currently proves that the remaining table transitions implement
+even one complete decoded source instruction, nor arbitrary runs of those
+instructions. The finite row format is also restricted to four states and
+two symbols, so a general source-machine reduction is still absent.
 
 The added `MinskyNativePages.v` supplies a bounded-run refinement for a
 functional model of the current separate description/work-tape layout,
@@ -46,11 +56,13 @@ A complete proof needs at least:
 2. **Encoding.** Computable functions `encode_config`, `encode_machine`, and
    `decode_tape` from the source model into the Minsky tape format, with a
    proof that decoding recovers the source configuration (including blank
-   cells and signed head positions).
+   cells and signed head positions). Encoding/decoding individual restricted
+   instruction records is done; full configuration encoding is not.
 3. **One-step commutation.** For every source configuration `c`, if the source
    machine takes a transition to `c'`, the Minsky table's next configuration
    decodes to `c'`; if the source halts, the table enters its halt entry after
-   writing the final symbol and updating state/head.
+   writing the final symbol and updating state/head. The concrete entry scan
+   is proven; instruction selection, data write, movement and halting remain.
 4. **Finite-control proof.** The table's control state remains in `0..22` and
    the tape/head encoding remains well formed for every reachable step.
 5. **Arbitrary-run lifting.** Induct over the source run (or the Minsky fuel)
@@ -86,8 +98,9 @@ A native NaN16 compiler/refinement would need to:
 - decode the final tape and state;
 - compare against an independent source-machine trace.
 
-The current native fixture only executes the published Minsky trace.  It does
-not implement the encoder or arbitrary source execution.
+The native NaN16 compiler fixture now emits a restricted two-row source
+program, executes the fixed table, and checks its final tape. This is useful
+conformance evidence, not arbitrary-source-machine equivalence.
 
 ## Publication rule
 
@@ -95,7 +108,8 @@ Do not describe the concrete 23x8 table as "proved universal" until the
 statement above is checked without axioms and a compiler/decoder proof exists.
 The honest current claim is:
 
-> a checked fixed-UTM construction, a mechanized concrete Minsky table, a
-> signed-address refinement, and executable conformance evidence.
+> a checked fixed-UTM construction, a mechanized concrete Minsky table,
+> signed-address refinement, a restricted source-description round trip,
+> a fixed-table entry macro, and executable conformance evidence.
 
 That is the claim recorded in `docs/84_VERIFIED_UTM_SYSTEM.md`.

@@ -121,8 +121,9 @@ Theorem source_program_roundtrip :
 Proof.
   induction rows as [|row rows IH]; intro suffix.
   - reflexivity.
-  - unfold encode_source_program in *; simpl.
-    rewrite app_assoc.
+  - change (decode_source_prefix (S (length rows))
+        (encode_source_row row ++ (encode_source_program rows ++ suffix)) =
+        Some (row :: rows, suffix)).
     rewrite decode_source_prefix_cons.
     rewrite IH. reflexivity.
 Qed.
