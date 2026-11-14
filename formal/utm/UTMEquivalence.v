@@ -18,7 +18,7 @@
     interpreter.  The latter remains a refinement obligation.
 *)
 
-From Stdlib Require Import Vector.
+From Coq Require Import Vector.
 From Undecidability.TM Require Import TM UTM UTM_undec.
 From Undecidability.TM.Reductions Require Import
   KrivineMclosed_HALT_to_HaltUTM.
