@@ -261,7 +261,8 @@ Proof.
       (4 :: 0 :: tail ++ suffix))) with
     (entry_config 2 ([2; 2; 0; 5] ++ prefix)
       (4 :: 2 :: tail ++ suffix)).
-  apply dispatch_left_to_delimiter.
+  apply (dispatch_left_to_delimiter [2; 2; 0] 4 prefix
+    (2 :: tail ++ suffix)).
   constructor; [unfold dispatch_left_symbol; auto 8 |].
   constructor; [unfold dispatch_left_symbol; auto 8 |].
   constructor; [unfold dispatch_left_symbol; auto 8 |].
@@ -288,7 +289,8 @@ Proof.
       (encode_source_program (row :: rows) ++ suffix))).
   rewrite encoded_program_first_decision_ten_steps.
   rewrite Hhi.
-  apply dispatch_left_to_delimiter.
+  apply (dispatch_left_to_delimiter [2; 2; 0] 4 prefix
+    (2 :: source_row_tail row ++ encode_source_program rows ++ suffix)).
   constructor; [unfold dispatch_left_symbol; auto 8 |].
   constructor; [unfold dispatch_left_symbol; auto 8 |].
   constructor; [unfold dispatch_left_symbol; auto 8 |].
