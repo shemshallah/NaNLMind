@@ -36,6 +36,7 @@ Lemma chart_row_roundtrip :
     decode_chart_row (encode_chart_row e) = Some e.
 Proof.
   intros [q s w m dest stop] Hmove.
+  simpl in Hmove.
   unfold decode_chart_row, encode_chart_row; simpl.
   assert (Hm : 0 <= m + 1) by lia.
   rewrite (Z2Nat.id (m + 1)) by exact Hm.
