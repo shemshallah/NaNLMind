@@ -201,7 +201,7 @@ Definition minsky_entries : list Entry := [
   mkEntry 22 5 5 (-1)%Z 22 false;
   mkEntry 22 6 6 (-1)%Z 22 false;
   mkEntry 22 7 7 (-1)%Z 22 false
-]
+].
 
 Definition minsky_entry_count : nat := 184.
 Lemma minsky_entries_length : length minsky_entries = minsky_entry_count.
