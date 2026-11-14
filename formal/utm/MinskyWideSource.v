@@ -170,6 +170,7 @@ Proof.
   assert (Hp : p = length current) by lia.
   subst p.
   unfold decode_wide_row, encode_wide_row; simpl.
+  match goal with |- ?G => idtac "WIDE_DECODE_GOAL:" G end.
   rewrite decode_n_bits_roundtrip.
   simpl.
   rewrite parse_source_bit_roundtrip.
