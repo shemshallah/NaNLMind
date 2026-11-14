@@ -53,6 +53,16 @@ GitHub Actions run does not make them interchangeable.
    of unrestricted runtime equivalence**: C++ storage separation, integer
    bounds, and page allocation still require verification or architectural
    correction before promoting an arbitrary-execution claim.
+6. **Sequential C++ chart scan:** `MinskyChartScan.v` decodes each six-byte
+   block in order and checks the first matching transition, modeling the
+   actual linear search rather than only direct row indexing. Its generic
+   refinement theorem permits repeated state/symbol keys (first match wins)
+   for any finite input list with encodable movement directions. Applied to
+   all 184 Minsky rows, it lifts byte-list scan equivalence to individual
+   steps, every fuel-bounded run, and zipper/address bisimulation. Both Coq
+   workflows compile it and independently run `coqchk` on the certificate.
+   This proof concerns the flattened byte list; physical tape pages and
+   integer overflow remain outstanding obligations.
 
 The Coq theorems are formal results about the Coq models. The general
 zipper-to-signed-address simulation bridges these two formal representations,

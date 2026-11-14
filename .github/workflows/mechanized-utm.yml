@@ -117,12 +117,15 @@ jobs:
             formal/utm/MinskyAddressRefinement.v
           coqc -Q formal/utm NaNLM -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyChartEncoding.v
+          coqc -Q formal/utm NaNLM -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyChartScan.v
           coqchk -Q coq-library-undecidability/theories Undecidability \
             formal/utm/UTMEquivalence.vo
           coqchk -Q formal/utm NaNLM formal/utm/InterpreterRefinement.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyTable.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyAddressRefinement.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyChartEncoding.vo
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyChartScan.vo
           echo "NANLM MECHANIZED UTM + MINSKY ADDRESS REFINEMENT PASS"
 
       - name: Upload proof artifacts
@@ -148,6 +151,9 @@ jobs:
             formal/utm/MinskyChartEncoding.v
             formal/utm/MinskyChartEncoding.vo
             formal/utm/MinskyChartEncoding.glob
+            formal/utm/MinskyChartScan.v
+            formal/utm/MinskyChartScan.vo
+            formal/utm/MinskyChartScan.glob
           if-no-files-found: warn
           retention-days: 90
 

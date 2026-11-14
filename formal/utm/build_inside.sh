@@ -29,10 +29,12 @@ coqc -Q formal/utm NaNLM -w -notation-overridden,-stdlib-vector formal/utm/Minsk
 coqc -Q formal/utm NaNLM -w -notation-overridden,-stdlib-vector formal/utm/MinskyTable.v
 coqc -Q formal/utm NaNLM -w -notation-overridden,-stdlib-vector formal/utm/MinskyAddressRefinement.v
 coqc -Q formal/utm NaNLM -w -notation-overridden,-stdlib-vector formal/utm/MinskyChartEncoding.v
+coqc -Q formal/utm NaNLM -w -notation-overridden,-stdlib-vector formal/utm/MinskyChartScan.v
 coqchk -Q "$LIB/theories" Undecidability formal/utm/UTMEquivalence.vo
 coqchk -Q formal/utm NaNLM formal/utm/InterpreterRefinement.vo
 coqchk -Q formal/utm NaNLM formal/utm/MinskyTable.vo
 coqchk -Q formal/utm NaNLM formal/utm/MinskyAddressRefinement.vo
 coqchk -Q formal/utm NaNLM formal/utm/MinskyChartEncoding.vo
+coqchk -Q formal/utm NaNLM formal/utm/MinskyChartScan.vo
 python3 formal/utm/check_minsky_table.py
 echo "[coq] theorems checked: UTM_halting_equivalence, utm_run_refines, minsky_trace_100, address_run_refines, address_trace_100"
