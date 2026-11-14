@@ -98,6 +98,9 @@ jobs:
             TM/UTM.vo TM/UTM_undec.vo \
             TM/Reductions/KrivineMclosed_HALT_to_HaltUTM.vo
 
+      - name: Check Minsky table transcription
+        run: python3 formal/utm/check_minsky_table.py
+
       - name: Check fixed UTM theorem and Minsky table
         run: |
           set -euo pipefail
