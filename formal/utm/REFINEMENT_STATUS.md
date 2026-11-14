@@ -25,12 +25,16 @@ GitHub Actions run does not make them interchangeable.
    halted flag. It proves that indexed and scanning transition lookup yield
    identical states for every fuel-bounded address-space execution, including
    final writes on halting transitions, and independently checks the published
-   100-step tape in this representation.
+   100-step tape in this representation. Its `tape_bisim` representation
+   invariant relates **every** cell of a zipper tape to a signed address,
+   not just cells visited by a short trace. `zipper_address_step_bisim` and
+   `zipper_address_run_bisim` are the corresponding one-step and arbitrary
+   finite-execution proof obligations; `embed_config` constructs the
+   corresponding address representation for any zipper and signed head.
 
-The Coq theorems are formal results about the Coq models. In particular,
-the zipper and signed-address trace checks use two different tape layouts,
-but a fully quantified zipper-to-address bisimulation still remains to be
-established. The C++ test is an
+The Coq theorems are formal results about the Coq models. The general
+zipper-to-signed-address simulation bridges these two formal representations,
+not the concrete chart allocator. The C++ test is an
 executable differential test, **not** a formal verification of the compiled
 C++ runtime. In particular, chart-page layout, 64-bit integer overflow,
 serialization, and compiler behavior are outside these Coq proofs.

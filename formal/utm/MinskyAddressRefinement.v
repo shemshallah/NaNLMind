@@ -46,6 +46,192 @@ Proof.
   apply Z.eqb_neq in Hne. rewrite Hne. reflexivity.
 Qed.
 
+(** A representation invariant for the entire unbounded tape.  The first
+    clause reads cells at and to the right of the head, and the second
+    reads the cells to its left, nearest first.  Both representations
+    implicitly fill absent cells with the same blank symbol. *)
+Definition tape_bisim (t : Tape) (h : Z) (memory : Z -> nat) : Prop :=
+  (forall i : nat,
+      memory (h + Z.of_nat i) = nth i (t_right t) blank) /\
+  (forall i : nat,
+      memory (h - Z.of_nat (S i)) = nth i (t_left t) blank).
+
+(** A constructive embedding: every zipper tape has an equivalent tape
+    in the signed-address representation, at ANY chosen head coordinate. *)
+Definition embed_tape (t : Tape) (h : Z) : Z -> nat :=
+  fun p =>
+    if (h <=? p)%Z
+    then nth (Z.to_nat (p - h)) (t_right t) blank
+    else nth (Z.to_nat (h - p - 1)) (t_left t) blank.
+
+Lemma embed_tape_bisim :
+  forall t h, tape_bisim t h (embed_tape t h).
+Proof.
+  intros t h. unfold tape_bisim, embed_tape. split; intros i.
+  - assert (Hge : (h <=? h + Z.of_nat i)%Z = true).
+    { apply Z.leb_le. lia. }
+    rewrite Hge.
+    replace (Z.to_nat (h + Z.of_nat i - h)) with i by lia.
+    reflexivity.
+  - assert (Hlt : (h <=? h - Z.of_nat (S i))%Z = false).
+    { apply Z.leb_gt. lia. }
+    rewrite Hlt.
+    replace (Z.to_nat (h - (h - Z.of_nat (S i)) - 1))
+      with i by lia.
+    reflexivity.
+Qed.
+
+Lemma tape_bisim_read :
+  forall t h memory, tape_bisim t h memory ->
+    read t = memory h.
+Proof.
+  intros t h memory [Hr _].
+  specialize (Hr 0%nat). simpl in Hr.
+  unfold read. destruct (t_right t); simpl in *; symmetry; exact Hr.
+Qed.
+
+Lemma tape_bisim_write :
+  forall t h memory symbol,
+    tape_bisim t h memory ->
+    tape_bisim (write t symbol) h (write_at memory h symbol).
+Proof.
+  intros t h memory symbol [Hr Hl].
+  split.
+  - intros [|i].
+    + simpl. rewrite write_at_head.
+      unfold write. simpl. destruct (t_right t); reflexivity.
+    + unfold write. simpl.
+      rewrite write_at_frame by lia.
+      specialize (Hr (S i)).
+      destruct (t_right t) as [|x xs]; simpl in *; exact Hr.
+  - intros i. unfold write. simpl.
+    rewrite write_at_frame by lia.
+    apply Hl.
+Qed.
+
+Lemma tape_bisim_move_left :
+  forall t h memory,
+    tape_bisim t h memory ->
+    tape_bisim (move_left t) (h - 1) memory.
+Proof.
+  intros t h memory [Hr Hl].
+  unfold move_left.
+  destruct (t_left t) as [|x xs] eqn:Hleft; split.
+  - intros [|i].
+    + simpl. replace (h - 1 + 0) with
+        (h - Z.of_nat 1) by lia.
+      specialize (Hl 0%nat). rewrite Hleft in Hl.
+      simpl in Hl. exact Hl.
+    + simpl. replace (h - 1 + Z.of_nat (S i)) with
+        (h + Z.of_nat i) by lia.
+      apply Hr.
+  - intros i. simpl.
+    replace (h - 1 - Z.of_nat (S i)) with
+      (h - Z.of_nat (S (S i))) by lia.
+    specialize (Hl (S i)). rewrite Hleft in Hl.
+    simpl in Hl. exact Hl.
+  - intros [|i].
+    + simpl. replace (h - 1 + 0) with
+        (h - Z.of_nat 1) by lia.
+      specialize (Hl 0%nat). rewrite Hleft in Hl.
+      simpl in Hl. exact Hl.
+    + simpl. replace (h - 1 + Z.of_nat (S i)) with
+        (h + Z.of_nat i) by lia.
+      apply Hr.
+  - intros i. simpl.
+    replace (h - 1 - Z.of_nat (S i)) with
+      (h - Z.of_nat (S (S i))) by lia.
+    specialize (Hl (S i)). rewrite Hleft in Hl.
+    simpl in Hl. exact Hl.
+Qed.
+
+Lemma tape_bisim_move_right :
+  forall t h memory,
+    tape_bisim t h memory ->
+    tape_bisim (move_right t) (h + 1) memory.
+Proof.
+  intros t h memory [Hr Hl].
+  unfold move_right.
+  destruct (t_right t) as [|x xs] eqn:Hright; split.
+  - intros i. simpl.
+    replace (h + 1 + Z.of_nat i) with
+      (h + Z.of_nat (S i)) by lia.
+    specialize (Hr (S i)). rewrite Hright in Hr.
+    simpl in Hr. exact Hr.
+  - intros [|i].
+    + simpl. replace (h + 1 - Z.of_nat 1) with
+        (h + Z.of_nat 0) by lia.
+      specialize (Hr 0%nat). rewrite Hright in Hr.
+      simpl in Hr. exact Hr.
+    + simpl. replace (h + 1 - Z.of_nat (S (S i))) with
+        (h - Z.of_nat (S i)) by lia.
+      apply Hl.
+  - intros i. simpl.
+    replace (h + 1 + Z.of_nat i) with
+      (h + Z.of_nat (S i)) by lia.
+    specialize (Hr (S i)). rewrite Hright in Hr.
+    simpl in Hr. exact Hr.
+  - intros [|i].
+    + simpl. replace (h + 1 - Z.of_nat 1) with
+        (h + Z.of_nat 0) by lia.
+      specialize (Hr 0%nat). rewrite Hright in Hr.
+      simpl in Hr. exact Hr.
+    + simpl. replace (h + 1 - Z.of_nat (S (S i))) with
+        (h - Z.of_nat (S i)) by lia.
+      apply Hl.
+Qed.
+
+Lemma tape_bisim_move_tape :
+  forall t h memory direction,
+    (direction = -1 \/ direction = 0 \/ direction = 1) ->
+    tape_bisim t h memory ->
+    tape_bisim (move_tape t direction) (h + direction) memory.
+Proof.
+  intros t h memory direction Hdirection Htape.
+  destruct Hdirection as [-> | [-> | ->]]; unfold move_tape; simpl.
+  - replace (h + -1) with (h - 1) by lia.
+    apply tape_bisim_move_left. exact Htape.
+  - replace (h + 0) with h by lia. exact Htape.
+  - apply tape_bisim_move_right. exact Htape.
+Qed.
+
+(** A finite, kernel-evaluated certificate rules out unexpected movement
+    directions in all 184 entries.  It is this fact that allows the exact
+    C++ address update [+ direction] to match zipper movement. *)
+Definition move_allowed (e : Entry) : bool :=
+  (Z.eqb (e_move e) (-1) || Z.eqb (e_move e) 0) ||
+  Z.eqb (e_move e) 1.
+
+Lemma minsky_moves_allowed :
+  forallb move_allowed minsky_entries = true.
+Proof. vm_compute. reflexivity. Qed.
+
+Lemma minsky_entry_move_allowed :
+  forall e, In e minsky_entries ->
+    e_move e = -1 \/ e_move e = 0 \/ e_move e = 1.
+Proof.
+  intros e Hin.
+  pose proof (MinskyTable.forallb_forall _ _ _
+    minsky_moves_allowed e Hin) as H.
+  unfold move_allowed in H.
+  apply orb_true_iff in H as [H | H].
+  - apply orb_true_iff in H as [H | H].
+    + left. now apply Z.eqb_eq.
+    + right. left. now apply Z.eqb_eq.
+  - right. right. now apply Z.eqb_eq.
+Qed.
+
+Lemma find_entry_move_allowed :
+  forall q s e, find_entry q s = Some e ->
+    e_move e = -1 \/ e_move e = 0 \/ e_move e = 1.
+Proof.
+  intros q s e Hfind.
+  unfold find_entry in Hfind.
+  destruct ((q <? 23)%nat && (s <? 8)%nat); try discriminate.
+  apply minsky_entry_move_allowed.
+  eapply nth_error_In. exact Hfind.
+Qed.
+
 Definition address_halt (c : AddressConfig) : AddressConfig :=
   {| a_state := a_state c;
      a_head := a_head c;
@@ -73,6 +259,52 @@ Definition address_step_indexed : AddressConfig -> AddressConfig :=
 
 Definition address_step_scanned : AddressConfig -> AddressConfig :=
   address_step_with scan_table.
+
+(** This is the missing representation-level bridge.  It states equality
+    of state, halt flag, and EVERY tape cell (not just a bounded trace).
+    The address head may be negative and the tape may be arbitrarily long. *)
+Definition config_bisim (zip : Config) (addr : AddressConfig) : Prop :=
+  c_state zip = a_state addr /\
+  c_halted zip = a_halted addr /\
+  tape_bisim (c_tape zip) (a_head addr) (a_tape addr).
+
+Definition embed_config (c : Config) (h : Z) : AddressConfig :=
+  {| a_state := c_state c;
+     a_head := h;
+     a_tape := embed_tape (c_tape c) h;
+     a_halted := c_halted c |}.
+
+Lemma embed_config_bisim :
+  forall c h, config_bisim c (embed_config c h).
+Proof.
+  intros c h. unfold config_bisim, embed_config. simpl.
+  split; [reflexivity |]. split; [reflexivity |].
+  apply embed_tape_bisim.
+Qed.
+
+Theorem zipper_address_step_bisim :
+  forall zip addr,
+    config_bisim zip addr ->
+    config_bisim (step zip) (address_step_indexed addr).
+Proof.
+  intros [q t stopped] [qa h memory stopped_a]
+    [Hstate [Hhalt Htape]].
+  simpl in *. subst qa stopped_a.
+  unfold step, address_step_indexed, address_step_with.
+  simpl.
+  destruct stopped eqn:Hstopped.
+  - unfold config_bisim. simpl.
+    split; [reflexivity |]. split; [reflexivity |]. exact Htape.
+  - rewrite <- (tape_bisim_read t h memory Htape).
+    destruct (find_entry q (read t)) as [e|] eqn:Hlookup.
+    + destruct (e_halt e) eqn:Hentryhalt; unfold config_bisim;
+        simpl; (split; [reflexivity |]); (split; [reflexivity |]);
+        apply tape_bisim_move_tape;
+        [eapply find_entry_move_allowed; exact Hlookup |
+         apply tape_bisim_write; exact Htape].
+    + unfold config_bisim. simpl.
+      split; [reflexivity |]. split; [reflexivity |]. exact Htape.
+Qed.
 
 Theorem address_step_refines :
   forall c, address_step_indexed c = address_step_scanned c.
@@ -102,6 +334,47 @@ Proof.
   - reflexivity.
   - destruct (a_halted c); [reflexivity |].
     rewrite (address_step_refines c). apply IH.
+Qed.
+
+Theorem zipper_address_run_bisim :
+  forall fuel zip addr,
+    config_bisim zip addr ->
+    config_bisim (run fuel zip)
+      (address_run fuel address_step_indexed addr).
+Proof.
+  induction fuel as [|fuel IH]; intros zip addr Hsim; simpl.
+  - exact Hsim.
+  - destruct Hsim as [Hstate [Hhalt Htape]].
+    destruct (c_halted zip) eqn:Hstopped.
+    + rewrite <- Hhalt. rewrite Hstopped.
+      unfold config_bisim.
+      split; [exact Hstate |]. split; [exact Hhalt |]. exact Htape.
+    + rewrite <- Hhalt. rewrite Hstopped.
+      apply IH. apply zipper_address_step_bisim.
+      unfold config_bisim.
+      split; [exact Hstate |]. split; [exact Hhalt |]. exact Htape.
+Qed.
+
+Corollary every_zipper_run_has_address_refinement :
+  forall fuel zip h,
+    config_bisim (run fuel zip)
+      (address_run fuel address_step_indexed (embed_config zip h)).
+Proof.
+  intros fuel zip h.
+  apply zipper_address_run_bisim.
+  apply embed_config_bisim.
+Qed.
+
+Corollary zipper_address_scanned_run_bisim :
+  forall fuel zip addr,
+    config_bisim zip addr ->
+    config_bisim (run_scan fuel zip)
+      (address_run fuel address_step_scanned addr).
+Proof.
+  intros fuel zip addr Hsim.
+  rewrite <- (run_indexed_scan_agree_all fuel zip).
+  rewrite <- (address_run_refines fuel addr).
+  apply zipper_address_run_bisim. exact Hsim.
 Qed.
 
 Theorem address_halt_writes_before_flag :
@@ -157,5 +430,9 @@ Qed.
 
 Print Assumptions address_step_refines.
 Print Assumptions address_run_refines.
+Print Assumptions zipper_address_step_bisim.
+Print Assumptions zipper_address_run_bisim.
+Print Assumptions zipper_address_scanned_run_bisim.
+Print Assumptions every_zipper_run_has_address_refinement.
 Print Assumptions address_halt_writes_before_flag.
 Print Assumptions address_trace_100.
