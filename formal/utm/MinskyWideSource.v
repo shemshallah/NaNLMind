@@ -85,7 +85,9 @@ Proof.
   repeat rewrite app_length.
   repeat rewrite map_length.
   simpl.
-  match goal with |- ?G => idtac "WIDE_GOAL:" G end.
+  repeat rewrite app_length.
+  repeat rewrite map_length.
+  simpl.
   lia.
 Qed.
 
