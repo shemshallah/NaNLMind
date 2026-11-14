@@ -80,7 +80,7 @@ C++ halting order). It is assembled and run by the canonical NaN0S toolchain:
 
 ```sh
 python3 tools/run_nan16_fixtures.py --only minsky_table
-# [PASS] minsky_table: steps=32725 marker=MTH MINSKY NATIVE PASS
+# [PASS] minsky_table: steps=21025 marker=MTH MINSKY NATIVE PASS
 ```
 
 The C++ runtime trace is checked independently against the table source:

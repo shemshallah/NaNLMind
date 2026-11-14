@@ -80,7 +80,7 @@ address representation for any zipper and head coordinate.
 
 ```text
 native NaN16 Minsky fixture:
-  [PASS] minsky_table: steps=32725 marker=MTH MINSKY NATIVE PASS
+  [PASS] minsky_table: steps=21025 marker=MTH MINSKY NATIVE PASS
 
 C++ runtime trace:
   MINSKY C++ TRACE CONFORMANCE PASS (100/100 steps)

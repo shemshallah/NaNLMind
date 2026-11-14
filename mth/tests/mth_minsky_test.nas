@@ -53,7 +53,7 @@ LD r2,r0,@head
 LD r3,r0,@tbase
 ADD r3,r3,r2
 LD r4,r3,0
-LD r5,r0,@table
+MOVI r5,@table
 MOVI r6,184
 MOVI r8,0
 scan:

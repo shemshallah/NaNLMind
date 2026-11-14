@@ -126,6 +126,8 @@ FIXTURES = (
             "MTH NGRAM TRAIN PASS"),
     Fixture("minsky_table", "mth/tests/mth_minsky_test.nas", 500_000,
             "MTH MINSKY NATIVE PASS"),
+    Fixture("minsky_encoded", "mth/tests/mth_minsky_encoded_test.nas", 500_000,
+            "MTH MINSKY NATIVE PASS"),
 )
 
 
