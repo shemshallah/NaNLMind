@@ -163,7 +163,9 @@ Theorem minsky_trace_head :
             length (t_left (c_tape c)) = 38 /\
             t_right (c_tape c) = skipn 38 expected_cells.
 Proof.
-  exists expected_config. repeat split; reflexivity.
+  exists expected_config. split.
+  - apply minsky_trace_100.
+  - repeat split; reflexivity.
 Qed.
 
 Print Assumptions minsky_trace_100.

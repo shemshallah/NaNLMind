@@ -107,6 +107,8 @@ jobs:
           coqc -Q formal/utm NaNLM -w -notation-overridden,-stdlib-vector \
             formal/utm/InterpreterRefinement.v
           coqc -Q formal/utm NaNLM -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyTableData.v
+          coqc -Q formal/utm NaNLM -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyTable.v
           coqchk -Q coq-library-undecidability/theories Undecidability \
             formal/utm/UTMEquivalence.vo
@@ -128,6 +130,7 @@ jobs:
             formal/utm/InterpreterRefinement.glob
             formal/utm/MinskyTable.v
             formal/utm/MinskyTableData.v
+            formal/utm/MinskyTableData.vo
             formal/utm/MinskyTable.vo
             formal/utm/MinskyTable.glob
           if-no-files-found: warn
