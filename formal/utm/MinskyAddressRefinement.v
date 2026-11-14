@@ -124,7 +124,7 @@ Proof.
   - intros [|i].
     + simpl. replace (h - 1 + 0) with
         (h - Z.of_nat 1) by lia.
-      specialize (Hl 0%nat). rewrite Hleft in Hl.
+      specialize (Hl 0%nat).
       simpl in Hl. exact Hl.
     + simpl. replace (h - 1 + Z.of_nat (S i)) with
         (h + Z.of_nat i) by lia.
@@ -132,12 +132,12 @@ Proof.
   - intros i. simpl.
     replace (h - 1 - Z.of_nat (S i)) with
       (h - Z.of_nat (S (S i))) by lia.
-    specialize (Hl (S i)). rewrite Hleft in Hl.
+    specialize (Hl (S i)).
     simpl in Hl. exact Hl.
   - intros [|i].
     + simpl. replace (h - 1 + 0) with
         (h - Z.of_nat 1) by lia.
-      specialize (Hl 0%nat). rewrite Hleft in Hl.
+      specialize (Hl 0%nat).
       simpl in Hl. exact Hl.
     + simpl. replace (h - 1 + Z.of_nat (S i)) with
         (h + Z.of_nat i) by lia.
@@ -145,7 +145,7 @@ Proof.
   - intros i. simpl.
     replace (h - 1 - Z.of_nat (S i)) with
       (h - Z.of_nat (S (S i))) by lia.
-    specialize (Hl (S i)). rewrite Hleft in Hl.
+    specialize (Hl (S i)).
     simpl in Hl. exact Hl.
 Qed.
 
@@ -160,12 +160,12 @@ Proof.
   - intros i. simpl.
     replace (h + 1 + Z.of_nat i) with
       (h + Z.of_nat (S i)) by lia.
-    specialize (Hr (S i)). rewrite Hright in Hr.
+    specialize (Hr (S i)).
     simpl in Hr. exact Hr.
   - intros [|i].
     + simpl. replace (h + 1 - Z.of_nat 1) with
         (h + Z.of_nat 0) by lia.
-      specialize (Hr 0%nat). rewrite Hright in Hr.
+      specialize (Hr 0%nat).
       simpl in Hr. exact Hr.
     + simpl. replace (h + 1 - Z.of_nat (S (S i))) with
         (h - Z.of_nat (S i)) by lia.
@@ -173,12 +173,12 @@ Proof.
   - intros i. simpl.
     replace (h + 1 + Z.of_nat i) with
       (h + Z.of_nat (S i)) by lia.
-    specialize (Hr (S i)). rewrite Hright in Hr.
+    specialize (Hr (S i)).
     simpl in Hr. exact Hr.
   - intros [|i].
     + simpl. replace (h + 1 - Z.of_nat 1) with
         (h + Z.of_nat 0) by lia.
-      specialize (Hr 0%nat). rewrite Hright in Hr.
+      specialize (Hr 0%nat).
       simpl in Hr. exact Hr.
     + simpl. replace (h + 1 - Z.of_nat (S (S i))) with
         (h - Z.of_nat (S i)) by lia.
