@@ -65,7 +65,9 @@ Theorem chart_scan_bytes_matches_rows :
 Proof.
   induction rows as [|e rest IH]; intros q s Hmoves.
   - reflexivity.
-  - simpl.
+  - (* Keep the encoded row opaque so the scanner's six-byte lemma
+       remains visible to rewriting. A full [simpl] unfolds the scan. *)
+    cbn [map concat scan_entry].
     rewrite chart_scan_bytes_cons.
     + destruct (Nat.eqb (e_from e) q && Nat.eqb (e_read e) s)%bool.
       * reflexivity.
