@@ -127,8 +127,11 @@ Proof.
       specialize (Hl 0%nat).
       simpl in Hl. exact Hl.
     + simpl. rewrite <- (Hr i). f_equal. lia.
-  - intros i. simpl.
-    rewrite <- (Hl (S i)). f_equal. lia.
+  - intros i.
+    specialize (Hl (S i)).
+    replace (h - 1 - Z.of_nat (S i)) with
+      (h - Z.of_nat (S (S i))) by lia.
+    destruct i; simpl in *; exact Hl.
   - intros [|i].
     + simpl. replace (h - 1 + 0) with
         (h - Z.of_nat 1) by lia.
@@ -147,8 +150,11 @@ Proof.
   intros t h memory [Hr Hl].
   unfold move_right.
   destruct (t_right t) as [|x xs] eqn:Hright; split.
-  - intros i. simpl.
-    rewrite <- (Hr (S i)). f_equal. lia.
+  - intros i.
+    specialize (Hr (S i)).
+    replace (h + 1 + Z.of_nat i) with
+      (h + Z.of_nat (S i)) by lia.
+    destruct i; simpl in *; exact Hr.
   - intros [|i].
     + simpl. replace (h + 1 - Z.of_nat 1) with
         (h + Z.of_nat 0) by lia.
