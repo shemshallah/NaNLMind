@@ -44,10 +44,9 @@ This is the scanner/step refinement for a description that is a graph of an
 independent reference transition function, plus a concrete binary-increment
 corollary (`bin_run_refines`).
 
-The file also exports `UTM_simulates_closed_Krivine` and
-`UTM_halting_undecidable`, and ends with `Print Assumptions`, so the CI log
-shows the theorem is closed under the global context (no axioms, parameters, or
-admits introduced by this file).
+The file also exports `UTM_halting_undecidable`, and ends with
+`Print Assumptions`, so the CI log shows the theorem is closed under the global
+context (no axioms, parameters, or admits introduced by this file).
 
 ## 2. Run it
 
