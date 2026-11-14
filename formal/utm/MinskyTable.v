@@ -168,7 +168,7 @@ Proof.
   simpl in Hfrom, Hread, H2, H3, H4.
   apply Nat.eqb_eq in Hfrom. apply Nat.eqb_eq in Hread.
   apply Nat.eqb_eq in H2. apply Z.eqb_eq in H3. apply Nat.eqb_eq in H4.
-  subst. reflexivity.
+  subst. all: reflexivity.
 Qed.
 
 Lemma lookup_eqb_sound :
