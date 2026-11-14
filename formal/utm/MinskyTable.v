@@ -92,7 +92,7 @@ Lemma minsky_table_length : length minsky_entries = 184%nat.
 Proof. reflexivity. Qed.
 
 Lemma minsky_table_complete :
-  forall q s, q < 23 -> s < 8 -> exists e, find_entry q s = Some e.
+  forall (q s : nat), q < 23%nat -> s < 8%nat -> exists e, find_entry q s = Some e.
 Proof.
   intros q s Hq Hs. unfold find_entry.
   assert (Hlt : q * 8 + s < length minsky_entries).
