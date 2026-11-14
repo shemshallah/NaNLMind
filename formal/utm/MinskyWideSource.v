@@ -85,10 +85,7 @@ Proof.
   repeat rewrite app_length.
   repeat rewrite map_length.
   simpl.
-  rewrite app_length.
-  rewrite map_length.
-  rewrite Hcurrent, Hnext.
-  simpl.
+  match goal with |- ?G => idtac "WIDE_GOAL:" G end.
   lia.
 Qed.
 
@@ -111,7 +108,9 @@ Qed.
 Theorem wide_two_bit_is_wellformed :
   forall r, wide_row_wellformed 2 (widen_two_bit_row r).
 Proof.
-  intros [a b c d e f g]. reflexivity.
+  intros [a b c d e f g].
+  unfold wide_row_wellformed, widen_two_bit_row; simpl.
+  split; reflexivity.
 Qed.
 
 Definition wide_nine_bit_example : WideSourceRow :=
