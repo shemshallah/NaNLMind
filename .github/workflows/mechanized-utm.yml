@@ -102,6 +102,7 @@ jobs:
         run: |
           python3 formal/utm/check_minsky_table.py
           python3 formal/utm/check_minsky_nan16_words.py
+          python3 formal/utm/check_minsky_dispatch.py
 
       - name: Check fixed UTM theorem and Minsky table
         run: |
@@ -201,6 +202,7 @@ jobs:
             formal/utm/MinskyNaN16Words.v
             formal/utm/MinskyNaN16Words.vo
             formal/utm/check_minsky_nan16_words.py
+            formal/utm/check_minsky_dispatch.py
             formal/utm/MinskyChartScan.glob
           if-no-files-found: warn
           retention-days: 90
