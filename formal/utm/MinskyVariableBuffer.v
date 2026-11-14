@@ -149,7 +149,7 @@ Proof.
   intros k high prefix tail.
   replace (2 * S k + 4) with
     (S (length (4 :: repeat 0 (S k))) + (S k + 2))
-    by (rewrite repeat_length; simpl; lia).
+    by (simpl [length]; rewrite repeat_length; lia).
   rewrite (dispatch_run_add
     (S (length (4 :: repeat 0 (S k)))) (S k + 2)
     (entry_config 5 (repeat 0 (S k) ++ 5 :: prefix)
@@ -201,7 +201,7 @@ Proof.
   rewrite (positive_buffer_first_bit_at_2n_plus_4 k false prefix tail).
   replace (S k + 2) with
     (S (length (4 :: repeat 2 k ++ [0])))
-    by (rewrite app_length, repeat_length; simpl; lia).
+    by (simpl [length]; rewrite app_length, repeat_length; simpl; lia).
   replace (repeat 2 k ++ 0 :: 5 :: prefix)
     with ((repeat 2 k ++ [0]) ++ 5 :: prefix).
   2:{ rewrite app_assoc. reflexivity. }
