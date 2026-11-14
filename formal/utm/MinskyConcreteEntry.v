@@ -85,6 +85,7 @@ Proof.
     repeat rewrite map_app.
     cbn [map].
     repeat rewrite app_assoc.
+    cbn [app].
     reflexivity.
 Qed.
 
