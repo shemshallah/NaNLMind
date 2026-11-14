@@ -29,7 +29,7 @@ From Undecidability.Shared.Libs.PSL.FiniteTypes Require Import FinTypesDef.
 (** The encoding used by the certified reduction.  It maps every closed
     Krivine term to a binary tape accepted by the fixed [UTM]. *)
 Definition encode_closed
-    (x : { t : L.term | L.closed t }) : tape (finType_CS bool) :=
+    (x : { t : L.term | Lambda.closed t }) : tape (finType_CS bool) :=
   match KrivineMclosed_HALT_to_HaltUTM.reduction with
   | ex_intro f _ => f x
   end.
@@ -42,7 +42,7 @@ Definition encode_closed
     mechanized universality statement for the fixed UTM's halting behaviour.
 *)
 Theorem UTM_halting_equivalence
-    (x : { t : L.term | L.closed t }) :
+    (x : { t : L.term | Lambda.closed t }) :
   KrivineMclosed_HALT x <-> HaltUTM (encode_closed x).
 Proof.
   unfold encode_closed.
@@ -52,7 +52,7 @@ Qed.
 
 (** The same statement with the encoding written out as a function. *)
 Theorem UTM_simulates_closed_Krivine :
-  forall x : { t : L.term | L.closed t },
+  forall x : { t : L.term | Lambda.closed t },
     KrivineMclosed_HALT x <-> HaltUTM (encode_closed x).
 Proof.
   intro x. apply UTM_halting_equivalence.
