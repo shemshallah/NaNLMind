@@ -52,8 +52,8 @@ Definition move_right (t : Tape) : Tape :=
   end.
 
 Definition move_tape (t : Tape) (m : Z) : Tape :=
-  if Z.eqb m (-1) then move_left t
-  else if Z.eqb m 1 then move_right t
+  if Z.eqb m ((-1)%Z) then move_left t
+  else if Z.eqb m (1%Z) then move_right t
   else t.
 
 Record Config := {
