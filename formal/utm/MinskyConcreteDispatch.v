@@ -205,7 +205,9 @@ Theorem encoded_any_width_high_branch_next_marker :
       (4 :: suffix)).
 Proof.
   intros bits prefix suffix.
-  rewrite dispatch_run_add.
+  rewrite (dispatch_run_add 10 (length bits + 1)
+    (entry_config 5 ([0; 0; 0; 5] ++ prefix)
+      (4 :: 1 :: map source_bit bits ++ 4 :: suffix))).
   rewrite (encoded_first_bit_any_width_ten_steps true
     (map source_bit bits) prefix (4 :: suffix)).
   rewrite <- (map_length source_bit bits).
@@ -223,7 +225,9 @@ Theorem encoded_any_width_high_branch_halts_on_y :
       suffix.
 Proof.
   intros bits prefix suffix.
-  rewrite dispatch_run_add.
+  rewrite (dispatch_run_add 10 (length bits + 1)
+    (entry_config 5 ([0; 0; 0; 5] ++ prefix)
+      (4 :: 1 :: map source_bit bits ++ 5 :: suffix))).
   rewrite (encoded_first_bit_any_width_ten_steps true
     (map source_bit bits) prefix (5 :: suffix)).
   rewrite <- (map_length source_bit bits).
@@ -243,7 +247,9 @@ Theorem encoded_any_width_low_branch_returns_at_step_15 :
 Proof.
   intros tail prefix suffix.
   change 15 with (10 + 5).
-  rewrite dispatch_run_add.
+  rewrite (dispatch_run_add 10 5
+    (entry_config 5 ([0; 0; 0; 5] ++ prefix)
+      (4 :: 0 :: tail ++ suffix))).
   rewrite (encoded_first_bit_any_width_ten_steps false tail prefix suffix).
   apply dispatch_left_to_delimiter.
   constructor; [unfold dispatch_left_symbol; auto 8 |].
@@ -267,7 +273,9 @@ Theorem encoded_program_low_branch_returns_at_step_15 :
 Proof.
   intros row rows prefix suffix Hhi.
   change 15 with (10 + 5).
-  rewrite dispatch_run_add.
+  rewrite (dispatch_run_add 10 5
+    (entry_config 5 ([0; 0; 0; 5] ++ prefix)
+      (encode_source_program (row :: rows) ++ suffix))).
   rewrite encoded_program_first_decision_ten_steps.
   rewrite Hhi.
   apply dispatch_left_to_delimiter.
@@ -293,11 +301,16 @@ Theorem encoded_program_high_branch_reaches_next_row_at_step_17 :
 Proof.
   intros row next rows prefix suffix Hhi.
   change 17 with (10 + 7).
-  rewrite dispatch_run_add.
+  rewrite (dispatch_run_add 10 7
+    (entry_config 5 ([0; 0; 0; 5] ++ prefix)
+      (encode_source_program (row :: next :: rows) ++ suffix))).
   rewrite encoded_program_first_decision_ten_steps.
   rewrite Hhi.
   change 7 with (length (source_row_tail row) + 1).
-  rewrite dispatch_run_add.
+  rewrite (dispatch_run_add (length (source_row_tail row)) 1
+    (entry_config 3 ([3; 4; 2; 2; 0; 5] ++ prefix)
+      (source_row_tail row ++
+        encode_source_program (next :: rows) ++ suffix))).
   rewrite (dispatch_right_preserves_scan
     (source_row_tail row) ([3; 4; 2; 2; 0; 5] ++ prefix)
     (encode_source_program (next :: rows) ++ suffix)
@@ -319,7 +332,9 @@ Theorem encoded_program_high_branch_halts_at_step_17 :
 Proof.
   intros row prefix suffix Hhi.
   change 17 with (10 + 7).
-  rewrite dispatch_run_add.
+  rewrite (dispatch_run_add 10 7
+    (entry_config 5 ([0; 0; 0; 5] ++ prefix)
+      (encode_source_program [row] ++ 5 :: suffix))).
   rewrite encoded_program_first_decision_ten_steps.
   rewrite Hhi.
   apply dispatch_right_halts_at_delimiter.
