@@ -237,6 +237,33 @@ Proof.
   apply source_bit_list_is_right_scannable.
 Qed.
 
+(** The low branch likewise works for a tail of any width or contents:
+    state 2 retreats to Y without consuming those remaining bits. *)
+Theorem encoded_any_width_low_branch_returns_at_step_15 :
+  forall tail prefix suffix,
+    run 15
+      (entry_config 5 ([0; 0; 0; 5] ++ prefix)
+        (4 :: 0 :: tail ++ suffix)) =
+    entry_config 1 (5 :: prefix)
+      ([0; 2; 2; 4; 2] ++ tail ++ suffix).
+Proof.
+  intros tail prefix suffix.
+  change (run (10 + 5)
+    (entry_config 5 ([0; 0; 0; 5] ++ prefix)
+      (4 :: source_bit false :: tail ++ suffix)) = _).
+  rewrite dispatch_run_add.
+  rewrite (encoded_first_bit_any_width_ten_steps false tail prefix suffix).
+  change (run (S (length (4 :: [2; 2; 0])))
+    (entry_config 2 ([2; 2; 0] ++ 5 :: prefix)
+      (4 :: (2 :: tail ++ suffix))) = _).
+  apply dispatch_left_to_delimiter.
+  constructor; [unfold dispatch_left_symbol; auto 8 |].
+  constructor; [unfold dispatch_left_symbol; auto 8 |].
+  constructor; [unfold dispatch_left_symbol; auto 8 |].
+  constructor; [unfold dispatch_left_symbol; auto 8 |].
+  constructor.
+Qed.
+
 (** In the low-state-bit branch the table returns across the original X
     and three buffer cells to the Y delimiter, preserving the row tail. *)
 Theorem encoded_program_low_branch_returns_at_step_15 :
@@ -331,6 +358,7 @@ Print Assumptions dispatch_right_preserves_scan.
 Print Assumptions encoded_first_bit_any_width_ten_steps.
 Print Assumptions encoded_any_width_high_branch_next_marker.
 Print Assumptions encoded_any_width_high_branch_halts_on_y.
+Print Assumptions encoded_any_width_low_branch_returns_at_step_15.
 Print Assumptions encoded_program_low_branch_returns_at_step_15.
 Print Assumptions encoded_program_high_branch_reaches_next_row_at_step_17.
 Print Assumptions encoded_program_high_branch_halts_at_step_17.
