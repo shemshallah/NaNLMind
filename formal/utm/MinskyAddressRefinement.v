@@ -87,6 +87,7 @@ Lemma tape_bisim_read :
 Proof.
   intros t h memory [Hr _].
   specialize (Hr 0%nat). simpl in Hr.
+  replace (h + 0) with h in Hr by lia.
   unfold read. destruct (t_right t); simpl in *; symmetry; exact Hr.
 Qed.
 
@@ -98,7 +99,8 @@ Proof.
   intros t h memory symbol [Hr Hl].
   split.
   - intros [|i].
-    + simpl. rewrite write_at_head.
+    + simpl. replace (h + 0) with h by lia.
+      rewrite write_at_head.
       unfold write. simpl. destruct (t_right t); reflexivity.
     + unfold write. simpl.
       rewrite write_at_frame by lia.
