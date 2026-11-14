@@ -211,7 +211,7 @@ Proof.
   rewrite (dispatch_left_to_delimiter (repeat 2 k ++ [0]) 4 prefix
     (2 :: tail) (variable_buffer_left_suffix_scannable k)).
   rewrite variable_buffer_left_reverse.
-  rewrite append_singleton_assoc.
+  rewrite app_assoc.
   reflexivity.
 Qed.
 
