@@ -1,0 +1,21 @@
+{
+  "schema": "nanlm.concrete-minsky-universality/1",
+  "status": "open",
+  "claim": "fixed 23x8 Minsky table simulates every finite TM and input",
+  "claimed": false,
+  "required_obligations": [
+    "finite source TM model",
+    "minsky tape encoder/decoder with round-trip proof",
+    "one-step simulation and halt-write-order commutation",
+    "finite-control and well-formedness invariant",
+    "arbitrary-run lifting"
+  ],
+  "evidence_that_does_not_imply_claim": [
+    "184-entry table completeness",
+    "indexed/linear-scan lookup equivalence",
+    "zipper/signed-address bisimulation",
+    "published 100-step trace",
+    "native NaN16 trace and C++ conformance"
+  ],
+  "related_checked_result": "UTMEquivalence.UTM_halting_equivalence (library fixed binary UTM, not the 23x8 table)"
+}
