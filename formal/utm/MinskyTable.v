@@ -88,7 +88,7 @@ Fixpoint run (fuel : nat) (c : Config) : option Config :=
 
 (** ** Table completeness *)
 
-Lemma minsky_table_length : length minsky_entries = 184.
+Lemma minsky_table_length : length minsky_entries = 184%nat.
 Proof. reflexivity. Qed.
 
 Lemma minsky_table_complete :
