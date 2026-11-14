@@ -1,15 +1,15 @@
-(** * Bounded native-address safety envelope for the Minsky chart
+(** * Historical shared-offset address safety envelope
 
-    The symbolic tape uses unbounded [Z] coordinates.  The current native
-    implementation instead computes a signed 64-bit working address by
-    adding [1048576] to the head, and stores description bytes starting at
-    address zero.  This module establishes precise, checkable conditions
-    under which a FINITE symbolic execution stays in the representable and
-    non-aliasing region of that native layout.
+    The symbolic tape uses unbounded [Z] coordinates.  An EARLIER native
+    version computed a working address by adding [1048576] to the head and
+    shared its backing tape with description bytes at address zero.  The
+    alias-interval lemmas below document that historical layout precisely.
+    The CURRENT runtime uses distinct TuringTape stores and the unshifted
+    head.  See [MinskyNativePages.v] for the matching value-level semantics.
 
-    The conditions are hypotheses, not runtime invariants established for
-    every C++ execution.  In particular these results do not prove native
-    allocation, integer casts, page indexing, or concrete universality.
+    The bounded-head theorem remains mathematically valid but conservative
+    for the old offset layout; it is NOT the current representation invariant
+    and does not prove allocation, native execution or universality.
 *)
 
 From Coq Require Import Arith ZArith Lia.

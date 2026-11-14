@@ -61,12 +61,16 @@ jobs:
             formal/utm/MinskyNativeBounds.v
           coqc -Q formal/utm NaNLM \
             -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyNativePages.v
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyNaN16Words.v
           coqchk -Q formal/utm NaNLM formal/utm/MinskyTable.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyAddressRefinement.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyChartEncoding.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyChartScan.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyNativeBounds.vo
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyNativePages.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyNaN16Words.vo
           echo 'NANLM MINSKY SIX-BYTE LINEAR SCAN REFINEMENT PASS'
 
@@ -88,6 +92,8 @@ jobs:
             formal/utm/MinskyChartScan.vo
             formal/utm/MinskyNativeBounds.v
             formal/utm/MinskyNativeBounds.vo
+            formal/utm/MinskyNativePages.v
+            formal/utm/MinskyNativePages.vo
             formal/utm/MinskyNaN16Words.v
             formal/utm/MinskyNaN16Words.vo
             formal/utm/check_minsky_nan16_words.py

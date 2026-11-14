@@ -124,6 +124,8 @@ jobs:
           coqc -Q formal/utm NaNLM -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyNativeBounds.v
           coqc -Q formal/utm NaNLM -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyNativePages.v
+          coqc -Q formal/utm NaNLM -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyNaN16Words.v
           coqchk -Q coq-library-undecidability/theories Undecidability \
             formal/utm/UTMEquivalence.vo
@@ -133,6 +135,7 @@ jobs:
           coqchk -Q formal/utm NaNLM formal/utm/MinskyChartEncoding.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyChartScan.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyNativeBounds.vo
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyNativePages.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyNaN16Words.vo
           echo "NANLM MECHANIZED UTM + MINSKY ADDRESS REFINEMENT PASS"
 
@@ -163,6 +166,8 @@ jobs:
             formal/utm/MinskyChartScan.vo
             formal/utm/MinskyNativeBounds.v
             formal/utm/MinskyNativeBounds.vo
+            formal/utm/MinskyNativePages.v
+            formal/utm/MinskyNativePages.vo
             formal/utm/MinskyNaN16Words.v
             formal/utm/MinskyNaN16Words.vo
             formal/utm/check_minsky_nan16_words.py
@@ -176,10 +181,12 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-      - name: Build canonical chart and Minsky trace gates
-        run: make -j2 build/test_minsky_chart_refinement build/minsky-trace-dump
+      - name: Build canonical chart, native-page boundary, and trace gates
+        run: make -j2 build/test_minsky_chart_refinement build/test_utm_aliasing build/minsky-trace-dump
       - name: Exhaust all Minsky state-symbol entries and terminal states
         run: make minsky-bridge-check
+      - name: Check separate stores, negative pages, signed overflow and write order
+        run: ./build/test_utm_aliasing
       - name: Verify 100-step executable Minsky trace
         run: make minsky-trace-check
 

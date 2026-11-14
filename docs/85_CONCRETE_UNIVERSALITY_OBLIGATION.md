@@ -29,6 +29,11 @@ not a mechanized theorem for this artifact.
 None of these quantifies over an arbitrary encoded machine or proves the
 encoder/decoder round trip.
 
+The added `MinskyNativePages.v` supplies a bounded-run refinement for a
+functional model of the current separate description/work-tape layout,
+including signed 4096-cell page keys and post-write overflow semantics.
+This strengthens interpreter refinement, not arbitrary-machine encoding.
+
 ## Required formal compiler/refinement
 
 A complete proof needs at least:

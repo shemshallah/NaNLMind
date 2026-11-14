@@ -44,23 +44,22 @@ GitHub Actions run does not make them interchangeable.
    simulation. A general row encoder/decoder roundtrip theorem also covers
    all representable movement directions.
 
-   **Important address-space precondition:** the C++ runtime uses the same
-   `TuringTape` instance for both description bytes and the working tape,
-   offset by 1,048,576 cells. A working head in
+   **Historical address-space precondition:** the former C++ runtime used the
+   same `TuringTape` instance for description and working tape, offset by
+   1,048,576 cells. A working head in
    `[-1048576, -1047470)` aliases the 1,106-byte description region.
    `working_address_hits_description_iff` proves that interval exactly.
-   Consequently, this new formal byte-layout theorem is **not yet a proof
-   of unrestricted runtime equivalence**: C++ storage separation, integer
-   bounds, and page allocation still require verification or architectural
-   correction before promoting an arbitrary-execution claim.
+   Consequently, this earlier flat byte-layout theorem alone was **not a
+   proof of unrestricted runtime equivalence**.
    **Native correction (commit `c5b13eb`):** the executable runtime now uses
    independent `description_` and working `TuringTape` stores, so the old
    alias interval is removed.  Signed head addition is checked and fails
-   closed on `int64_t` overflow.  The Coq chart model still models a flat
-   description image and unbounded `Z`; the proof track must therefore add a
-   separated-storage/refinement premise and a finite-integer obligation before
-   claiming equivalence with the updated native runtime.  See
-   `DEEPSEEK_NATIVE_REPLY.md`.
+   closed on `int64_t` overflow.  `MinskyNativePages.v` adds a value-level
+   model with separate immutable description and mutable work stores,
+   signed 4096-cell page/slot indexing and matching overflow ordering.
+   Under an explicit signed-64-bit fuel margin, its page-run refinement
+   relates the full symbolic working tape to the existing address model.
+   This is not a proof of C++ allocation, object ownership or compilation.
 6. **Sequential C++ chart scan:** `MinskyChartScan.v` decodes each six-byte
    block in order and checks the first matching transition, modeling the
    actual linear search rather than only direct row indexing. Its generic
@@ -69,8 +68,8 @@ GitHub Actions run does not make them interchangeable.
    all 184 Minsky rows, it lifts byte-list scan equivalence to individual
    steps, every fuel-bounded run, and zipper/address bisimulation. Both Coq
    workflows compile it and independently run `coqchk` on the certificate.
-   This proof concerns the flattened byte list; physical tape pages and
-   integer overflow remain outstanding obligations.
+   This scan proof concerns the flattened byte list; the new page model
+   separately treats functional page indexing and bounded head arithmetic.
 
 The Coq theorems are formal results about the Coq models. The general
 zipper-to-signed-address simulation bridges these two formal representations,
@@ -85,10 +84,10 @@ nonhalting one-step run, and a halting run with a zero returned count; a
 
 ## Remaining research obligations
 
-- A representation invariant and simulation theorem relating the Coq tape
-  to the actual chart pages/registers of `src/universal_tm.cpp`.
-- Eliminate or formally isolate the real description/working-tape overlap;
-  prove the `TuringTape` 4096-cell page layout and 64-bit range conditions.
+- Bridge the functional 4096-cell page model in `MinskyNativePages.v` to
+  actual native `Universe` allocations, register metadata, object lifetimes,
+  integer conversions and memory-failure semantics. The mathematical
+  page/slot decomposition does not verify the C++ allocator.
 - A semantics-preserving connection between the concrete Minsky 23x8 table
   and the certified fixed UTM's simulation chain (or a separate certified
   universality proof for the concrete table). Their universality cannot be
