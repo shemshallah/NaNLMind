@@ -122,6 +122,8 @@ jobs:
           coqc -Q formal/utm NaNLM -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyConcreteProgramScan.v
           coqc -Q formal/utm NaNLM -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyEncodedFixture.v
+          coqc -Q formal/utm NaNLM -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyAddressRefinement.v
           coqc -Q formal/utm NaNLM -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyChartEncoding.v
@@ -140,6 +142,7 @@ jobs:
           coqchk -Q formal/utm NaNLM formal/utm/MinskyTable.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyConcreteEntry.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyConcreteProgramScan.vo
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyEncodedFixture.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyAddressRefinement.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyChartEncoding.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyChartScan.vo
@@ -171,6 +174,8 @@ jobs:
             formal/utm/MinskyConcreteEntry.vo
             formal/utm/MinskyConcreteProgramScan.v
             formal/utm/MinskyConcreteProgramScan.vo
+            formal/utm/MinskyEncodedFixture.v
+            formal/utm/MinskyEncodedFixture.vo
             formal/utm/MinskyAddressRefinement.v
             formal/utm/MinskyAddressRefinement.vo
             formal/utm/MinskyAddressRefinement.glob
