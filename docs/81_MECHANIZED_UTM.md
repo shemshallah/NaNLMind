@@ -58,16 +58,19 @@ step_indexed_scan_agree      (* indexed lookup == literal linear scan *)
 minsky_trace_100             (* kernel computation of the 100-step trace *)
 minsky_trace_100_scan        (* same trace through the scan interpreter *)
 minsky_trace_100_indexed_scan(* indexed and scan executions agree end-to-end *)
+run_indexed_scan_agree       (* generic run lift under a state/read invariant *)
 minsky_trace_head            (* state 2, head 38, final 73-cell tape *)
 ```
 
 The Coq step follows the C++ `TuringMachine::step` order exactly: on a
 halting entry it writes the final symbol, updates state/head, and only then sets
 the halted flag.  The earlier model returned `None` before applying the halting
-write/move; that semantic mismatch is fixed.  `step_indexed_scan_agree` proves
-the row-major indexed lookup and a literal linear scan agree for every valid
-state/symbol pair, and the two run functions are checked on the published
-execution.
+write/move; that semantic mismatch is fixed.  `find_entry_scan_valid` and `step_indexed_scan_agree` prove the row-major
+indexed lookup and a literal linear scan agree for every valid state/symbol
+pair and every valid configuration.  `run_indexed_scan_agree` lifts that
+agreement to complete runs under the explicit invariant that every iterated
+configuration has an in-range state and current symbol; the published
+100-step execution is also checked directly by kernel computation.
 
 The table transcription is also audited against the C++ source:
 
@@ -104,7 +107,7 @@ gate and can run for hours without blocking development.
 Checked run:
 
 ```text
-https://github.com/shemshallah/NaNLMind/actions/runs/43570079998
+https://github.com/shemshallah/NaNLMind/actions/runs/43573059226
 NANLM MECHANIZED UTM + MINSKY PASS
 Closed under the global context
 ```
@@ -121,8 +124,9 @@ harness because the theorem is closed under Coq's kernel.
 It is not yet:
 
 - a mechanized refinement of the C++ source itself: the Coq scan model and the
-  table data are checked against `tests/minsky_table.inc`, but the C++
-  `TuringMachine::step` implementation is not extracted from or linked to Coq;
+  table data are checked against `tests/minsky_table.inc`, and the Coq step now
+  follows the C++ halting order, but the C++ `TuringMachine::step`
+  implementation is not extracted from or linked to Coq;
 - a full universality proof for arbitrary encoded machines through the 23x8
   table (the 100-step published trace is checked, not every input);
 - a proof-assistant statement about the NaN16 guest machine.
