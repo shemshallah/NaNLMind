@@ -165,7 +165,8 @@ Proof.
   apply andb_true_iff in H; destruct H as [H H3].
   apply andb_true_iff in H; destruct H as [H1 H2].
   apply Nat.eqb_eq in H1. apply Nat.eqb_eq in H2. apply Nat.eqb_eq in H3.
-  apply Z.eqb_eq in H4. apply Nat.eqb_eq in H5. apply Bool.eqb_eq in H6.
+  apply Z.eqb_eq in H4. apply Nat.eqb_eq in H5.
+  assert (H6' : a6 = b6) by (apply Bool.eqb_eq; exact H6).
   subst. reflexivity.
 Qed.
 
