@@ -208,8 +208,11 @@ Proof.
   rewrite (dispatch_run_add 10 (length bits + 1)
     (entry_config 5 ([0; 0; 0; 5] ++ prefix)
       (4 :: 1 :: map source_bit bits ++ 4 :: suffix))).
-  rewrite (encoded_first_bit_any_width_ten_steps true
-    (map source_bit bits) prefix (4 :: suffix)).
+  change (run 10
+    (entry_config 5 ([0; 0; 0; 5] ++ prefix)
+      (4 :: 1 :: map source_bit bits ++ 4 :: suffix))) with
+    (entry_config 3 ([3; 4; 2; 2; 0; 5] ++ prefix)
+      (map source_bit bits ++ 4 :: suffix)).
   rewrite <- (map_length source_bit bits).
   apply dispatch_right_reaches_marker.
   apply source_bit_list_is_right_scannable.
@@ -228,8 +231,11 @@ Proof.
   rewrite (dispatch_run_add 10 (length bits + 1)
     (entry_config 5 ([0; 0; 0; 5] ++ prefix)
       (4 :: 1 :: map source_bit bits ++ 5 :: suffix))).
-  rewrite (encoded_first_bit_any_width_ten_steps true
-    (map source_bit bits) prefix (5 :: suffix)).
+  change (run 10
+    (entry_config 5 ([0; 0; 0; 5] ++ prefix)
+      (4 :: 1 :: map source_bit bits ++ 5 :: suffix))) with
+    (entry_config 3 ([3; 4; 2; 2; 0; 5] ++ prefix)
+      (map source_bit bits ++ 5 :: suffix)).
   rewrite <- (map_length source_bit bits).
   apply dispatch_right_halts_at_delimiter.
   apply source_bit_list_is_right_scannable.
@@ -250,7 +256,11 @@ Proof.
   rewrite (dispatch_run_add 10 5
     (entry_config 5 ([0; 0; 0; 5] ++ prefix)
       (4 :: 0 :: tail ++ suffix))).
-  rewrite (encoded_first_bit_any_width_ten_steps false tail prefix suffix).
+  change (run 10
+    (entry_config 5 ([0; 0; 0; 5] ++ prefix)
+      (4 :: 0 :: tail ++ suffix))) with
+    (entry_config 2 ([2; 2; 0; 5] ++ prefix)
+      (4 :: 2 :: tail ++ suffix)).
   apply dispatch_left_to_delimiter.
   constructor; [unfold dispatch_left_symbol; auto 8 |].
   constructor; [unfold dispatch_left_symbol; auto 8 |].
