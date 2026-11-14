@@ -209,9 +209,6 @@ Proof.
   rewrite (encoded_first_bit_any_width_ten_steps true
     (map source_bit bits) prefix (4 :: suffix)).
   rewrite <- (map_length source_bit bits).
-  change (run (length (map source_bit bits) + 1)
-    (entry_config 3 ([3; 4; 2; 2; 0; 5] ++ prefix)
-      (map source_bit bits ++ 4 :: suffix)) = _).
   apply dispatch_right_reaches_marker.
   apply source_bit_list_is_right_scannable.
 Qed.
@@ -230,9 +227,6 @@ Proof.
   rewrite (encoded_first_bit_any_width_ten_steps true
     (map source_bit bits) prefix (5 :: suffix)).
   rewrite <- (map_length source_bit bits).
-  change (run (length (map source_bit bits) + 1)
-    (entry_config 3 ([3; 4; 2; 2; 0; 5] ++ prefix)
-      (map source_bit bits ++ 5 :: suffix)) = _).
   apply dispatch_right_halts_at_delimiter.
   apply source_bit_list_is_right_scannable.
 Qed.
@@ -248,14 +242,9 @@ Theorem encoded_any_width_low_branch_returns_at_step_15 :
       ([0; 2; 2; 4; 2] ++ tail ++ suffix).
 Proof.
   intros tail prefix suffix.
-  change (run (10 + 5)
-    (entry_config 5 ([0; 0; 0; 5] ++ prefix)
-      (4 :: source_bit false :: tail ++ suffix)) = _).
+  change 15 with (10 + 5).
   rewrite dispatch_run_add.
   rewrite (encoded_first_bit_any_width_ten_steps false tail prefix suffix).
-  change (run (S (length (4 :: [2; 2; 0])))
-    (entry_config 2 ([2; 2; 0] ++ 5 :: prefix)
-      (4 :: (2 :: tail ++ suffix))) = _).
   apply dispatch_left_to_delimiter.
   constructor; [unfold dispatch_left_symbol; auto 8 |].
   constructor; [unfold dispatch_left_symbol; auto 8 |].
@@ -277,16 +266,10 @@ Theorem encoded_program_low_branch_returns_at_step_15 :
        encode_source_program rows ++ suffix).
 Proof.
   intros row rows prefix suffix Hhi.
-  change (run (10 + 5)
-    (entry_config 5 ([0; 0; 0; 5] ++ prefix)
-      (encode_source_program (row :: rows) ++ suffix)) = _).
+  change 15 with (10 + 5).
   rewrite dispatch_run_add.
   rewrite encoded_program_first_decision_ten_steps.
   rewrite Hhi.
-  change (run (S (length (4 :: [2; 2; 0])))
-    (entry_config 2 ([2; 2; 0] ++ 5 :: prefix)
-      (4 :: (2 :: source_row_tail row ++
-        encode_source_program rows ++ suffix))) = _).
   apply dispatch_left_to_delimiter.
   constructor; [unfold dispatch_left_symbol; auto 8 |].
   constructor; [unfold dispatch_left_symbol; auto 8 |].
@@ -309,16 +292,11 @@ Theorem encoded_program_high_branch_reaches_next_row_at_step_17 :
       (encode_source_program (next :: rows) ++ suffix)).
 Proof.
   intros row next rows prefix suffix Hhi.
-  change (run (10 + 7)
-    (entry_config 5 ([0; 0; 0; 5] ++ prefix)
-      (encode_source_program (row :: next :: rows) ++ suffix)) = _).
+  change 17 with (10 + 7).
   rewrite dispatch_run_add.
   rewrite encoded_program_first_decision_ten_steps.
   rewrite Hhi.
-  change (run (length (source_row_tail row) + 1)
-    (entry_config 3 ([3; 4; 2; 2; 0; 5] ++ prefix)
-      (source_row_tail row ++
-       encode_source_program (next :: rows) ++ suffix)) = _).
+  change 7 with (length (source_row_tail row) + 1).
   rewrite dispatch_run_add.
   rewrite (dispatch_right_preserves_scan
     (source_row_tail row) ([3; 4; 2; 2; 0; 5] ++ prefix)
@@ -340,15 +318,10 @@ Theorem encoded_program_high_branch_halts_at_step_17 :
       suffix.
 Proof.
   intros row prefix suffix Hhi.
-  change (run (10 + 7)
-    (entry_config 5 ([0; 0; 0; 5] ++ prefix)
-      (encode_source_program [row] ++ 5 :: suffix)) = _).
+  change 17 with (10 + 7).
   rewrite dispatch_run_add.
   rewrite encoded_program_first_decision_ten_steps.
   rewrite Hhi.
-  change (run (length (source_row_tail row) + 1)
-    (entry_config 3 ([3; 4; 2; 2; 0; 5] ++ prefix)
-      (source_row_tail row ++ 5 :: suffix)) = _).
   apply dispatch_right_halts_at_delimiter.
   apply source_row_tail_is_right_scannable.
 Qed.
