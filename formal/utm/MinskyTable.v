@@ -58,31 +58,51 @@ Definition move_tape (t : Tape) (m : Z) : Tape :=
 
 Record Config := {
   c_state : nat;
-  c_tape : Tape
+  c_tape : Tape;
+  c_halted : bool
 }.
 
 (** Flat row-major table lookup: entry [q,s] is at index [q*8+s]. *)
 Definition find_entry (q s : nat) : option Entry :=
   nth_error minsky_entries (q * 8 + s).
 
-Definition step (c : Config) : option Config :=
-  match find_entry (c_state c) (read (c_tape c)) with
-  | None => None
-  | Some e =>
-      if e_halt e then None
-      else Some {| c_state := e_to e;
-                   c_tape := move_tape
-                     (write (c_tape c) (e_write e)) (e_move e) |}
+(** A literal linear scan of the transition list.  This is the executable
+    interpreter's transition search, kept separate from the indexed table. *)
+Fixpoint scan_entry (q s : nat) (l : list Entry) : option Entry :=
+  match l with
+  | [] => None
+  | e :: es =>
+      if (e_from e =? q) && (e_read e =? s)
+      then Some e
+      else scan_entry q s es
   end.
 
-Fixpoint run (fuel : nat) (c : Config) : option Config :=
+Definition scan_table (q s : nat) : option Entry :=
+  scan_entry q s minsky_entries.
+
+Definition halt (c : Config) : Config :=
+  {| c_state := c_state c; c_tape := c_tape c; c_halted := true |}.
+
+(** This is the C++ [TuringMachine::step] order exactly:
+    write the symbol, update state/head, then set the halted flag on a
+    halting transition.  A missing table entry only sets the halted flag. *)
+Definition step (c : Config) : Config :=
+  if c_halted c then c
+  else
+    match find_entry (c_state c) (read (c_tape c)) with
+    | None => halt c
+    | Some e =>
+        let c' := {| c_state := e_to e;
+                     c_tape := move_tape
+                       (write (c_tape c) (e_write e)) (e_move e);
+                     c_halted := false |} in
+        if e_halt e then halt c' else c'
+    end.
+
+Fixpoint run (fuel : nat) (c : Config) : Config :=
   match fuel with
-  | 0%nat => Some c
-  | S n =>
-      match step c with
-      | None => None
-      | Some c' => run n c'
-      end
+  | 0%nat => c
+  | S n => if c_halted c then c else run n (step c)
   end.
 
 (** ** Table completeness *)
@@ -104,16 +124,52 @@ Proof.
 Qed.
 
 (** Every in-range state/symbol has exactly one table entry. *)
+Lemma find_entry_scan_valid :
+  forall (q s : nat), q < 23%nat -> s < 8%nat ->
+    find_entry q s = scan_table q s.
+Proof.
+  intros q s Hq Hs. unfold find_entry, scan_table.
+  interval_cases q; interval_cases s; reflexivity.
+Qed.
+
+Definition step_scan (c : Config) : Config :=
+  if c_halted c then c
+  else
+    match scan_table (c_state c) (read (c_tape c)) with
+    | None => halt c
+    | Some e =>
+        let c' := {| c_state := e_to e;
+                     c_tape := move_tape
+                       (write (c_tape c) (e_write e)) (e_move e);
+                     c_halted := false |} in
+        if e_halt e then halt c' else c'
+    end.
+
+Theorem step_indexed_scan_agree :
+  forall c,
+    c_halted c = false ->
+    c_state c < 23%nat ->
+    read (c_tape c) < 8%nat ->
+    step c = step_scan c.
+Proof.
+  intros c Hh Hq Hs. unfold step, step_scan.
+  rewrite Hh.
+  rewrite (find_entry_scan_valid (c_state c) (read (c_tape c)) Hq Hs).
+  reflexivity.
+Qed.
+
 Lemma minsky_step_uses_entry :
   forall c e,
+    c_halted c = false ->
     find_entry (c_state c) (read (c_tape c)) = Some e ->
     step c =
-      if e_halt e then None
-      else Some {| c_state := e_to e;
+      let c' := {| c_state := e_to e;
                    c_tape := move_tape
-                     (write (c_tape c) (e_write e)) (e_move e) |}.
+                     (write (c_tape c) (e_write e)) (e_move e);
+                   c_halted := false |} in
+      if e_halt e then halt c' else c'.
 Proof.
-  intros c e H. unfold step. rewrite H. reflexivity.
+  intros c e Hh H. unfold step. rewrite Hh, H. reflexivity.
 Qed.
 
 Lemma minsky_halt_entry :
@@ -145,26 +201,42 @@ Definition expected_tape : Tape :=
      t_right := skipn 38 expected_cells |}.
 
 Definition initial_config : Config :=
-  {| c_state := 5; c_tape := initial_tape |}.
+  {| c_state := 5; c_tape := initial_tape; c_halted := false |}.
 
 Definition expected_config : Config :=
-  {| c_state := 2; c_tape := expected_tape |}.
+  {| c_state := 2; c_tape := expected_tape; c_halted := false |}.
 
 (** This is a kernel computation of all 100 steps, not a host trace. *)
 Theorem minsky_trace_100 :
-  run 100 initial_config = Some expected_config.
+  run 100 initial_config = expected_config.
 Proof. vm_compute. reflexivity. Qed.
 
 (** The final state/head/tape are the published values.  The zipper's
     [right] starts at the head; the expected split has 38 cells to the left. *)
 Theorem minsky_trace_head :
-  exists c, run 100 initial_config = Some c /\ c_state c = 2 /\
-            length (t_left (c_tape c)) = 38 /\
-            t_right (c_tape c) = skipn 38 expected_cells.
+  run 100 initial_config = expected_config /\
+  c_state expected_config = 2 /\
+  length (t_left (c_tape expected_config)) = 38 /\
+  t_right (c_tape expected_config) = skipn 38 expected_cells.
 Proof.
-  exists expected_config. split.
-  - apply minsky_trace_100.
-  - repeat split; reflexivity.
+  repeat split; try apply minsky_trace_100; reflexivity.
 Qed.
 
+Fixpoint run_scan (fuel : nat) (c : Config) : Config :=
+  match fuel with
+  | 0%nat => c
+  | S n => if c_halted c then c else run_scan n (step_scan c)
+  end.
+
+(** The same published execution through the literal scan interpreter. *)
+Theorem minsky_trace_100_scan :
+  run_scan 100 initial_config = expected_config.
+Proof. vm_compute. reflexivity. Qed.
+
+(** Complete published execution: indexed table and scan agree end to end. *)
+Theorem minsky_trace_100_indexed_scan :
+  run 100 initial_config = run_scan 100 initial_config.
+Proof. vm_compute. reflexivity. Qed.
+
 Print Assumptions minsky_trace_100.
+Print Assumptions step_indexed_scan_agree.
