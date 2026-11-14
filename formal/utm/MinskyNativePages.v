@@ -226,7 +226,8 @@ Proof.
   rewrite Hhalt.
   destruct (a_halted a) eqn:Ha.
   - unfold paged_refines; simpl.
-    repeat split; try assumption; reflexivity.
+    repeat split; try assumption; try reflexivity.
+    now rewrite Hhalt, Ha.
   - rewrite Hlookup.
     destruct (find_entry (a_state a) (a_tape a (a_head a)))
       as [e |] eqn:He.
