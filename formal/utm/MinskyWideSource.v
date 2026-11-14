@@ -85,7 +85,7 @@ Proof.
   repeat rewrite app_length.
   repeat rewrite map_length.
   simpl.
-  nia.
+  lia.
 Qed.
 
 Definition widen_two_bit_row (r : BinarySourceRow) : WideSourceRow :=
