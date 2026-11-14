@@ -1,0 +1,28 @@
+{
+  "schema": "nanlm.utm-publication-package/1",
+  "status": "checked-construction-with-executable-evidence",
+  "coq_run": "https://github.com/shemshallah/NaNLMind/actions/runs/43618170188",
+  "gate_report": "state/benchmarks/utm_publication_gate.json",
+  "theorems": [
+    "UTMEquivalence.UTM_halting_equivalence",
+    "InterpreterRefinement.utm_run_refines",
+    "MinskyTable.find_entry_scan_all",
+    "MinskyTable.step_indexed_scan_agree_all",
+    "MinskyTable.run_indexed_scan_agree_all",
+    "MinskyTable.minsky_halt_updates_before_flag",
+    "MinskyTable.minsky_trace_100",
+    "MinskyAddressRefinement.zipper_address_run_bisim",
+    "MinskyAddressRefinement.address_halt_writes_before_flag",
+    "MinskyAddressRefinement.address_trace_100"
+  ],
+  "execution_evidence": [
+    "native NaN16 Minsky 100-step fixture",
+    "C++ 100-step trace conformance",
+    "exhaustive C++ 184-entry chart conformance"
+  ],
+  "limitations": [
+    "no universality theorem for the concrete 23x8 table",
+    "no formal refinement of the compiled C++ binary",
+    "no chart allocator/page-layout refinement"
+  ]
+}
