@@ -293,11 +293,17 @@ Proof.
     split; [reflexivity |]. split; [reflexivity |]. exact Htape.
   - rewrite <- (tape_bisim_read t h memory Htape).
     destruct (find_entry q (read t)) as [e|] eqn:Hlookup.
-    + destruct (e_halt e) eqn:Hentryhalt; unfold config_bisim;
-        simpl; (split; [reflexivity |]); (split; [reflexivity |]);
-        apply tape_bisim_move_tape;
-        [eapply find_entry_move_allowed; exact Hlookup |
-         apply tape_bisim_write; exact Htape].
+    + destruct (e_halt e) eqn:Hentryhalt.
+      * unfold config_bisim. simpl.
+        split; [reflexivity |]. split; [reflexivity |].
+        apply tape_bisim_move_tape.
+        -- eapply find_entry_move_allowed. exact Hlookup.
+        -- apply tape_bisim_write. exact Htape.
+      * unfold config_bisim. simpl.
+        split; [reflexivity |]. split; [reflexivity |].
+        apply tape_bisim_move_tape.
+        -- eapply find_entry_move_allowed. exact Hlookup.
+        -- apply tape_bisim_write. exact Htape.
     + unfold config_bisim. simpl.
       split; [reflexivity |]. split; [reflexivity |]. exact Htape.
 Qed.
