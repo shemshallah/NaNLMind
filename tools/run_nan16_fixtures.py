@@ -124,6 +124,8 @@ FIXTURES = (
             "MTH TEMPORAL SLOTS PASS"),
     Fixture("ngram_train", "mth/tests/mth_ngram_train_test.nas", 20_000_000,
             "MTH NGRAM TRAIN PASS"),
+    Fixture("minsky_table", "mth/tests/mth_minsky_test.nas", 500_000,
+            "MTH MINSKY NATIVE PASS"),
 )
 
 
