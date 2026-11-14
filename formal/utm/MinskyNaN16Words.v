@@ -98,8 +98,9 @@ Theorem nan16_sixbyte_lookup_agree :
   forall q s, nan16_lookup q s = chart_scan q s.
 Proof.
   intros q s.
-  rewrite nan16_lookup_agrees_all, chart_scan_agrees_all.
-  reflexivity.
+  transitivity (scan_table q s).
+  - apply nan16_lookup_agrees_all.
+  - symmetry. apply chart_scan_agrees_all.
 Qed.
 
 Definition nan16_address_step : AddressConfig -> AddressConfig :=
