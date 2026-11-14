@@ -72,14 +72,12 @@ Proof.
   intros remaining.
   induction remaining as [|next rest IH]; intros s prefix suffix Hscan.
   - inversion Hscan as [|? ? Hs _]; subst.
-    simpl [length].
     rewrite entry_run_successor.
     rewrite (entry_scan_one s 5 prefix suffix Hs).
     rewrite entry_run_successor.
     rewrite entry_cross_delimiter.
     reflexivity.
   - inversion Hscan as [|? ? Hs Hrest]; subst.
-    simpl [length].
     rewrite entry_run_successor.
     rewrite (entry_scan_one s next (rest ++ 5 :: prefix) suffix Hs).
     rewrite (IH next prefix (entry_rewrite s :: suffix) Hrest).
@@ -116,5 +114,57 @@ Proof.
   reflexivity.
 Qed.
 
+(** Three more real table steps convert the leading blank to 0 and scan
+    the remaining two blanks.  State 0 then faces the X record marker,
+    with the original source record and the outer tape still intact. *)
+Theorem encoded_program_dispatch_eight_steps :
+  forall (row : BinarySourceRow) rows prefix suffix,
+    run 8
+      (entry_config 5 ([0; 0; 0; 5] ++ prefix)
+        (encode_source_program (row :: rows) ++ suffix)) =
+    entry_config 0 ([2; 2; 0; 5] ++ prefix)
+      (encode_source_program (row :: rows) ++ suffix).
+Proof.
+  intros [a b c d e f g] rows prefix suffix.
+  reflexivity.
+Qed.
+
+(** The first state bit branches into two *different* fixed-table
+    continuations. The left branch overwrites 0 with 2 and returns to X
+    in state 2; the right branch overwrites 1 with 3 and advances in
+    state 3. This is control-flow evidence, not a whole-instruction proof. *)
+Lemma encoded_state_high_bit_branch :
+  forall high prefix tail,
+    step (entry_config 0 (4 :: prefix) (source_bit high :: tail)) =
+    if high then entry_config 3 (3 :: 4 :: prefix) tail
+    else entry_config 2 prefix (4 :: 2 :: tail).
+Proof. intros []; reflexivity. Qed.
+
+Definition source_row_tail (row : BinarySourceRow) : list nat :=
+  [source_bit (sr_state_lo row); source_bit (sr_read row);
+   source_bit (sr_next_hi row); source_bit (sr_next_lo row);
+   source_bit (sr_write row); source_bit (sr_right row)].
+
+(** Ten consecutive native-table transitions from the executable entry
+    configuration reach the exact high-bit dispatch branch of every
+    representable source row, with no assumptions on later records. *)
+Theorem encoded_program_first_decision_ten_steps :
+  forall (row : BinarySourceRow) rows prefix suffix,
+    run 10
+      (entry_config 5 ([0; 0; 0; 5] ++ prefix)
+        (encode_source_program (row :: rows) ++ suffix)) =
+    if sr_state_hi row then
+      entry_config 3 (3 :: 4 :: 2 :: 2 :: 0 :: 5 :: prefix)
+        (source_row_tail row ++ encode_source_program rows ++ suffix)
+    else
+      entry_config 2 (2 :: 2 :: 0 :: 5 :: prefix)
+        (4 :: 2 :: source_row_tail row ++
+         encode_source_program rows ++ suffix).
+Proof.
+  intros [a b c d e f g] rows prefix suffix.
+  destruct a; reflexivity.
+Qed.
+
 Print Assumptions entry_scan_unbounded.
 Print Assumptions encoded_program_entry_five_steps.
+Print Assumptions encoded_program_first_decision_ten_steps.

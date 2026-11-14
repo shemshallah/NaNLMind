@@ -13,9 +13,10 @@ contract (`docs/86_NATIVE_MINSKY_COMPILER.md`). The Coq model
 `MinskySourceEncoding.v` proves arbitrary-list round trips and a finite-run
 refinement **for its decoded source interpreter**, not for the 23x8 table.
 `MinskyConcreteEntry.v` goes one step further: it proves the actual fixed
-table's left-scan/delimiter macro for an unbounded family of tape contents
-and its first five transitions for every encoded source row. Neither result
-is a universality theorem.
+table's left-scan/delimiter macro for an unbounded family of tape contents,
+then its first ten transitions for every encoded source row, including the
+distinct branches on the high state bit. Neither result is a universality
+theorem.
 
 The current Coq development proves the table transcription, transition lookup,
 halt ordering, published trace, and a signed-address/zipper bisimulation.  None
@@ -35,8 +36,8 @@ not a mechanized theorem for this artifact.
   encoded machine.
 
 The new restricted source encoder **does** prove a round trip over any
-finite list of its seven-bit records. The table-level entry macro also
-quantifies over arbitrary such source rows and surrounding tape. However,
+finite list of its seven-bit records. The table-level entry/first-bit macros
+also quantify over arbitrary such source rows and surrounding tape. However,
 no theorem currently proves that the remaining table transitions implement
 even one complete decoded source instruction, nor arbitrary runs of those
 instructions. The finite row format is also restricted to four states and
