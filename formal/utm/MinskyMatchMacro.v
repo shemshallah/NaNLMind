@@ -193,3 +193,59 @@ Qed.
 
 Print Assumptions q0_match_zero_to_y.
 Print Assumptions q4_match_one_to_y.
+
+(** q5 is the general leftward cleanup scan: it rewrites 0/1 to A/B,
+    leaves every other non-Y symbol alone, and leaves on Y into q1. *)
+Definition q5_pass (s : nat) : Prop :=
+  s = 0 \/ s = 1 \/ s = 2 \/ s = 3 \/ s = 4 \/ s = 6 \/ s = 7.
+
+Lemma q5_pass_step :
+  forall s next left right,
+    q5_pass s ->
+    step (entry_config 5 (next :: left) (s :: right)) =
+    entry_config 5 left (next :: entry_rewrite s :: right).
+Proof.
+  intros s next left right H.
+  destruct H as [-> | [-> | [-> | [-> | [-> | [-> | ->]]]]]];
+    reflexivity.
+Qed.
+
+Lemma q5_cross_delimiter :
+  forall left right,
+    step (entry_config 5 left (5 :: right)) =
+    entry_config 1 (5 :: left) right.
+Proof. reflexivity. Qed.
+
+Theorem q5_scan_unbounded :
+  forall remaining s prefix suffix,
+    Forall q5_pass (s :: remaining) ->
+    run (S (length (s :: remaining)))
+      (entry_config 5 (remaining ++ 5 :: prefix) (s :: suffix)) =
+    entry_config 1 (5 :: prefix)
+      (map entry_rewrite (rev (s :: remaining)) ++ suffix).
+Proof.
+  intros remaining.
+  induction remaining as [|next rest IH]; intros s prefix suffix Hscan.
+  - inversion Hscan as [|? ? Hs _]; subst.
+    destruct Hs as [-> | [-> | [-> | [-> | [-> | [-> | ->]]]]]];
+      reflexivity.
+  - inversion Hscan as [|? ? Hs Hrest]; subst.
+    change (run (S (S (length (next :: rest))))
+        (entry_config 5 (next :: (rest ++ 5 :: prefix)) (s :: suffix)) =
+      entry_config 1 (5 :: prefix)
+        (map entry_rewrite (rev (s :: next :: rest)) ++ suffix)).
+    rewrite entry_run_successor.
+    rewrite (q5_pass_step s next (rest ++ 5 :: prefix) suffix Hs).
+    rewrite (IH next prefix (entry_rewrite s :: suffix) Hrest).
+    cbn [rev].
+    repeat rewrite map_app.
+    cbn [map].
+    replace ((map entry_rewrite (rev rest) ++ [entry_rewrite next]) ++
+      entry_rewrite s :: suffix)
+      with (map entry_rewrite (rev rest) ++
+        (entry_rewrite next :: entry_rewrite s :: suffix)).
+    2:{ rewrite <- app_assoc. reflexivity. }
+    reflexivity.
+Qed.
+
+Print Assumptions q5_scan_unbounded.
