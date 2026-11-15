@@ -540,3 +540,273 @@ Qed.
 Print Assumptions q1_pass_rev_left.
 Print Assumptions q1_zero_match_roundtrip.
 Print Assumptions q1_one_match_roundtrip.
+
+(** Once a comparison has consumed a bit, the corresponding data cell is
+    marked A/B (2/3).  Both q0 and q4 can scan a whole block of these
+    marks, and q2 can return left across them.  Restricting the block to
+    A/B is essential: the broader q0_pass predicate also admits Y (5). *)
+Definition comparison_mark (s : nat) : Prop := s = 2 \/ s = 3.
+
+Lemma comparison_mark_scans :
+  forall marks,
+    Forall comparison_mark marks ->
+    Forall q0_pass marks /\
+    Forall q4_pass marks /\
+    Forall dispatch_left_symbol (rev marks).
+Proof.
+  induction marks as [|m rest IH]; intros Hmarks.
+  - repeat split; constructor.
+  - inversion Hmarks as [|? ? Hm Hrest]; subst.
+    destruct (IH Hrest) as [H0 [H4 Hleft]].
+    repeat split.
+    + constructor.
+      * destruct Hm as [-> | ->]; unfold q0_pass; auto.
+      * exact H0.
+    + constructor.
+      * destruct Hm as [-> | ->]; unfold q4_pass; auto.
+      * exact H4.
+    + simpl [rev].
+      apply Forall_app; split.
+      * exact Hleft.
+      * constructor.
+        -- destruct Hm as [-> | ->]; unfold dispatch_left_symbol; auto.
+        -- constructor.
+Qed.
+
+(** These two concrete one-round macros permit an arbitrarily long block
+    of previously marked bits between the selected A/B and the next raw
+    input bit.  Both tapes and exact transition counts are quantified. *)
+Theorem q1_zero_match_with_marks :
+  forall pass marks prefix tail,
+    Forall q1_pass pass ->
+    Forall comparison_mark marks ->
+    run (2 * length pass + 2 * length marks + 4)
+      (entry_config 1 (5 :: prefix) (pass ++ 2 :: marks ++ 0 :: tail)) =
+    entry_config 1 (5 :: prefix) (pass ++ 0 :: marks ++ 2 :: tail).
+Proof.
+  intros pass marks prefix tail Hpass Hmarks.
+  destruct (comparison_mark_scans marks Hmarks) as [Hq0 [_ Hrevleft]].
+  assert (Hleft : Forall dispatch_left_symbol (rev marks ++ 0 :: rev pass)).
+  { apply Forall_app; split.
+    - exact Hrevleft.
+    - constructor.
+      + unfold dispatch_left_symbol; auto.
+      + apply q1_pass_rev_left; exact Hpass. }
+  assert (Hsplit : exists x remaining,
+    rev marks ++ 0 :: rev pass = x :: remaining).
+  { destruct (rev marks) as [|x xs].
+    - exists 0, (rev pass); reflexivity.
+    - exists x, (xs ++ 0 :: rev pass); reflexivity. }
+  destruct Hsplit as [x [remaining Hsplit]].
+  rewrite Hsplit in Hleft.
+  replace (2 * length pass + 2 * length marks + 4) with
+    (S (length pass) + (S (length marks) + S (length (x :: remaining)))).
+  2:{ rewrite <- Hsplit.
+      rewrite app_length, rev_length.
+      simpl [length].
+      rewrite rev_length; lia. }
+  rewrite (dispatch_run_add (S (length pass))
+    (S (length marks) + S (length (x :: remaining)))
+    (entry_config 1 (5 :: prefix) (pass ++ 2 :: marks ++ 0 :: tail))).
+  rewrite (q1_scan_pick pass (5 :: prefix) 2 (marks ++ 0 :: tail)
+    Hpass (or_introl eq_refl)).
+  rewrite (q0_match_zero_to_y marks (0 :: rev pass) x remaining prefix tail
+    Hq0 Hsplit Hleft).
+  rewrite <- Hsplit.
+  rewrite rev_app_distr.
+  simpl [rev].
+  rewrite !rev_involutive.
+  rewrite (append_singleton_assoc pass 0 marks).
+  reflexivity.
+Qed.
+
+Theorem q1_one_match_with_marks :
+  forall pass marks prefix tail,
+    Forall q1_pass pass ->
+    Forall comparison_mark marks ->
+    run (2 * length pass + 2 * length marks + 4)
+      (entry_config 1 (5 :: prefix) (pass ++ 3 :: marks ++ 1 :: tail)) =
+    entry_config 1 (5 :: prefix) (pass ++ 1 :: marks ++ 3 :: tail).
+Proof.
+  intros pass marks prefix tail Hpass Hmarks.
+  destruct (comparison_mark_scans marks Hmarks) as [_ [Hq4 Hrevleft]].
+  assert (Hleft : Forall dispatch_left_symbol (rev marks ++ 1 :: rev pass)).
+  { apply Forall_app; split.
+    - exact Hrevleft.
+    - constructor.
+      + unfold dispatch_left_symbol; auto.
+      + apply q1_pass_rev_left; exact Hpass. }
+  assert (Hsplit : exists x remaining,
+    rev marks ++ 1 :: rev pass = x :: remaining).
+  { destruct (rev marks) as [|x xs].
+    - exists 1, (rev pass); reflexivity.
+    - exists x, (xs ++ 1 :: rev pass); reflexivity. }
+  destruct Hsplit as [x [remaining Hsplit]].
+  rewrite Hsplit in Hleft.
+  replace (2 * length pass + 2 * length marks + 4) with
+    (S (length pass) + (S (length marks) + S (length (x :: remaining)))).
+  2:{ rewrite <- Hsplit.
+      rewrite app_length, rev_length.
+      simpl [length].
+      rewrite rev_length; lia. }
+  rewrite (dispatch_run_add (S (length pass))
+    (S (length marks) + S (length (x :: remaining)))
+    (entry_config 1 (5 :: prefix) (pass ++ 3 :: marks ++ 1 :: tail))).
+  rewrite (q1_scan_pick pass (5 :: prefix) 3 (marks ++ 1 :: tail)
+    Hpass (or_intror (or_introl eq_refl))).
+  rewrite (q4_match_one_to_y marks (1 :: rev pass) x remaining prefix tail
+    Hq4 Hsplit Hleft).
+  rewrite <- Hsplit.
+  rewrite rev_app_distr.
+  simpl [rev].
+  rewrite !rev_involutive.
+  rewrite (append_singleton_assoc pass 1 marks).
+  reflexivity.
+Qed.
+
+Print Assumptions comparison_mark_scans.
+Print Assumptions q1_zero_match_with_marks.
+Print Assumptions q1_one_match_with_marks.
+
+(** In the comparison phase, every selected A/B moves into the binary
+    q1-pass prefix, while its matching raw input becomes the last A/B.
+    This is an actual repeated execution of the same fixed native table;
+    [done] contains marks produced by earlier successful comparisons. *)
+Definition match_mark (b : bool) : nat := if b then 3 else 2.
+Definition match_raw (b : bool) : nat := if b then 1 else 0.
+
+Lemma match_mark_valid :
+  forall bits, Forall comparison_mark (map match_mark bits).
+Proof.
+  induction bits as [|b rest IH]; simpl [map].
+  - constructor.
+  - constructor.
+    + destruct b; unfold comparison_mark, match_mark; auto.
+    + exact IH.
+Qed.
+
+Lemma match_raw_valid :
+  forall bits, Forall q1_pass (map match_raw bits).
+Proof.
+  induction bits as [|b rest IH]; simpl [map].
+  - constructor.
+  - constructor.
+    + destruct b; unfold q1_pass, match_raw; auto.
+    + exact IH.
+Qed.
+
+Lemma q1_match_one_bit_with_marks :
+  forall b pass marks prefix tail,
+    Forall q1_pass pass ->
+    Forall comparison_mark marks ->
+    run (2 * length pass + 2 * length marks + 4)
+      (entry_config 1 (5 :: prefix)
+        (pass ++ match_mark b :: marks ++ match_raw b :: tail)) =
+    entry_config 1 (5 :: prefix)
+      (pass ++ match_raw b :: marks ++ match_mark b :: tail).
+Proof.
+  intros [|] pass marks prefix tail Hpass Hmarks; simpl [match_mark match_raw].
+  - apply q1_one_match_with_marks; assumption.
+  - apply q1_zero_match_with_marks; assumption.
+Qed.
+
+Fixpoint matched_comparison_steps
+    (remaining : list bool) (pass_length done_length : nat) : nat :=
+  match remaining with
+  | [] => 0
+  | _ :: rest =>
+      (2 * pass_length + 2 * (length rest + done_length) + 4) +
+      matched_comparison_steps rest (S pass_length) (S done_length)
+  end.
+
+Theorem q1_all_matching_bits :
+  forall bits pass done prefix tail,
+    Forall q1_pass pass ->
+    Forall comparison_mark done ->
+    run (matched_comparison_steps bits (length pass) (length done))
+      (entry_config 1 (5 :: prefix)
+        (pass ++ map match_mark bits ++ done ++ map match_raw bits ++ tail)) =
+    entry_config 1 (5 :: prefix)
+      (pass ++ map match_raw bits ++ done ++ map match_mark bits ++ tail).
+Proof.
+  induction bits as [|b rest IH]; intros pass done prefix tail Hpass Hdone.
+  - reflexivity.
+  - simpl [matched_comparison_steps map].
+    assert (Hmarks : Forall comparison_mark (map match_mark rest ++ done)).
+    { apply Forall_app; split.
+      - apply match_mark_valid.
+      - exact Hdone. }
+    assert (Hpass' : Forall q1_pass (pass ++ [match_raw b])).
+    { apply Forall_app; split.
+      - exact Hpass.
+      - constructor.
+        + destruct b; unfold q1_pass, match_raw; auto.
+        + constructor. }
+    assert (Hdone' : Forall comparison_mark (done ++ [match_mark b])).
+    { apply Forall_app; split.
+      - exact Hdone.
+      - constructor.
+        + destruct b; unfold comparison_mark, match_mark; auto.
+        + constructor. }
+    replace (length rest + length done) with
+      (length (map match_mark rest ++ done))
+      by (rewrite app_length, map_length; lia).
+    rewrite (dispatch_run_add
+      (2 * length pass + 2 * length (map match_mark rest ++ done) + 4)
+      (matched_comparison_steps rest (S (length pass)) (S (length done)))
+      (entry_config 1 (5 :: prefix)
+        (pass ++ match_mark b :: map match_mark rest ++ done ++
+         match_raw b :: map match_raw rest ++ tail))).
+    rewrite (q1_match_one_bit_with_marks b pass
+      (map match_mark rest ++ done) prefix (map match_raw rest ++ tail)
+      Hpass Hmarks).
+    replace
+      (pass ++ match_raw b :: map match_mark rest ++ done ++
+       match_mark b :: map match_raw rest ++ tail) with
+      ((pass ++ [match_raw b]) ++ map match_mark rest ++
+       (done ++ [match_mark b]) ++ map match_raw rest ++ tail)
+      by (repeat rewrite <- app_assoc; reflexivity).
+    replace (S (length pass)) with (length (pass ++ [match_raw b]))
+      by (rewrite app_length; simpl; lia).
+    replace (S (length done)) with (length (done ++ [match_mark b]))
+      by (rewrite app_length; simpl; lia).
+    rewrite (IH (pass ++ [match_raw b]) (done ++ [match_mark b])
+      prefix tail Hpass' Hdone').
+    repeat rewrite <- app_assoc.
+    reflexivity.
+Qed.
+
+Lemma matched_comparison_steps_closed :
+  forall bits pass_length done_length,
+    matched_comparison_steps bits pass_length done_length =
+    2 * length bits * pass_length +
+    3 * length bits * length bits +
+    (2 * done_length + 1) * length bits.
+Proof.
+  induction bits as [|b rest IH]; intros pass_length done_length.
+  - reflexivity.
+  - simpl [matched_comparison_steps length].
+    rewrite (IH (S pass_length) (S done_length)).
+    nia.
+Qed.
+
+Corollary q1_all_matching_bits_exact_clock :
+  forall bits pass prefix tail,
+    Forall q1_pass pass ->
+    run (2 * length bits * length pass +
+         3 * length bits * length bits + length bits)
+      (entry_config 1 (5 :: prefix)
+        (pass ++ map match_mark bits ++ map match_raw bits ++ tail)) =
+    entry_config 1 (5 :: prefix)
+      (pass ++ map match_raw bits ++ map match_mark bits ++ tail).
+Proof.
+  intros bits pass prefix tail Hpass.
+  rewrite <- (matched_comparison_steps_closed bits (length pass) 0).
+  simpl [Nat.add Nat.mul].
+  apply (q1_all_matching_bits bits pass [] prefix tail Hpass).
+  constructor.
+Qed.
+
+Print Assumptions q1_match_one_bit_with_marks.
+Print Assumptions q1_all_matching_bits.
+Print Assumptions q1_all_matching_bits_exact_clock.

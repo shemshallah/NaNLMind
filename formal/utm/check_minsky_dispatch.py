@@ -152,6 +152,56 @@ def check_q1_matching_roundtrip(
         raise AssertionError((skipped, matching_bit, tape, expected))
 
 
+def check_q1_marked_match(
+    table: list[tuple[int, int, int, int, int, bool]],
+    skipped: tuple[int, ...],
+    marks: tuple[int, ...],
+    matching_bit: int,
+) -> None:
+    """Check a matching bit after an arbitrary already-marked A/B block."""
+    marker = 3 if matching_bit else 2
+    source = skipped + (marker,) + marks + (matching_bit, 7, 4)
+    expected = skipped + (matching_bit,) + marks + (marker, 7, 4)
+    tape = {-2: 6, -1: 5, **dict(enumerate(source))}
+    state, head, halted = 1, 0, False
+    fuel = 2 * len(skipped) + 2 * len(marks) + 4
+    for microstep in range(fuel):
+        if halted:
+            raise AssertionError(("early halt", skipped, marks, microstep))
+        _, _, write, movement, state, halted = table[state * 8 + tape.get(head, 2)]
+        tape[head] = write
+        head += movement
+    if (state, head, halted) != (1, 0, False):
+        raise AssertionError((skipped, marks, matching_bit, state, head, halted))
+    if tape != {-2: 6, -1: 5, **dict(enumerate(expected))}:
+        raise AssertionError(("incorrect marked-match tape", skipped, marks, matching_bit))
+
+
+def check_q1_full_matching_prefix(
+    table: list[tuple[int, int, int, int, int, bool]],
+    skipped: tuple[int, ...],
+    bits: tuple[int, ...],
+) -> None:
+    """Execute successive comparisons; no source-interpreter shortcut."""
+    marks = tuple(3 if bit else 2 for bit in bits)
+    source = skipped + marks + bits + (7, 4)
+    expected = skipped + bits + marks + (7, 4)
+    tape = {-2: 6, -1: 5, **dict(enumerate(source))}
+    state, head, halted = 1, 0, False
+    n = len(bits)
+    fuel = 2 * n * len(skipped) + 3 * n * n + n
+    for microstep in range(fuel):
+        if halted:
+            raise AssertionError(("early halt", skipped, bits, microstep))
+        _, _, write, movement, state, halted = table[state * 8 + tape.get(head, 2)]
+        tape[head] = write
+        head += movement
+    if (state, head, halted) != (1, 0, False):
+        raise AssertionError((skipped, bits, state, head, halted))
+    if tape != {-2: 6, -1: 5, **dict(enumerate(expected))}:
+        raise AssertionError(("incorrect multi-bit tape", skipped, bits))
+
+
 def main() -> None:
     table = load_table()
     check_zero_buffer_exception(table)
@@ -180,9 +230,26 @@ def main() -> None:
             for bit in (0, 1):
                 check_q1_matching_roundtrip(table, skipped, bit)
                 matching_cases += 1
+    marked_cases = 0
+    for skip_width in range(6):
+        for skipped in itertools.product((0, 1), repeat=skip_width):
+            for mark_width in range(6):
+                for marks in itertools.product((2, 3), repeat=mark_width):
+                    for bit in (0, 1):
+                        check_q1_marked_match(table, skipped, marks, bit)
+                        marked_cases += 1
+    sequence_cases = 0
+    for skip_width in range(4):
+        for skipped in itertools.product((0, 1), repeat=skip_width):
+            for bit_width in range(7):
+                for bits in itertools.product((0, 1), repeat=bit_width):
+                    check_q1_full_matching_prefix(table, skipped, bits)
+                    sequence_cases += 1
     print(f"MINSKY CONCRETE DISPATCH PASS ({cases} exhaustive/seeded cases; "
           f"positive buffers 1..129 and zero-buffer counterexample; "
-          f"{matching_cases} q1 matching roundtrips)")
+          f"{matching_cases} q1 matching roundtrips; "
+          f"{marked_cases} marked-prefix roundtrips; "
+          f"{sequence_cases} complete matching sequences)")
 
 
 if __name__ == "__main__":
