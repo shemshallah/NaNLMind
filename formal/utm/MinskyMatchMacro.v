@@ -439,5 +439,7 @@ Proof.
     rewrite (q1_pass_step p left (pass ++ head :: rest) Hp).
     rewrite (IH (p :: left) head rest Hrest Hhead).
     cbn [rev].
+    repeat rewrite <- app_assoc.
+    cbn [app].
     reflexivity.
 Qed.
