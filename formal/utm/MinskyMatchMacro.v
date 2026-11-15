@@ -313,3 +313,41 @@ Qed.
 Print Assumptions q0_mismatch_one_reaches_x.
 Print Assumptions q4_mismatch_zero_reaches_x.
 Print Assumptions q3_marker_cleanup_to_y.
+Lemma q3_at_marker_step :
+  forall left suffix,
+    step (entry_config 3 left (4 :: suffix)) =
+    cfg_ml 5 left (4 :: suffix).
+Proof. intros [|z zs] suffix; reflexivity. Qed.
+
+(** Mismatch restart: q3 reaches X, the X transition enters q5, and the
+    q5 cleanup scan returns to Y.  The split at the cell immediately
+    before X is explicit. *)
+Lemma q3_then_q5_to_y :
+  forall row_rest marked left_pre s remaining prefix afterX,
+    Forall dispatch_right_symbol row_rest ->
+    rev row_rest ++ 3 :: rev marked ++ left_pre ++ 5 :: prefix =
+      s :: remaining ++ 5 :: prefix ->
+    Forall q5_pass (s :: remaining) ->
+    run ((length row_rest + 1) + S (length (s :: remaining)))
+      (entry_config 3 (3 :: rev marked ++ left_pre ++ 5 :: prefix)
+        (row_rest ++ 4 :: afterX)) =
+    entry_config 1 (5 :: prefix)
+      (map entry_rewrite (rev (s :: remaining)) ++ 4 :: afterX).
+Proof.
+  intros row_rest marked left_pre s remaining prefix afterX
+    Hright Hsplit Hq5.
+  rewrite (dispatch_run_add (length row_rest + 1)
+    (S (length (s :: remaining)))
+    (entry_config 3 (3 :: rev marked ++ left_pre ++ 5 :: prefix)
+      (row_rest ++ 4 :: afterX))).
+  rewrite (dispatch_right_reaches_marker row_rest
+    (3 :: rev marked ++ left_pre ++ 5 :: prefix) afterX Hright).
+  rewrite q3_at_marker_step.
+  rewrite Hsplit.
+  cbn [cfg_ml app].
+  rewrite (q5_scan_unbounded remaining s prefix (4 :: afterX) Hq5).
+  reflexivity.
+Qed.
+
+Print Assumptions q3_at_marker_step.
+Print Assumptions q3_then_q5_to_y.
