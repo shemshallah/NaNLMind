@@ -37,6 +37,8 @@ Proof.
   unfold encode_wide_row, wide_row_tail_bits; simpl.
   repeat rewrite map_app.
   simpl.
+  repeat rewrite map_app.
+  simpl.
   reflexivity.
 Qed.
 
