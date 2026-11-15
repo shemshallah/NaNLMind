@@ -27,6 +27,7 @@ Nature-level completion while any critical obligation below is open.
 | `MinskyConcreteProgramScan.v` | Entire encoded description is scannable by the unchanged native table for arbitrary row count, provided the exact reversed tape layout | No |
 | `MinskyConcreteDispatch.v` | Unbounded state-2 backward and state-3 forward scans, and first-row branches through step 15/17. Corrected version passed `coqc`/`coqchk` on proof-debug run `43645367780`; targeted backport to `main` requires its own CI | No |
 | `MinskyWideConcreteDispatch.v` | Submitted: arbitrary-width row first-bit branches and whole-program scan, with p=9 concrete first-bit witness; kernel certification pending | No |
+| `MinskyMarkedProgram.v` | Submitted: marked 0/1→2/3 descriptions admit a logical erasure; an actual unbounded native-table scan preserves a fully decodable arbitrary-width source program and its untouched suffix. Kernel certification pending. | No |
 | `MinskyVariableBuffer.v` | Submitted: exact first-state-bit dispatch after `2*n+4` native steps for all **positive** zero-buffer widths `n`; low return after `3*n+6`; high scan to next X/Y for any finite binary tail | No |
 | `MinskyMacroSimulation.v` | Submitted: conditional arbitrary-run simulation and **both directions** of halting equivalence from explicit, as-yet-unproved native macro-step/encoding hypotheses | No |
 | `MinskyEncodedFixture.v` | Exact 583-transition native-fixture halted configuration, with step 582 still active | No |
@@ -161,3 +162,23 @@ This closes the native compiler/execution obligation for the committed finite
 fixtures.  It does **not** close the central formal theorem: the full
 table-executed instruction macro and arbitrary-source universality remain open,
 and no ledger row above should be promoted to a universality claim.
+
+## November 15 marked-description representation increment
+
+The candidate `MinskyMarkedProgram.v` formalizes a first nontrivial
+representation invariant for the unchanged transition table. During the
+native state-5 left scan, source-bit `0` is overwritten by `2` and `1`
+by `3`; the `4` instruction separator stays in place. A logical erasure
+`2→0, 3→1` recovers the complete encoded source program, not only the
+first row. Its concrete scan theorem uses `MinskyTable.run` and states
+the final state, left delimiter, fully decoded program, unchanged external
+suffix, and nonhalting status for every finite width and well-formed
+list of source rows. It explicitly requires the actual reversed zipper
+entry layout. This is a **candidate pending CI coqc/coqchk**, not yet a
+kernel-certified theorem.
+
+This invariant describes the *program region only*. It does not yet
+model the `M` head marker, source tape/control state, or subsequent
+native scans that may rewrite additional program/control symbols. The
+complete `Rep(M,c,N)` relation and source-step commuting diagram remain
+open. An erasure of program marks cannot substitute for those obligations.
