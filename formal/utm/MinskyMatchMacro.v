@@ -154,13 +154,13 @@ Lemma q0_match_zero_to_y :
     Forall q0_pass marked ->
     rev marked = x :: remaining ->
     Forall dispatch_left_symbol (x :: remaining) ->
-    run (S (length marked) + S (length remaining))
+    run (S (length marked) + S (length (x :: remaining)))
       (entry_config 0 (5 :: prefix) (marked ++ 0 :: tail)) =
     entry_config 1 (5 :: prefix)
       (rev (x :: remaining) ++ 2 :: tail).
 Proof.
   intros marked x remaining prefix tail Hmarked Hrev Hleft.
-  rewrite (dispatch_run_add (S (length marked)) (S (length remaining))
+  rewrite (dispatch_run_add (S (length marked)) (S (length (x :: remaining)))
     (entry_config 0 (5 :: prefix) (marked ++ 0 :: tail))).
   rewrite (q0_scan_zero marked (5 :: prefix) tail Hmarked).
   rewrite Hrev.
@@ -174,13 +174,13 @@ Lemma q4_match_one_to_y :
     Forall q4_pass marked ->
     rev marked = x :: remaining ->
     Forall dispatch_left_symbol (x :: remaining) ->
-    run (S (length marked) + S (length remaining))
+    run (S (length marked) + S (length (x :: remaining)))
       (entry_config 4 (5 :: prefix) (marked ++ 1 :: tail)) =
     entry_config 1 (5 :: prefix)
       (rev (x :: remaining) ++ 3 :: tail).
 Proof.
   intros marked x remaining prefix tail Hmarked Hrev Hleft.
-  rewrite (dispatch_run_add (S (length marked)) (S (length remaining))
+  rewrite (dispatch_run_add (S (length marked)) (S (length (x :: remaining)))
     (entry_config 4 (5 :: prefix) (marked ++ 1 :: tail))).
   rewrite (q4_scan_one marked (5 :: prefix) tail Hmarked).
   rewrite Hrev.
