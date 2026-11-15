@@ -435,7 +435,7 @@ Proof.
   - destruct Hhead as [-> | [-> | ->]]; reflexivity.
   - inversion Hpass as [|? ? Hp Hrest]; subst.
     rewrite entry_run_successor.
-    cbn [app].
+    cbn [app length].
     rewrite (q1_pass_step p left (pass ++ head :: rest) Hp).
     rewrite (IH (p :: left) head rest Hrest Hhead).
     cbn [rev].
