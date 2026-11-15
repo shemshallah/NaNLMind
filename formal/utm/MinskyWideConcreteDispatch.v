@@ -187,7 +187,9 @@ Proof.
   change ([3; 4; 2; 2; 0; 5]) with
     ([3; 4; 2; 2; 0; 5] ++ []).
   apply (wide_high_next_marker_cost 9 wide_nine_bit_high_example
-    (repeat false 8) [] [5]); reflexivity.
+    (repeat false 8) [] [5]).
+  - unfold wide_row_wellformed; split; reflexivity.
+  - reflexivity.
 Qed.
 
 (** An entire program is scannable, rather than just a bounded fixture.
