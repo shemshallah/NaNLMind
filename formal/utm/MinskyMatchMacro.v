@@ -1020,7 +1020,7 @@ Proof.
   - constructor.
   - constructor.
     + destruct Hs as [-> | [-> | [-> | [-> | [-> | ->]]]]];
-        unfold q5_pass; auto.
+        unfold q5_pass; auto 10.
     + exact IH.
 Qed.
 
