@@ -35,7 +35,8 @@ Proof.
   intros [current scanned next written direction] high remaining Hcurrent.
   simpl in Hcurrent; subst current.
   unfold encode_wide_row, wide_row_tail_bits; simpl.
-  rewrite (map_app source_bit next [written; direction]).
+  match goal with |- ?G => idtac "WIDE_LAYOUT:" G end.
+  repeat rewrite map_app.
   simpl.
   repeat rewrite <- app_assoc.
   reflexivity.
