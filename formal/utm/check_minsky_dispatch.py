@@ -249,6 +249,9 @@ def check_q1_first_mismatch_after_matches(
                       marks + (opposite_mark,) + right_scan)
     expected = tuple(2 if x == 0 else 3 if x == 1 else x
                      for x in restored_order) + (4, 7)
+    erase = lambda x: 0 if x == 2 else 1 if x == 3 else x
+    if tuple(map(erase, source)) != tuple(map(erase, expected)):
+        raise AssertionError(("first mismatch lost logical data", source, expected))
     tape = {-2: 6, -1: 5, **dict(enumerate(source))}
     state, head, halted = 1, 0, False
     n, p, r = len(matching_bits), len(skipped), len(right_scan)
@@ -349,8 +352,8 @@ def main() -> None:
                                 check_q1_first_mismatch_after_matches(
                                     table, skipped, bits, right_scan, selected_bit)
                                 first_mismatch_cases += 1
-    for bit_width in (8, 16, 32, 64, 129):
-        for _ in range(16):
+    for bit_width in (8, 16, 32, 64, 129, 256, 512):
+        for _ in range(16 if bit_width <= 129 else 4):
             skipped = tuple(rng.randrange(2) for _ in range(rng.randrange(17)))
             bits = tuple(rng.randrange(2) for _ in range(bit_width))
             right_scan = tuple(rng.choice((0, 1, 2, 3, 6, 7))
