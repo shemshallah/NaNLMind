@@ -191,8 +191,72 @@ Proof.
   reflexivity.
 Qed.
 
+(** Three-stage cycles: return left to Y, write the selected action bit,
+    then scan right to X and resume q6.  The overlap condition excludes
+    raw 0/1 cells in the return segment, which would terminate q9/q10
+    early; this restriction is essential, not cosmetic. *)
+Theorem q7_writeback_full_cycle :
+  forall remaining s skipped bit returned prefix tail,
+    Forall q7_pass (s :: remaining) ->
+    Forall q_write_pass (rev (s :: remaining) ++ skipped) ->
+    Forall q11_pass returned ->
+    run (S (length (s :: remaining)) +
+      (S (length (rev (s :: remaining) ++ skipped)) +
+       S (length returned)))
+      (entry_config 7 (remaining ++ 5 :: prefix)
+        (s :: skipped ++ source_bit bit :: returned ++ 4 :: tail)) =
+    entry_config 6
+      (4 :: rev returned ++
+       3 :: rev (rev (s :: remaining) ++ skipped) ++ 5 :: prefix) tail.
+Proof.
+  intros remaining s skipped bit returned prefix tail Hleft Hwrite Hreturn.
+  rewrite writeback_run_add.
+  rewrite (q7_scan_to_y remaining s prefix
+    (skipped ++ source_bit bit :: returned ++ 4 :: tail) Hleft).
+  replace (rev (s :: remaining) ++
+       (skipped ++ source_bit bit :: returned ++ 4 :: tail))
+    with ((rev (s :: remaining) ++ skipped) ++
+      source_bit bit :: returned ++ 4 :: tail).
+  2:{ rewrite app_assoc. reflexivity. }
+  rewrite (q9_writeback_return_cycle
+    (rev (s :: remaining) ++ skipped) bit returned
+    (5 :: prefix) tail Hwrite Hreturn).
+  reflexivity.
+Qed.
+
+Theorem q8_writeback_full_cycle :
+  forall remaining s skipped bit returned prefix tail,
+    Forall q8_pass (s :: remaining) ->
+    Forall q_write_pass (rev (s :: remaining) ++ skipped) ->
+    Forall q11_pass returned ->
+    run (S (length (s :: remaining)) +
+      (S (length (rev (s :: remaining) ++ skipped)) +
+       S (length returned)))
+      (entry_config 8 (remaining ++ 5 :: prefix)
+        (s :: skipped ++ source_bit bit :: returned ++ 4 :: tail)) =
+    entry_config 6
+      (4 :: rev returned ++
+       2 :: rev (rev (s :: remaining) ++ skipped) ++ 5 :: prefix) tail.
+Proof.
+  intros remaining s skipped bit returned prefix tail Hleft Hwrite Hreturn.
+  rewrite writeback_run_add.
+  rewrite (q8_scan_to_y remaining s prefix
+    (skipped ++ source_bit bit :: returned ++ 4 :: tail) Hleft).
+  replace (rev (s :: remaining) ++
+       (skipped ++ source_bit bit :: returned ++ 4 :: tail))
+    with ((rev (s :: remaining) ++ skipped) ++
+      source_bit bit :: returned ++ 4 :: tail).
+  2:{ rewrite app_assoc. reflexivity. }
+  rewrite (q10_writeback_return_cycle
+    (rev (s :: remaining) ++ skipped) bit returned
+    (5 :: prefix) tail Hwrite Hreturn).
+  reflexivity.
+Qed.
+
 Print Assumptions q9_scan_write_bit.
 Print Assumptions q10_scan_write_bit.
 Print Assumptions q11_scan_to_x.
 Print Assumptions q9_writeback_return_cycle.
 Print Assumptions q10_writeback_return_cycle.
+Print Assumptions q7_writeback_full_cycle.
+Print Assumptions q8_writeback_full_cycle.
