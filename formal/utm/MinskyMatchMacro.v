@@ -1,9 +1,8 @@
-(** * First generic comparison macros for the concrete Minsky table
+(** * Generic q0/q4 comparison scans for the concrete Minsky table
 
-    These lemmas isolate the q0/q4 scan over an already-marked prefix.
-    They are literal [MinskyTable.run] facts, not source-interpreter
-    substitutions.  The full instruction macro is still to be built on
-    top of them.
+    These lemmas isolate the first half of a one-bit comparison: q0/q4
+    pass over an already-marked prefix and consume the next 0/1 row bit.
+    A matched bit moves left into q2; a mismatch moves right into q3.
 *)
 
 From Coq Require Import List Arith Bool Lia.
@@ -13,6 +12,12 @@ From NaNLM Require Import MinskyTable MinskyConcreteEntry.
 
 Definition q0_pass (s : nat) : Prop :=
   s = 2 \/ s = 3 \/ s = 4 \/ s = 5 \/ s = 6 \/ s = 7.
+
+Definition cfg_ml (q : nat) (left right : list nat) : Config :=
+  match left with
+  | [] => entry_config q [] (2 :: right)
+  | x :: xs => entry_config q xs (x :: right)
+  end.
 
 Lemma q0_pass_step :
   forall s left right,
@@ -29,16 +34,17 @@ Lemma q0_scan_zero :
     Forall q0_pass marked ->
     run (S (length marked))
       (entry_config 0 left (marked ++ 0 :: tail)) =
-    entry_config 2 (rev marked ++ left) (2 :: tail).
+    cfg_ml 2 (rev marked ++ left) (2 :: tail).
 Proof.
   induction marked as [|m rest IH]; intros left tail H.
-  - vm_compute; reflexivity.
+  - cbn. unfold cfg_ml. destruct left; reflexivity.
   - inversion H as [|? ? Hm Hrest]; subst.
     change (S (length (m :: rest))) with (S (S (length rest))).
     rewrite entry_run_successor.
     rewrite (q0_pass_step m left (rest ++ 0 :: tail) Hm).
     rewrite (IH (m :: left) tail Hrest).
-    simpl; reflexivity.
+    cbn [rev app]. unfold cfg_ml.
+    destruct (rev rest ++ m :: left) as [|x xs]; reflexivity.
 Qed.
 
 Lemma q0_scan_one :
@@ -49,13 +55,13 @@ Lemma q0_scan_one :
     entry_config 3 (rev marked ++ left) (3 :: tail).
 Proof.
   induction marked as [|m rest IH]; intros left tail H.
-  - vm_compute; reflexivity.
+  - cbn. reflexivity.
   - inversion H as [|? ? Hm Hrest]; subst.
     change (S (length (m :: rest))) with (S (S (length rest))).
     rewrite entry_run_successor.
     rewrite (q0_pass_step m left (rest ++ 1 :: tail) Hm).
     rewrite (IH (m :: left) tail Hrest).
-    simpl; reflexivity.
+    reflexivity.
 Qed.
 
 Definition q4_pass (s : nat) : Prop :=
@@ -79,13 +85,13 @@ Lemma q4_scan_zero :
     entry_config 3 (rev marked ++ left) (2 :: tail).
 Proof.
   induction marked as [|m rest IH]; intros left tail H.
-  - vm_compute; reflexivity.
+  - cbn. reflexivity.
   - inversion H as [|? ? Hm Hrest]; subst.
     change (S (length (m :: rest))) with (S (S (length rest))).
     rewrite entry_run_successor.
     rewrite (q4_pass_step m left (rest ++ 0 :: tail) Hm).
     rewrite (IH (m :: left) tail Hrest).
-    simpl; reflexivity.
+    reflexivity.
 Qed.
 
 Lemma q4_scan_one :
@@ -93,24 +99,19 @@ Lemma q4_scan_one :
     Forall q4_pass marked ->
     run (S (length marked))
       (entry_config 4 left (marked ++ 1 :: tail)) =
-    entry_config 2 (rev marked ++ left) (3 :: tail).
+    cfg_ml 2 (rev marked ++ left) (3 :: tail).
 Proof.
   induction marked as [|m rest IH]; intros left tail H.
-  - vm_compute; reflexivity.
+  - cbn. unfold cfg_ml. destruct left; reflexivity.
   - inversion H as [|? ? Hm Hrest]; subst.
     change (S (length (m :: rest))) with (S (S (length rest))).
     rewrite entry_run_successor.
     rewrite (q4_pass_step m left (rest ++ 1 :: tail) Hm).
     rewrite (IH (m :: left) tail Hrest).
-    simpl; reflexivity.
+    cbn [rev app]. unfold cfg_ml.
+    destruct (rev rest ++ m :: left) as [|x xs]; reflexivity.
 Qed.
 
-Print Assumptions q0_scan_zero.
-Print Assumptions q0_scan_one.
-Print Assumptions q4_scan_zero.
-Print Assumptions q4_scan_one.
-
-(** State 3 scans to the next X marker after a mismatch. *)
 Lemma q3_reaches_marker :
   forall symbols prefix suffix,
     Forall dispatch_right_symbol symbols ->
@@ -121,26 +122,8 @@ Proof.
   apply dispatch_right_reaches_marker.
 Qed.
 
-(** Composed q0 match: scan the marked prefix, compare a zero row bit,
-    then return to Y.  The left context is split into an arbitrary
-    prefix and the Y delimiter so the two macros can be composed. *)
-Lemma q0_match_bit_to_y :
-  forall marked left_pre prefix tail,
-    Forall q0_pass marked ->
-    Forall dispatch_left_symbol (rev marked ++ left_pre) ->
-    run (S (length marked) + S (length (rev marked ++ left_pre)))
-      (entry_config 0 (left_pre ++ 5 :: prefix) (marked ++ 0 :: tail)) =
-    entry_config 1 (5 :: prefix)
-      (rev (2 :: rev marked ++ left_pre) ++ tail).
-Proof.
-  intros marked left_pre prefix tail Hmarked Hleft.
-  rewrite (dispatch_run_add (S (length marked))
-    (S (length (rev marked ++ left_pre)))
-    (entry_config 0 (left_pre ++ 5 :: prefix) (marked ++ 0 :: tail))).
-  rewrite (q0_scan_zero marked (left_pre ++ 5 :: prefix) tail Hmarked).
-  change (S (length (rev marked ++ left_pre)))
-    with (S (length (rev marked ++ left_pre))) at 1.
-  rewrite (dispatch_left_to_delimiter
-    (rev marked ++ left_pre) 2 prefix tail Hleft).
-  reflexivity.
-Qed.
+Print Assumptions q0_scan_zero.
+Print Assumptions q0_scan_one.
+Print Assumptions q4_scan_zero.
+Print Assumptions q4_scan_one.
+Print Assumptions q3_reaches_marker.
