@@ -152,9 +152,10 @@ finite-window contract:
   35-bit source records.
 
 All three are raw NaN16 programs, are driven only by assembled guest images, and
-pass the publication gate.  `formal/utm/MinskyWideFixture.v` is a kernel-checked
-trace of the p=9 image (`run 9277`, 94 cells), cross-checked against the native
-expected array by `formal/utm/check_minsky_wide_fixture.py`.
+pass the publication gate.  `formal/utm/MinskyWideFixture.v` and `MinskyP16Fixture.v` are kernel-checked
+traces of the p=9 (`run 9277`, 94 cells) and p=16 (`run 11603`, 104 cells)
+images, cross-checked against the native expected arrays by
+`formal/utm/check_minsky_wide_fixture.py`.
 
 This closes the native compiler/execution obligation for the committed finite
 fixtures.  It does **not** close the central formal theorem: the full
