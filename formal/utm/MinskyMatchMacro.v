@@ -32,7 +32,7 @@ Lemma q0_scan_zero :
     entry_config 2 (rev marked ++ left) (2 :: tail).
 Proof.
   induction marked as [|m rest IH]; intros left tail H.
-  - simpl; reflexivity.
+  - vm_compute; reflexivity.
   - inversion H as [|? ? Hm Hrest]; subst.
     change (S (length (m :: rest))) with (S (S (length rest))).
     rewrite entry_run_successor.
@@ -49,7 +49,7 @@ Lemma q0_scan_one :
     entry_config 3 (rev marked ++ left) (3 :: tail).
 Proof.
   induction marked as [|m rest IH]; intros left tail H.
-  - simpl; reflexivity.
+  - vm_compute; reflexivity.
   - inversion H as [|? ? Hm Hrest]; subst.
     change (S (length (m :: rest))) with (S (S (length rest))).
     rewrite entry_run_successor.
@@ -79,7 +79,7 @@ Lemma q4_scan_zero :
     entry_config 3 (rev marked ++ left) (2 :: tail).
 Proof.
   induction marked as [|m rest IH]; intros left tail H.
-  - simpl; reflexivity.
+  - vm_compute; reflexivity.
   - inversion H as [|? ? Hm Hrest]; subst.
     change (S (length (m :: rest))) with (S (S (length rest))).
     rewrite entry_run_successor.
@@ -96,7 +96,7 @@ Lemma q4_scan_one :
     entry_config 2 (rev marked ++ left) (3 :: tail).
 Proof.
   induction marked as [|m rest IH]; intros left tail H.
-  - simpl; reflexivity.
+  - vm_compute; reflexivity.
   - inversion H as [|? ? Hm Hrest]; subst.
     change (S (length (m :: rest))) with (S (S (length rest))).
     rewrite entry_run_successor.
