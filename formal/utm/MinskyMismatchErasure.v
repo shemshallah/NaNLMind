@@ -57,9 +57,9 @@ Proof.
   repeat rewrite erase_raw_comparisons.
   repeat rewrite erase_match_mark.
   repeat rewrite erase_match_raw.
-  repeat rewrite app_assoc.
+  repeat rewrite <- app_assoc.
   cbn [app].
-  repeat rewrite app_assoc.
+  repeat rewrite <- app_assoc.
   reflexivity.
 Qed.
 
