@@ -10,7 +10,7 @@ From Coq Require Import List Bool.
 Import ListNotations.
 
 From NaNLM Require Import MinskyTable MinskyConcreteEntry
-  MinskyActionMacro.
+  MinskySourceEncoding MinskyActionMacro.
 
 Definition q_write_pass (s : nat) : Prop :=
   s = 2 \/ s = 3 \/ s = 5 \/ s = 6 \/ s = 7.
