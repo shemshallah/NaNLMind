@@ -827,8 +827,15 @@ Corollary q1_all_matching_bits_exact_clock :
       (pass ++ map match_raw bits ++ map match_mark bits ++ tail).
 Proof.
   intros bits pass prefix tail Hpass.
-  rewrite <- (matched_comparison_steps_closed bits (length pass) 0).
-  simpl [Nat.add Nat.mul].
+  replace (2 * length bits * length pass +
+           3 * length bits * length bits + length bits) with
+    (matched_comparison_steps bits (length pass) 0).
+  2:{ rewrite matched_comparison_steps_closed; nia. }
+  change (run (matched_comparison_steps bits (length pass) 0)
+    (entry_config 1 (5 :: prefix)
+      (pass ++ map match_mark bits ++ [] ++ map match_raw bits ++ tail)) =
+    entry_config 1 (5 :: prefix)
+      (pass ++ map match_raw bits ++ [] ++ map match_mark bits ++ tail)).
   apply (q1_all_matching_bits bits pass [] prefix tail Hpass).
   constructor.
 Qed.
