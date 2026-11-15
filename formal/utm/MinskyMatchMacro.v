@@ -8,7 +8,7 @@
 From Coq Require Import List Arith Bool Lia.
 Import ListNotations.
 
-From NaNLM Require Import MinskyTable MinskyConcreteEntry.
+From NaNLM Require Import MinskyTable MinskyConcreteEntry MinskyConcreteDispatch.
 
 Definition q0_pass (s : nat) : Prop :=
   s = 2 \/ s = 3 \/ s = 4 \/ s = 5 \/ s = 6 \/ s = 7.
