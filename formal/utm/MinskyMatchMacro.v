@@ -45,7 +45,9 @@ Proof.
       cfg_ml 2 (rev (m :: rest) ++ left) (2 :: tail)).
     rewrite (q0_pass_step m left (rest ++ 0 :: tail) Hm).
     rewrite (IH (m :: left) tail Hrest).
-    cbn [rev app]. unfold cfg_ml.
+    cbn [rev app].
+    repeat rewrite app_assoc.
+    unfold cfg_ml.
     destruct (rev rest ++ m :: left) as [|x xs]; reflexivity.
 Qed.
 
@@ -116,7 +118,9 @@ Proof.
       cfg_ml 2 (rev (m :: rest) ++ left) (3 :: tail)).
     rewrite (q4_pass_step m left (rest ++ 1 :: tail) Hm).
     rewrite (IH (m :: left) tail Hrest).
-    cbn [rev app]. unfold cfg_ml.
+    cbn [rev app].
+    repeat rewrite app_assoc.
+    unfold cfg_ml.
     destruct (rev rest ++ m :: left) as [|x xs]; reflexivity.
 Qed.
 
