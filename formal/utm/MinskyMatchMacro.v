@@ -40,8 +40,9 @@ Proof.
   - cbn. unfold cfg_ml. destruct left; reflexivity.
   - inversion H as [|? ? Hm Hrest]; subst.
     change (S (length (m :: rest))) with (S (S (length rest))).
-    rewrite (entry_run_successor (length rest) 0 left
-      (m :: (rest ++ 0 :: tail))).
+    change (run (S (length rest))
+      (step (entry_config 0 left (m :: (rest ++ 0 :: tail)))) =
+      cfg_ml 2 (rev (m :: rest) ++ left) (2 :: tail)).
     rewrite (q0_pass_step m left (rest ++ 0 :: tail) Hm).
     rewrite (IH (m :: left) tail Hrest).
     cbn [rev app]. unfold cfg_ml.
@@ -59,8 +60,9 @@ Proof.
   - cbn. reflexivity.
   - inversion H as [|? ? Hm Hrest]; subst.
     change (S (length (m :: rest))) with (S (S (length rest))).
-    rewrite (entry_run_successor (length rest) 0 left
-      (m :: (rest ++ 1 :: tail))).
+    change (run (S (length rest))
+      (step (entry_config 0 left (m :: (rest ++ 1 :: tail)))) =
+      entry_config 3 (rev (m :: rest) ++ left) (3 :: tail)).
     rewrite (q0_pass_step m left (rest ++ 1 :: tail) Hm).
     rewrite (IH (m :: left) tail Hrest).
     reflexivity.
@@ -90,8 +92,9 @@ Proof.
   - cbn. reflexivity.
   - inversion H as [|? ? Hm Hrest]; subst.
     change (S (length (m :: rest))) with (S (S (length rest))).
-    rewrite (entry_run_successor (length rest) 4 left
-      (m :: (rest ++ 0 :: tail))).
+    change (run (S (length rest))
+      (step (entry_config 4 left (m :: (rest ++ 0 :: tail)))) =
+      entry_config 3 (rev (m :: rest) ++ left) (2 :: tail)).
     rewrite (q4_pass_step m left (rest ++ 0 :: tail) Hm).
     rewrite (IH (m :: left) tail Hrest).
     reflexivity.
@@ -108,8 +111,9 @@ Proof.
   - cbn. unfold cfg_ml. destruct left; reflexivity.
   - inversion H as [|? ? Hm Hrest]; subst.
     change (S (length (m :: rest))) with (S (S (length rest))).
-    rewrite (entry_run_successor (length rest) 4 left
-      (m :: (rest ++ 1 :: tail))).
+    change (run (S (length rest))
+      (step (entry_config 4 left (m :: (rest ++ 1 :: tail)))) =
+      cfg_ml 2 (rev (m :: rest) ++ left) (3 :: tail)).
     rewrite (q4_pass_step m left (rest ++ 1 :: tail) Hm).
     rewrite (IH (m :: left) tail Hrest).
     cbn [rev app]. unfold cfg_ml.
