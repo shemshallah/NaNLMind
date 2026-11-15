@@ -810,7 +810,7 @@ Lemma matched_comparison_steps_closed :
     (2 * done_length + 1) * length bits.
 Proof.
   induction bits as [|b rest IH]; intros pass_length done_length.
-  - nia.
+  - simpl [matched_comparison_steps length]. nia.
   - simpl [matched_comparison_steps length].
     rewrite (IH (S pass_length) (S done_length)).
     nia.

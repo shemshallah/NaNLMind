@@ -47,6 +47,27 @@ Proof.
   - rewrite (erase_scan_mark_rewrite s Hs), IH. reflexivity.
 Qed.
 
+(** The q5 mismatch-cleanup phase can encounter cells that are already
+    marked 2/3.  Rewriting another time is not a second logical change:
+    erasure sees the same information before and after cleanup.  Unlike
+    [erase_scan_marks_rewrite], no unmarked-input precondition is needed. *)
+Lemma erase_scan_mark_cleanup_stable :
+  forall s,
+    erase_scan_mark (entry_rewrite s) = erase_scan_mark s.
+Proof.
+  intros [|[|[|[|s]]]]; reflexivity.
+Qed.
+
+Theorem erase_cleanup_preserves_logical_tape :
+  forall symbols,
+    map erase_scan_mark (map entry_rewrite symbols) =
+    map erase_scan_mark symbols.
+Proof.
+  induction symbols as [|s rest IH]; simpl.
+  - reflexivity.
+  - rewrite erase_scan_mark_cleanup_stable, IH; reflexivity.
+Qed.
+
 Theorem wide_program_marks_preserve_description :
   forall rows,
     map erase_scan_mark (map entry_rewrite (encode_wide_program rows)) =
@@ -131,3 +152,4 @@ Qed.
 Print Assumptions wide_program_marks_preserve_description.
 Print Assumptions marked_description_roundtrip.
 Print Assumptions concrete_left_scan_preserves_wide_program.
+Print Assumptions erase_cleanup_preserves_logical_tape.
