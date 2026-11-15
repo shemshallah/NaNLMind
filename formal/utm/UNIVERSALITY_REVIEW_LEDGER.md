@@ -26,7 +26,8 @@ Nature-level completion while any critical obligation below is open.
 | `MinskyConcreteEntry.v` | Left-scan induction, first 5/8/10 native-table transitions | No |
 | `MinskyConcreteProgramScan.v` | Entire encoded description is scannable by the unchanged native table for arbitrary row count, provided the exact reversed tape layout | No |
 | `MinskyConcreteDispatch.v` | Unbounded state-2 backward and state-3 forward scans, and first-row branches through step 15/17. Corrected version passed `coqc`/`coqchk` on proof-debug run `43645367780`; targeted backport to `main` requires its own CI | No |
-| `MinskyWideConcreteDispatch.v` | Submitted: arbitrary-width row first-bit branches and whole-program scan, with p=9 concrete first-bit witness; kernel certification pending | No |
+| `MinskyWideConcreteDispatch.v` | Checked: arbitrary-width row first-bit branches and whole-program scan, with p=9 concrete first-bit witness | No |
+| `MinskyMatchMacro.v` | Checked: q0/q4 marked-prefix scans, matched-bit return to Y, q1 0/1 skip-and-pick, q5 general cleanup, and q0/q4 mismatch restart through X and Y | No — the inductive match loop and action/move phases are still open |
 | `MinskyMarkedProgram.v` | Submitted: marked 0/1→2/3 descriptions admit a logical erasure; an actual unbounded native-table scan preserves a fully decodable arbitrary-width source program and its untouched suffix. Kernel certification pending. | No |
 | `MinskyVariableBuffer.v` | Submitted: exact first-state-bit dispatch after `2*n+4` native steps for all **positive** zero-buffer widths `n`; low return after `3*n+6`; high scan to next X/Y for any finite binary tail | No |
 | `MinskyMacroSimulation.v` | Submitted: conditional arbitrary-run simulation and **both directions** of halting equivalence from explicit, as-yet-unproved native macro-step/encoding hypotheses | No |
