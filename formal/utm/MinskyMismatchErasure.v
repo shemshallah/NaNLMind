@@ -111,6 +111,7 @@ Proof.
   rewrite map_app.
   rewrite erase_cleanup_preserves_logical_tape.
   rewrite <- map_app.
+  repeat rewrite app_assoc.
   symmetry.
   apply first_mismatch_logical_frame.
 Qed.
