@@ -76,6 +76,7 @@ Proof.
   repeat rewrite rev_involutive.
   repeat rewrite <- app_assoc.
   simpl [app].
+  repeat rewrite append_singleton_assoc.
   reflexivity.
 Qed.
 
