@@ -184,29 +184,40 @@ Lemma q10_pass_step :
     entry_config 10 (s :: left) right.
 Proof. intros s left right [-> | ->]; reflexivity. Qed.
 
-Lemma q9_write_zero_profile :
+Lemma q9_write_bit :
   forall written bit rest prefix,
     Forall q9_pass written ->
     run (S (length written))
       (entry_config 9 (5 :: prefix) (written ++ bit :: rest)) =
-    entry_config 11 (3 :: rev written ++ 5 :: prefix) (bit :: rest) /\
-    (bit = 0 \/ bit = 1).
-Abort.
+    entry_config 11 (3 :: rev written ++ 5 :: prefix) rest.
+Proof.
+  induction written as [|m ms IH]; intros bit rest prefix H.
+  - cbn. reflexivity.
+  - inversion H as [|? ? Hm Hrest]; subst.
+    change (S (length (m :: ms))) with (S (S (length ms))).
+    change (run (S (length ms))
+      (step (entry_config 9 (5 :: prefix) (m :: (ms ++ bit :: rest)))) =
+      entry_config 11 (3 :: rev (m :: ms) ++ 5 :: prefix) rest).
+    rewrite (q9_pass_step m (5 :: prefix) (ms ++ bit :: rest) Hm).
+    rewrite (IH bit rest (m :: 5 :: prefix) Hrest).
+    cbn [rev]. rewrite (append_singleton_assoc (rev ms) m (5::prefix)).
+    reflexivity.
+Qed.
 
-Lemma q10_write_zero_profile :
+Lemma q10_write_bit :
   forall written bit rest prefix,
     Forall q9_pass written ->
     run (S (length written))
       (entry_config 10 (5 :: prefix) (written ++ bit :: rest)) =
-    entry_config 11 (2 :: rev written ++ 5 :: prefix) (bit :: rest).
+    entry_config 11 (2 :: rev written ++ 5 :: prefix) rest.
 Proof.
   induction written as [|m ms IH]; intros bit rest prefix H.
-  - cbn. destruct bit; reflexivity.
+  - cbn. reflexivity.
   - inversion H as [|? ? Hm Hrest]; subst.
     change (S (length (m :: ms))) with (S (S (length ms))).
     change (run (S (length ms))
       (step (entry_config 10 (5 :: prefix) (m :: (ms ++ bit :: rest)))) =
-      entry_config 11 (2 :: rev (m :: ms) ++ 5 :: prefix) (bit :: rest)).
+      entry_config 11 (2 :: rev (m :: ms) ++ 5 :: prefix) rest).
     rewrite (q10_pass_step m (5 :: prefix) (ms ++ bit :: rest) Hm).
     rewrite (IH bit rest (m :: 5 :: prefix) Hrest).
     cbn [rev]. rewrite (append_singleton_assoc (rev ms) m (5::prefix)).
@@ -257,5 +268,6 @@ Proof.
     reflexivity.
 Qed.
 
-Print Assumptions q10_write_zero_profile.
+Print Assumptions q9_write_bit.
+Print Assumptions q10_write_bit.
 Print Assumptions q11_scan_to_marker.
