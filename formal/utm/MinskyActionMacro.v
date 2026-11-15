@@ -119,3 +119,51 @@ Qed.
 Print Assumptions q6_scan_zero.
 Print Assumptions q6_scan_one.
 Print Assumptions q7_scan_to_y.
+
+Definition q8_pass (s : nat) : Prop :=
+  s = 0 \/ s = 1 \/ s = 2 \/ s = 3 \/ s = 4 \/ s = 6 \/ s = 7.
+
+Lemma q8_pass_step :
+  forall s next left right,
+    q8_pass s ->
+    step (entry_config 8 (next :: left) (s :: right)) =
+    entry_config 8 left (next :: s :: right).
+Proof.
+  intros s next left right H;
+    destruct H as [-> | [-> | [-> | [-> | [-> | [-> | ->]]]]]];
+    reflexivity.
+Qed.
+
+Lemma q8_cross_delimiter :
+  forall left right,
+    step (entry_config 8 left (5 :: right)) =
+    entry_config 10 (5 :: left) right.
+Proof. reflexivity. Qed.
+
+Theorem q8_scan_to_y :
+  forall remaining s prefix suffix,
+    Forall q8_pass (s :: remaining) ->
+    run (S (length (s :: remaining)))
+      (entry_config 8 (remaining ++ 5 :: prefix) (s :: suffix)) =
+    entry_config 10 (5 :: prefix)
+      (rev (s :: remaining) ++ suffix).
+Proof.
+  intros remaining.
+  induction remaining as [|next rest IH]; intros s prefix suffix H.
+  - inversion H as [|? ? Hs _]; subst.
+    destruct Hs as [-> | [-> | [-> | [-> | [-> | [-> | ->]]]]]];
+      reflexivity.
+  - inversion H as [|? ? Hs Hrest]; subst.
+    change (run (S (S (length (next :: rest))))
+      (entry_config 8 (next :: (rest ++ 5 :: prefix)) (s :: suffix)) =
+      entry_config 10 (5 :: prefix)
+        (rev (s :: next :: rest) ++ suffix)).
+    rewrite entry_run_successor.
+    rewrite (q8_pass_step s next (rest ++ 5 :: prefix) suffix Hs).
+    rewrite (IH next prefix (s :: suffix) Hrest).
+    cbn [rev].
+    rewrite (append_singleton_assoc (rev rest ++ [next]) s suffix).
+    reflexivity.
+Qed.
+
+Print Assumptions q8_scan_to_y.
