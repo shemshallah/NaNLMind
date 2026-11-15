@@ -423,7 +423,7 @@ Lemma q1_scan_pick :
   forall pass left head rest,
     Forall q1_pass pass ->
     head = 2 \/ head = 3 \/ head = 4 ->
-    run (length pass + 1)
+    run (S (length pass))
       (entry_config 1 left (pass ++ head :: rest)) =
     match head with
     | 2 => entry_config 0 (0 :: rev pass ++ left) rest
@@ -434,15 +434,15 @@ Proof.
   induction pass as [|p pass IH]; intros left head rest Hpass Hhead.
   - destruct Hhead as [-> | [-> | ->]]; reflexivity.
   - inversion Hpass as [|? ? Hp Hrest]; subst.
-    change (run (S (S (length pass)))
-      (entry_config 1 left (p :: (pass ++ head :: rest))) =
-      match head with
-      | 2 => entry_config 0 (0 :: rev (p :: pass) ++ left) rest
-      | 3 => entry_config 4 (1 :: rev (p :: pass) ++ left) rest
-      | _ => entry_config 6 (4 :: rev (p :: pass) ++ left) rest
-      end).
     rewrite entry_run_successor.
     rewrite (q1_pass_step p left (pass ++ head :: rest) Hp).
     rewrite (IH (p :: left) head rest Hrest Hhead).
-    simpl [rev]. reflexivity.
+    cbn [rev].
+    match goal with
+    | |- _ = match head with
+           | 2 => entry_config 0 (0 :: rev pass ++ p :: left) rest
+           | 3 => entry_config 4 (1 :: rev pass ++ p :: left) rest
+           | _ => entry_config 6 (4 :: rev pass ++ p :: left) rest
+           end => reflexivity
+    end.
 Qed.
