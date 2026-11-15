@@ -1070,6 +1070,23 @@ Proof.
            ++ apply q5_raw_bits.
 Qed.
 
+(** Keep the delimiter frame intact when two marked cells interrupt the
+    rightward list.  The nested cons/append form is proved structurally
+    so the concrete cleanup split does not depend on rewrite heuristics. *)
+Lemma append_frame_two_marks :
+  forall (a b c suffix : list nat) x y,
+    (a ++ x :: b ++ y :: c) ++ suffix =
+    a ++ x :: b ++ y :: c ++ suffix.
+Proof.
+  induction a as [|ah at IH]; intros b c suffix x y.
+  - simpl [app].
+    f_equal.
+    induction b as [|bh bt IHb].
+    + reflexivity.
+    + simpl [app]. f_equal. exact IHb.
+  - simpl [app]. f_equal. apply IH.
+Qed.
+
 Theorem q1_first_mismatch_canonical_layout :
   forall bits bad pass row_rest prefix afterX,
     Forall q1_pass pass ->
@@ -1123,10 +1140,8 @@ Proof.
        (s :: remaining) ++ 5 :: prefix).
     rewrite <- Hshape.
     unfold scanned.
-    repeat rewrite app_assoc.
-    cbn [app].
-    repeat rewrite app_assoc.
-    reflexivity.
+    symmetry.
+    apply append_frame_two_marks.
   - exact Hq5.
 Qed.
 
