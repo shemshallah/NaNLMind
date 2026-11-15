@@ -211,6 +211,12 @@ Fixpoint decode_wide_prefix (p count : nat) (bytes : list nat)
 Definition encode_wide_program (rows : list WideSourceRow) : list nat :=
   concat (map encode_wide_row rows).
 
+Lemma encode_wide_program_cons :
+  forall row rows,
+    encode_wide_program (row :: rows) =
+    encode_wide_row row ++ encode_wide_program rows.
+Proof. reflexivity. Qed.
+
 Theorem wide_program_roundtrip :
   forall p rows suffix,
     Forall (wide_row_wellformed p) rows ->
@@ -220,9 +226,8 @@ Proof.
   intros p rows; induction rows as [|row rows IH]; intros suffix Hwf.
   - reflexivity.
   - inversion Hwf as [|? ? Hrow Hrest]; subst.
-    match goal with |- ?G => idtac "WIDE_PROGRAM_GOAL2:" G end.
-    rewrite (app_assoc (encode_wide_row row)
-      (concat (map encode_wide_row rows)) suffix).
+    rewrite encode_wide_program_cons.
+    rewrite (app_assoc (encode_wide_row row) (encode_wide_program rows) suffix).
     change (decode_wide_prefix p (S (length rows))
       (encode_wide_row row ++ (encode_wide_program rows ++ suffix)) =
       Some (row :: rows, suffix)).
