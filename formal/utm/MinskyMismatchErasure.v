@@ -112,6 +112,9 @@ Proof.
   rewrite erase_cleanup_preserves_logical_tape.
   rewrite <- map_app.
   repeat rewrite <- app_assoc.
+  cbn [app].
+  repeat rewrite <- app_assoc.
+  cbn [app].
   symmetry.
   apply first_mismatch_logical_frame.
 Qed.
