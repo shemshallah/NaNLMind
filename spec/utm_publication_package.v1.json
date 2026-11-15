@@ -1,7 +1,8 @@
 {
   "schema": "nanlm.utm-publication-package/1",
   "status": "checked-construction-with-executable-evidence",
-  "coq_run": "https://github.com/shemshallah/NaNLMind/actions/runs/43629597046",
+  "coq_run": "https://github.com/shemshallah/NaNLMind/actions/runs/43663329325",
+  "wide_fixture_run": "https://github.com/shemshallah/NaNLMind/actions/runs/43663330215",
   "gate_report": "state/benchmarks/utm_publication_gate.json",
   "theorems": [
     "UTMEquivalence.UTM_halting_equivalence",
@@ -13,7 +14,15 @@
     "MinskyTable.minsky_trace_100",
     "MinskyAddressRefinement.zipper_address_run_bisim",
     "MinskyAddressRefinement.address_halt_writes_before_flag",
-    "MinskyAddressRefinement.address_trace_100"
+    "MinskyAddressRefinement.address_trace_100",
+    "MinskySourceEncoding.encoded_source_run_refines",
+    "MinskyWideSource.decode_n_bits_roundtrip",
+    "MinskyWideSource.wide_program_roundtrip",
+    "MinskyConcreteEntry.entry_scan_unbounded",
+    "MinskyConcreteEntry.encoded_program_first_decision_ten_steps",
+    "MinskyConcreteDispatch.encoded_program_high_branch_reaches_next_row_at_step_17",
+    "MinskyVariableBuffer.positive_buffer_low_returns_at_3n_plus_6",
+    "MinskyWideFixture.wide_fixture_halts_at_step_1979"
   ],
   "execution_evidence": [
     "native NaN16 Minsky 100-step fixture",

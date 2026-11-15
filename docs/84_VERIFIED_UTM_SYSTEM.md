@@ -125,8 +125,12 @@ gh workflow run mechanized-utm.yml -R shemshallah/NaNLMind
 Checked run:
 
 ```text
-https://github.com/shemshallah/NaNLMind/actions/runs/43629597046
+https://github.com/shemshallah/NaNLMind/actions/runs/43663329325
 NANLM MECHANIZED UTM + MINSKY ADDRESS REFINEMENT PASS
+
+Generalized p=9 compiler trace:
+https://github.com/shemshallah/NaNLMind/actions/runs/43663330215
+NANLM GENERALIZED P-BIT MINSKY FIXTURE TRACE PASS
 Closed under the global context
 ```
 
