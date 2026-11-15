@@ -220,6 +220,7 @@ Proof.
   intros p rows; induction rows as [|row rows IH]; intros suffix Hwf.
   - reflexivity.
   - inversion Hwf as [|? ? Hrow Hrest]; subst.
+    match goal with |- ?G => idtac "WIDE_PROGRAM_GOAL2:" G end.
     rewrite (app_assoc (encode_wide_row row)
       (concat (map encode_wide_row rows)) suffix).
     change (decode_wide_prefix p (S (length rows))
