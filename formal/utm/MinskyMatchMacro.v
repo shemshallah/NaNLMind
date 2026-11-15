@@ -1124,6 +1124,8 @@ Proof.
     rewrite <- Hshape.
     unfold scanned.
     repeat rewrite app_assoc.
+    cbn [app].
+    repeat rewrite app_assoc.
     reflexivity.
   - exact Hq5.
 Qed.
