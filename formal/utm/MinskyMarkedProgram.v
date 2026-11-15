@@ -72,7 +72,7 @@ Lemma marked_skipn_exact :
 Proof.
   induction symbols as [|s symbols IH]; intro suffix; simpl.
   - reflexivity.
-  - exact IH.
+  - exact (IH suffix).
 Qed.
 
 (** Exact-frame property: even when the tape suffix contains marked or
