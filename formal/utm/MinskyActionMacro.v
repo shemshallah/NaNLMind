@@ -272,27 +272,26 @@ Lemma q11_cross_marker :
     entry_config 6 (4 :: left) right.
 Proof. reflexivity. Qed.
 
+(** q11 is a RIGHT-moving scan.  X must therefore occur in the right
+    suffix after the scanned cells; placing X in the left zipper would
+    state an incorrect theorem for arbitrary surrounding tape. *)
 Theorem q11_scan_to_marker :
-  forall remaining s prefix suffix,
-    Forall q11_pass (s :: remaining) ->
-    run (S (length (s :: remaining)))
-      (entry_config 11 (remaining ++ 4 :: prefix) (s :: suffix)) =
-    entry_config 6 (4 :: rev (s :: remaining) ++ prefix) suffix.
+  forall scanned left tail,
+    Forall q11_pass scanned ->
+    run (S (length scanned))
+      (entry_config 11 left (scanned ++ 4 :: tail)) =
+    entry_config 6 (4 :: rev scanned ++ left) tail.
 Proof.
-  intros remaining.
-  induction remaining as [|next rest IH]; intros s prefix suffix H.
-  - inversion H as [|? ? Hs _]; subst.
-    destruct Hs as [-> | [-> | [-> | [-> | [-> | [-> | ->]]]]]];
-      reflexivity.
-  - inversion H as [|? ? Hs Hrest]; subst.
-    change (run (S (S (length (next :: rest))))
-      (entry_config 11 (next :: (rest ++ 4 :: prefix)) (s :: suffix)) =
-      entry_config 6 (4 :: rev (s :: next :: rest) ++ prefix) suffix).
-    rewrite entry_run_successor.
-    rewrite (q11_pass_step s next (rest ++ 4 :: prefix) suffix Hs).
-    rewrite (IH next prefix (s :: suffix) Hrest).
+  induction scanned as [|s rest IH]; intros left tail Hscan.
+  - reflexivity.
+  - inversion Hscan as [|? ? Hs Hrest]; subst.
+    change (run (S (length rest))
+      (step (entry_config 11 left (s :: rest ++ 4 :: tail))) =
+      entry_config 6 (4 :: rev (s :: rest) ++ left) tail).
+    rewrite (q11_pass_step s left (rest ++ 4 :: tail) Hs).
+    rewrite (IH (s :: left) tail Hrest).
     cbn [rev].
-    rewrite (append_singleton_assoc (rev rest) next (4 :: prefix)).
+    rewrite (append_singleton_assoc (rev rest) s left).
     reflexivity.
 Qed.
 
