@@ -111,7 +111,7 @@ Proof.
     rewrite entry_run_successor.
     rewrite (q7_pass_step s next (rest ++ 5 :: prefix) suffix Hs).
     rewrite (IH next prefix (s :: suffix) Hrest).
-    cbn [rev]. rewrite (append_singleton_assoc (rev (next :: rest)) s suffix). reflexivity.
+    cbn [rev]. reflexivity.
 Qed.
 
 Print Assumptions q6_scan_zero.
