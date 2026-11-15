@@ -48,7 +48,7 @@ Proof.
     cbn [rev app].
     repeat rewrite app_assoc.
     unfold cfg_ml.
-    destruct (rev rest ++ m :: left) as [|x xs]; reflexivity.
+    destruct ((rev rest ++ [m]) ++ left) as [|x xs]; reflexivity.
 Qed.
 
 Lemma q0_scan_one :
@@ -121,7 +121,7 @@ Proof.
     cbn [rev app].
     repeat rewrite app_assoc.
     unfold cfg_ml.
-    destruct (rev rest ++ m :: left) as [|x xs]; reflexivity.
+    destruct ((rev rest ++ [m]) ++ left) as [|x xs]; reflexivity.
 Qed.
 
 Lemma q3_reaches_marker :
