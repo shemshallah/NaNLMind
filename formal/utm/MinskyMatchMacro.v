@@ -1161,7 +1161,7 @@ Lemma first_mismatch_clock_polynomial :
          S (length
            (rev row_rest ++ match_mark (negb bad) ::
             rev (map match_mark bits) ++ match_raw bad ::
-            rev (pass ++ map match_raw bits))))) =
+            rev (pass ++ map match_raw bits)))))) =
     3 * length bits * length bits +
       2 * length bits * length pass +
       7 * length bits + 2 * length pass +
