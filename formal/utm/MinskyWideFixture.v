@@ -41,23 +41,23 @@ Definition wide_fixture_start : Config :=
 Definition wide_fixture_finish : Config :=
   {| c_state := 0;
      c_tape :=
-       {| t_left := rev (firstn 68 wide_fixture_final_cells);
-          t_right := skipn 68 wide_fixture_final_cells |};
+       {| t_left := rev (firstn 90 wide_fixture_final_cells);
+          t_right := skipn 90 wide_fixture_final_cells |};
      c_halted := true |}.
 
-Theorem wide_fixture_halts_at_step_4278 :
-  run 4278 wide_fixture_start = wide_fixture_finish.
+Theorem wide_fixture_halts_at_step_1978 :
+  run 1978 wide_fixture_start = wide_fixture_finish.
 Proof. vm_compute. reflexivity. Qed.
 
-Theorem wide_fixture_running_at_step_4277 :
-  c_halted (run 4277 wide_fixture_start) = false.
+Theorem wide_fixture_running_at_step_1977 :
+  c_halted (run 1977 wide_fixture_start) = false.
 Proof. vm_compute. reflexivity. Qed.
 
 Theorem wide_fixture_final_head_and_state :
   c_state wide_fixture_finish = 0 /\
-  length (t_left (c_tape wide_fixture_finish)) = 68 /\
+  length (t_left (c_tape wide_fixture_finish)) = 90 /\
   c_halted wide_fixture_finish = true.
 Proof. repeat split; reflexivity. Qed.
 
-Print Assumptions wide_fixture_halts_at_step_4278.
-Print Assumptions wide_fixture_running_at_step_4277.
+Print Assumptions wide_fixture_halts_at_step_1978.
+Print Assumptions wide_fixture_running_at_step_1977.
