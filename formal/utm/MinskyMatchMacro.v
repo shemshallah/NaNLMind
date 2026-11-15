@@ -164,6 +164,7 @@ Proof.
     (entry_config 0 (5 :: prefix) (marked ++ 0 :: tail))).
   rewrite (q0_scan_zero marked (5 :: prefix) tail Hmarked).
   rewrite Hrev.
+  cbn [app].
   cbn [cfg_ml].
   rewrite (dispatch_left_to_delimiter remaining x prefix (2 :: tail) Hleft).
   reflexivity.
@@ -184,6 +185,7 @@ Proof.
     (entry_config 4 (5 :: prefix) (marked ++ 1 :: tail))).
   rewrite (q4_scan_one marked (5 :: prefix) tail Hmarked).
   rewrite Hrev.
+  cbn [app].
   cbn [cfg_ml].
   rewrite (dispatch_left_to_delimiter remaining x prefix (3 :: tail) Hleft).
   reflexivity.
