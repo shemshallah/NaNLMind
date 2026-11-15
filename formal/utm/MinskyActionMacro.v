@@ -184,6 +184,50 @@ Lemma q10_pass_step :
     entry_config 10 (s :: left) right.
 Proof. intros s left right [-> | ->]; reflexivity. Qed.
 
+(** General left-frame induction: the scan moves each marker in front of
+    the entire old left zipper, not in front of a fixed Y delimiter. *)
+Lemma q9_write_bit_unframed :
+  forall written bit rest left,
+    (bit = 0 \/ bit = 1) ->
+    Forall q9_pass written ->
+    run (S (length written))
+      (entry_config 9 left (written ++ bit :: rest)) =
+    entry_config 11 (3 :: rev written ++ left) rest.
+Proof.
+  induction written as [|m ms IH]; intros bit rest left Hbit Hscan.
+  - destruct Hbit as [-> | ->]; reflexivity.
+  - inversion Hscan as [|? ? Hm Hrest]; subst.
+    change (run (S (length ms))
+      (step (entry_config 9 left (m :: ms ++ bit :: rest))) =
+      entry_config 11 (3 :: rev (m :: ms) ++ left) rest).
+    rewrite (q9_pass_step m left (ms ++ bit :: rest) Hm).
+    rewrite (IH bit rest (m :: left) Hbit Hrest).
+    cbn [rev].
+    rewrite (append_singleton_assoc (rev ms) m left).
+    reflexivity.
+Qed.
+
+Lemma q10_write_bit_unframed :
+  forall written bit rest left,
+    (bit = 0 \/ bit = 1) ->
+    Forall q9_pass written ->
+    run (S (length written))
+      (entry_config 10 left (written ++ bit :: rest)) =
+    entry_config 11 (2 :: rev written ++ left) rest.
+Proof.
+  induction written as [|m ms IH]; intros bit rest left Hbit Hscan.
+  - destruct Hbit as [-> | ->]; reflexivity.
+  - inversion Hscan as [|? ? Hm Hrest]; subst.
+    change (run (S (length ms))
+      (step (entry_config 10 left (m :: ms ++ bit :: rest))) =
+      entry_config 11 (2 :: rev (m :: ms) ++ left) rest).
+    rewrite (q10_pass_step m left (ms ++ bit :: rest) Hm).
+    rewrite (IH bit rest (m :: left) Hbit Hrest).
+    cbn [rev].
+    rewrite (append_singleton_assoc (rev ms) m left).
+    reflexivity.
+Qed.
+
 Lemma q9_write_bit :
   forall written bit rest prefix,
     (bit = 0 \/ bit = 1) ->
@@ -192,17 +236,8 @@ Lemma q9_write_bit :
       (entry_config 9 (5 :: prefix) (written ++ bit :: rest)) =
     entry_config 11 (3 :: rev written ++ 5 :: prefix) rest.
 Proof.
-  induction written as [|m ms IH]; intros bit rest prefix Hbit H.
-  - cbn. destruct Hbit as [-> | ->]; reflexivity.
-  - inversion H as [|? ? Hm Hrest]; subst.
-    change (S (length (m :: ms))) with (S (S (length ms))).
-    change (run (S (length ms))
-      (step (entry_config 9 (5 :: prefix) (m :: (ms ++ bit :: rest)))) =
-      entry_config 11 (3 :: rev (m :: ms) ++ 5 :: prefix) rest).
-    rewrite (q9_pass_step m (5 :: prefix) (ms ++ bit :: rest) Hm).
-    rewrite (IH bit rest (m :: 5 :: prefix) Hbit Hrest).
-    cbn [rev]. rewrite (append_singleton_assoc (rev ms) m (5::prefix)).
-    reflexivity.
+  intros written bit rest prefix Hbit Hscan.
+  apply q9_write_bit_unframed; assumption.
 Qed.
 
 Lemma q10_write_bit :
@@ -213,17 +248,8 @@ Lemma q10_write_bit :
       (entry_config 10 (5 :: prefix) (written ++ bit :: rest)) =
     entry_config 11 (2 :: rev written ++ 5 :: prefix) rest.
 Proof.
-  induction written as [|m ms IH]; intros bit rest prefix Hbit H.
-  - cbn. destruct Hbit as [-> | ->]; reflexivity.
-  - inversion H as [|? ? Hm Hrest]; subst.
-    change (S (length (m :: ms))) with (S (S (length ms))).
-    change (run (S (length ms))
-      (step (entry_config 10 (5 :: prefix) (m :: (ms ++ bit :: rest)))) =
-      entry_config 11 (2 :: rev (m :: ms) ++ 5 :: prefix) rest).
-    rewrite (q10_pass_step m (5 :: prefix) (ms ++ bit :: rest) Hm).
-    rewrite (IH bit rest (m :: 5 :: prefix) Hbit Hrest).
-    cbn [rev]. rewrite (append_singleton_assoc (rev ms) m (5::prefix)).
-    reflexivity.
+  intros written bit rest prefix Hbit Hscan.
+  apply q10_write_bit_unframed; assumption.
 Qed.
 
 Definition q11_pass (s : nat) : Prop :=
