@@ -73,7 +73,7 @@ python3 tools/run_nan16_fixtures.py --only minsky_compiler
 [PASS] minsky_compiler: steps=362475 marker=MTH MINSKY NATIVE PASS
 
 python3 tools/run_nan16_fixtures.py --only minsky_compiler_general
-[PASS] minsky_compiler_general: steps=311366 marker=MTH MINSKY NATIVE PASS
+[PASS] minsky_compiler_general: steps=3521560 marker=MTH MINSKY NATIVE PASS
 ```
 
 The compiler was also cross-checked against a host-independent Python table
@@ -85,8 +85,8 @@ transition lists; those generated images are not part of the committed gate.
 `formal/utm/MinskyWideFixture.v` contains the exact initial and final 94-cell
 images for the committed `p = 9`, three-transition, input-`1101` fixture.  It
 proves with the literal `MinskyTable.run` semantics that the fixed table
-reaches the halting configuration in 1979 transitions (the last transition is
-the terminal write/state update) and is not halted at 1978.  This is a
+reaches the halting configuration in 9277 transitions (the last transition is
+the terminal write/state update) and is not halted at 9276.  This is a
 `coqchk`-checked finite trace of the generalized compiler path, not a theorem
 about every compiler output.  CI job `wide-fixture.yml` checks it remotely.
 

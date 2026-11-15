@@ -2,8 +2,8 @@
 
     The native fixture [mth_minsky_compiler_general_test.nas] emits this
     tape from a p=9, three-transition source machine and then runs the
-    literal 23x8 table.  The source input is [1101], and the compiler's
-    transition rows are
+    literal 23x8 table.  The source input is [1101], the initial condition
+    is q0/read1, and the compiler's transition rows are
 
       q0,1 -> q1,1,R    q1,0 -> q3,0,L    q3,1 -> q2,1,L.
 
@@ -21,16 +21,16 @@ From NaNLM Require Import MinskyTable.
 
 Definition wide_fixture_initial_cells : list nat :=
   [   1; 1; 0; 1; 6; 0; 0; 0; 0; 0; 0; 0; 0; 5; 0; 0; 0; 0; 0; 0;
-   0; 0; 0; 0; 4; 0; 0; 0; 0; 0; 0; 0; 0; 0; 1; 0; 0; 0; 0; 0;
+   0; 0; 0; 1; 4; 0; 0; 0; 0; 0; 0; 0; 0; 0; 1; 0; 0; 0; 0; 0;
    0; 0; 0; 1; 1; 1; 4; 0; 0; 0; 0; 0; 0; 0; 0; 1; 0; 0; 0; 0;
    0; 0; 0; 0; 1; 1; 0; 0; 4; 0; 0; 0; 0; 0; 0; 0; 1; 1; 1; 0;
    0; 0; 0; 0; 0; 0; 1; 0; 1; 0; 5; 0; 0; 0].
 
 Definition wide_fixture_final_cells : list nat :=
-  [   1; 1; 0; 1; 6; 0; 0; 0; 0; 0; 0; 0; 0; 5; 0; 0; 0; 0; 0; 0;
-   0; 0; 2; 2; 4; 2; 2; 2; 2; 2; 2; 2; 2; 2; 3; 2; 2; 2; 2; 2;
+  [   1; 1; 0; 6; 1; 0; 0; 0; 0; 0; 0; 0; 0; 5; 0; 0; 0; 0; 0; 0;
+   0; 1; 0; 3; 4; 2; 2; 2; 2; 2; 2; 2; 2; 2; 3; 2; 2; 2; 2; 2;
    2; 2; 2; 3; 3; 3; 4; 2; 2; 2; 2; 2; 2; 2; 2; 3; 2; 2; 2; 2;
-   2; 2; 2; 2; 3; 3; 2; 2; 4; 2; 2; 2; 2; 2; 2; 2; 3; 1; 1; 0;
+   2; 2; 2; 2; 3; 3; 2; 2; 4; 2; 2; 2; 2; 2; 2; 2; 3; 3; 1; 0;
    0; 0; 0; 0; 0; 0; 1; 0; 1; 0; 5; 0; 0; 0].
 
 Definition wide_fixture_start : Config :=
@@ -47,12 +47,12 @@ Definition wide_fixture_finish : Config :=
           t_right := skipn 90 wide_fixture_final_cells |};
      c_halted := true |}.
 
-Theorem wide_fixture_halts_at_step_1979 :
-  run 1979 wide_fixture_start = wide_fixture_finish.
+Theorem wide_fixture_halts_at_step_9277 :
+  run 9277 wide_fixture_start = wide_fixture_finish.
 Proof. vm_compute. reflexivity. Qed.
 
-Theorem wide_fixture_running_at_step_1978 :
-  c_halted (run 1978 wide_fixture_start) = false.
+Theorem wide_fixture_running_at_step_9276 :
+  c_halted (run 9276 wide_fixture_start) = false.
 Proof. vm_compute. reflexivity. Qed.
 
 Theorem wide_fixture_final_head_and_state :
@@ -61,5 +61,5 @@ Theorem wide_fixture_final_head_and_state :
   c_halted wide_fixture_finish = true.
 Proof. repeat split; reflexivity. Qed.
 
-Print Assumptions wide_fixture_halts_at_step_1979.
-Print Assumptions wide_fixture_running_at_step_1978.
+Print Assumptions wide_fixture_halts_at_step_9277.
+Print Assumptions wide_fixture_running_at_step_9276.

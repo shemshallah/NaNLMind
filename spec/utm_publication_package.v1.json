@@ -22,7 +22,7 @@
     "MinskyConcreteEntry.encoded_program_first_decision_ten_steps",
     "MinskyConcreteDispatch.encoded_program_high_branch_reaches_next_row_at_step_17",
     "MinskyVariableBuffer.positive_buffer_low_returns_at_3n_plus_6",
-    "MinskyWideFixture.wide_fixture_halts_at_step_1979"
+    "MinskyWideFixture.wide_fixture_halts_at_step_9277"
   ],
   "execution_evidence": [
     "native NaN16 Minsky 100-step fixture",

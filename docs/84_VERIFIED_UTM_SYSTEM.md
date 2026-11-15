@@ -85,7 +85,7 @@ native NaN16 Minsky fixture:
   [PASS] minsky_table: steps=21025 marker=MTH MINSKY NATIVE PASS
   [PASS] minsky_encoded: steps=361163 marker=MTH MINSKY NATIVE PASS
   [PASS] minsky_compiler: steps=362475 marker=MTH MINSKY NATIVE PASS
-  [PASS] minsky_compiler_general: steps=311366 marker=MTH MINSKY NATIVE PASS
+  [PASS] minsky_compiler_general: steps=3521560 marker=MTH MINSKY NATIVE PASS
 
 C++ runtime trace:
   MINSKY C++ TRACE CONFORMANCE PASS (100/100 steps)
@@ -94,8 +94,8 @@ C++ exhaustive chart transitions:
   PASS Minsky chart refinement: 184 entries, halting, malformed and negative tape
 
 Coq generalized compiler trace:
-  wide_fixture_halts_at_step_1979
-  wide_fixture_running_at_step_1978
+  wide_fixture_halts_at_step_9277
+  wide_fixture_running_at_step_9276
 ```
 
 The native fixtures are `mth/tests/mth_minsky_test.nas` (published trace) and
