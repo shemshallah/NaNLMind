@@ -46,9 +46,10 @@ Proof.
     rewrite (q0_pass_step m left (rest ++ 0 :: tail) Hm).
     rewrite (IH (m :: left) tail Hrest).
     cbn [rev app].
-    repeat rewrite app_assoc.
+    replace ((rev rest ++ [m]) ++ left) with (rev rest ++ m :: left)
+      by (rewrite <- app_assoc; reflexivity).
     unfold cfg_ml.
-    destruct ((rev rest ++ [m]) ++ left) as [|x xs]; reflexivity.
+    destruct (rev rest ++ m :: left) as [|x xs]; reflexivity.
 Qed.
 
 Lemma q0_scan_one :
@@ -119,9 +120,10 @@ Proof.
     rewrite (q4_pass_step m left (rest ++ 1 :: tail) Hm).
     rewrite (IH (m :: left) tail Hrest).
     cbn [rev app].
-    repeat rewrite app_assoc.
+    replace ((rev rest ++ [m]) ++ left) with (rev rest ++ m :: left)
+      by (rewrite <- app_assoc; reflexivity).
     unfold cfg_ml.
-    destruct ((rev rest ++ [m]) ++ left) as [|x xs]; reflexivity.
+    destruct (rev rest ++ m :: left) as [|x xs]; reflexivity.
 Qed.
 
 Lemma q3_reaches_marker :
