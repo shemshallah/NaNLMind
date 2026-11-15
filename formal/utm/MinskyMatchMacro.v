@@ -432,9 +432,15 @@ Lemma q1_scan_pick :
     end.
 Proof.
   induction pass as [|p pass IH]; intros left head rest Hpass Hhead.
-    destruct Hhead as [-> | [-> | ->]]; reflexivity.
+  - destruct Hhead as [-> | [-> | ->]]; reflexivity.
   - inversion Hpass as [|? ? Hp Hrest]; subst.
-    change (S (length (p :: pass))) with (S (S (length pass))).
+    change (run (S (S (length pass)))
+      (entry_config 1 left (p :: (pass ++ head :: rest))) =
+      match head with
+      | 2 => entry_config 0 (0 :: rev (p :: pass) ++ left) rest
+      | 3 => entry_config 4 (1 :: rev (p :: pass) ++ left) rest
+      | _ => entry_config 6 (4 :: rev (p :: pass) ++ left) rest
+      end).
     rewrite entry_run_successor.
     rewrite (q1_pass_step p left (pass ++ head :: rest) Hp).
     rewrite (IH (p :: left) head rest Hrest Hhead).
