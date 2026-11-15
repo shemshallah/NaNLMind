@@ -38,6 +38,7 @@ jobs:
         run: |
           python3 formal/utm/check_minsky_table.py
           python3 formal/utm/check_minsky_nan16_words.py
+          python3 formal/utm/check_minsky_dispatch.py
 
       - name: Require non-vacuous nine-bit instruction execution
         run: |

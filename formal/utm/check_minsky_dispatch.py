@@ -123,6 +123,35 @@ def check_zero_buffer_exception(
             raise AssertionError("unexpected zero-buffer control path")
 
 
+def check_q1_matching_roundtrip(
+    table: list[tuple[int, int, int, int, int, bool]],
+    skipped: tuple[int, ...],
+    matching_bit: int,
+) -> None:
+    """Independently test the Coq q1→q0/q4→q2→q1 table macro."""
+    n = len(skipped)
+    marker = 3 if matching_bit else 2
+    tape = {-2: 6, -1: 5, n: marker, n + 1: matching_bit,
+            n + 2: 7, n + 3: 4}
+    tape.update(enumerate(skipped))
+    original = tape.copy()
+    state, head, halted = 1, 0, False
+    for microstep in range(2 * n + 4):
+        if halted:
+            raise AssertionError(f"q1 macro halted prematurely at {microstep}")
+        symbol = tape.get(head, 2)
+        _, _, write, movement, state, halted = table[state * 8 + symbol]
+        tape[head] = write
+        head += movement
+
+    if (state, head, halted) != (1, 0, False):
+        raise AssertionError((skipped, matching_bit, state, head, halted))
+    expected = original.copy()
+    expected[n], expected[n + 1] = matching_bit, marker
+    if tape != expected:
+        raise AssertionError((skipped, matching_bit, tape, expected))
+
+
 def main() -> None:
     table = load_table()
     check_zero_buffer_exception(table)
@@ -145,8 +174,15 @@ def main() -> None:
                 for high, marker in itertools.product((0, 1), (4, 5)):
                     check_branch(table, high, bits, marker, buffer_width)
                     cases += 1
+    matching_cases = 0
+    for width in range(9):
+        for skipped in itertools.product((0, 1), repeat=width):
+            for bit in (0, 1):
+                check_q1_matching_roundtrip(table, skipped, bit)
+                matching_cases += 1
     print(f"MINSKY CONCRETE DISPATCH PASS ({cases} exhaustive/seeded cases; "
-          "positive buffers 1..129 and zero-buffer counterexample)")
+          f"positive buffers 1..129 and zero-buffer counterexample; "
+          f"{matching_cases} q1 matching roundtrips)")
 
 
 if __name__ == "__main__":

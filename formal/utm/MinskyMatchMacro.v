@@ -445,3 +445,96 @@ Proof.
     cbn [app].
     reflexivity.
 Qed.
+
+(** The binary prefix skipped by q1 can also be crossed in reverse by
+    q2.  Unlike the previous matched-bit lemmas, the prefix need not be
+    empty.  The scan returns to the SAME Y delimiter, so it cannot be
+    mistaken for an instruction dispatch on a different source row. *)
+Lemma q1_pass_rev_left :
+  forall pass,
+    Forall q1_pass pass ->
+    Forall dispatch_left_symbol (rev pass).
+Proof.
+  induction pass as [|p rest IH]; intro Hpass.
+  - constructor.
+  - inversion Hpass as [|? ? Hp Hrest]; subst.
+    simpl [rev].
+    apply Forall_app; split.
+    + apply IH; exact Hrest.
+    + constructor.
+      * destruct Hp as [-> | ->]; unfold dispatch_left_symbol; auto.
+      * constructor.
+Qed.
+
+(** A selected marked zero compares against a zero and comes back to
+    q1/Y in exactly 2*|pass|+4 concrete table steps.  The marked 2 is
+    changed to 0 by q1, and the matching 0 is changed to 2 by q0;
+    every other cell and the outer tape are preserved. *)
+Theorem q1_zero_match_roundtrip :
+  forall pass prefix tail,
+    Forall q1_pass pass ->
+    run (2 * length pass + 4)
+      (entry_config 1 (5 :: prefix) (pass ++ 2 :: 0 :: tail)) =
+    entry_config 1 (5 :: prefix) (pass ++ 0 :: 2 :: tail).
+Proof.
+  intros pass prefix tail Hpass.
+  assert (Hhead : 2 = 2 \/ 2 = 3 \/ 2 = 4) by auto.
+  assert (Hleft : Forall dispatch_left_symbol (0 :: rev pass)).
+  { constructor.
+    - unfold dispatch_left_symbol; auto.
+    - apply q1_pass_rev_left; exact Hpass. }
+  replace (2 * length pass + 4) with
+    (S (length pass) + (1 + S (length (0 :: rev pass))))
+    by (simpl [length]; rewrite rev_length; lia).
+  rewrite (dispatch_run_add (S (length pass))
+    (1 + S (length (0 :: rev pass)))
+    (entry_config 1 (5 :: prefix) (pass ++ 2 :: 0 :: tail))).
+  rewrite (q1_scan_pick pass (5 :: prefix) 2 (0 :: tail) Hpass Hhead).
+  rewrite (dispatch_run_add 1 (S (length (0 :: rev pass)))
+    (entry_config 0 (0 :: rev pass ++ 5 :: prefix) (0 :: tail))).
+  change (run 1 (entry_config 0 (0 :: rev pass ++ 5 :: prefix)
+    (0 :: tail))) with
+    (entry_config 2 (rev pass ++ 5 :: prefix) (0 :: 2 :: tail)).
+  rewrite (dispatch_left_to_delimiter (rev pass) 0 prefix (2 :: tail) Hleft).
+  simpl [rev].
+  rewrite rev_involutive, app_assoc.
+  reflexivity.
+Qed.
+
+(** The dual marked-one case has the same exact clock.  Both directions
+    are executable consequences of the frozen 23x8 table, not axioms
+    about the abstract source interpreter. *)
+Theorem q1_one_match_roundtrip :
+  forall pass prefix tail,
+    Forall q1_pass pass ->
+    run (2 * length pass + 4)
+      (entry_config 1 (5 :: prefix) (pass ++ 3 :: 1 :: tail)) =
+    entry_config 1 (5 :: prefix) (pass ++ 1 :: 3 :: tail).
+Proof.
+  intros pass prefix tail Hpass.
+  assert (Hhead : 3 = 2 \/ 3 = 3 \/ 3 = 4) by auto.
+  assert (Hleft : Forall dispatch_left_symbol (1 :: rev pass)).
+  { constructor.
+    - unfold dispatch_left_symbol; auto.
+    - apply q1_pass_rev_left; exact Hpass. }
+  replace (2 * length pass + 4) with
+    (S (length pass) + (1 + S (length (1 :: rev pass))))
+    by (simpl [length]; rewrite rev_length; lia).
+  rewrite (dispatch_run_add (S (length pass))
+    (1 + S (length (1 :: rev pass)))
+    (entry_config 1 (5 :: prefix) (pass ++ 3 :: 1 :: tail))).
+  rewrite (q1_scan_pick pass (5 :: prefix) 3 (1 :: tail) Hpass Hhead).
+  rewrite (dispatch_run_add 1 (S (length (1 :: rev pass)))
+    (entry_config 4 (1 :: rev pass ++ 5 :: prefix) (1 :: tail))).
+  change (run 1 (entry_config 4 (1 :: rev pass ++ 5 :: prefix)
+    (1 :: tail))) with
+    (entry_config 2 (rev pass ++ 5 :: prefix) (1 :: 3 :: tail)).
+  rewrite (dispatch_left_to_delimiter (rev pass) 1 prefix (3 :: tail) Hleft).
+  simpl [rev].
+  rewrite rev_involutive, app_assoc.
+  reflexivity.
+Qed.
+
+Print Assumptions q1_pass_rev_left.
+Print Assumptions q1_zero_match_roundtrip.
+Print Assumptions q1_one_match_roundtrip.

@@ -36,8 +36,15 @@ Nature-level completion while any critical obligation below is open.
 
 Each new theorem must pass both `coqc` and `coqchk` in a published
 GitHub Actions run before its status is elevated from submitted to checked.
-The independent `check_minsky_dispatch.py` currently covers 3,136
-exhaustive/seeded concrete table executions, with buffer widths 1–129.
+The independent `check_minsky_dispatch.py` covers 3,136
+exhaustive/seeded concrete dispatch executions, with buffer widths 1–129,
+plus 1,022 exhaustive matching-bit round trips over all binary skipped
+prefixes of length 0–8. The round-trip theorems in `MinskyMatchMacro.v`
+are **submitted pending CI**: for either matching bit and any skipped binary
+prefix, they account for exactly `2*length(prefix)+4` literal table steps
+from the q1 selection through q0/q4 comparison and q2 return to q1/Y,
+with exact resulting tape. This does not handle an arbitrary mismatch loop
+or prove a complete encoded instruction simulation.
 Width zero is a real different control path, not a permitted hypothesis.
 
 ## November 14 regression findings
