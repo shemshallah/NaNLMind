@@ -1,0 +1,382 @@
+{
+  "dev": {
+    "byte": {
+      "triangle_versus_same": {
+        "books": 12,
+        "mean_bits_per_unit_saved": 0.159557,
+        "books_improved": 12,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          0.13535,
+          0.183948
+        ]
+      },
+      "triangle_versus_prior": {
+        "books": 12,
+        "mean_bits_per_unit_saved": 0.721678,
+        "books_improved": 12,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          0.660861,
+          0.783487
+        ]
+      },
+      "triangle_versus_plain_trigram": {
+        "books": 12,
+        "mean_bits_per_unit_saved": 0.0,
+        "books_improved": 0,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          0.0,
+          0.0
+        ]
+      },
+      "same_versus_wrong_book": {
+        "books": 12,
+        "mean_bits_per_unit_saved": 0.226286,
+        "books_improved": 12,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          0.145131,
+          0.321545
+        ]
+      },
+      "crossed_versus_same": {
+        "books": 12,
+        "mean_bits_per_unit_saved": -0.437622,
+        "books_improved": 0,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          -0.478809,
+          -0.396187
+        ]
+      }
+    },
+    "bpe": {
+      "triangle_versus_same": {
+        "books": 12,
+        "mean_bits_per_unit_saved": 0.166952,
+        "books_improved": 12,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          0.128007,
+          0.203059
+        ]
+      },
+      "triangle_versus_prior": {
+        "books": 12,
+        "mean_bits_per_unit_saved": 0.867519,
+        "books_improved": 12,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          0.750059,
+          0.991191
+        ]
+      },
+      "triangle_versus_plain_trigram": {
+        "books": 12,
+        "mean_bits_per_unit_saved": 0.0,
+        "books_improved": 0,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          0.0,
+          0.0
+        ]
+      },
+      "same_versus_wrong_book": {
+        "books": 12,
+        "mean_bits_per_unit_saved": 0.367177,
+        "books_improved": 12,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          0.264471,
+          0.487965
+        ]
+      },
+      "crossed_versus_same": {
+        "books": 12,
+        "mean_bits_per_unit_saved": -0.527734,
+        "books_improved": 0,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          -0.58666,
+          -0.468289
+        ]
+      }
+    },
+    "word": {
+      "triangle_versus_same": {
+        "books": 12,
+        "mean_bits_per_unit_saved": 0.010998,
+        "books_improved": 8,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          0.001533,
+          0.020729
+        ]
+      },
+      "triangle_versus_prior": {
+        "books": 12,
+        "mean_bits_per_unit_saved": 0.251532,
+        "books_improved": 11,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          0.162984,
+          0.342306
+        ]
+      },
+      "triangle_versus_plain_trigram": {
+        "books": 12,
+        "mean_bits_per_unit_saved": 0.0,
+        "books_improved": 0,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          0.0,
+          0.0
+        ]
+      },
+      "same_versus_wrong_book": {
+        "books": 12,
+        "mean_bits_per_unit_saved": 0.239127,
+        "books_improved": 12,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          0.144854,
+          0.350885
+        ]
+      },
+      "crossed_versus_same": {
+        "books": 12,
+        "mean_bits_per_unit_saved": -0.216171,
+        "books_improved": 1,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          -0.284563,
+          -0.151081
+        ]
+      }
+    },
+    "sentence_class": {
+      "triangle_versus_same": {
+        "books": 12,
+        "mean_bits_per_unit_saved": -0.010448,
+        "books_improved": 4,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          -0.025543,
+          0.003547
+        ]
+      },
+      "triangle_versus_prior": {
+        "books": 12,
+        "mean_bits_per_unit_saved": 0.164104,
+        "books_improved": 9,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          0.018892,
+          0.302951
+        ]
+      },
+      "triangle_versus_plain_trigram": {
+        "books": 12,
+        "mean_bits_per_unit_saved": 0.0,
+        "books_improved": 0,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          0.0,
+          0.0
+        ]
+      },
+      "same_versus_wrong_book": {
+        "books": 12,
+        "mean_bits_per_unit_saved": 0.218083,
+        "books_improved": 9,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          0.036676,
+          0.390226
+        ]
+      },
+      "crossed_versus_same": {
+        "books": 12,
+        "mean_bits_per_unit_saved": -0.006258,
+        "books_improved": 4,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          -0.033899,
+          0.013392
+        ]
+      }
+    }
+  },
+  "test_previously_exposed": {
+    "byte": {
+      "triangle_versus_same": {
+        "books": 14,
+        "mean_bits_per_unit_saved": 0.183543,
+        "books_improved": 14,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          0.160391,
+          0.206632
+        ]
+      },
+      "triangle_versus_prior": {
+        "books": 14,
+        "mean_bits_per_unit_saved": 0.846618,
+        "books_improved": 14,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          0.759214,
+          0.941961
+        ]
+      },
+      "triangle_versus_plain_trigram": {
+        "books": 14,
+        "mean_bits_per_unit_saved": 0.0,
+        "books_improved": 0,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          0.0,
+          0.0
+        ]
+      },
+      "same_versus_wrong_book": {
+        "books": 14,
+        "mean_bits_per_unit_saved": 0.242655,
+        "books_improved": 13,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          0.16326,
+          0.313689
+        ]
+      },
+      "crossed_versus_same": {
+        "books": 14,
+        "mean_bits_per_unit_saved": -0.470087,
+        "books_improved": 0,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          -0.514258,
+          -0.428394
+        ]
+      }
+    },
+    "bpe": {
+      "triangle_versus_same": {
+        "books": 14,
+        "mean_bits_per_unit_saved": 0.185389,
+        "books_improved": 14,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          0.153669,
+          0.217003
+        ]
+      },
+      "triangle_versus_prior": {
+        "books": 14,
+        "mean_bits_per_unit_saved": 0.981129,
+        "books_improved": 14,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          0.847005,
+          1.11682
+        ]
+      },
+      "triangle_versus_plain_trigram": {
+        "books": 14,
+        "mean_bits_per_unit_saved": 0.0,
+        "books_improved": 0,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          0.0,
+          0.0
+        ]
+      },
+      "same_versus_wrong_book": {
+        "books": 14,
+        "mean_bits_per_unit_saved": 0.363626,
+        "books_improved": 14,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          0.259286,
+          0.470657
+        ]
+      },
+      "crossed_versus_same": {
+        "books": 14,
+        "mean_bits_per_unit_saved": -0.572881,
+        "books_improved": 0,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          -0.64086,
+          -0.508581
+        ]
+      }
+    },
+    "word": {
+      "triangle_versus_same": {
+        "books": 14,
+        "mean_bits_per_unit_saved": 0.017959,
+        "books_improved": 9,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          0.002405,
+          0.034096
+        ]
+      },
+      "triangle_versus_prior": {
+        "books": 14,
+        "mean_bits_per_unit_saved": 0.306697,
+        "books_improved": 14,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          0.215457,
+          0.415895
+        ]
+      },
+      "triangle_versus_plain_trigram": {
+        "books": 14,
+        "mean_bits_per_unit_saved": 0.0,
+        "books_improved": 0,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          0.0,
+          0.0
+        ]
+      },
+      "same_versus_wrong_book": {
+        "books": 14,
+        "mean_bits_per_unit_saved": 0.310732,
+        "books_improved": 14,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          0.228165,
+          0.399743
+        ]
+      },
+      "crossed_versus_same": {
+        "books": 14,
+        "mean_bits_per_unit_saved": -0.254511,
+        "books_improved": 0,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          -0.300967,
+          -0.206382
+        ]
+      }
+    },
+    "sentence_class": {
+      "triangle_versus_same": {
+        "books": 14,
+        "mean_bits_per_unit_saved": 0.00422,
+        "books_improved": 5,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          -0.021705,
+          0.035363
+        ]
+      },
+      "triangle_versus_prior": {
+        "books": 14,
+        "mean_bits_per_unit_saved": 0.141203,
+        "books_improved": 11,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          0.046242,
+          0.25466
+        ]
+      },
+      "triangle_versus_plain_trigram": {
+        "books": 14,
+        "mean_bits_per_unit_saved": 0.0,
+        "books_improved": 0,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          0.0,
+          0.0
+        ]
+      },
+      "same_versus_wrong_book": {
+        "books": 14,
+        "mean_bits_per_unit_saved": 0.115009,
+        "books_improved": 7,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          0.00045,
+          0.245692
+        ]
+      },
+      "crossed_versus_same": {
+        "books": 14,
+        "mean_bits_per_unit_saved": -0.007602,
+        "books_improved": 6,
+        "descriptive_whole_book_bootstrap_95_interval": [
+          -0.033917,
+          0.013034
+        ]
+      }
+    }
+  }
+}
