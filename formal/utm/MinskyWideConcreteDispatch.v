@@ -54,7 +54,11 @@ Proof.
   subst current.
   simpl in Hcurrent.
   unfold wide_row_tail_bits; simpl.
-  repeat rewrite app_length; simpl.
+  repeat rewrite app_length.
+  simpl.
+  repeat rewrite app_length.
+  simpl.
+  rewrite Hnext.
   lia.
 Qed.
 
