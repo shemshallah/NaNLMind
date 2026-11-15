@@ -766,6 +766,12 @@ Proof.
     replace (length rest + length done) with
       (length (map match_mark rest ++ done))
       by (rewrite app_length, map_length; lia).
+    replace
+      (pass ++ match_mark b :: map match_mark rest ++ done ++
+       match_raw b :: map match_raw rest ++ tail) with
+      (pass ++ match_mark b :: (map match_mark rest ++ done) ++
+       match_raw b :: (map match_raw rest ++ tail))
+      by (repeat rewrite <- app_assoc; reflexivity).
     rewrite (q1_match_one_bit_with_marks b pass
       (map match_mark rest ++ done) prefix (map match_raw rest ++ tail)
       Hpass Hmarks).
