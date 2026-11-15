@@ -57,15 +57,15 @@ Lemma q0_scan_one :
     Forall q0_pass marked ->
     run (S (length marked))
       (entry_config 0 left (marked ++ 1 :: tail)) =
-    entry_config 3 (rev marked ++ left) (3 :: tail).
+    entry_config 3 (3 :: rev marked ++ left) tail.
 Proof.
   induction marked as [|m rest IH]; intros left tail H.
-  - cbn. reflexivity.
+  - vm_compute; reflexivity.
   - inversion H as [|? ? Hm Hrest]; subst.
     change (S (length (m :: rest))) with (S (S (length rest))).
     change (run (S (length rest))
       (step (entry_config 0 left (m :: (rest ++ 1 :: tail)))) =
-      entry_config 3 (rev (m :: rest) ++ left) (3 :: tail)).
+      entry_config 3 (3 :: rev (m :: rest) ++ left) tail).
     rewrite (q0_pass_step m left (rest ++ 1 :: tail) Hm).
     rewrite (IH (m :: left) tail Hrest).
     reflexivity.
@@ -89,15 +89,15 @@ Lemma q4_scan_zero :
     Forall q4_pass marked ->
     run (S (length marked))
       (entry_config 4 left (marked ++ 0 :: tail)) =
-    entry_config 3 (rev marked ++ left) (2 :: tail).
+    entry_config 3 (2 :: rev marked ++ left) tail.
 Proof.
   induction marked as [|m rest IH]; intros left tail H.
-  - cbn. reflexivity.
+  - vm_compute; reflexivity.
   - inversion H as [|? ? Hm Hrest]; subst.
     change (S (length (m :: rest))) with (S (S (length rest))).
     change (run (S (length rest))
       (step (entry_config 4 left (m :: (rest ++ 0 :: tail)))) =
-      entry_config 3 (rev (m :: rest) ++ left) (2 :: tail)).
+      entry_config 3 (2 :: rev (m :: rest) ++ left) tail).
     rewrite (q4_pass_step m left (rest ++ 0 :: tail) Hm).
     rewrite (IH (m :: left) tail Hrest).
     reflexivity.
