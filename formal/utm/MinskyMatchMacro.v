@@ -68,6 +68,8 @@ Proof.
       entry_config 3 (3 :: rev (m :: rest) ++ left) tail).
     rewrite (q0_pass_step m left (rest ++ 1 :: tail) Hm).
     rewrite (IH (m :: left) tail Hrest).
+    cbn [rev].
+    rewrite <- app_assoc.
     reflexivity.
 Qed.
 
@@ -100,6 +102,8 @@ Proof.
       entry_config 3 (2 :: rev (m :: rest) ++ left) tail).
     rewrite (q4_pass_step m left (rest ++ 0 :: tail) Hm).
     rewrite (IH (m :: left) tail Hrest).
+    cbn [rev].
+    rewrite <- app_assoc.
     reflexivity.
 Qed.
 
