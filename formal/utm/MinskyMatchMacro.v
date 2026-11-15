@@ -610,14 +610,20 @@ Proof.
     (entry_config 1 (5 :: prefix) (pass ++ 2 :: marks ++ 0 :: tail))).
   rewrite (q1_scan_pick pass (5 :: prefix) 2 (marks ++ 0 :: tail)
     Hpass (or_introl eq_refl)).
-  rewrite (q0_match_zero_to_y marks (0 :: rev pass) x remaining prefix tail
-    Hq0 Hsplit Hleft).
-  rewrite <- Hsplit.
-  rewrite rev_app_distr.
-  simpl [rev].
-  rewrite !rev_involutive.
-  rewrite (append_singleton_assoc pass 0 marks).
-  reflexivity.
+  change (run (S (length marks) + S (length (x :: remaining)))
+    (entry_config 0 ((0 :: rev pass) ++ 5 :: prefix)
+      (marks ++ 0 :: tail)) =
+    entry_config 1 (5 :: prefix) (pass ++ 0 :: marks ++ 2 :: tail)).
+  transitivity (entry_config 1 (5 :: prefix)
+    (rev (x :: remaining) ++ 2 :: tail)).
+  - exact (q0_match_zero_to_y marks (0 :: rev pass) x remaining prefix tail
+      Hq0 Hsplit Hleft).
+  - rewrite <- Hsplit.
+    rewrite rev_app_distr.
+    simpl [rev].
+    rewrite !rev_involutive.
+    rewrite (append_singleton_assoc pass 0 marks).
+    reflexivity.
 Qed.
 
 Theorem q1_one_match_with_marks :
@@ -654,14 +660,20 @@ Proof.
     (entry_config 1 (5 :: prefix) (pass ++ 3 :: marks ++ 1 :: tail))).
   rewrite (q1_scan_pick pass (5 :: prefix) 3 (marks ++ 1 :: tail)
     Hpass (or_intror (or_introl eq_refl))).
-  rewrite (q4_match_one_to_y marks (1 :: rev pass) x remaining prefix tail
-    Hq4 Hsplit Hleft).
-  rewrite <- Hsplit.
-  rewrite rev_app_distr.
-  simpl [rev].
-  rewrite !rev_involutive.
-  rewrite (append_singleton_assoc pass 1 marks).
-  reflexivity.
+  change (run (S (length marks) + S (length (x :: remaining)))
+    (entry_config 4 ((1 :: rev pass) ++ 5 :: prefix)
+      (marks ++ 1 :: tail)) =
+    entry_config 1 (5 :: prefix) (pass ++ 1 :: marks ++ 3 :: tail)).
+  transitivity (entry_config 1 (5 :: prefix)
+    (rev (x :: remaining) ++ 3 :: tail)).
+  - exact (q4_match_one_to_y marks (1 :: rev pass) x remaining prefix tail
+      Hq4 Hsplit Hleft).
+  - rewrite <- Hsplit.
+    rewrite rev_app_distr.
+    simpl [rev].
+    rewrite !rev_involutive.
+    rewrite (append_singleton_assoc pass 1 marks).
+    reflexivity.
 Qed.
 
 Print Assumptions comparison_mark_scans.
