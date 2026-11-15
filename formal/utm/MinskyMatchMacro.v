@@ -762,15 +762,10 @@ Proof.
       - constructor.
         + destruct b; unfold comparison_mark, match_mark; auto.
         + constructor. }
+    rewrite dispatch_run_add.
     replace (length rest + length done) with
       (length (map match_mark rest ++ done))
       by (rewrite app_length, map_length; lia).
-    rewrite (dispatch_run_add
-      (2 * length pass + 2 * length (map match_mark rest ++ done) + 4)
-      (matched_comparison_steps rest (S (length pass)) (S (length done)))
-      (entry_config 1 (5 :: prefix)
-        (pass ++ match_mark b :: map match_mark rest ++ done ++
-         match_raw b :: map match_raw rest ++ tail))).
     rewrite (q1_match_one_bit_with_marks b pass
       (map match_mark rest ++ done) prefix (map match_raw rest ++ tail)
       Hpass Hmarks).

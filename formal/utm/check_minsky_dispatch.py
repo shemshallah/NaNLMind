@@ -275,6 +275,14 @@ def main() -> None:
                 for bits in itertools.product((0, 1), repeat=bit_width):
                     check_q1_full_matching_prefix(table, skipped, bits)
                     sequence_cases += 1
+    # Exercise lengths far beyond the exhaustive small examples, while
+    # keeping the test deterministic and preserving the exact clock gate.
+    for bit_width in (7, 16, 32, 64, 129):
+        for _ in range(8):
+            skipped = tuple(rng.randrange(2) for _ in range(rng.randrange(17)))
+            bits = tuple(rng.randrange(2) for _ in range(bit_width))
+            check_q1_full_matching_prefix(table, skipped, bits)
+            sequence_cases += 1
     mismatch_cases = 0
     for skip_width in range(4):
         for skipped in itertools.product((0, 1), repeat=skip_width):
@@ -287,6 +295,14 @@ def main() -> None:
                                 check_q1_mismatch_restart(table, skipped, marks,
                                                           right_scan, selected_bit)
                                 mismatch_cases += 1
+    for _ in range(96):
+        skipped = tuple(rng.randrange(2) for _ in range(rng.randrange(65)))
+        marks = tuple(rng.choice((2, 3)) for _ in range(rng.randrange(65)))
+        right_scan = tuple(rng.choice((0, 1, 2, 3, 6, 7))
+                           for _ in range(rng.randrange(129)))
+        check_q1_mismatch_restart(table, skipped, marks, right_scan,
+                                  rng.randrange(2))
+        mismatch_cases += 1
     print(f"MINSKY CONCRETE DISPATCH PASS ({cases} exhaustive/seeded cases; "
           f"positive buffers 1..129 and zero-buffer counterexample; "
           f"{matching_cases} q1 matching roundtrips; "
