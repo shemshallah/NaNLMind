@@ -959,6 +959,9 @@ Proof.
   destruct (comparison_mark_scans (map match_mark bits) Hmarks)
     as [Hq0 [Hq4 _]].
   rewrite dispatch_run_add.
+  replace (matched_comparison_steps bits (length pass) 1) with
+    (matched_comparison_steps bits (length pass)
+      (length [match_mark bad])) by reflexivity.
   rewrite (q1_all_matching_bits bits pass [match_mark bad] prefix
     (match_raw (negb bad) :: row_rest ++ 4 :: afterX)
     Hpass Hdone).
