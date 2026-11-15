@@ -74,7 +74,7 @@ Proof.
   rewrite rev_app_distr.
   simpl [rev].
   repeat rewrite rev_involutive.
-  repeat rewrite app_assoc.
+  repeat rewrite <- app_assoc.
   simpl [app].
   reflexivity.
 Qed.
