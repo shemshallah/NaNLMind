@@ -52,13 +52,14 @@ Lemma first_mismatch_logical_frame :
        row_rest ++ suffix).
 Proof.
   intros bits bad pass row_rest suffix.
-  repeat rewrite map_app.
-  simpl [map].
+  repeat first [rewrite map_app | progress (cbn [map])].
   repeat rewrite erase_marked_comparisons.
   repeat rewrite erase_raw_comparisons.
   repeat rewrite erase_match_mark.
   repeat rewrite erase_match_raw.
-  repeat rewrite <- app_assoc.
+  repeat rewrite app_assoc.
+  cbn [app].
+  repeat rewrite app_assoc.
   reflexivity.
 Qed.
 
