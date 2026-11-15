@@ -163,6 +163,7 @@ Proof.
   rewrite (dispatch_run_add (S (length marked)) (S (length (x :: remaining)))
     (entry_config 0 (left_pre ++ 5 :: prefix) (marked ++ 0 :: tail))).
   rewrite (q0_scan_zero marked (left_pre ++ 5 :: prefix) tail Hmarked).
+  rewrite <- app_assoc.
   rewrite Hrev.
   cbn [app].
   cbn [cfg_ml].
@@ -184,6 +185,7 @@ Proof.
   rewrite (dispatch_run_add (S (length marked)) (S (length (x :: remaining)))
     (entry_config 4 (left_pre ++ 5 :: prefix) (marked ++ 1 :: tail))).
   rewrite (q4_scan_one marked (left_pre ++ 5 :: prefix) tail Hmarked).
+  rewrite <- app_assoc.
   rewrite Hrev.
   cbn [app].
   cbn [cfg_ml].
