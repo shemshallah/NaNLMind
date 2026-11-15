@@ -221,6 +221,7 @@ Proof.
   - reflexivity.
   - inversion Hwf as [|? ? Hrow Hrest]; subst.
     unfold encode_wide_program. simpl.
+    match goal with |- ?G => idtac "WIDE_PROGRAM_GOAL:" G end.
     change (decode_wide_prefix p (S (length rows))
       (encode_wide_row row ++ (encode_wide_program rows ++ suffix)) =
       Some (row :: rows, suffix)).
