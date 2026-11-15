@@ -439,11 +439,5 @@ Proof.
     rewrite (q1_pass_step p left (pass ++ head :: rest) Hp).
     rewrite (IH (p :: left) head rest Hrest Hhead).
     cbn [rev].
-    match goal with
-    | |- _ = match head with
-           | 2 => entry_config 0 (0 :: rev pass ++ p :: left) rest
-           | 3 => entry_config 4 (1 :: rev pass ++ p :: left) rest
-           | _ => entry_config 6 (4 :: rev pass ++ p :: left) rest
-           end => reflexivity
-    end.
+    reflexivity.
 Qed.
