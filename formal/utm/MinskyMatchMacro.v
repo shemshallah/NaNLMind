@@ -984,3 +984,198 @@ Proof.
 Qed.
 
 Print Assumptions q1_matching_prefix_then_first_mismatch.
+
+(** For a canonical comparison layout the cleanup guard is automatic.
+    All cells crossed by q3 and q5 are in their permitted symbol classes;
+    the only Y is the delimiter to which q5 must return. *)
+Lemma q5_pass_reverse :
+  forall cells,
+    Forall q5_pass cells -> Forall q5_pass (rev cells).
+Proof.
+  intros cells Hcells.
+  induction Hcells as [|s rest Hs Hrest IH]; simpl.
+  - constructor.
+  - apply Forall_app; split.
+    + exact IH.
+    + constructor; [exact Hs | constructor].
+Qed.
+
+Lemma q5_pass_from_q1 :
+  forall cells, Forall q1_pass cells -> Forall q5_pass cells.
+Proof.
+  intros cells Hcells.
+  induction Hcells as [|s rest Hs Hrest IH].
+  - constructor.
+  - constructor.
+    + destruct Hs as [-> | ->]; unfold q5_pass; auto.
+    + exact IH.
+Qed.
+
+Lemma q5_pass_from_right :
+  forall cells,
+    Forall dispatch_right_symbol cells -> Forall q5_pass cells.
+Proof.
+  intros cells Hcells.
+  induction Hcells as [|s rest Hs Hrest IH].
+  - constructor.
+  - constructor.
+    + destruct Hs as [-> | [-> | [-> | [-> | [-> | ->]]]]];
+        unfold q5_pass; auto.
+    + exact IH.
+Qed.
+
+Lemma q5_match_mark : forall b, q5_pass (match_mark b).
+Proof. intros []; unfold q5_pass, match_mark; auto. Qed.
+
+Lemma q5_match_raw : forall b, q5_pass (match_raw b).
+Proof. intros []; unfold q5_pass, match_raw; auto. Qed.
+
+Lemma q5_marked_bits :
+  forall bits, Forall q5_pass (map match_mark bits).
+Proof.
+  induction bits as [|b rest IH]; simpl.
+  - constructor.
+  - constructor; [apply q5_match_mark | exact IH].
+Qed.
+
+Lemma q5_raw_bits :
+  forall bits, Forall q5_pass (map match_raw bits).
+Proof.
+  induction bits as [|b rest IH]; simpl.
+  - constructor.
+  - constructor; [apply q5_match_raw | exact IH].
+Qed.
+
+Lemma q5_first_mismatch_segment_valid :
+  forall bits bad pass row_rest,
+    Forall q1_pass pass ->
+    Forall dispatch_right_symbol row_rest ->
+    Forall q5_pass
+      (rev row_rest ++ match_mark (negb bad) ::
+       rev (map match_mark bits) ++ match_raw bad ::
+       rev (pass ++ map match_raw bits)).
+Proof.
+  intros bits bad pass row_rest Hpass Hright.
+  apply Forall_app; split.
+  - apply q5_pass_reverse, q5_pass_from_right; exact Hright.
+  - constructor.
+    + apply q5_match_mark.
+    + apply Forall_app; split.
+      * apply q5_pass_reverse, q5_marked_bits.
+      * constructor.
+        -- apply q5_match_raw.
+        -- apply q5_pass_reverse.
+           apply Forall_app; split.
+           ++ apply q5_pass_from_q1; exact Hpass.
+           ++ apply q5_raw_bits.
+Qed.
+
+Theorem q1_first_mismatch_canonical_layout :
+  forall bits bad pass row_rest prefix afterX,
+    Forall q1_pass pass ->
+    Forall dispatch_right_symbol row_rest ->
+    let scanned :=
+      rev row_rest ++ match_mark (negb bad) ::
+      rev (map match_mark bits) ++ match_raw bad ::
+      rev (pass ++ map match_raw bits) in
+    run
+      (matched_comparison_steps bits (length pass) 1 +
+       (S (length (pass ++ map match_raw bits)) +
+        (S (length (map match_mark bits)) +
+         ((length row_rest + 1) + S (length scanned)))))
+      (entry_config 1 (5 :: prefix)
+        (pass ++ map match_mark bits ++ [match_mark bad] ++
+         map match_raw bits ++
+         match_raw (negb bad) :: row_rest ++ 4 :: afterX)) =
+    entry_config 1 (5 :: prefix)
+      (map entry_rewrite (rev scanned) ++ 4 :: afterX).
+Proof.
+  intros bits bad pass row_rest prefix afterX Hpass Hright.
+  cbn zeta.
+  set (scanned := rev row_rest ++ match_mark (negb bad) ::
+    rev (map match_mark bits) ++ match_raw bad ::
+    rev (pass ++ map match_raw bits)).
+  assert (Hq5 : Forall q5_pass scanned).
+  { unfold scanned.
+    apply q5_first_mismatch_segment_valid; assumption. }
+  assert (Hnonempty : exists s remaining, scanned = s :: remaining).
+  { unfold scanned.
+    destruct (rev row_rest) as [|s rest].
+    - exists (match_mark (negb bad)).
+      exists (rev (map match_mark bits) ++
+        match_raw bad :: rev (pass ++ map match_raw bits)).
+      reflexivity.
+    - exists s.
+      exists (rest ++ match_mark (negb bad) ::
+        rev (map match_mark bits) ++
+        match_raw bad :: rev (pass ++ map match_raw bits)).
+      reflexivity. }
+  destruct Hnonempty as [s [remaining Hshape]].
+  rewrite Hshape in Hq5.
+  rewrite Hshape.
+  eapply q1_matching_prefix_then_first_mismatch.
+  - exact Hpass.
+  - exact Hright.
+  - rewrite <- Hshape. reflexivity.
+  - exact Hq5.
+Qed.
+
+Print Assumptions q5_first_mismatch_segment_valid.
+Print Assumptions q1_first_mismatch_canonical_layout.
+
+(** The first failed comparison is quadratic only in the length of the
+    preceding successful prefix; the rightward row scan contributes
+    linearly.  The extra 7n accounts for keeping the failed marker among
+    already processed matching bits and for the final cleanup pass. *)
+Lemma first_mismatch_clock_polynomial :
+  forall bits bad pass row_rest,
+    matched_comparison_steps bits (length pass) 1 +
+      (S (length (pass ++ map match_raw bits)) +
+       (S (length (map match_mark bits)) +
+        ((length row_rest + 1) +
+         S (length
+           (rev row_rest ++ match_mark (negb bad) ::
+            rev (map match_mark bits) ++ match_raw bad ::
+            rev (pass ++ map match_raw bits))))) =
+    3 * length bits * length bits +
+      2 * length bits * length pass +
+      7 * length bits + 2 * length pass +
+      2 * length row_rest + 6.
+Proof.
+  intros bits bad pass row_rest.
+  rewrite matched_comparison_steps_closed.
+  repeat first [rewrite app_length | rewrite rev_length |
+                rewrite map_length | progress (simpl [length])].
+  nia.
+Qed.
+
+Corollary q1_first_mismatch_exact_clock :
+  forall bits bad pass row_rest prefix afterX,
+    Forall q1_pass pass ->
+    Forall dispatch_right_symbol row_rest ->
+    run
+      (3 * length bits * length bits +
+       2 * length bits * length pass +
+       7 * length bits + 2 * length pass +
+       2 * length row_rest + 6)
+      (entry_config 1 (5 :: prefix)
+        (pass ++ map match_mark bits ++ [match_mark bad] ++
+         map match_raw bits ++
+         match_raw (negb bad) :: row_rest ++ 4 :: afterX)) =
+    entry_config 1 (5 :: prefix)
+      (map entry_rewrite
+        (rev
+          (rev row_rest ++ match_mark (negb bad) ::
+           rev (map match_mark bits) ++ match_raw bad ::
+           rev (pass ++ map match_raw bits))) ++ 4 :: afterX).
+Proof.
+  intros bits bad pass row_rest prefix afterX Hpass Hright.
+  pose proof (q1_first_mismatch_canonical_layout
+    bits bad pass row_rest prefix afterX Hpass Hright) as Hrun.
+  cbn zeta in Hrun.
+  rewrite first_mismatch_clock_polynomial in Hrun.
+  exact Hrun.
+Qed.
+
+Print Assumptions first_mismatch_clock_polynomial.
+Print Assumptions q1_first_mismatch_exact_clock.
