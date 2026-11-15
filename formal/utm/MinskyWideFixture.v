@@ -47,14 +47,12 @@ Definition wide_fixture_finish : Config :=
           t_right := skipn 90 wide_fixture_final_cells |};
      c_halted := true |}.
 
-Eval vm_compute in (run 1978 wide_fixture_start).
-
-Theorem wide_fixture_halts_at_step_1978 :
-  run 1978 wide_fixture_start = wide_fixture_finish.
+Theorem wide_fixture_halts_at_step_1979 :
+  run 1979 wide_fixture_start = wide_fixture_finish.
 Proof. vm_compute. reflexivity. Qed.
 
-Theorem wide_fixture_running_at_step_1977 :
-  c_halted (run 1977 wide_fixture_start) = false.
+Theorem wide_fixture_running_at_step_1978 :
+  c_halted (run 1978 wide_fixture_start) = false.
 Proof. vm_compute. reflexivity. Qed.
 
 Theorem wide_fixture_final_head_and_state :
@@ -63,5 +61,5 @@ Theorem wide_fixture_final_head_and_state :
   c_halted wide_fixture_finish = true.
 Proof. repeat split; reflexivity. Qed.
 
-Print Assumptions wide_fixture_halts_at_step_1978.
-Print Assumptions wide_fixture_running_at_step_1977.
+Print Assumptions wide_fixture_halts_at_step_1979.
+Print Assumptions wide_fixture_running_at_step_1978.
