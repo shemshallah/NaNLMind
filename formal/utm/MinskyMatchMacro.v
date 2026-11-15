@@ -830,7 +830,9 @@ Proof.
   replace (2 * length bits * length pass +
            3 * length bits * length bits + length bits) with
     (matched_comparison_steps bits (length pass) 0).
-  2:{ rewrite matched_comparison_steps_closed; nia. }
+  2:{ rewrite matched_comparison_steps_closed.
+      cbn [Nat.add Nat.mul].
+      reflexivity. }
   change (run (matched_comparison_steps bits (length pass) 0)
     (entry_config 1 (5 :: prefix)
       (pass ++ map match_mark bits ++ [] ++ map match_raw bits ++ tail)) =
