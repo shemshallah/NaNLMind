@@ -217,6 +217,22 @@ Lemma encode_wide_program_cons :
     encode_wide_row row ++ encode_wide_program rows.
 Proof. reflexivity. Qed.
 
+Lemma decode_wide_prefix_cons :
+  forall p row rows suffix,
+    decode_wide_prefix p (S (length rows))
+      (encode_wide_row row ++ (encode_wide_program rows ++ suffix)) =
+    match decode_wide_row p
+      (encode_wide_row row ++ (encode_wide_program rows ++ suffix)) with
+    | None => None
+    | Some (parsed, tail) =>
+        match decode_wide_prefix p (length rows) tail with
+        | None => None
+        | Some (parsed_rows, final) =>
+            Some (parsed :: parsed_rows, final)
+        end
+    end.
+Proof. reflexivity. Qed.
+
 Theorem wide_program_roundtrip :
   forall p rows suffix,
     Forall (wide_row_wellformed p) rows ->
@@ -231,11 +247,10 @@ Proof.
     change (decode_wide_prefix p (S (length rows))
       (encode_wide_row row ++ (encode_wide_program rows ++ suffix)) =
       Some (row :: rows, suffix)).
-    simpl [decode_wide_prefix].
-    fold (decode_wide_row p
-      (encode_wide_row row ++ encode_wide_program rows ++ suffix)).
+    rewrite decode_wide_prefix_cons.
     rewrite (decode_wide_row_roundtrip p row
       (encode_wide_program rows ++ suffix) Hrow).
+    simpl.
     now rewrite IH.
 Qed.
 
