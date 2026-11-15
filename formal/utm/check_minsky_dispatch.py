@@ -232,6 +232,40 @@ def check_q1_mismatch_restart(
         raise AssertionError(("incorrect mismatch tape", skipped, marks, right_scan))
 
 
+def check_q1_first_mismatch_after_matches(
+    table: list[tuple[int, int, int, int, int, bool]],
+    skipped: tuple[int, ...],
+    matching_bits: tuple[int, ...],
+    right_scan: tuple[int, ...],
+    selected_bit: int,
+) -> None:
+    """Native-table first mismatch after any matching prefix, exact clock."""
+    marks = tuple(3 if b else 2 for b in matching_bits)
+    selected_mark = 3 if selected_bit else 2
+    opposite_mark = 2 if selected_bit else 3
+    source = (skipped + marks + (selected_mark,) + matching_bits +
+              (1 - selected_bit,) + right_scan + (4, 7))
+    restored_order = (skipped + matching_bits + (selected_bit,) +
+                      marks + (opposite_mark,) + right_scan)
+    expected = tuple(2 if x == 0 else 3 if x == 1 else x
+                     for x in restored_order) + (4, 7)
+    tape = {-2: 6, -1: 5, **dict(enumerate(source))}
+    state, head, halted = 1, 0, False
+    n, p, r = len(matching_bits), len(skipped), len(right_scan)
+    clock = 3 * n * n + 2 * n * p + 7 * n + 2 * p + 2 * r + 6
+    for microstep in range(clock):
+        if halted:
+            raise AssertionError(("early first mismatch halt", microstep))
+        _, _, write, movement, state, halted = table[state * 8 + tape.get(head, 2)]
+        tape[head] = write
+        head += movement
+    if (state, head, halted) != (1, 0, False):
+        raise AssertionError(("first mismatch restart", state, head, halted))
+    if tape != {-2: 6, -1: 5, **dict(enumerate(expected))}:
+        raise AssertionError(("first mismatch tape", skipped, matching_bits,
+                              right_scan, selected_bit))
+
+
 def main() -> None:
     table = load_table()
     check_zero_buffer_exception(table)
@@ -303,12 +337,34 @@ def main() -> None:
         check_q1_mismatch_restart(table, skipped, marks, right_scan,
                                   rng.randrange(2))
         mismatch_cases += 1
+    first_mismatch_cases = 0
+    for bit_width in range(5):
+        for bits in itertools.product((0, 1), repeat=bit_width):
+            for skip_width in range(4):
+                for skipped in itertools.product((0, 1), repeat=skip_width):
+                    for scan_width in range(3):
+                        for right_scan in itertools.product((0, 1, 2, 3, 6, 7),
+                                                            repeat=scan_width):
+                            for selected_bit in (0, 1):
+                                check_q1_first_mismatch_after_matches(
+                                    table, skipped, bits, right_scan, selected_bit)
+                                first_mismatch_cases += 1
+    for bit_width in (8, 16, 32, 64, 129):
+        for _ in range(16):
+            skipped = tuple(rng.randrange(2) for _ in range(rng.randrange(17)))
+            bits = tuple(rng.randrange(2) for _ in range(bit_width))
+            right_scan = tuple(rng.choice((0, 1, 2, 3, 6, 7))
+                               for _ in range(rng.randrange(65)))
+            check_q1_first_mismatch_after_matches(
+                table, skipped, bits, right_scan, rng.randrange(2))
+            first_mismatch_cases += 1
     print(f"MINSKY CONCRETE DISPATCH PASS ({cases} exhaustive/seeded cases; "
           f"positive buffers 1..129 and zero-buffer counterexample; "
           f"{matching_cases} q1 matching roundtrips; "
           f"{marked_cases} marked-prefix roundtrips; "
           f"{sequence_cases} complete matching sequences; "
-          f"{mismatch_cases} mismatch restarts)")
+          f"{mismatch_cases} mismatch restarts; "
+          f"{first_mismatch_cases} first-mismatch-after-matches cases)")
 
 
 if __name__ == "__main__":
