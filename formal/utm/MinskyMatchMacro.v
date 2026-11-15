@@ -145,3 +145,47 @@ Print Assumptions q0_scan_one.
 Print Assumptions q4_scan_zero.
 Print Assumptions q4_scan_one.
 Print Assumptions q3_reaches_marker.
+
+(** A matched zero bit: after the q0/q4 prefix scan the machine moves
+    left into q2 and returns to the left-hand Y.  The markup split is an
+    explicit hypothesis so the result can be composed by the match loop. *)
+Lemma q0_match_zero_to_y :
+  forall marked x xs prefix tail,
+    Forall q0_pass marked ->
+    rev marked ++ 5 :: prefix = x :: xs ->
+    Forall dispatch_left_symbol (x :: xs) ->
+    run (S (length marked) + S (length xs))
+      (entry_config 0 (5 :: prefix) (marked ++ 0 :: tail)) =
+    entry_config 1 (5 :: prefix) (rev (x :: xs) ++ 2 :: tail).
+Proof.
+  intros marked x xs prefix tail Hmarked Hsplit Hleft.
+  rewrite (dispatch_run_add (S (length marked)) (S (length xs))
+    (entry_config 0 (5 :: prefix) (marked ++ 0 :: tail))).
+  rewrite (q0_scan_zero marked (5 :: prefix) tail Hmarked).
+  rewrite Hsplit.
+  cbn [cfg_ml].
+  rewrite (dispatch_left_to_delimiter xs x prefix (2 :: tail) Hleft).
+  reflexivity.
+Qed.
+
+Lemma q4_match_one_to_y :
+  forall marked x xs prefix tail,
+    Forall q4_pass marked ->
+    rev marked ++ 5 :: prefix = x :: xs ->
+    Forall dispatch_left_symbol (x :: xs) ->
+    run (S (length marked) + S (length xs))
+      (entry_config 4 (5 :: prefix) (marked ++ 1 :: tail)) =
+    entry_config 1 (5 :: prefix) (rev (x :: xs) ++ 3 :: tail).
+Proof.
+  intros marked x xs prefix tail Hmarked Hsplit Hleft.
+  rewrite (dispatch_run_add (S (length marked)) (S (length xs))
+    (entry_config 4 (5 :: prefix) (marked ++ 1 :: tail))).
+  rewrite (q4_scan_one marked (5 :: prefix) tail Hmarked).
+  rewrite Hsplit.
+  cbn [cfg_ml].
+  rewrite (dispatch_left_to_delimiter xs x prefix (3 :: tail) Hleft).
+  reflexivity.
+Qed.
+
+Print Assumptions q0_match_zero_to_y.
+Print Assumptions q4_match_one_to_y.
