@@ -832,6 +832,7 @@ Proof.
     (matched_comparison_steps bits (length pass) 0).
   2:{ rewrite matched_comparison_steps_closed.
       cbn [Nat.add Nat.mul].
+      repeat rewrite Nat.add_0_r.
       reflexivity. }
   change (run (matched_comparison_steps bits (length pass) 0)
     (entry_config 1 (5 :: prefix)
