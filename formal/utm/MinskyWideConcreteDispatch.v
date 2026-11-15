@@ -36,7 +36,7 @@ Proof.
   simpl in Hcurrent; subst current.
   unfold encode_wide_row, wide_row_tail_bits; simpl.
   repeat rewrite map_app; simpl.
-  repeat rewrite app_assoc.
+  repeat rewrite <- app_assoc.
   reflexivity.
 Qed.
 
