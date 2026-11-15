@@ -202,6 +202,36 @@ def check_q1_full_matching_prefix(
         raise AssertionError(("incorrect multi-bit tape", skipped, bits))
 
 
+def check_q1_mismatch_restart(
+    table: list[tuple[int, int, int, int, int, bool]],
+    skipped: tuple[int, ...],
+    marks: tuple[int, ...],
+    right_scan: tuple[int, ...],
+    selected_bit: int,
+) -> None:
+    """Execute q1 selection, mismatch, X turnaround and q5/Y cleanup."""
+    marker = 3 if selected_bit else 2
+    mismatch = 1 - selected_bit
+    mismatch_marker = 2 if selected_bit else 3
+    source = skipped + (marker,) + marks + (mismatch,) + right_scan + (4, 7)
+    rewritten = skipped + (selected_bit,) + marks + (mismatch_marker,) + right_scan
+    expected = tuple(2 if symbol == 0 else 3 if symbol == 1 else symbol
+                     for symbol in rewritten) + (4, 7)
+    tape = {-2: 6, -1: 5, **dict(enumerate(source))}
+    state, head, halted = 1, 0, False
+    fuel = 2 * (len(skipped) + len(marks) + len(right_scan)) + 6
+    for microstep in range(fuel):
+        if halted:
+            raise AssertionError(("early mismatch halt", skipped, marks, microstep))
+        _, _, write, movement, state, halted = table[state * 8 + tape.get(head, 2)]
+        tape[head] = write
+        head += movement
+    if (state, head, halted) != (1, 0, False):
+        raise AssertionError(("mismatch restart", state, head, halted))
+    if tape != {-2: 6, -1: 5, **dict(enumerate(expected))}:
+        raise AssertionError(("incorrect mismatch tape", skipped, marks, right_scan))
+
+
 def main() -> None:
     table = load_table()
     check_zero_buffer_exception(table)
@@ -245,11 +275,24 @@ def main() -> None:
                 for bits in itertools.product((0, 1), repeat=bit_width):
                     check_q1_full_matching_prefix(table, skipped, bits)
                     sequence_cases += 1
+    mismatch_cases = 0
+    for skip_width in range(4):
+        for skipped in itertools.product((0, 1), repeat=skip_width):
+            for mark_width in range(4):
+                for marks in itertools.product((2, 3), repeat=mark_width):
+                    for scan_width in range(4):
+                        for right_scan in itertools.product((0, 1, 2, 3, 6, 7),
+                                                            repeat=scan_width):
+                            for selected_bit in (0, 1):
+                                check_q1_mismatch_restart(table, skipped, marks,
+                                                          right_scan, selected_bit)
+                                mismatch_cases += 1
     print(f"MINSKY CONCRETE DISPATCH PASS ({cases} exhaustive/seeded cases; "
           f"positive buffers 1..129 and zero-buffer counterexample; "
           f"{matching_cases} q1 matching roundtrips; "
           f"{marked_cases} marked-prefix roundtrips; "
-          f"{sequence_cases} complete matching sequences)")
+          f"{sequence_cases} complete matching sequences; "
+          f"{mismatch_cases} mismatch restarts)")
 
 
 if __name__ == "__main__":

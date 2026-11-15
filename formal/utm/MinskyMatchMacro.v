@@ -623,6 +623,7 @@ Proof.
     simpl [rev].
     rewrite !rev_involutive.
     rewrite (append_singleton_assoc pass 0 marks).
+    rewrite <- app_assoc.
     reflexivity.
 Qed.
 
@@ -673,6 +674,7 @@ Proof.
     simpl [rev].
     rewrite !rev_involutive.
     rewrite (append_singleton_assoc pass 1 marks).
+    rewrite <- app_assoc.
     reflexivity.
 Qed.
 
@@ -822,3 +824,72 @@ Qed.
 Print Assumptions q1_match_one_bit_with_marks.
 Print Assumptions q1_all_matching_bits.
 Print Assumptions q1_all_matching_bits_exact_clock.
+
+(** A failed bit comparison is also compositional from q1/Y: q1 first
+    skips an arbitrary finite binary prefix and selects A/B, q0/q4
+    detects the opposite raw bit, q3 reaches X, and q5 returns to Y.
+    The q5 scan invariant explicitly excludes intervening Y delimiters.
+    We do not assume that the resulting tape is a next-instruction state;
+    that stronger restart invariant remains a separate obligation. *)
+Theorem q1_zero_mismatch_restart :
+  forall pass marked row_rest s remaining prefix afterX,
+    Forall q1_pass pass ->
+    Forall q0_pass marked ->
+    Forall dispatch_right_symbol row_rest ->
+    rev row_rest ++ 3 :: rev marked ++ 0 :: rev pass ++ 5 :: prefix =
+      s :: remaining ++ 5 :: prefix ->
+    Forall q5_pass (s :: remaining) ->
+    run (S (length pass) +
+         (S (length marked) +
+           ((length row_rest + 1) + S (length (s :: remaining)))))
+      (entry_config 1 (5 :: prefix)
+        (pass ++ 2 :: marked ++ 1 :: row_rest ++ 4 :: afterX)) =
+    entry_config 1 (5 :: prefix)
+      (map entry_rewrite (rev (s :: remaining)) ++ 4 :: afterX).
+Proof.
+  intros pass marked row_rest s remaining prefix afterX
+    Hpass Hmarked Hright Hsplit Hq5.
+  rewrite (dispatch_run_add (S (length pass))
+    (S (length marked) +
+      ((length row_rest + 1) + S (length (s :: remaining))))
+    (entry_config 1 (5 :: prefix)
+      (pass ++ 2 :: marked ++ 1 :: row_rest ++ 4 :: afterX))).
+  rewrite (q1_scan_pick pass (5 :: prefix) 2
+    (marked ++ 1 :: row_rest ++ 4 :: afterX)
+    Hpass (or_introl eq_refl)).
+  apply (q0_mismatch_restart marked row_rest (0 :: rev pass)
+    s remaining prefix afterX); assumption.
+Qed.
+
+Theorem q1_one_mismatch_restart :
+  forall pass marked row_rest s remaining prefix afterX,
+    Forall q1_pass pass ->
+    Forall q4_pass marked ->
+    Forall dispatch_right_symbol row_rest ->
+    rev row_rest ++ 2 :: rev marked ++ 1 :: rev pass ++ 5 :: prefix =
+      s :: remaining ++ 5 :: prefix ->
+    Forall q5_pass (s :: remaining) ->
+    run (S (length pass) +
+         (S (length marked) +
+           ((length row_rest + 1) + S (length (s :: remaining)))))
+      (entry_config 1 (5 :: prefix)
+        (pass ++ 3 :: marked ++ 0 :: row_rest ++ 4 :: afterX)) =
+    entry_config 1 (5 :: prefix)
+      (map entry_rewrite (rev (s :: remaining)) ++ 4 :: afterX).
+Proof.
+  intros pass marked row_rest s remaining prefix afterX
+    Hpass Hmarked Hright Hsplit Hq5.
+  rewrite (dispatch_run_add (S (length pass))
+    (S (length marked) +
+      ((length row_rest + 1) + S (length (s :: remaining))))
+    (entry_config 1 (5 :: prefix)
+      (pass ++ 3 :: marked ++ 0 :: row_rest ++ 4 :: afterX))).
+  rewrite (q1_scan_pick pass (5 :: prefix) 3
+    (marked ++ 0 :: row_rest ++ 4 :: afterX)
+    Hpass (or_intror (or_introl eq_refl))).
+  apply (q4_mismatch_restart marked row_rest (1 :: rev pass)
+    s remaining prefix afterX); assumption.
+Qed.
+
+Print Assumptions q1_zero_mismatch_restart.
+Print Assumptions q1_one_mismatch_restart.
