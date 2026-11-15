@@ -232,6 +232,7 @@ Proof.
       (encode_wide_row row ++ (encode_wide_program rows ++ suffix)) =
       Some (row :: rows, suffix)).
     simpl [decode_wide_prefix].
+    match goal with |- ?G => idtac "WIDE_PROGRAM_GOAL3:" G end.
     rewrite (decode_wide_row_roundtrip p row
       (encode_wide_program rows ++ suffix) Hrow).
     now rewrite IH.
