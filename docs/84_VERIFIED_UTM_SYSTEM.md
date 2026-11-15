@@ -86,6 +86,7 @@ native NaN16 Minsky fixture:
   [PASS] minsky_encoded: steps=361163 marker=MTH MINSKY NATIVE PASS
   [PASS] minsky_compiler: steps=362475 marker=MTH MINSKY NATIVE PASS
   [PASS] minsky_compiler_general: steps=3521560 marker=MTH MINSKY NATIVE PASS
+  [PASS] minsky_compiler_p16: steps=4318871 marker=MTH MINSKY NATIVE PASS
 
 C++ runtime trace:
   MINSKY C++ TRACE CONFORMANCE PASS (100/100 steps)
@@ -102,7 +103,8 @@ The native fixtures are `mth/tests/mth_minsky_test.nas` (published trace) and
 `mth/tests/mth_minsky_encoded_test.nas` (normal encoded binary machine), and
 `mth/tests/mth_minsky_compiler_test.nas` (two-bit source-to-tape encoder), and
 `mth/tests/mth_minsky_compiler_general_test.nas` (p-bit, arbitrary transition
-list and binary input tape), assembled and executed
+list and binary input tape), and `mth/tests/mth_minsky_compiler_p16_test.nas`
+(16-bit state fields), assembled and executed
 by the canonical NaN0S toolchain.  It contains the table, tape, transition
 scan, halt ordering and final 73-cell verification in raw NaN16.
 
