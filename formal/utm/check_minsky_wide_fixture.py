@@ -33,6 +33,16 @@ def main() -> int:
                 raise SystemExit(f"final image differs at cell {i}: native={a} coq={b}")
         raise SystemExit("final image lengths differ")
 
+    p16coq = (ROOT / "formal/utm/MinskyP16Fixture.v").read_text()
+    p16final = nat_list(p16coq, "p16_fixture_final_cells")
+    p16nas = (ROOT / "mth/tests/mth_minsky_compiler_p16_test.nas").read_text()
+    m16 = re.search(r"expected:\n\s*\.word ([^\n]+)", p16nas)
+    if not m16:
+        raise SystemExit("missing p16 native expected array")
+    p16native = [int(x) for x in m16.group(1).split(",") if x.strip()]
+    if p16native != p16final:
+        raise SystemExit("p16 native/Coq final images differ")
+
     # The native guest writes a 94-cell image beginning at working cell 24.
     if len(coq_initial) != 94 or len(coq_final) != 94:
         raise SystemExit("unexpected p=9 image length")
