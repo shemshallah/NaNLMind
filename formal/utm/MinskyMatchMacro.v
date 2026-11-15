@@ -915,3 +915,69 @@ Qed.
 
 Print Assumptions q1_zero_mismatch_restart.
 Print Assumptions q1_one_mismatch_restart.
+
+(** A complete first-failed-bit comparison: any finite successful prefix
+    can precede the mismatching marked bit.  The unsuccessful bit is the
+    opposite raw bit, and the q3/q5 cleanup is the literal table run.
+    This is a single native-table episode, not yet a source instruction.
+
+    The rightward scan and its Y-free cleanup region are explicit: they
+    prevent an accidental crossing of an instruction delimiter. *)
+Theorem q1_matching_prefix_then_first_mismatch :
+  forall bits bad pass row_rest s remaining prefix afterX,
+    Forall q1_pass pass ->
+    Forall dispatch_right_symbol row_rest ->
+    rev row_rest ++ match_mark (negb bad) ::
+      rev (map match_mark bits) ++ match_raw bad ::
+      rev (pass ++ map match_raw bits) ++ 5 :: prefix =
+      s :: remaining ++ 5 :: prefix ->
+    Forall q5_pass (s :: remaining) ->
+    run
+      (matched_comparison_steps bits (length pass) 1 +
+       (S (length (pass ++ map match_raw bits)) +
+        (S (length (map match_mark bits)) +
+         ((length row_rest + 1) + S (length (s :: remaining))))))
+      (entry_config 1 (5 :: prefix)
+        (pass ++ map match_mark bits ++ [match_mark bad] ++
+         map match_raw bits ++
+         match_raw (negb bad) :: row_rest ++ 4 :: afterX)) =
+    entry_config 1 (5 :: prefix)
+      (map entry_rewrite (rev (s :: remaining)) ++ 4 :: afterX).
+Proof.
+  intros bits bad pass row_rest s remaining prefix afterX
+    Hpass Hright Hsplit Hq5.
+  assert (Hdone : Forall comparison_mark [match_mark bad]).
+  { constructor.
+    - destruct bad; unfold comparison_mark, match_mark; auto.
+    - constructor. }
+  assert (Hpass' : Forall q1_pass (pass ++ map match_raw bits)).
+  { apply Forall_app; split.
+    - exact Hpass.
+    - apply match_raw_valid. }
+  assert (Hmarks : Forall comparison_mark (map match_mark bits)).
+  { apply match_mark_valid. }
+  destruct (comparison_mark_scans (map match_mark bits) Hmarks)
+    as [Hq0 [Hq4 _]].
+  rewrite dispatch_run_add.
+  rewrite (q1_all_matching_bits bits pass [match_mark bad] prefix
+    (match_raw (negb bad) :: row_rest ++ 4 :: afterX)
+    Hpass Hdone).
+  replace
+    (pass ++ map match_raw bits ++ [match_mark bad] ++
+      map match_mark bits ++
+      match_raw (negb bad) :: row_rest ++ 4 :: afterX)
+    with
+    ((pass ++ map match_raw bits) ++
+      match_mark bad :: map match_mark bits ++
+      match_raw (negb bad) :: row_rest ++ 4 :: afterX)
+    by (repeat rewrite <- app_assoc; reflexivity).
+  destruct bad; simpl [match_mark match_raw negb] in *.
+  - apply (q1_one_mismatch_restart
+      (pass ++ map match_raw bits) (map match_mark bits)
+      row_rest s remaining prefix afterX); assumption.
+  - apply (q1_zero_mismatch_restart
+      (pass ++ map match_raw bits) (map match_mark bits)
+      row_rest s remaining prefix afterX); assumption.
+Qed.
+
+Print Assumptions q1_matching_prefix_then_first_mismatch.
