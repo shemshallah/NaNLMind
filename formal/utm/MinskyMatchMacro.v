@@ -1116,7 +1116,15 @@ Proof.
   eapply q1_matching_prefix_then_first_mismatch.
   - exact Hpass.
   - exact Hright.
-  - rewrite <- Hshape. reflexivity.
+  - change
+      (rev row_rest ++ match_mark (negb bad) ::
+        rev (map match_mark bits) ++ match_raw bad ::
+        rev (pass ++ map match_raw bits) ++ 5 :: prefix =
+       (s :: remaining) ++ 5 :: prefix).
+    rewrite <- Hshape.
+    unfold scanned.
+    repeat rewrite app_assoc.
+    reflexivity.
   - exact Hq5.
 Qed.
 
