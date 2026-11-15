@@ -80,6 +80,16 @@ The compiler was also cross-checked against a host-independent Python table
 reference for `p = 3`, `p = 5`, and `p = 9`, with different input words and
 transition lists; those generated images are not part of the committed gate.
 
+### Kernel-checked p=9 trace
+
+`formal/utm/MinskyWideFixture.v` contains the exact initial and final 94-cell
+images for the committed `p = 9`, three-transition, input-`1101` fixture.  It
+proves with the literal `MinskyTable.run` semantics that the fixed table
+reaches the halting configuration in 1979 transitions (the last transition is
+the terminal write/state update) and is not halted at 1978.  This is a
+`coqchk`-checked finite trace of the generalized compiler path, not a theorem
+about every compiler output.  CI job `wide-fixture.yml` checks it remotely.
+
 ## What this proves and what it does not
 
 **Executable evidence:** the p-bit encoder, arbitrary finite transition lists,

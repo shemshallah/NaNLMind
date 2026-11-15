@@ -103,7 +103,10 @@ A native NaN16 compiler/refinement would need to:
 The native NaN16 compiler fixtures now emit both the original two-row source
 program and a general `p = 9`, three-transition, nonblank-input machine,
 execute the fixed table, and check their final tapes. This is useful
-conformance evidence, not arbitrary-source-machine equivalence.
+conformance evidence, not arbitrary-source-machine equivalence.  The
+kernel-checked `MinskyWideFixture.v` trace covers one committed `p = 9`
+compiler image and its terminal transition; it also is not a general
+simulation theorem.
 
 ## Publication rule
 

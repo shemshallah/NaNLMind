@@ -92,6 +92,10 @@ C++ runtime trace:
 
 C++ exhaustive chart transitions:
   PASS Minsky chart refinement: 184 entries, halting, malformed and negative tape
+
+Coq generalized compiler trace:
+  wide_fixture_halts_at_step_1979
+  wide_fixture_running_at_step_1978
 ```
 
 The native fixtures are `mth/tests/mth_minsky_test.nas` (published trace) and
