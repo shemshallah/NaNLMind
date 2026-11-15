@@ -240,11 +240,13 @@ Proof.
     cbn [rev].
     repeat rewrite map_app.
     cbn [map].
-    replace ((map entry_rewrite (rev rest) ++ [entry_rewrite next]) ++
-      entry_rewrite s :: suffix)
-      with (map entry_rewrite (rev rest) ++
-        (entry_rewrite next :: entry_rewrite s :: suffix)).
-    2:{ rewrite <- app_assoc. reflexivity. }
+    rewrite (append_singleton_assoc
+      (map entry_rewrite (rev rest) ++ [entry_rewrite next])
+      (entry_rewrite s) suffix).
+    rewrite (append_singleton_assoc
+      (map entry_rewrite (rev rest))
+      (entry_rewrite next)
+      (entry_rewrite s :: suffix)).
     reflexivity.
 Qed.
 
