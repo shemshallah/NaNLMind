@@ -772,15 +772,16 @@ Proof.
       (pass ++ match_mark b :: (map match_mark rest ++ done) ++
        match_raw b :: (map match_raw rest ++ tail))
       by (repeat rewrite <- app_assoc; reflexivity).
+    Show.
     rewrite (q1_match_one_bit_with_marks b pass
       (map match_mark rest ++ done) prefix (map match_raw rest ++ tail)
       Hpass Hmarks).
     replace
-      (pass ++ match_raw b :: map match_mark rest ++ done ++
-       match_mark b :: map match_raw rest ++ tail) with
+      (pass ++ match_raw b :: (map match_mark rest ++ done) ++
+       match_mark b :: (map match_raw rest ++ tail)) with
       ((pass ++ [match_raw b]) ++ map match_mark rest ++
        (done ++ [match_mark b]) ++ map match_raw rest ++ tail)
-      by (repeat rewrite <- app_assoc; reflexivity).
+      by (repeat rewrite <- app_assoc; cbn [app]; reflexivity).
     replace (S (length pass)) with (length (pass ++ [match_raw b]))
       by (rewrite app_length; simpl; lia).
     replace (S (length done)) with (length (done ++ [match_mark b]))
@@ -788,6 +789,7 @@ Proof.
     rewrite (IH (pass ++ [match_raw b]) (done ++ [match_mark b])
       prefix tail Hpass' Hdone').
     repeat rewrite <- app_assoc.
+    cbn [app].
     reflexivity.
 Qed.
 
@@ -799,7 +801,7 @@ Lemma matched_comparison_steps_closed :
     (2 * done_length + 1) * length bits.
 Proof.
   induction bits as [|b rest IH]; intros pass_length done_length.
-  - reflexivity.
+  - nia.
   - simpl [matched_comparison_steps length].
     rewrite (IH (S pass_length) (S done_length)).
     nia.
