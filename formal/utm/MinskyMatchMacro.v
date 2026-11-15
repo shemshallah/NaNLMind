@@ -150,40 +150,42 @@ Print Assumptions q3_reaches_marker.
     left into q2 and returns to the left-hand Y.  The markup split is an
     explicit hypothesis so the result can be composed by the match loop. *)
 Lemma q0_match_zero_to_y :
-  forall marked x xs prefix tail,
+  forall marked x remaining prefix tail,
     Forall q0_pass marked ->
-    rev marked ++ 5 :: prefix = x :: xs ->
-    Forall dispatch_left_symbol (x :: xs) ->
-    run (S (length marked) + S (length xs))
+    rev marked = x :: remaining ->
+    Forall dispatch_left_symbol (x :: remaining) ->
+    run (S (length marked) + S (length remaining))
       (entry_config 0 (5 :: prefix) (marked ++ 0 :: tail)) =
-    entry_config 1 (5 :: prefix) (rev (x :: xs) ++ 2 :: tail).
+    entry_config 1 (5 :: prefix)
+      (rev (x :: remaining) ++ 2 :: tail).
 Proof.
-  intros marked x xs prefix tail Hmarked Hsplit Hleft.
-  rewrite (dispatch_run_add (S (length marked)) (S (length xs))
+  intros marked x remaining prefix tail Hmarked Hrev Hleft.
+  rewrite (dispatch_run_add (S (length marked)) (S (length remaining))
     (entry_config 0 (5 :: prefix) (marked ++ 0 :: tail))).
   rewrite (q0_scan_zero marked (5 :: prefix) tail Hmarked).
-  rewrite Hsplit.
+  rewrite Hrev.
   cbn [cfg_ml].
-  rewrite (dispatch_left_to_delimiter xs x prefix (2 :: tail) Hleft).
+  rewrite (dispatch_left_to_delimiter remaining x prefix (2 :: tail) Hleft).
   reflexivity.
 Qed.
 
 Lemma q4_match_one_to_y :
-  forall marked x xs prefix tail,
+  forall marked x remaining prefix tail,
     Forall q4_pass marked ->
-    rev marked ++ 5 :: prefix = x :: xs ->
-    Forall dispatch_left_symbol (x :: xs) ->
-    run (S (length marked) + S (length xs))
+    rev marked = x :: remaining ->
+    Forall dispatch_left_symbol (x :: remaining) ->
+    run (S (length marked) + S (length remaining))
       (entry_config 4 (5 :: prefix) (marked ++ 1 :: tail)) =
-    entry_config 1 (5 :: prefix) (rev (x :: xs) ++ 3 :: tail).
+    entry_config 1 (5 :: prefix)
+      (rev (x :: remaining) ++ 3 :: tail).
 Proof.
-  intros marked x xs prefix tail Hmarked Hsplit Hleft.
-  rewrite (dispatch_run_add (S (length marked)) (S (length xs))
+  intros marked x remaining prefix tail Hmarked Hrev Hleft.
+  rewrite (dispatch_run_add (S (length marked)) (S (length remaining))
     (entry_config 4 (5 :: prefix) (marked ++ 1 :: tail))).
   rewrite (q4_scan_one marked (5 :: prefix) tail Hmarked).
-  rewrite Hsplit.
+  rewrite Hrev.
   cbn [cfg_ml].
-  rewrite (dispatch_left_to_delimiter xs x prefix (3 :: tail) Hleft).
+  rewrite (dispatch_left_to_delimiter remaining x prefix (3 :: tail) Hleft).
   reflexivity.
 Qed.
 
