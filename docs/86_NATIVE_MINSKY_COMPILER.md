@@ -100,7 +100,8 @@ proves with the literal `MinskyTable.run` semantics that the fixed table
 reaches the halting configuration in 9277 transitions (the last transition is
 the terminal write/state update) and is not halted at 9276.  This is a
 `coqchk`-checked finite trace of the generalized compiler path, not a theorem
-about every compiler output.  CI job `wide-fixture.yml` checks it remotely.
+about every compiler output.  CI job `wide-fixture.yml` first cross-checks the Coq final image against the
+native fixture's expected array, then checks the trace remotely.
 
 ## What this proves and what it does not
 

@@ -31,6 +31,8 @@ jobs:
           test -x "$COQBIN/coqc"
           echo "$COQBIN" >> "$GITHUB_PATH"
           "$COQBIN/coqc" --version
+      - name: Cross-check native image
+        run: python3 formal/utm/check_minsky_wide_fixture.py
       - name: Kernel-check generalized compiler trace
         run: |
           set -euo pipefail
