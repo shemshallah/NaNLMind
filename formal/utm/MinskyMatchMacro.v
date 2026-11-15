@@ -406,3 +406,37 @@ Qed.
 
 Print Assumptions q0_mismatch_restart.
 Print Assumptions q4_mismatch_restart.
+
+Definition q1_pass (s : nat) : Prop := s = 0 \/ s = 1.
+
+Lemma q1_pass_step :
+  forall s left right,
+    q1_pass s ->
+    step (entry_config 1 left (s :: right)) =
+    entry_config 1 (s :: left) right.
+Proof.
+  intros s left right [-> | ->]; reflexivity.
+Qed.
+
+(** q1 skips already-read 0/1 cells and picks the next A/B, or X. *)
+Lemma q1_scan_pick :
+  forall pass left head rest,
+    Forall q1_pass pass ->
+    head = 2 \/ head = 3 \/ head = 4 ->
+    run (length pass + 1)
+      (entry_config 1 left (pass ++ head :: rest)) =
+    match head with
+    | 2 => entry_config 0 (0 :: rev pass ++ left) rest
+    | 3 => entry_config 4 (1 :: rev pass ++ left) rest
+    | _ => entry_config 6 (4 :: rev pass ++ left) rest
+    end.
+Proof.
+  induction pass as [|p pass IH]; intros left head rest Hpass Hhead.
+    destruct Hhead as [-> | [-> | ->]]; reflexivity.
+  - inversion Hpass as [|? ? Hp Hrest]; subst.
+    change (S (length (p :: pass))) with (S (S (length pass))).
+    rewrite entry_run_successor.
+    rewrite (q1_pass_step p left (pass ++ head :: rest) Hp).
+    rewrite (IH (p :: left) head rest Hrest Hhead).
+    simpl [rev]. reflexivity.
+Qed.
