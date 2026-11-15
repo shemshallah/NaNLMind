@@ -1078,7 +1078,7 @@ Lemma append_frame_two_marks :
     (a ++ x :: b ++ y :: c) ++ suffix =
     a ++ x :: b ++ y :: c ++ suffix.
 Proof.
-  induction a as [|ah at IH]; intros b c suffix x y.
+  induction a as [|ah a_rest IH]; intros b c suffix x y.
   - simpl [app].
     f_equal.
     induction b as [|bh bt IHb].
