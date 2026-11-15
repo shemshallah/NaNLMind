@@ -251,3 +251,65 @@ Proof.
 Qed.
 
 Print Assumptions q5_scan_unbounded.
+
+(** A mismatch must traverse the entire intervening rightward segment
+    before the literal q3 transition on X.  These are exact native-table
+    execution statements, independent of the number of scanned cells. *)
+Theorem q0_mismatch_one_reaches_x :
+  forall marked left symbols suffix,
+    Forall q0_pass marked ->
+    Forall dispatch_right_symbol symbols ->
+    run (S (length marked) + (length symbols + 1))
+      (entry_config 0 left (marked ++ 1 :: symbols ++ 4 :: suffix)) =
+    step (entry_config 3 (rev symbols ++ 3 :: rev marked ++ left)
+      (4 :: suffix)).
+Proof.
+  intros marked left symbols suffix Hmarked Hsymbols.
+  rewrite (dispatch_run_add (S (length marked)) (length symbols + 1)
+    (entry_config 0 left (marked ++ 1 :: symbols ++ 4 :: suffix))).
+  rewrite (q0_scan_one marked left (symbols ++ 4 :: suffix) Hmarked).
+  apply dispatch_right_reaches_marker.
+  exact Hsymbols.
+Qed.
+
+Theorem q4_mismatch_zero_reaches_x :
+  forall marked left symbols suffix,
+    Forall q4_pass marked ->
+    Forall dispatch_right_symbol symbols ->
+    run (S (length marked) + (length symbols + 1))
+      (entry_config 4 left (marked ++ 0 :: symbols ++ 4 :: suffix)) =
+    step (entry_config 3 (rev symbols ++ 2 :: rev marked ++ left)
+      (4 :: suffix)).
+Proof.
+  intros marked left symbols suffix Hmarked Hsymbols.
+  rewrite (dispatch_run_add (S (length marked)) (length symbols + 1)
+    (entry_config 4 left (marked ++ 0 :: symbols ++ 4 :: suffix))).
+  rewrite (q4_scan_zero marked left (symbols ++ 4 :: suffix) Hmarked).
+  apply dispatch_right_reaches_marker.
+  exact Hsymbols.
+Qed.
+
+(** On X the machine moves left into q5.  If the cells between that X
+    and Y contain no earlier Y, q5's general scan restores control to
+    q1 at exactly the first Y.  No source-interpreter premise is used. *)
+Theorem q3_marker_cleanup_to_y :
+  forall scanned prefix suffix,
+    scanned <> [] ->
+    Forall q5_pass scanned ->
+    run (S (length scanned))
+      (step (entry_config 3 (scanned ++ 5 :: prefix) (4 :: suffix))) =
+    entry_config 1 (5 :: prefix)
+      (map entry_rewrite (rev scanned) ++ 4 :: suffix).
+Proof.
+  intros [|s remaining] prefix suffix Hnonempty Hscan.
+  - exfalso. apply Hnonempty. reflexivity.
+  - change (step (entry_config 3
+        ((s :: remaining) ++ 5 :: prefix) (4 :: suffix))) with
+      (entry_config 5 (remaining ++ 5 :: prefix) (s :: 4 :: suffix)).
+    apply q5_scan_unbounded.
+    exact Hscan.
+Qed.
+
+Print Assumptions q0_mismatch_one_reaches_x.
+Print Assumptions q4_mismatch_zero_reaches_x.
+Print Assumptions q3_marker_cleanup_to_y.
