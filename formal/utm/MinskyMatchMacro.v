@@ -497,7 +497,8 @@ Proof.
     (entry_config 2 (rev pass ++ 5 :: prefix) (0 :: 2 :: tail)).
   rewrite (dispatch_left_to_delimiter (rev pass) 0 prefix (2 :: tail) Hleft).
   simpl [rev].
-  rewrite rev_involutive, app_assoc.
+  rewrite rev_involutive.
+  rewrite (append_singleton_assoc pass 0 (2 :: tail)).
   reflexivity.
 Qed.
 
@@ -531,7 +532,8 @@ Proof.
     (entry_config 2 (rev pass ++ 5 :: prefix) (1 :: 3 :: tail)).
   rewrite (dispatch_left_to_delimiter (rev pass) 1 prefix (3 :: tail) Hleft).
   simpl [rev].
-  rewrite rev_involutive, app_assoc.
+  rewrite rev_involutive.
+  rewrite (append_singleton_assoc pass 1 (3 :: tail)).
   reflexivity.
 Qed.
 
