@@ -220,6 +220,7 @@ Proof.
   intros p rows; induction rows as [|row rows IH]; intros suffix Hwf.
   - reflexivity.
   - inversion Hwf as [|? ? Hrow Hrest]; subst.
+    rewrite app_assoc.
     change (decode_wide_prefix p (S (length rows))
       (encode_wide_row row ++ (encode_wide_program rows ++ suffix)) =
       Some (row :: rows, suffix)).
