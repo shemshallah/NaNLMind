@@ -227,11 +227,7 @@ Proof.
   - reflexivity.
   - inversion Hwf as [|? ? Hrow Hrest]; subst.
     rewrite encode_wide_program_cons.
-    assert (Hassoc :
-      (encode_wide_row row ++ encode_wide_program rows) ++ suffix =
-      encode_wide_row row ++ (encode_wide_program rows ++ suffix))
-      by apply app_assoc.
-    rewrite Hassoc.
+    rewrite <- app_assoc.
     change (decode_wide_prefix p (S (length rows))
       (encode_wide_row row ++ (encode_wide_program rows ++ suffix)) =
       Some (row :: rows, suffix)).
