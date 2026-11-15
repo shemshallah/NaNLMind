@@ -26,6 +26,7 @@ Nature-level completion while any critical obligation below is open.
 | `MinskyConcreteEntry.v` | Left-scan induction, first 5/8/10 native-table transitions | No |
 | `MinskyConcreteProgramScan.v` | Entire encoded description is scannable by the unchanged native table for arbitrary row count, provided the exact reversed tape layout | No |
 | `MinskyConcreteDispatch.v` | Unbounded state-2 backward and state-3 forward scans, and first-row branches through step 15/17. Corrected version passed `coqc`/`coqchk` on proof-debug run `43645367780`; targeted backport to `main` requires its own CI | No |
+| `MinskyWideConcreteDispatch.v` | Submitted: arbitrary-width row first-bit branches and whole-program scan, with p=9 concrete first-bit witness; kernel certification pending | No |
 | `MinskyVariableBuffer.v` | Submitted: exact first-state-bit dispatch after `2*n+4` native steps for all **positive** zero-buffer widths `n`; low return after `3*n+6`; high scan to next X/Y for any finite binary tail | No |
 | `MinskyMacroSimulation.v` | Submitted: conditional arbitrary-run simulation and **both directions** of halting equivalence from explicit, as-yet-unproved native macro-step/encoding hypotheses | No |
 | `MinskyEncodedFixture.v` | Exact 583-transition native-fixture halted configuration, with step 582 still active | No |
@@ -36,6 +37,24 @@ GitHub Actions run before its status is elevated from submitted to checked.
 The independent `check_minsky_dispatch.py` currently covers 3,136
 exhaustive/seeded concrete table executions, with buffer widths 1–129.
 Width zero is a real different control path, not a permitted hypothesis.
+
+## November 14 regression findings
+
+At commit `e5e9ece`, the fast Coq bridge workflow `43652792804` failed
+to compile `MinskyWideSource.v` because its `decode_n_bits_roundtrip`
+proof referenced the nonexistent hypothesis `Hrest`. The 184-entry native
+table and NaN16 transcription checks passed in that run. The new
+variable-width source-model results must not be called kernel-verified
+until the replacement code passes `coqc` and `coqchk` in a new run.
+
+The original p=9 native compiler fixture began at `(q0, read 0)` but its
+first source instruction matched `(q0, read 1)`. It therefore did **not**
+demonstrate execution of that instruction. The corrected three-row fixture
+has three reachable source instructions and both movement directions;
+the independent finite table interpreter reports 9,277 microsteps and a
+94-cell final expected image. Its updated NaN16 guest image remains to be
+rechecked on CI; neither finite execution nor independent source reachability
+constitutes a complete source-to-concrete step refinement.
 
 The new conditional macro theorem is *not* a concrete universality proof:
 its two functions `encode` and `macro_cost`, and three explicit premises

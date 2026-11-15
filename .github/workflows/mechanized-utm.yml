@@ -127,6 +127,8 @@ jobs:
           coqc -Q formal/utm NaNLM -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyConcreteDispatch.v
           coqc -Q formal/utm NaNLM -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyWideConcreteDispatch.v
+          coqc -Q formal/utm NaNLM -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyVariableBuffer.v
           coqc -Q formal/utm NaNLM -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyMacroSimulation.v
@@ -153,6 +155,7 @@ jobs:
           coqchk -Q formal/utm NaNLM formal/utm/MinskyConcreteEntry.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyConcreteProgramScan.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyConcreteDispatch.vo
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyWideConcreteDispatch.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyVariableBuffer.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyMacroSimulation.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyEncodedFixture.vo
@@ -191,6 +194,8 @@ jobs:
             formal/utm/MinskyConcreteProgramScan.vo
             formal/utm/MinskyConcreteDispatch.v
             formal/utm/MinskyConcreteDispatch.vo
+            formal/utm/MinskyWideConcreteDispatch.v
+            formal/utm/MinskyWideConcreteDispatch.vo
             formal/utm/MinskyVariableBuffer.v
             formal/utm/MinskyVariableBuffer.vo
             formal/utm/MinskyMacroSimulation.v
