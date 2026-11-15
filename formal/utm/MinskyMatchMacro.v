@@ -772,7 +772,16 @@ Proof.
       (pass ++ match_mark b :: (map match_mark rest ++ done) ++
        match_raw b :: (map match_raw rest ++ tail))
       by (repeat rewrite <- app_assoc; reflexivity).
-    Show.
+    change
+      (run (matched_comparison_steps rest (S (length pass)) (S (length done)))
+        (run (2 * length pass +
+              2 * length (map match_mark rest ++ done) + 4)
+          (entry_config 1 (5 :: prefix)
+            (pass ++ match_mark b :: (map match_mark rest ++ done) ++
+             match_raw b :: (map match_raw rest ++ tail)))) =
+       entry_config 1 (5 :: prefix)
+         (pass ++ match_raw b :: map match_raw rest ++
+          done ++ match_mark b :: map match_mark rest ++ tail)).
     rewrite (q1_match_one_bit_with_marks b pass
       (map match_mark rest ++ done) prefix (map match_raw rest ++ tail)
       Hpass Hmarks).
