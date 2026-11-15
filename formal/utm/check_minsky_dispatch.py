@@ -269,6 +269,45 @@ def check_q1_first_mismatch_after_matches(
                               right_scan, selected_bit))
 
 
+def check_writeback_return_cycle(
+    table: list[tuple[int, int, int, int, int, bool]],
+    write_state: int,
+    skipped: tuple[int, ...],
+    returned: tuple[int, ...],
+    input_bit: int,
+) -> None:
+    """Exact frozen-table q9/q10 write -> q11 return -> q6 cycle."""
+    if write_state not in (9, 10) or input_bit not in (0, 1):
+        raise ValueError("writeback requires q9/q10 and a raw binary bit")
+    if any(s not in (2, 3, 5, 6, 7) for s in skipped):
+        raise ValueError("unsupported q9/q10 pass symbol")
+    if any(s not in (0, 1, 2, 3, 5, 6, 7) for s in returned):
+        raise ValueError("unsupported q11 pass symbol")
+    source = skipped + (input_bit,) + returned + (4, 0, 7)
+    tape = {-3: 6, -2: 5, -1: 7, **dict(enumerate(source))}
+    expected = tape.copy()
+    expected[len(skipped)] = 3 if write_state == 9 else 2
+    state, head, halted = write_state, 0, False
+    clock = len(skipped) + len(returned) + 2
+    for microstep in range(clock):
+        if halted:
+            raise AssertionError(("early writeback halt", write_state, microstep))
+        symbol = tape.get(head, 2)
+        old_state, old_symbol, write, movement, next_state, stop = (
+            table[state * 8 + symbol]
+        )
+        if (old_state, old_symbol) != (state, symbol):
+            raise AssertionError("writeback table lookup mismatch")
+        state, halted = next_state, stop
+        tape[head] = write
+        head += movement
+    if (state, head, halted) != (6, len(skipped) + len(returned) + 2, False):
+        raise AssertionError(("writeback return state", write_state, state, head))
+    if tape != expected:
+        raise AssertionError(("writeback changed surrounding tape", write_state,
+                              skipped, returned, tape, expected))
+
+
 def main() -> None:
     table = load_table()
     check_zero_buffer_exception(table)
@@ -361,13 +400,24 @@ def main() -> None:
             check_q1_first_mismatch_after_matches(
                 table, skipped, bits, right_scan, rng.randrange(2))
             first_mismatch_cases += 1
+    writeback_cases = 0
+    for write_state in (9, 10):
+        for _ in range(4096):
+            skipped = tuple(rng.choice((2, 3, 5, 6, 7))
+                            for _ in range(rng.randrange(33)))
+            returned = tuple(rng.choice((0, 1, 2, 3, 5, 6, 7))
+                             for _ in range(rng.randrange(33)))
+            check_writeback_return_cycle(table, write_state, skipped,
+                                         returned, rng.randrange(2))
+            writeback_cases += 1
     print(f"MINSKY CONCRETE DISPATCH PASS ({cases} exhaustive/seeded cases; "
           f"positive buffers 1..129 and zero-buffer counterexample; "
           f"{matching_cases} q1 matching roundtrips; "
           f"{marked_cases} marked-prefix roundtrips; "
           f"{sequence_cases} complete matching sequences; "
           f"{mismatch_cases} mismatch restarts; "
-          f"{first_mismatch_cases} first-mismatch-after-matches cases)")
+          f"{first_mismatch_cases} first-mismatch-after-matches cases; "
+          f"{writeback_cases} q9/q10-to-q6 writeback cycles)")
 
 
 if __name__ == "__main__":
