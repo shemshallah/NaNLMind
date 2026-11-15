@@ -90,7 +90,9 @@ python3 formal/utm/check_minsky_source_execution.py \
 
 The compiler was also cross-checked against a host-independent Python table
 reference for `p = 3`, `p = 5`, and `p = 9`, with different input words and
-transition lists; those generated images are not part of the committed gate.
+transition lists.  A committed `p = 16` fixture
+(`mth_minsky_compiler_p16_test.nas`) exercises a 16-bit condition and 35-bit
+source records, with 4,318,871 guest steps.
 
 ### Kernel-checked p=9 trace
 
@@ -142,4 +144,5 @@ Both compiler fixtures are in the native fixture set and the publication gate:
 make utm-publication
 native_minsky_compiler           PASS
 native_minsky_compiler_general   PASS
+native_minsky_compiler_p16       PASS
 ```

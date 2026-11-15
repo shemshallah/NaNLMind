@@ -132,6 +132,8 @@ FIXTURES = (
             "MTH MINSKY NATIVE PASS"),
     Fixture("minsky_compiler_general", "mth/tests/mth_minsky_compiler_general_test.nas", 20_000_000,
             "MTH MINSKY NATIVE PASS"),
+    Fixture("minsky_compiler_p16", "mth/tests/mth_minsky_compiler_p16_test.nas", 30_000_000,
+            "MTH MINSKY NATIVE PASS"),
 )
 
 

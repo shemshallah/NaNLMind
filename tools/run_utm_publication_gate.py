@@ -28,6 +28,8 @@ CHECKS = [
      "MTH MINSKY NATIVE PASS"),
     ("native_minsky_compiler_general", ["python3", "tools/run_nan16_fixtures.py", "--only", "minsky_compiler_general"],
      "MTH MINSKY NATIVE PASS"),
+    ("native_minsky_compiler_p16", ["python3", "tools/run_nan16_fixtures.py", "--only", "minsky_compiler_p16"],
+     "MTH MINSKY NATIVE PASS"),
     ("cpp_trace", ["python3", "tools/check_minsky_trace.py"],
      "MINSKY C++ TRACE CONFORMANCE PASS"),
     ("cpp_chart", ["make", "-j2", "minsky-bridge-check"],
