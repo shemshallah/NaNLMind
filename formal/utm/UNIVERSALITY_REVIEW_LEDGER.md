@@ -139,3 +139,24 @@ certifications, and a reasoned novelty statement. Suitability for
 
 Authorship for any eventual manuscript: **Justin Howard-Stanley**,
 Independent Researcher, Santa Cruz, California, USA.
+
+## November 15 native-compiler closure
+
+The native NaN16 source-to-Minsky compiler track is complete for its declared
+finite-window contract:
+
+- `mth/tests/mth_minsky_compiler_test.nas`: two-bit-state regression;
+- `mth/tests/mth_minsky_compiler_general_test.nas`: p=9, three transitions,
+  input `1101`, initial condition q0/read1, both head directions;
+- `mth/tests/mth_minsky_compiler_p16_test.nas`: p=16 state fields and
+  35-bit source records.
+
+All three are raw NaN16 programs, are driven only by assembled guest images, and
+pass the publication gate.  `formal/utm/MinskyWideFixture.v` is a kernel-checked
+trace of the p=9 image (`run 9277`, 94 cells), cross-checked against the native
+expected array by `formal/utm/check_minsky_wide_fixture.py`.
+
+This closes the native compiler/execution obligation for the committed finite
+fixtures.  It does **not** close the central formal theorem: the full
+table-executed instruction macro and arbitrary-source universality remain open,
+and no ledger row above should be promoted to a universality claim.
