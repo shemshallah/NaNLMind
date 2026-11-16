@@ -298,7 +298,7 @@ Proof.
   intros scanned Hin Hscan.
   pose proof (proj1 (q19_restored_scan_safe_iff scanned) Hscan)
     as Hsafe.
-  apply Forall_forall in Hsafe.
+  rewrite Forall_forall in Hsafe.
   specialize (Hsafe 2 Hin).
   lia.
 Qed.
@@ -311,7 +311,7 @@ Proof.
   intros scanned Hin Hscan.
   pose proof (proj1 (q19_restored_scan_safe_iff scanned) Hscan)
     as Hsafe.
-  apply Forall_forall in Hsafe.
+  rewrite Forall_forall in Hsafe.
   specialize (Hsafe 3 Hin).
   lia.
 Qed.
