@@ -159,7 +159,11 @@ jobs:
           coqchk -Q formal/utm NaNLM formal/utm/MinskyNativeBounds.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyNativePages.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyNaN16Words.vo
-          echo 'NANLM MINSKY SIX-BYTE LINEAR SCAN REFINEMENT PASS'
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyDirectionRelocationCycle.v
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyDirectionRelocationCycle.vo
+          echo 'NANLM MINSKY Q15-Q22 DIRECTION RELOCATION CYCLE PASS'
 
       - name: Upload independent Coq bridge certificate
         if: always()
@@ -203,6 +207,8 @@ jobs:
             formal/utm/MinskyHeadRepresentation.vo
             formal/utm/MinskyDirectionCycle.v
             formal/utm/MinskyDirectionCycle.vo
+            formal/utm/MinskyDirectionRelocationCycle.v
+            formal/utm/MinskyDirectionRelocationCycle.vo
             formal/utm/MinskyVariableBuffer.v
             formal/utm/MinskyVariableBuffer.vo
             formal/utm/MinskyMacroSimulation.v
