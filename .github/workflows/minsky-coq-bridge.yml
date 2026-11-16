@@ -90,6 +90,9 @@ jobs:
             formal/utm/MinskyWritebackMacro.v
           coqc -Q formal/utm NaNLM \
             -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyHeadMoveMacro.v
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyVariableBuffer.v
           coqc -Q formal/utm NaNLM \
             -w -notation-overridden,-stdlib-vector \
@@ -127,6 +130,7 @@ jobs:
           coqchk -Q formal/utm NaNLM formal/utm/MinskyMismatchErasure.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyActionMacro.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyWritebackMacro.vo
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyHeadMoveMacro.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyVariableBuffer.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyMacroSimulation.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyEncodedFixture.vo
@@ -170,6 +174,8 @@ jobs:
             formal/utm/MinskyActionMacro.vo
             formal/utm/MinskyWritebackMacro.v
             formal/utm/MinskyWritebackMacro.vo
+            formal/utm/MinskyHeadMoveMacro.v
+            formal/utm/MinskyHeadMoveMacro.vo
             formal/utm/MinskyVariableBuffer.v
             formal/utm/MinskyVariableBuffer.vo
             formal/utm/MinskyMacroSimulation.v
