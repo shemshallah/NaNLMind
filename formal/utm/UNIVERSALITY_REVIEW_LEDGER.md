@@ -25,17 +25,18 @@ Nature-level completion while any critical obligation below is open.
 | `MinskySourceEncoding.v` | Round trip for arbitrary finite 8-symbol rows; abstract decoded interpreter and arbitrary finite runs | No |
 | `MinskyConcreteEntry.v` | Left-scan induction, first 5/8/10 native-table transitions | No |
 | `MinskyConcreteProgramScan.v` | Entire encoded description is scannable by the unchanged native table for arbitrary row count, provided the exact reversed tape layout | No |
-| `MinskyConcreteDispatch.v` | Unbounded state-2 backward and state-3 forward scans, and first-row branches through step 15/17. Corrected version passed `coqc`/`coqchk` on proof-debug run `43645367780`; targeted backport to `main` requires its own CI | No |
+| `MinskyConcreteDispatch.v` | Checked on `main`: unbounded state-2 backward and state-3 forward scans, and first-row branches through step 15/17 | No |
 | `MinskyWideConcreteDispatch.v` | Checked: arbitrary-width row first-bit branches and whole-program scan, with p=9 concrete first-bit witness | No |
 | `MinskyMatchMacro.v` | Checked: q0/q4 marked-prefix scans, matched-bit return, q1 skip-and-pick, q5 cleanup, q0/q4 mismatch restart, successful all-bit match loop, and mismatch restart composition | No |
 | `MinskyActionMacro.v` | Checked: q6/q7/q8 action copy-return scans, q9/q10 writeback, q11 return-to-X, q12/q13 direction scans, q14 restore-to-X | No |
 | `MinskyHeadMoveMacro.v` | Checked: q15 raw-bit search and q16 restore/branch to q21/q22 | No |
 | `MinskyDirectionDecision.v` | Checked: q21/q22 leftward direction-mark decision and bit write | No |
 | `MinskyRelocationMacro.v` | Checked: q17/q18 marker restoration, q19/q20 displaced-M relocation, and q19-to-q5 exact cycle | No |
-| `MinskyDirectionRelocationCycle.v` | Checked: exact q15–q22 direction/relocation cycles for both left and right movement | No |
-| `MinskyMarkedProgram.v` | Submitted: marked 0/1→2/3 descriptions admit a logical erasure; an actual unbounded native-table scan preserves a fully decodable arbitrary-width source program and its untouched suffix. Kernel certification pending. | No |
-| `MinskyVariableBuffer.v` | Submitted: exact first-state-bit dispatch after `2*n+4` native steps for all **positive** zero-buffer widths `n`; low return after `3*n+6`; high scan to next X/Y for any finite binary tail | No |
-| `MinskyMacroSimulation.v` | Submitted: conditional arbitrary-run simulation and **both directions** of halting equivalence from explicit, as-yet-unproved native macro-step/encoding hypotheses | No |
+| `MinskyDirectionRelocationCycle.v` | Checked: exact q15–q22 left/right direction cycles, obstruction to full-program q19 scans, q15–q22→q19 first hit, and a constructive admissible entry for any nonempty wide program | No |
+| `MinskyMarkedProgram.v` | Checked: marked 0/1→2/3 descriptions admit a logical erasure; an actual unbounded native-table scan preserves a fully decodable arbitrary-width source program and untouched suffix | No |
+| `MinskyVariableBuffer.v` | Checked: exact first-state-bit dispatch after `2*n+4` native steps for all **positive** zero-buffer widths `n`; low return after `3*n+6`; high scan to next X/Y for any finite binary tail | No |
+| `MinskyMacroSimulation.v` | Checked *conditional theorem*: arbitrary-run simulation and both directions of halting equivalence, assuming as-yet-unproved concrete native macro/encoding hypotheses | No |
+| `MinskyWideMacroSimulation.v` | Checked *conditional arbitrary-width theorem*: halting equivalence for finite source-state width `p`, with three explicit unproved concrete bridge premises | No |
 | `MinskyEncodedFixture.v` | Exact 583-transition native-fixture halted configuration, with step 582 still active | No |
 | `UTMEquivalence.v` | Halting equivalence of an independently formalized fixed UTM in the pinned Undecidability Library | Not for this 23×8 table |
 
@@ -181,8 +182,41 @@ invariant including source program, current source state, M=6 marker,
 data tape and the two-sided q15--q22 scan regions. Establish a concrete
 right/left transition for an arbitrary matching encoded row under that
 invariant, then prove invariant preservation and nonpremature halting.
-The Coq theorems in this section remain **submitted, pending independent
-`coqc`/`coqchk`** until the new workflow run succeeds.
+The arbitrary-width bridge and relocation obstruction passed independent
+`coqc`/`coqchk` on `main`, including
+[full bridge run 43803517428](https://github.com/shemshallah/NaNLMind/actions/runs/43803517428).
+
+The added `q16_restores_wide_program` and
+`q19_wide_program_first_restored_bit` prove more than failure of the naive
+scan: after q16, every source description symbol is restored, and literal
+q19 crosses the safe direction prefix, marker 7, and X=4 before marking the
+FIRST raw program bit as M=6 and entering q17 or q18. For width `p>0` this
+is the first current-state bit; for `p=0` it is the read bit. The remaining
+program and external suffix are exact. The theorem has no arbitrary width
+bound and requires only the stated safe q19 direction prefix. It does not
+establish a source-instruction simulation or a complete representation
+invariant. [Fast kernel check 43803517441](https://github.com/shemshallah/NaNLMind/actions/runs/43803517441) also
+passed.
+
+The subsequent `q15_q22_right_wide_program_first_hit` composition is also
+checked by the independent `coqc`/`coqchk` workflow
+[43806673314](https://github.com/shemshallah/NaNLMind/actions/runs/43806673314).
+It starts at literal q15, executes the q16/q21–q22 direction decision,
+then reaches the first marked program payload bit under a stated
+full marked-program layout hypothesis. This identifies the precise
+native collision, but does not discharge the full source-machine
+representation, preservation, or progress obligations.
+
+The newer `marked_wide_program_q15_entry_exists` and
+`q15_q22_right_first_hit_constructive` construct that marked entry
+orientation for *every nonempty encoded wide program*, including width
+zero, and instantiate a literal q15 first-hit trace with a safe
+direction-side cell `4`. The [full clean Coq bridge](https://github.com/shemshallah/NaNLMind/actions/runs/43808009051)
+and [fast kernel check](https://github.com/shemshallah/NaNLMind/actions/runs/43808009005)
+both passed for commit `c403c13`. These results establish nonvacuity of
+the q15→q19 collision theorem, not a complete encoded-instruction
+simulation. The full instruction-matching, writeback, source-state and
+source-tape invariants, and nonpremature halting remain open.
 
 ## November 15 native-compiler closure
 
