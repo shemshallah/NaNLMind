@@ -154,6 +154,36 @@ certifications, and a reasoned novelty statement. Suitability for
 Authorship for any eventual manuscript: **Justin Howard-Stanley**,
 Independent Researcher, Santa Cruz, California, USA.
 
+## November 16 arbitrary-width bridge and relocation obstruction
+
+The proposed `MinskyWideMacroSimulation.v` extends the conditional
+arbitrary-run and *two-way* halting equivalence statement to the existing
+`WideSourceRow`/`WideSourceConfig` interpreter, with any finite state width
+`p`. This removes the four-state source limitation from the **conditional
+target theorem**. The three central premises are still explicit:
+`wide_encode_reflects_halt`, `wide_macro_cost_positive`, and
+`wide_actual_table_macro_step`. No total concrete encoder or unconditional
+one-instruction simulation has yet discharged them. A reduction from a
+known universal source machine is also still required.
+
+The new `marked_wide_program_blocks_q19_full_right_scan` checks a sharper
+constraint on the concrete layout: **if** the rightward relocation scan
+crosses a complete q5-marked nonempty encoded source program, q16 restores
+the instruction read bit (2/3) to a raw bit (0/1), so q19 necessarily
+stops before the intended next raw cell. This is a counterexample to the
+naive full-program scan premise, **not** to universality of the unchanged
+23-state/8-symbol table. Correct source-to-concrete encoding must either
+keep that span out of the q19 relocation path or formally account for
+the earlier hit and subsequent marker/return behavior.
+
+The narrow next constructive goal is a well-formed full-configuration
+invariant including source program, current source state, M=6 marker,
+data tape and the two-sided q15--q22 scan regions. Establish a concrete
+right/left transition for an arbitrary matching encoded row under that
+invariant, then prove invariant preservation and nonpremature halting.
+The Coq theorems in this section remain **submitted, pending independent
+`coqc`/`coqchk`** until the new workflow run succeeds.
+
 ## November 15 native-compiler closure
 
 The native NaN16 source-to-Minsky compiler track is complete for its declared

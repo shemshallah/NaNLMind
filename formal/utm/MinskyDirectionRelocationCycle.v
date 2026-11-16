@@ -19,7 +19,8 @@ Import ListNotations.
 
 From NaNLM Require Import MinskyTable MinskySourceEncoding
   MinskyConcreteEntry MinskyMatchMacro MinskyWritebackMacro
-  MinskyHeadMoveMacro MinskyDirectionDecision MinskyRelocationMacro.
+  MinskyHeadMoveMacro MinskyDirectionDecision MinskyRelocationMacro
+  MinskyWideSource.
 
 Definition direction_phase_cost (scan direction_scan : list nat) : nat :=
   S (length (rev scan)) +
@@ -387,8 +388,64 @@ Proof.
   - exact Hbetween.
 Qed.
 
+(** The obstruction is not peculiar to a hand-picked collision example.
+    Every encoded source row, even at state width zero, contains a raw
+    READ bit.  The q5 marking map changes that bit to 2 or 3; q16
+    subsequently restores it to 0 or 1.  Hence the old q19 full-scan
+    premise is IMPOSSIBLE if that scan crosses an entire marked source
+    row.  This is a conditional obstruction to the naive macro layout,
+    not a theorem that the frozen 23x8 machine is nonuniversal. *)
+
+Lemma wide_row_contains_read_bit :
+  forall row,
+    In (source_bit (wr_read row)) (encode_wide_row row).
+Proof.
+  intros row.
+  unfold encode_wide_row; simpl.
+  right.
+  apply in_or_app. right.
+  simpl. left. reflexivity.
+Qed.
+
+Lemma marked_wide_row_not_right_scan_safe :
+  forall row suffix,
+    ~ Forall (fun symbol => 4 <= symbol <= 7)
+      (map entry_rewrite (encode_wide_row row ++ suffix)).
+Proof.
+  intros row suffix Hsafe.
+  rewrite Forall_forall in Hsafe.
+  assert (Hin : In (entry_rewrite (source_bit (wr_read row)))
+     (map entry_rewrite (encode_wide_row row ++ suffix))).
+  {
+    apply in_map.
+    apply in_or_app. left.
+    apply wide_row_contains_read_bit.
+  }
+  specialize (Hsafe _ Hin).
+  destruct (wr_read row); simpl in Hsafe; lia.
+Qed.
+
+Theorem marked_wide_program_blocks_q19_full_right_scan :
+  forall row rows suffix direction,
+    ~ Forall q15_pass
+      (direction ++ 7 :: map q16_restore
+        (map entry_rewrite
+          (encode_wide_program (row :: rows) ++ suffix))).
+Proof.
+  intros row rows suffix direction Hfull.
+  apply (proj1 (q19_right_prefix_safe_iff direction
+    (map entry_rewrite
+      (encode_wide_program (row :: rows) ++ suffix)))) in Hfull.
+  destruct Hfull as [_ Hrestored].
+  rewrite encode_wide_program_cons in Hrestored.
+  rewrite app_assoc in Hrestored.
+  exact (marked_wide_row_not_right_scan_safe row
+    (encode_wide_program rows ++ suffix) Hrestored).
+Qed.
+
 Print Assumptions q19_right_prefix_safe_iff.
 Print Assumptions q15_q22_right_relocates_with_safe_encoding.
+Print Assumptions marked_wide_program_blocks_q19_full_right_scan.
 
 Print Assumptions q19_restored_scan_safe_iff.
 Print Assumptions q19_restoration_two_blocks_full_scan.
