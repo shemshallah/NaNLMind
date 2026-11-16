@@ -1350,6 +1350,46 @@ Proof.
   exact Hrun.
 Qed.
 
+(** A source-neighbour comparison, without pretending the native q5
+    marker is the source instruction's WRITE field.  The intended newly
+    visited right-hand data bit is `next`, but this layout selects the
+    first restored PROGRAM payload bit.  If the bits differ, the q5
+    marker differs.  Both outputs are exact literal-table results. *)
+Theorem q12_right_marked_program_target_mismatch :
+  forall row rows next final,
+    wide_first_payload_bit row <> next ->
+    let scanned := map entry_rewrite
+      (encode_wide_program (row :: rows)) in
+    let after_hit := wide_after_first_payload row ++
+      encode_wide_program rows in
+    run (reached_direction_cost [0; 5] [] scanned
+           (rev scanned ++ [4]) [5] +
+         (S (length [5; 7; 4; 4]) +
+          S (length (after_hit ++ [source_bit next]))))
+      (entry_config 12 [5; 6]
+        (0 :: 4 :: (scanned ++ source_bit next :: 7 :: final))) =
+    cfg_ml 5
+      (rev (after_hit ++ [source_bit next]) ++ [6; 4; 4; 7; 5; 0])
+      ((if wide_first_payload_bit row then 3 else 2) :: final) /\
+    (if wide_first_payload_bit row then 3 else 2) <>
+      (if next then 3 else 2).
+Proof.
+  intros row rows next final Hdifferent.
+  split.
+  - apply q12_right_marked_program_collision_at_q5.
+  - destruct (wide_first_payload_bit row), next;
+      simpl in *; congruence.
+Qed.
+
+(** Concrete p=9 mismatch: the first state bit is zero while the
+    next source-tape bit is one.  All widths are covered by the theorem. *)
+Example nine_bit_right_program_neighbor_mismatch :
+  wide_first_payload_bit wide_nine_bit_example <> true /\
+  (if wide_first_payload_bit wide_nine_bit_example then 3 else 2) = 2.
+Proof. split; reflexivity. Qed.
+
+Print Assumptions q12_right_marked_program_target_mismatch.
+
 Print Assumptions q12_right_marked_program_collision_at_q5.
 
 Print Assumptions q12_reached_right_first_hit_returns_q5.
