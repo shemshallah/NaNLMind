@@ -422,8 +422,8 @@ Proof.
       entry_config 15 (4 :: map q14_restore (rev (s :: rest)) ++ left) tail).
     rewrite (q14_pass_step s left (rest ++ 4 :: tail) Hs).
     rewrite (IH (q14_restore s :: left) tail Hrest).
-    cbn [rev map].
-    rewrite <- (append_singleton_assoc (map q14_restore (rev rest)) (q14_restore s) left).
+    cbn [rev].
+    rewrite map_app. simpl.
     reflexivity.
 Qed.
 
