@@ -302,6 +302,14 @@ The separate clean full rebuild is still tracked as an independent gate.
   The target comparison is with the neighbour, **not** with the
   source instruction's `wr_write` field, which has a different role.
 
+The stronger `q12_right_marked_program_unavoidable_bad_neighbor`
+constructively chooses `next := negb (wide_first_payload_bit row)` **for
+any encoded program**, so a differing q5 marker is unavoidable for some
+right-hand neighbour on this specific tape layout. It is certified by
+[fast Coq run `43978028946`](https://github.com/shemshallah/NaNLMind/actions/runs/43978028946)
+at [commit `404e1b6`](https://github.com/shemshallah/NaNLMind/commit/404e1b603656fbc7d2ae66408a1d213061c14438).
+The independent clean rebuild remains a separate confirmation gate.
+
 **Precise remaining boundary:** This is a constructive q12-entry execution,
 not a proof of reachability of its entry from the canonical full source
 configuration in native q5. It refutes the naive assumption that q19 can
