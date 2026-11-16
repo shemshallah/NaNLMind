@@ -935,13 +935,16 @@ Proof.
   intros [|head rest] dir_head dir_remaining old outer tail
     Hnonempty Hback Hdir.
   - contradiction.
-  - change
-      (run (S (length (head :: rest)) +
-            S (length (dir_head :: dir_remaining)))
-        (entry_config 16
-          (rest ++ source_bit old ::
-           dir_head :: dir_remaining ++ 3 :: outer)
-          (head :: tail)) = _).
+  - match goal with
+    | |- _ = ?expected =>
+      change
+        (run (S (length (head :: rest)) +
+              S (length (dir_head :: dir_remaining)))
+          (entry_config 16
+            (rest ++ source_bit old ::
+             dir_head :: dir_remaining ++ 3 :: outer)
+            (head :: tail)) = expected)
+    end.
     rewrite writeback_run_add.
     rewrite (q16_restore_to_raw rest head old
       (dir_head :: dir_remaining ++ 3 :: outer) tail Hback).
@@ -970,13 +973,16 @@ Proof.
   intros [|head rest] dir_head dir_remaining old outer tail
     Hnonempty Hback Hdir.
   - contradiction.
-  - change
-      (run (S (length (head :: rest)) +
-            S (length (dir_head :: dir_remaining)))
-        (entry_config 16
-          (rest ++ source_bit old ::
-           dir_head :: dir_remaining ++ 2 :: outer)
-          (head :: tail)) = _).
+  - match goal with
+    | |- _ = ?expected =>
+      change
+        (run (S (length (head :: rest)) +
+              S (length (dir_head :: dir_remaining)))
+          (entry_config 16
+            (rest ++ source_bit old ::
+             dir_head :: dir_remaining ++ 2 :: outer)
+            (head :: tail)) = expected)
+    end.
     rewrite writeback_run_add.
     rewrite (q16_restore_to_raw rest head old
       (dir_head :: dir_remaining ++ 2 :: outer) tail Hback).
