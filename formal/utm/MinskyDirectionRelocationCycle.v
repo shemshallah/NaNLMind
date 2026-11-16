@@ -20,7 +20,7 @@ Import ListNotations.
 From NaNLM Require Import MinskyTable MinskySourceEncoding
   MinskyConcreteEntry MinskyMatchMacro MinskyWritebackMacro
   MinskyHeadMoveMacro MinskyDirectionDecision MinskyRelocationMacro
-  MinskyWideSource.
+  MinskyWideSource MinskyWideConcreteDispatch.
 
 Definition direction_phase_cost (scan direction_scan : list nat) : nat :=
   S (length (rev scan)) +
@@ -450,6 +450,111 @@ Print Assumptions marked_wide_program_blocks_q19_full_right_scan.
 Print Assumptions q19_restored_scan_safe_iff.
 Print Assumptions q19_restoration_two_blocks_full_scan.
 Print Assumptions q19_restoration_three_blocks_full_scan.
+
+(** The q16 return is not an opaque encoding operation.  On every
+    well-formed source-description symbol it exactly undoes the earlier
+    q5 mark.  The statement applies to programs of arbitrary length and
+    arbitrary state-bit width, independently of any later source macro. *)
+Lemma q16_restores_source_scan :
+  forall scanned,
+    Forall entry_scan_symbol scanned ->
+    map q16_restore (map entry_rewrite scanned) = scanned.
+Proof.
+  intros scanned Hscan.
+  induction Hscan as [|s scanned Hs _ IH].
+  - reflexivity.
+  - simpl.
+    destruct Hs as [-> | [-> | ->]]; simpl; now rewrite IH.
+Qed.
+
+Lemma q16_restores_wide_program :
+  forall rows,
+    map q16_restore
+      (map entry_rewrite (encode_wide_program rows)) =
+    encode_wide_program rows.
+Proof.
+  intros rows.
+  apply q16_restores_source_scan.
+  apply wide_program_scannable.
+Qed.
+
+(** Every encoded row starts with X=4 followed by a genuine binary
+    symbol.  With nonempty state bits this is the first state bit;
+    with width zero it is the read bit.  Either way, q19 cannot cross
+    that symbol as though it were a safe 2..7 scan cell. *)
+Definition wide_first_payload_bit (row : WideSourceRow) : bool :=
+  match wr_current row with
+  | [] => wr_read row
+  | bit :: _ => bit
+  end.
+
+Definition wide_after_first_payload (row : WideSourceRow) : list nat :=
+  match wr_current row with
+  | [] => map source_bit (wr_next row) ++
+      [source_bit (wr_write row); source_bit (wr_right row)]
+  | _ :: rest => map source_bit rest ++
+      source_bit (wr_read row) :: map source_bit (wr_next row) ++
+      [source_bit (wr_write row); source_bit (wr_right row)]
+  end.
+
+Lemma wide_row_first_binary_layout :
+  forall row,
+    encode_wide_row row =
+      4 :: source_bit (wide_first_payload_bit row) ::
+      wide_after_first_payload row.
+Proof.
+  intros [current scanned next written direction].
+  destruct current as [|head rest]; reflexivity.
+Qed.
+
+(** Constructive first-hit result for the literal q19 transition table.
+    On a restored nonempty description, q19 crosses only the safe
+    direction prefix, 7, and X=4 before marking the FIRST source bit
+    as M=6.  The complete remainder is preserved exactly.  No rightward
+    whole-program scan premise, source-step hypothesis, or finite-width
+    bound is assumed. *)
+Theorem q19_wide_program_first_restored_bit :
+  forall row rows direction left suffix,
+    Forall q15_pass direction ->
+    run (S (length (direction ++ [7; 4])))
+      (entry_config 19 left
+        (direction ++ [7] ++
+         map q16_restore
+           (map entry_rewrite (encode_wide_program (row :: rows))) ++
+         suffix)) =
+    entry_config (if wide_first_payload_bit row then 18 else 17)
+      (6 :: rev (direction ++ [7; 4]) ++ left)
+      (wide_after_first_payload row ++
+       encode_wide_program rows ++ suffix).
+Proof.
+  intros row rows direction left suffix Hdirection.
+  rewrite q16_restores_wide_program.
+  rewrite encode_wide_program_cons.
+  rewrite wide_row_first_binary_layout.
+  replace
+    (direction ++ [7] ++
+     (4 :: source_bit (wide_first_payload_bit row) ::
+      wide_after_first_payload row) ++
+     encode_wide_program rows ++ suffix)
+  with
+    ((direction ++ [7; 4]) ++
+     source_bit (wide_first_payload_bit row) ::
+     (wide_after_first_payload row ++
+      encode_wide_program rows ++ suffix)).
+  2:{ repeat rewrite app_assoc; simpl; reflexivity. }
+  apply q19_scan_to_m.
+  rewrite Forall_app.
+  split.
+  - exact Hdirection.
+  - constructor.
+    + unfold q15_pass. right; right; right; right; right; reflexivity.
+    + constructor.
+      * unfold q15_pass. right; right; reflexivity.
+      * constructor.
+Qed.
+
+Print Assumptions q16_restores_wide_program.
+Print Assumptions q19_wide_program_first_restored_bit.
 
 (** The preceding right-move theorem deliberately requires the entire
     restored q16 scan to be free of raw bits.  If an earlier 2 or 3 was
