@@ -1062,7 +1062,8 @@ Proof.
     - repeat rewrite <- app_assoc. reflexivity.
     - rewrite IHback.
       repeat rewrite <- app_assoc.
-      reflexivity.
+      try reflexivity.
+      all: match goal with |- ?G => idtac "CURSOR-REMAINDER" G end.
   }
   apply q16_framed_cursor_to_q19.
   - destruct (rev scanned); discriminate.
