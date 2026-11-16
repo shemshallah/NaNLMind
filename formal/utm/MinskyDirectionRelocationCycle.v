@@ -1262,6 +1262,93 @@ Example q12_right_first_hit_nineteen_steps :
   cfg_ml 5 [0; 6; 4; 7; 5; 0] [2].
 Proof. reflexivity. Qed.
 
+(** A fully CONSTRUCTED q12 entry containing an arbitrarily long marked
+    wide-program description.  All scan conditions are discharged from
+    the source encoding rather than assumed.  The actual table moves from
+    q12 through q14/q15/q16/q21/q19 and back to q5, but picks the FIRST
+    restored source-program payload bit.  This is a native counterexample
+    to treating the rightward full-description traversal as if q19 could
+    pass through restored 0/1 program data.  It is not a universality
+    result and does not identify the returned marker with the intended
+    neighbouring source-tape bit. *)
+Theorem q12_right_marked_program_collision_at_q5 :
+  forall row rows next final,
+    let scanned := map entry_rewrite
+      (encode_wide_program (row :: rows)) in
+    let after_hit := wide_after_first_payload row ++
+      encode_wide_program rows in
+    run (reached_direction_cost [0; 5] [] scanned
+           (rev scanned ++ [4]) [5] +
+         (S (length [5; 7; 4; 4]) +
+          S (length (after_hit ++ [source_bit next]))))
+      (entry_config 12 [5; 6]
+        (0 :: 4 :: (scanned ++ source_bit next :: 7 :: final))) =
+    cfg_ml 5
+      (rev (after_hit ++ [source_bit next]) ++ [6; 4; 4; 7; 5; 0])
+      ((if wide_first_payload_bit row then 3 else 2) :: final).
+Proof.
+  intros row rows next final.
+  set (scanned := map entry_rewrite
+    (encode_wide_program (row :: rows))).
+  set (after_hit := wide_after_first_payload row ++
+    encode_wide_program rows).
+  assert (H12 : Forall q12_pass [0; 5]).
+  { repeat constructor; unfold q12_pass; lia. }
+  assert (H14 : Forall q14_pass (rev [0; 5] ++ [])).
+  { repeat constructor; unfold q14_pass; lia. }
+  assert (H15 : Forall q15_pass scanned).
+  {
+    unfold scanned.
+    apply q15_marked_source_scan.
+    apply wide_program_scannable.
+  }
+  assert (Hlayout :
+    map q14_restore (rev (rev [0; 5] ++ [])) =
+      [] ++ source_bit false :: 5 :: []) by reflexivity.
+  assert (H16 : Forall q16_pass (rev scanned ++ [4])).
+  {
+    rewrite Forall_app.
+    split.
+    - unfold scanned.
+      apply q16_marked_source_scan_reverse.
+      apply wide_program_scannable.
+    - constructor; [unfold q16_pass; lia | constructor].
+  }
+  assert (Hdir : Forall q21_pass [5]).
+  { constructor; [unfold q21_pass; lia | constructor]. }
+  assert (Hfirst :
+    map q16_restore (rev (rev scanned ++ [4])) =
+    [4; 4] ++ source_bit (wide_first_payload_bit row) :: after_hit).
+  {
+    unfold scanned, after_hit.
+    rewrite rev_app_distr.
+    rewrite rev_involutive.
+    simpl.
+    rewrite q16_restores_wide_program.
+    rewrite encode_wide_program_cons.
+    rewrite wide_row_first_binary_layout.
+    simpl.
+    repeat rewrite <- app_assoc.
+    reflexivity.
+  }
+  assert (Hsafe : Forall q15_pass [5; 7; 4; 4]).
+  { repeat constructor; unfold q15_pass; lia. }
+  assert (Hreturn :
+    Forall q17_pass (after_hit ++ [source_bit next])).
+  {
+    unfold after_hit.
+    apply q17_wide_return_scan_pass.
+  }
+  pose proof (q12_reached_right_first_hit_returns_q5
+    [5] 0 [] [] scanned next [] final
+    [] false 5 [] [4; 4] (wide_first_payload_bit row) after_hit
+    H12 H14 H15 Hlayout H16 Hdir Hfirst Hsafe Hreturn) as Hrun.
+  cbn [rev app source_bit] in Hrun.
+  exact Hrun.
+Qed.
+
+Print Assumptions q12_right_marked_program_collision_at_q5.
+
 Print Assumptions q12_reached_right_first_hit_returns_q5.
 
 (** Small real-table witnesses guard against vacuous framed premises. *)
