@@ -171,6 +171,37 @@ def main() -> int:
             if final.count(6) != 1 or final.index(6) != head:
                 print("FAIL: final M marker disagrees with reference source head")
                 return 1
+            # Decode the displaced head cell from the condition field, not
+            # from a fictitious binary cell beside M.  Marks A/B (2/3)
+            # represent logical 0/1 in both the program and condition.
+            def logical_bit(symbol: int) -> int:
+                if symbol in (0, 2):
+                    return 0
+                if symbol in (1, 3):
+                    return 1
+                raise AssertionError(f"nonbinary logical symbol {symbol}")
+
+            y_position = len(data) + 9  # M + eight buffer cells + Y
+            condition_start = y_position + 1
+            condition_read_position = condition_start + width
+            if not (0 <= head < y_position and final[y_position] == 5):
+                print("FAIL: displaced M or Y escaped the source tape frame")
+                return 1
+            source_state = trace[-1][3] if trace else q0
+            native_state = 0
+            for symbol in final[condition_start:condition_read_position]:
+                native_state = 2 * native_state + logical_bit(symbol)
+            if native_state != source_state:
+                print("FAIL: decoded final source-control state differs")
+                return 1
+            for pos in range(y_position):
+                physical_symbol = (final[condition_read_position]
+                                   if pos == head else final[pos])
+                if logical_bit(physical_symbol) != tape.get(pos, 0):
+                    print(f"FAIL: full displaced-tape decoding differs at {pos}")
+                    return 1
+            print(f"PASS: displaced-head decoder agrees on state q{native_state}, "
+                  f"head {head}, and {y_position} source-tape cells")
     if len(trace) < args.require_steps:
         print("FAIL: first source instruction is missing or insufficient steps were executed")
         return 1
