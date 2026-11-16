@@ -388,3 +388,43 @@ Qed.
 
 Print Assumptions q12_scan_to_m.
 Print Assumptions q13_scan_to_m.
+
+Definition q14_restore (s : nat) : nat :=
+  match s with 2 => 0 | 3 => 1 | _ => s end.
+
+Definition q14_pass (s : nat) : Prop :=
+  s = 0 \/ s = 1 \/ s = 2 \/ s = 3 \/ s = 5 \/ s = 6 \/ s = 7.
+
+Lemma q14_pass_step :
+  forall s left right,
+    q14_pass s ->
+    step (entry_config 14 left (s :: right)) =
+    entry_config 14 (q14_restore s :: left) right.
+Proof.
+  intros s left right H;
+    destruct H as [-> | [-> | [-> | [-> | [-> | [-> | ->]]]]]];
+    reflexivity.
+Qed.
+
+Theorem q14_scan_to_x :
+  forall scanned left tail,
+    Forall q14_pass scanned ->
+    run (S (length scanned))
+      (entry_config 14 left (scanned ++ 4 :: tail)) =
+    entry_config 15 (4 :: map q14_restore (rev scanned) ++ left) tail.
+Proof.
+  induction scanned as [|s rest IH]; intros left tail H.
+  - cbn. reflexivity.
+  - inversion H as [|? ? Hs Hrest]; subst.
+    change (S (length (s :: rest))) with (S (S (length rest))).
+    change (run (S (length rest))
+      (step (entry_config 14 left (s :: (rest ++ 4 :: tail)))) =
+      entry_config 15 (4 :: map q14_restore (rev (s :: rest)) ++ left) tail).
+    rewrite (q14_pass_step s left (rest ++ 4 :: tail) Hs).
+    rewrite (IH (q14_restore s :: left) tail Hrest).
+    cbn [rev map].
+    rewrite (append_singleton_assoc (map q14_restore (rev rest)) (q14_restore s) left).
+    reflexivity.
+Qed.
+
+Print Assumptions q14_scan_to_x.
