@@ -423,7 +423,7 @@ Proof.
     rewrite (q14_pass_step s left (rest ++ 4 :: tail) Hs).
     rewrite (IH (q14_restore s :: left) tail Hrest).
     cbn [rev map].
-    rewrite (append_singleton_assoc (map q14_restore (rev rest)) (q14_restore s) left).
+    rewrite <- (append_singleton_assoc (map q14_restore (rev rest)) (q14_restore s) left).
     reflexivity.
 Qed.
 
