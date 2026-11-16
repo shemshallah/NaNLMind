@@ -825,7 +825,8 @@ Proof.
     as [s [remaining Hfirst]].
   exists s, remaining.
   rewrite writeback_run_add.
-  Show.
+  replace (S (length [4; 7; 4]))
+    with (S (length ([4] ++ [7; 4]))) by reflexivity.
   rewrite Hfirst.
   assert (Htail :
     wide_after_first_payload row ++ encode_wide_program rows ++
