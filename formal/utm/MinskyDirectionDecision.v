@@ -98,7 +98,7 @@ Proof.
     intros s q prefix suffix Hq Hscan.
   - inversion Hscan as [|? ? Hs _]; subst.
     destruct Hq as [-> | ->];
-    destruct Hs as [-> | [-> | [-> | [-> | ->]]]]];
+    destruct Hs as [-> | [-> | [-> | [-> | [-> | ->]]]]];
       reflexivity.
   - inversion Hscan as [|? ? Hs Hrest]; subst.
     change (run (S (S (length (next :: rest))))
