@@ -531,16 +531,14 @@ Proof.
   rewrite q16_restores_wide_program.
   rewrite encode_wide_program_cons.
   rewrite wide_row_first_binary_layout.
-  replace
-    (direction ++ [7] ++
-     (4 :: source_bit (wide_first_payload_bit row) ::
-      wide_after_first_payload row) ++
-     encode_wide_program rows ++ suffix)
-  with
-    ((direction ++ [7; 4]) ++
-     source_bit (wide_first_payload_bit row) ::
-     (wide_after_first_payload row ++
-      encode_wide_program rows ++ suffix)).
+  match goal with
+  | |- run _ (entry_config 19 _ ?tape) = _ =>
+    replace tape with
+      ((direction ++ [7; 4]) ++
+       source_bit (wide_first_payload_bit row) ::
+       (wide_after_first_payload row ++
+        encode_wide_program rows ++ suffix))
+  end.
   2:{
     clear Hdirection.
     induction direction as [|d direction IH]; simpl.
