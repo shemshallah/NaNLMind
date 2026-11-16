@@ -14,7 +14,7 @@
     still be connected to these entry configurations.
 *)
 
-From Coq Require Import List Bool.
+From Coq Require Import List Bool Lia.
 Import ListNotations.
 
 From NaNLM Require Import MinskyTable MinskySourceEncoding
@@ -258,6 +258,67 @@ Proof.
       (map q16_restore (rev (s :: remaining)) ++
        source_bit next :: suffix) Hreturn').
 Qed.
+
+(** Exact safety condition for crossing a q16-restored scan in q19.
+    Marks 2 and 3 are permitted by q15/q16, but become raw 0 and 1.
+    Thus the old all-the-way-to-next-raw relocation premise is strictly
+    stronger than the earlier direction-cycle premises. *)
+
+Lemma q19_restored_cell_safe_iff :
+  forall symbol,
+    q15_pass (q16_restore symbol) <-> 4 <= symbol <= 7.
+Proof.
+  intros [|[|[|[|[|[|[|[|symbol]]]]]]]];
+    unfold q15_pass, q16_restore; simpl; lia.
+Qed.
+
+Theorem q19_restored_scan_safe_iff :
+  forall scanned,
+    Forall q15_pass (map q16_restore scanned) <->
+    Forall (fun symbol => 4 <= symbol <= 7) scanned.
+Proof.
+  induction scanned as [|symbol rest IH]; simpl.
+  - split; intro H; constructor.
+  - split; intro H.
+    + inversion H as [|? ? Hhead Htail]; subst.
+      constructor.
+      * exact (proj1 (q19_restored_cell_safe_iff symbol) Hhead).
+      * exact (proj1 IH Htail).
+    + inversion H as [|? ? Hhead Htail]; subst.
+      constructor.
+      * exact (proj2 (q19_restored_cell_safe_iff symbol) Hhead).
+      * exact (proj2 IH Htail).
+Qed.
+
+Corollary q19_restoration_two_blocks_full_scan :
+  forall scanned,
+    In 2 scanned ->
+    ~ Forall q15_pass (map q16_restore scanned).
+Proof.
+  intros scanned Hin Hscan.
+  pose proof (proj1 (q19_restored_scan_safe_iff scanned) Hscan)
+    as Hsafe.
+  apply Forall_forall in Hsafe.
+  specialize (Hsafe 2 Hin).
+  lia.
+Qed.
+
+Corollary q19_restoration_three_blocks_full_scan :
+  forall scanned,
+    In 3 scanned ->
+    ~ Forall q15_pass (map q16_restore scanned).
+Proof.
+  intros scanned Hin Hscan.
+  pose proof (proj1 (q19_restored_scan_safe_iff scanned) Hscan)
+    as Hsafe.
+  apply Forall_forall in Hsafe.
+  specialize (Hsafe 3 Hin).
+  lia.
+Qed.
+
+Print Assumptions q19_restored_scan_safe_iff.
+Print Assumptions q19_restoration_two_blocks_full_scan.
+Print Assumptions q19_restoration_three_blocks_full_scan.
 
 (** The preceding right-move theorem deliberately requires the entire
     restored q16 scan to be free of raw bits.  If an earlier 2 or 3 was
