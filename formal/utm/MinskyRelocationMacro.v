@@ -11,7 +11,7 @@ From Coq Require Import List Bool.
 Import ListNotations.
 
 From NaNLM Require Import MinskyTable MinskyConcreteEntry
-  MinskyHeadMoveMacro MinskyWritebackMacro.
+  MinskyHeadMoveMacro MinskyWritebackMacro MinskyMatchMacro.
 
 Definition q17_pass (s : nat) : Prop :=
   s = 0 \/ s = 1 \/ s = 2 \/ s = 3 \/ s = 4 \/ s = 5 \/ s = 6.
