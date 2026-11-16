@@ -721,10 +721,143 @@ Proof.
     + constructor.
 Qed.
 
+(** Every byte remaining after the first encoded payload bit is an
+    ordinary 0/1 data bit or X=4.  These are all passable by q17/q18;
+    the next 7 marker, not any description byte, terminates the return
+    scan.  This fact is uniform in state width and program length. *)
+Lemma q17_source_bit_pass :
+  forall bit, q17_pass (source_bit bit).
+Proof.
+  intros []; unfold q17_pass, source_bit; simpl.
+  - right; left; reflexivity.
+  - left; reflexivity.
+Qed.
+
+Lemma q17_source_bits_pass :
+  forall bits, Forall q17_pass (map source_bit bits).
+Proof.
+  induction bits as [|b rest IH]; simpl.
+  - constructor.
+  - constructor; [apply q17_source_bit_pass | exact IH].
+Qed.
+
+Lemma q17_wide_after_first_payload_pass :
+  forall row, Forall q17_pass (wide_after_first_payload row).
+Proof.
+  intros [current scanned next written direction].
+  destruct current as [|head remaining]; simpl.
+  - rewrite Forall_app. split.
+    + apply q17_source_bits_pass.
+    + constructor; [apply q17_source_bit_pass |].
+      constructor; [apply q17_source_bit_pass | constructor].
+  - rewrite Forall_app. split.
+    + apply q17_source_bits_pass.
+    + constructor; [apply q17_source_bit_pass |].
+      rewrite Forall_app. split.
+      * apply q17_source_bits_pass.
+      * constructor; [apply q17_source_bit_pass |].
+        constructor; [apply q17_source_bit_pass | constructor].
+Qed.
+
+Lemma q17_entry_source_symbol_pass :
+  forall symbol,
+    entry_scan_symbol symbol -> q17_pass symbol.
+Proof.
+  intros symbol [-> | [-> | ->]]; unfold q17_pass.
+  - left; reflexivity.
+  - right; left; reflexivity.
+  - right; right; right; right; left; reflexivity.
+Qed.
+
+Lemma q17_wide_program_pass :
+  forall rows, Forall q17_pass (encode_wide_program rows).
+Proof.
+  intros rows.
+  pose proof (wide_program_scannable rows) as Hscan.
+  rewrite Forall_forall in Hscan.
+  apply Forall_forall.
+  intros symbol Hin.
+  apply q17_entry_source_symbol_pass.
+  exact (Hscan symbol Hin).
+Qed.
+
+Lemma q17_wide_return_scan_pass :
+  forall row rows next,
+    Forall q17_pass
+      (wide_after_first_payload row ++
+       encode_wide_program rows ++ [source_bit next]).
+Proof.
+  intros row rows next.
+  repeat rewrite Forall_app.
+  repeat split.
+  - apply q17_wide_after_first_payload_pass.
+  - apply q17_wide_program_pass.
+  - constructor; [apply q17_source_bit_pass | constructor].
+Qed.
+
+(** The FULL native collision cycle from q15 back to q5.  We construct
+    a nonempty marked program with a safe direction marker, follow the
+    actual q15/q16/q21/q22/q19 transitions to the FIRST restored source
+    bit, then follow q17/q18 across the remaining description and the
+    next raw data cell to the first 7.  The resulting displaced M=6 and
+    the new 2/3 marker are described exactly; this is *not* the desired
+    source-machine head transition in general, and does not certify
+    a universal source-step macro. *)
+Theorem q15_q22_right_collision_returns_q5 :
+  forall row rows old next outer final,
+    exists s remaining,
+      run ((direction_phase_cost (s :: remaining) [4] +
+            S (length ([4; 7; 4]))) +
+           S (length
+             (wide_after_first_payload row ++
+              encode_wide_program rows ++ [source_bit next])))
+        (entry_config 15 (source_bit old :: 4 :: 3 :: outer)
+          (rev (s :: remaining) ++ source_bit next :: 7 :: final)) =
+      cfg_ml 5
+        (rev (wide_after_first_payload row ++
+              encode_wide_program rows ++ [source_bit next]) ++
+         6 :: rev [4; 7; 4] ++ source_bit old :: outer)
+        ((if wide_first_payload_bit row then 3 else 2) :: final).
+Proof.
+  intros row rows old next outer final.
+  destruct (q15_q22_right_first_hit_constructive
+    row rows old next outer (7 :: final))
+    as [s [remaining Hfirst]].
+  exists s, remaining.
+  rewrite writeback_run_add.
+  rewrite Hfirst.
+  assert (Htail :
+    wide_after_first_payload row ++ encode_wide_program rows ++
+      source_bit next :: 7 :: final =
+    (wide_after_first_payload row ++ encode_wide_program rows ++
+      [source_bit next]) ++ 7 :: final).
+  { repeat rewrite app_assoc; simpl; reflexivity. }
+  rewrite Htail.
+  change
+    (run (S (length (wide_after_first_payload row ++
+                    encode_wide_program rows ++ [source_bit next])))
+       (entry_config (if wide_first_payload_bit row then 18 else 17)
+         (6 :: rev [4; 7; 4] ++ source_bit old :: outer)
+         ((wide_after_first_payload row ++
+           encode_wide_program rows ++ [source_bit next]) ++
+          7 :: final)) =
+     cfg_ml 5
+       (rev (wide_after_first_payload row ++
+             encode_wide_program rows ++ [source_bit next]) ++
+        6 :: rev [4; 7; 4] ++ source_bit old :: outer)
+       ((if wide_first_payload_bit row then 3 else 2) :: final)).
+  destruct (wide_first_payload_bit row); simpl.
+  - apply q18_scan_to_marker.
+    apply q17_wide_return_scan_pass.
+  - apply q17_scan_to_marker.
+    apply q17_wide_return_scan_pass.
+Qed.
+
 Print Assumptions q16_restores_wide_program.
 Print Assumptions q19_wide_program_first_restored_bit.
 Print Assumptions q15_q22_right_wide_program_first_hit.
 Print Assumptions q15_q22_right_first_hit_constructive.
+Print Assumptions q15_q22_right_collision_returns_q5.
 
 (** The preceding right-move theorem deliberately requires the entire
     restored q16 scan to be free of raw bits.  If an earlier 2 or 3 was
