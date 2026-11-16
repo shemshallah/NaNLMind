@@ -115,12 +115,22 @@ Proof.
     rewrite (q16_pass_step s next
       (rest ++ source_bit bit :: prefix) suffix Hs).
     rewrite (IH next bit prefix (q16_restore s :: suffix) Hrest).
-    cbn [rev].
-    rewrite map_app.
-    cbn [map].
-    rewrite (append_singleton_assoc
-      (map q16_restore (rev (next :: rest)))
-      (q16_restore s) suffix).
+    assert (Hframe :
+      map q16_restore (rev (s :: next :: rest)) ++ suffix =
+      map q16_restore (rev (next :: rest)) ++
+        q16_restore s :: suffix).
+    {
+      change (map q16_restore (rev (next :: rest) ++ [s]) ++ suffix =
+        map q16_restore (rev (next :: rest)) ++
+          q16_restore s :: suffix).
+      rewrite map_app.
+      cbn [map].
+      rewrite (append_singleton_assoc
+        (map q16_restore (rev (next :: rest)))
+        (q16_restore s) suffix).
+      reflexivity.
+    }
+    rewrite Hframe.
     reflexivity.
 Qed.
 
