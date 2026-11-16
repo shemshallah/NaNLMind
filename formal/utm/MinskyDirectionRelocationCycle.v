@@ -1059,9 +1059,7 @@ Proof.
     remember (rev scanned) as backwards eqn:Heq.
     clear Heq.
     induction backwards as [|symbol backwards IHback]; simpl.
-    - induction before as [|symbol before IHbefore]; simpl.
-      + reflexivity.
-      + now rewrite IHbefore.
+    - repeat rewrite app_assoc. reflexivity.
     - now rewrite IHback.
   }
   apply q16_framed_cursor_to_q19.
@@ -1106,9 +1104,7 @@ Proof.
     remember (rev scanned) as backwards eqn:Heq.
     clear Heq.
     induction backwards as [|symbol backwards IHback]; simpl.
-    - induction before as [|symbol before IHbefore]; simpl.
-      + reflexivity.
-      + now rewrite IHbefore.
+    - repeat rewrite app_assoc. reflexivity.
     - now rewrite IHback.
   }
   apply q16_framed_cursor_to_q20.
