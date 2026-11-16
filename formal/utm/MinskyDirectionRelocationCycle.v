@@ -541,7 +541,12 @@ Proof.
      source_bit (wide_first_payload_bit row) ::
      (wide_after_first_payload row ++
       encode_wide_program rows ++ suffix)).
-  2:{ repeat rewrite app_assoc; simpl; reflexivity. }
+  2:{
+    clear Hdirection.
+    induction direction as [|d direction IH]; simpl.
+    - repeat rewrite app_assoc. reflexivity.
+    - now rewrite IH.
+  }
   apply q19_scan_to_m.
   rewrite Forall_app.
   split.
