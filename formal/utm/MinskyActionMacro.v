@@ -298,3 +298,93 @@ Qed.
 Print Assumptions q9_write_bit.
 Print Assumptions q10_write_bit.
 Print Assumptions q11_scan_to_marker.
+
+Definition q12_pass (s : nat) : Prop :=
+  s = 0 \/ s = 1 \/ s = 2 \/ s = 3 \/ s = 4 \/ s = 5 \/ s = 7.
+
+Lemma q12_pass_step :
+  forall s next left right,
+    q12_pass s ->
+    step (entry_config 12 (next :: left) (s :: right)) =
+    entry_config 12 left (next :: s :: right).
+Proof.
+  intros s next left right H;
+    destruct H as [-> | [-> | [-> | [-> | [-> | [-> | ->]]]]]];
+    reflexivity.
+Qed.
+
+Lemma q12_cross_marker :
+  forall left right,
+    step (entry_config 12 left (6 :: right)) =
+    entry_config 14 (3 :: left) right.
+Proof. reflexivity. Qed.
+
+Theorem q12_scan_to_m :
+  forall remaining s prefix suffix,
+    Forall q12_pass (s :: remaining) ->
+    run (S (length (s :: remaining)))
+      (entry_config 12 (remaining ++ 6 :: prefix) (s :: suffix)) =
+    entry_config 14 (3 :: prefix) (rev (s :: remaining) ++ suffix).
+Proof.
+  intros remaining.
+  induction remaining as [|next rest IH]; intros s prefix suffix H.
+  - inversion H as [|? ? Hs _]; subst.
+    destruct Hs as [-> | [-> | [-> | [-> | [-> | [-> | ->]]]]]];
+      reflexivity.
+  - inversion H as [|? ? Hs Hrest]; subst.
+    change (run (S (S (length (next :: rest))))
+      (entry_config 12 (next :: (rest ++ 6 :: prefix)) (s :: suffix)) =
+      entry_config 14 (3 :: prefix) (rev (s :: next :: rest) ++ suffix)).
+    rewrite entry_run_successor.
+    rewrite (q12_pass_step s next (rest ++ 6 :: prefix) suffix Hs).
+    rewrite (IH next prefix (s :: suffix) Hrest).
+    cbn [rev].
+    rewrite (append_singleton_assoc (rev rest ++ [next]) s suffix).
+    reflexivity.
+Qed.
+
+Definition q13_pass (s : nat) : Prop := q12_pass s.
+
+Lemma q13_pass_step :
+  forall s next left right,
+    q13_pass s ->
+    step (entry_config 13 (next :: left) (s :: right)) =
+    entry_config 13 left (next :: s :: right).
+Proof.
+  intros s next left right H;
+    destruct H as [-> | [-> | [-> | [-> | [-> | [-> | ->]]]]]];
+    reflexivity.
+Qed.
+
+Lemma q13_cross_marker :
+  forall left right,
+    step (entry_config 13 left (6 :: right)) =
+    entry_config 14 (2 :: left) right.
+Proof. reflexivity. Qed.
+
+Theorem q13_scan_to_m :
+  forall remaining s prefix suffix,
+    Forall q13_pass (s :: remaining) ->
+    run (S (length (s :: remaining)))
+      (entry_config 13 (remaining ++ 6 :: prefix) (s :: suffix)) =
+    entry_config 14 (2 :: prefix) (rev (s :: remaining) ++ suffix).
+Proof.
+  intros remaining.
+  induction remaining as [|next rest IH]; intros s prefix suffix H.
+  - inversion H as [|? ? Hs _]; subst.
+    destruct Hs as [-> | [-> | [-> | [-> | [-> | [-> | ->]]]]]];
+      reflexivity.
+  - inversion H as [|? ? Hs Hrest]; subst.
+    change (run (S (S (length (next :: rest))))
+      (entry_config 13 (next :: (rest ++ 6 :: prefix)) (s :: suffix)) =
+      entry_config 14 (2 :: prefix) (rev (s :: next :: rest) ++ suffix)).
+    rewrite entry_run_successor.
+    rewrite (q13_pass_step s next (rest ++ 6 :: prefix) suffix Hs).
+    rewrite (IH next prefix (s :: suffix) Hrest).
+    cbn [rev].
+    rewrite (append_singleton_assoc (rev rest ++ [next]) s suffix).
+    reflexivity.
+Qed.
+
+Print Assumptions q12_scan_to_m.
+Print Assumptions q13_scan_to_m.
