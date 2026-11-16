@@ -1054,8 +1054,16 @@ Proof.
      3 :: prefix)
     with ((rev scanned ++ 4 :: before) ++
           source_bit old :: dir_head :: dir_remaining ++ 3 :: prefix).
-  2:{ rewrite Hlayout. repeat rewrite app_assoc.
-      cbn [app]. reflexivity. }
+  2:{
+    rewrite Hlayout.
+    remember (rev scanned) as backwards eqn:Heq.
+    clear Heq.
+    induction backwards as [|symbol backwards IHback]; simpl.
+    - induction before as [|symbol before IHbefore]; simpl.
+      + reflexivity.
+      + now rewrite IHbefore.
+    - now rewrite IHback.
+  }
   apply q16_framed_cursor_to_q19.
   - destruct (rev scanned); discriminate.
   - exact H16.
@@ -1093,8 +1101,16 @@ Proof.
      2 :: prefix)
     with ((rev scanned ++ 4 :: before) ++
           source_bit old :: dir_head :: dir_remaining ++ 2 :: prefix).
-  2:{ rewrite Hlayout. repeat rewrite app_assoc.
-      cbn [app]. reflexivity. }
+  2:{
+    rewrite Hlayout.
+    remember (rev scanned) as backwards eqn:Heq.
+    clear Heq.
+    induction backwards as [|symbol backwards IHback]; simpl.
+    - induction before as [|symbol before IHbefore]; simpl.
+      + reflexivity.
+      + now rewrite IHbefore.
+    - now rewrite IHback.
+  }
   apply q16_framed_cursor_to_q20.
   - destruct (rev scanned); discriminate.
   - exact H16.
