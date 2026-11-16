@@ -259,6 +259,81 @@ Proof.
        source_bit next :: suffix) Hreturn').
 Qed.
 
+(** The preceding right-move theorem deliberately requires the entire
+    restored q16 scan to be free of raw bits.  If an earlier 2 or 3 was
+    restored into 0 or 1, q19 instead stops at THAT first binary cell.
+    The next theorem describes this exact first-hit behavior, including
+    the q17/q18 return to the next 7.  It is a positive native-table
+    certificate for the collision case, not a source-step refinement. *)
+
+Theorem q15_q22_right_hits_restored_bit :
+  forall s remaining dir_head dir_remaining
+         old next outer before hit after between final,
+    Forall q15_pass (rev (s :: remaining)) ->
+    Forall q16_pass (s :: remaining) ->
+    Forall q21_pass (dir_head :: dir_remaining) ->
+    map q16_restore (rev (s :: remaining)) =
+      before ++ source_bit hit :: after ->
+    Forall q15_pass
+      (rev (dir_head :: dir_remaining) ++ 7 :: before) ->
+    Forall q17_pass (after ++ source_bit next :: between) ->
+    run (direction_phase_cost (s :: remaining)
+           (dir_head :: dir_remaining) +
+         (S (length
+           (rev (dir_head :: dir_remaining) ++ 7 :: before)) +
+          S (length (after ++ source_bit next :: between))))
+      (entry_config 15
+        (source_bit old :: dir_head :: dir_remaining ++ 3 :: outer)
+        (rev (s :: remaining) ++
+         source_bit next :: between ++ 7 :: final)) =
+    cfg_ml 5
+      (rev (after ++ source_bit next :: between) ++ 6 ::
+       rev (rev (dir_head :: dir_remaining) ++ 7 :: before) ++
+       source_bit old :: outer)
+      ((if hit then 3 else 2) :: final).
+Proof.
+  intros s remaining dir_head dir_remaining
+    old next outer before hit after between final
+    H15 H16 H21 Hsplit Hbefore Hafter.
+  rewrite writeback_run_add.
+  rewrite (q15_q22_right_to_q19
+    s remaining dir_head dir_remaining old next outer
+    (between ++ 7 :: final) H15 H16 H21).
+  rewrite Hsplit.
+  replace
+    (rev (dir_head :: dir_remaining) ++
+     7 :: (before ++ source_bit hit :: after) ++
+     source_bit next :: between ++ 7 :: final)
+    with
+    ((rev (dir_head :: dir_remaining) ++ 7 :: before) ++
+     source_bit hit ::
+       (after ++ source_bit next :: between) ++ 7 :: final).
+  2:{ repeat rewrite app_assoc. reflexivity. }
+  rewrite (q19_to_q5_relocation
+    (rev (dir_head :: dir_remaining) ++ 7 :: before)
+    (after ++ source_bit next :: between)
+    hit (source_bit old :: outer) final Hbefore Hafter).
+  reflexivity.
+Qed.
+
+(** A concrete collision witness: after q16 restores the 2 to raw 0,
+    q19 selects that restored 0, not the later original source 0.
+    The 11 steps below use only the frozen table. *)
+Example restored_bit_preempts_next_raw :
+  run 11 (entry_config 15 [0; 4; 3] [2; 0; 7]) =
+  cfg_ml 5 [0; 6; 7; 4; 0] [2].
+Proof. reflexivity. Qed.
+
+Example restore_two_exposes_raw_zero :
+  q16_restore 2 = source_bit false.
+Proof. reflexivity. Qed.
+
+Example restore_three_exposes_raw_one :
+  q16_restore 3 = source_bit true.
+Proof. reflexivity. Qed.
+
+Print Assumptions q15_q22_right_hits_restored_bit.
+
 Print Assumptions q15_q22_right_to_q19.
 Print Assumptions q15_q22_left_to_q20.
 Print Assumptions q15_q22_right_relocates_to_q5.
