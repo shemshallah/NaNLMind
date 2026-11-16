@@ -308,7 +308,8 @@ Proof.
     ((rev (dir_head :: dir_remaining) ++ 7 :: before) ++
      source_bit hit ::
        (after ++ source_bit next :: between) ++ 7 :: final).
-  2:{ repeat rewrite app_assoc. reflexivity. }
+  2:{ repeat rewrite app_assoc; cbn [app].
+      repeat rewrite app_assoc; cbn [app]. reflexivity. }
   rewrite (q19_to_q5_relocation
     (rev (dir_head :: dir_remaining) ++ 7 :: before)
     (after ++ source_bit next :: between)
