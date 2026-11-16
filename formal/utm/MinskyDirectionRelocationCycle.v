@@ -1323,7 +1323,9 @@ Proof.
     unfold scanned, after_hit.
     rewrite rev_app_distr.
     rewrite rev_involutive.
-    simpl.
+    change (4 :: map q16_restore scanned =
+      [4; 4] ++ source_bit (wide_first_payload_bit row) :: after_hit).
+    unfold scanned, after_hit.
     rewrite q16_restores_wide_program.
     rewrite encode_wide_program_cons.
     rewrite wide_row_first_binary_layout.
