@@ -948,6 +948,15 @@ Proof.
     rewrite writeback_run_add.
     rewrite (q16_restore_to_raw rest head old
       (dir_head :: dir_remaining ++ 3 :: outer) tail Hback).
+    match goal with
+    | |- _ = ?expected =>
+      change
+        (run (S (length (dir_head :: dir_remaining)))
+          (entry_config (if old then 22 else 21)
+            (dir_remaining ++ 3 :: outer)
+            (dir_head :: 7 ::
+             map q16_restore (rev (head :: rest)) ++ tail)) = expected)
+    end.
     assert (Hq : (if old then 22 else 21) = 21 \/
                  (if old then 22 else 21) = 22).
     { destruct old; simpl; auto. }
@@ -986,6 +995,15 @@ Proof.
     rewrite writeback_run_add.
     rewrite (q16_restore_to_raw rest head old
       (dir_head :: dir_remaining ++ 2 :: outer) tail Hback).
+    match goal with
+    | |- _ = ?expected =>
+      change
+        (run (S (length (dir_head :: dir_remaining)))
+          (entry_config (if old then 22 else 21)
+            (dir_remaining ++ 2 :: outer)
+            (dir_head :: 7 ::
+             map q16_restore (rev (head :: rest)) ++ tail)) = expected)
+    end.
     assert (Hq : (if old then 22 else 21) = 21 \/
                  (if old then 22 else 21) = 22).
     { destruct old; simpl; auto. }
