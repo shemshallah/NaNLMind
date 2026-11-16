@@ -542,7 +542,7 @@ Proof.
   2:{
     clear Hdirection.
     induction direction as [|d direction IH]; simpl.
-    - repeat rewrite <- app_assoc. reflexivity.
+    - repeat rewrite app_assoc. reflexivity.
     - now rewrite IH.
   }
   apply q19_scan_to_m.
@@ -1108,7 +1108,7 @@ Proof.
     remember (rev scanned) as backwards eqn:Heq.
     clear Heq.
     induction backwards as [|symbol backwards IHback]; simpl.
-    - repeat rewrite app_assoc. reflexivity.
+    - repeat rewrite <- app_assoc. reflexivity.
     - rewrite IHback.
       repeat rewrite <- app_assoc.
       reflexivity.
