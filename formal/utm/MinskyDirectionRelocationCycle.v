@@ -1568,7 +1568,7 @@ Qed.
     q5 result depends only on the first restored program payload, it can
     agree with at most one of the two possible target neighbours. *)
 Theorem q12_right_marked_program_marker_correct_iff :
-  forall row next,
+  forall row (next : bool),
     (if wide_first_payload_bit row then 3 else 2) =
       (if next then 3 else 2) <->
     wide_first_payload_bit row = next.
