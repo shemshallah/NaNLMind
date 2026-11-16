@@ -552,7 +552,7 @@ Proof.
   - constructor.
     + unfold q15_pass. right; right; right; right; right; reflexivity.
     + constructor.
-      * unfold q15_pass. right; right; reflexivity.
+      * unfold q15_pass. right; right; left; reflexivity.
       * constructor.
 Qed.
 
