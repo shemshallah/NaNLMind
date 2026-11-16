@@ -18,7 +18,7 @@ From Coq Require Import List Bool Lia.
 Import ListNotations.
 
 From NaNLM Require Import MinskyTable MinskySourceEncoding
-  MinskyConcreteEntry MinskyMatchMacro MinskyWritebackMacro
+  MinskyConcreteEntry MinskyMatchMacro MinskyActionMacro MinskyWritebackMacro
   MinskyHeadMoveMacro MinskyDirectionDecision MinskyRelocationMacro
   MinskyDirectionCycle MinskyWideSource MinskyWideConcreteDispatch.
 
