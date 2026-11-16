@@ -915,6 +915,180 @@ Proof.
   exact H15.
 Qed.
 
+(** The cursor produced by q15 has already moved left once.  A nonempty
+    backscan therefore needs one step per cell PLUS the transition at the
+    first raw bit.  The q21/q22 scan likewise includes its direction-mark
+    transition.  Both bounds below count those boundary transitions. *)
+Theorem q16_framed_cursor_to_q19 :
+  forall backscan dir_head dir_remaining old outer tail,
+    backscan <> [] ->
+    Forall q16_pass backscan ->
+    Forall q21_pass (dir_head :: dir_remaining) ->
+    run (S (length backscan) + S (length (dir_head :: dir_remaining)))
+      (cfg_ml 16
+        (backscan ++ source_bit old ::
+         dir_head :: dir_remaining ++ 3 :: outer) tail) =
+    entry_config 19 (source_bit old :: outer)
+      (rev (dir_head :: dir_remaining) ++ 7 ::
+       map q16_restore (rev backscan) ++ tail).
+Proof.
+  intros [|head rest] dir_head dir_remaining old outer tail
+    Hnonempty Hback Hdir.
+  - contradiction.
+  - change
+      (run (S (length (head :: rest)) +
+            S (length (dir_head :: dir_remaining)))
+        (entry_config 16
+          (rest ++ source_bit old ::
+           dir_head :: dir_remaining ++ 3 :: outer)
+          (head :: tail)) = _).
+    rewrite writeback_run_add.
+    rewrite (q16_restore_to_raw rest head old
+      (dir_head :: dir_remaining ++ 3 :: outer) tail Hback).
+    assert (Hq : (if old then 22 else 21) = 21 \/
+                 (if old then 22 else 21) = 22).
+    { destruct old; simpl; auto. }
+    rewrite (q21_scan_to_right_direction dir_remaining dir_head
+      (if old then 22 else 21) outer
+      (7 :: map q16_restore (rev (head :: rest)) ++ tail) Hq Hdir).
+    destruct old; reflexivity.
+Qed.
+
+Theorem q16_framed_cursor_to_q20 :
+  forall backscan dir_head dir_remaining old outer tail,
+    backscan <> [] ->
+    Forall q16_pass backscan ->
+    Forall q21_pass (dir_head :: dir_remaining) ->
+    run (S (length backscan) + S (length (dir_head :: dir_remaining)))
+      (cfg_ml 16
+        (backscan ++ source_bit old ::
+         dir_head :: dir_remaining ++ 2 :: outer) tail) =
+    cfg_ml 20 outer
+      (source_bit old :: rev (dir_head :: dir_remaining) ++
+       7 :: map q16_restore (rev backscan) ++ tail).
+Proof.
+  intros [|head rest] dir_head dir_remaining old outer tail
+    Hnonempty Hback Hdir.
+  - contradiction.
+  - change
+      (run (S (length (head :: rest)) +
+            S (length (dir_head :: dir_remaining)))
+        (entry_config 16
+          (rest ++ source_bit old ::
+           dir_head :: dir_remaining ++ 2 :: outer)
+          (head :: tail)) = _).
+    rewrite writeback_run_add.
+    rewrite (q16_restore_to_raw rest head old
+      (dir_head :: dir_remaining ++ 2 :: outer) tail Hback).
+    assert (Hq : (if old then 22 else 21) = 21 \/
+                 (if old then 22 else 21) = 22).
+    { destruct old; simpl; auto. }
+    rewrite (q21_scan_to_left_direction dir_remaining dir_head
+      (if old then 22 else 21) outer
+      (7 :: map q16_restore (rev (head :: rest)) ++ tail) Hq Hdir).
+    destruct old; reflexivity.
+Qed.
+
+(** These two theorems use the precise q14-restored tape created by
+    q12/q13.  The layout equation identifies the *first* raw bit seen
+    by q16; it is an encoding obligation, not a claim that every wide
+    source program satisfies this layout.  No q15 left prefix is invented. *)
+Definition reached_direction_cost
+    (action skipped scanned backscan direction : list nat) : nat :=
+  ((S (length action) + S (length (rev action ++ skipped))) +
+    S (length scanned)) +
+  (S (length backscan) + S (length direction)).
+
+Theorem q12_to_q19_reached_direction :
+  forall remaining s skipped prefix scanned next suffix
+         before old dir_head dir_remaining,
+    Forall q12_pass (s :: remaining) ->
+    Forall q14_pass (rev (s :: remaining) ++ skipped) ->
+    Forall q15_pass scanned ->
+    map q14_restore (rev (rev (s :: remaining) ++ skipped)) =
+      before ++ source_bit old :: dir_head :: dir_remaining ->
+    Forall q16_pass (rev scanned ++ 4 :: before) ->
+    Forall q21_pass (dir_head :: dir_remaining) ->
+    run (reached_direction_cost (s :: remaining) skipped scanned
+           (rev scanned ++ 4 :: before) (dir_head :: dir_remaining))
+      (entry_config 12 (remaining ++ 6 :: prefix)
+        (s :: skipped ++ 4 :: (scanned ++ source_bit next :: suffix))) =
+    entry_config 19 (source_bit old :: prefix)
+      (rev (dir_head :: dir_remaining) ++ 7 ::
+       map q16_restore (rev (rev scanned ++ 4 :: before)) ++
+       source_bit next :: suffix).
+Proof.
+  intros remaining s skipped prefix scanned next suffix before
+    old dir_head dir_remaining H12 H14 H15 Hlayout H16 Hdir.
+  unfold reached_direction_cost.
+  rewrite writeback_run_add.
+  rewrite (q12_to_q16_reached_cursor remaining s skipped prefix
+    scanned next suffix H12 H14 H15).
+  replace
+    (rev scanned ++ 4 ::
+     map q14_restore (rev (rev (s :: remaining) ++ skipped)) ++
+     3 :: prefix)
+    with ((rev scanned ++ 4 :: before) ++
+          source_bit old :: dir_head :: dir_remaining ++ 3 :: prefix).
+  2:{ rewrite Hlayout. repeat rewrite app_assoc. reflexivity. }
+  apply q16_framed_cursor_to_q19.
+  - destruct (rev scanned); discriminate.
+  - exact H16.
+  - exact Hdir.
+Qed.
+
+Theorem q13_to_q20_reached_direction :
+  forall remaining s skipped prefix scanned next suffix
+         before old dir_head dir_remaining,
+    Forall q13_pass (s :: remaining) ->
+    Forall q14_pass (rev (s :: remaining) ++ skipped) ->
+    Forall q15_pass scanned ->
+    map q14_restore (rev (rev (s :: remaining) ++ skipped)) =
+      before ++ source_bit old :: dir_head :: dir_remaining ->
+    Forall q16_pass (rev scanned ++ 4 :: before) ->
+    Forall q21_pass (dir_head :: dir_remaining) ->
+    run (reached_direction_cost (s :: remaining) skipped scanned
+           (rev scanned ++ 4 :: before) (dir_head :: dir_remaining))
+      (entry_config 13 (remaining ++ 6 :: prefix)
+        (s :: skipped ++ 4 :: (scanned ++ source_bit next :: suffix))) =
+    cfg_ml 20 prefix
+      (source_bit old :: rev (dir_head :: dir_remaining) ++
+       7 :: map q16_restore (rev (rev scanned ++ 4 :: before)) ++
+       source_bit next :: suffix).
+Proof.
+  intros remaining s skipped prefix scanned next suffix before
+    old dir_head dir_remaining H13 H14 H15 Hlayout H16 Hdir.
+  unfold reached_direction_cost.
+  rewrite writeback_run_add.
+  rewrite (q13_to_q16_reached_cursor remaining s skipped prefix
+    scanned next suffix H13 H14 H15).
+  replace
+    (rev scanned ++ 4 ::
+     map q14_restore (rev (rev (s :: remaining) ++ skipped)) ++
+     2 :: prefix)
+    with ((rev scanned ++ 4 :: before) ++
+          source_bit old :: dir_head :: dir_remaining ++ 2 :: prefix).
+  2:{ rewrite Hlayout. repeat rewrite app_assoc. reflexivity. }
+  apply q16_framed_cursor_to_q20.
+  - destruct (rev scanned); discriminate.
+  - exact H16.
+  - exact Hdir.
+Qed.
+
+(** Small real-table witnesses guard against vacuous framed premises. *)
+Example q12_right_direction_ten_steps :
+  run 10 (entry_config 12 [0; 6] [0; 4; 0]) =
+  entry_config 19 [0] [0; 7; 4; 0].
+Proof. reflexivity. Qed.
+
+Example q13_left_direction_ten_steps :
+  run 10 (entry_config 13 [0; 6; 1] [0; 4; 0]) =
+  entry_config 20 [] [1; 0; 0; 7; 4; 0].
+Proof. reflexivity. Qed.
+
+Print Assumptions q12_to_q19_reached_direction.
+Print Assumptions q13_to_q20_reached_direction.
+
 Print Assumptions q16_restores_wide_program.
 Print Assumptions q19_wide_program_first_restored_bit.
 Print Assumptions q15_q22_right_wide_program_first_hit.
