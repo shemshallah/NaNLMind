@@ -1,0 +1,67 @@
+name: Fast Coq q15-q22 cycle iteration
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/minsky-coq-direction-fast.yml'
+      - 'formal/utm/MinskyDirectionRelocationCycle.v'
+
+permissions:
+  contents: read
+  actions: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  cycle:
+    runs-on: ubuntu-latest
+    container:
+      image: coqorg/coq:8.20
+      options: --user root
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Locate pinned Coq 8.20
+        run: |
+          set -euo pipefail
+          COQBIN=$(dirname "$(find /home/coq/.opam -name coqc -type f | head -1)")
+          test -x "$COQBIN/coqc"
+          echo "$COQBIN" >> "$GITHUB_PATH"
+          "$COQBIN/coqc" --version
+
+      # This cache is a GitHub Actions artifact produced by the full bridge
+      # workflow. All imported .vo dependencies were compiled from the
+      # unchanged table and checked source. This job is a fast diagnostic;
+      # the full rebuild and coqchk remain the acceptance requirement.
+      - name: Restore compiled dependencies from full bridge
+        uses: actions/download-artifact@v4
+        with:
+          name: minsky-coq-bridge-43791910776
+          run-id: 43791910776
+          github-token: ${{ github.token }}
+          path: .
+
+      - name: Compile and kernel-check q15-q22 composition
+        run: |
+          set -euo pipefail
+          test -s formal/utm/MinskyTable.vo
+          test -s formal/utm/MinskyHeadMoveMacro.vo
+          test -s formal/utm/MinskyDirectionDecision.vo
+          test -s formal/utm/MinskyRelocationMacro.vo
+          if ! coqc -Q formal/utm NaNLM \
+              -w -notation-overridden,-stdlib-vector \
+              formal/utm/MinskyDirectionRelocationCycle.v \
+              > /tmp/direction-fast-coq.log 2>&1; then
+            head -n 45 /tmp/direction-fast-coq.log
+            while IFS= read -r line; do
+              echo "::error title=Coq q15-q22::$line"
+            done < <(head -n 45 /tmp/direction-fast-coq.log)
+            exit 1
+          fi
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyDirectionRelocationCycle.vo
+          echo 'NANLM FAST Q15-Q22 COQCHK PASS'
