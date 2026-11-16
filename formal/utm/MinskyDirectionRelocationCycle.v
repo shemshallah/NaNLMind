@@ -746,17 +746,17 @@ Lemma q17_wide_after_first_payload_pass :
 Proof.
   intros [current scanned next written direction].
   destruct current as [|head remaining]; simpl.
-  - rewrite Forall_app. split.
-    + apply q17_source_bits_pass.
+  - induction next as [|bit rest IH]; simpl.
     + constructor; [apply q17_source_bit_pass |].
       constructor; [apply q17_source_bit_pass | constructor].
-  - rewrite Forall_app. split.
-    + apply q17_source_bits_pass.
+    + constructor; [apply q17_source_bit_pass | exact IH].
+  - induction remaining as [|bit rest IH]; simpl.
     + constructor; [apply q17_source_bit_pass |].
-      rewrite Forall_app. split.
-      * apply q17_source_bits_pass.
+      induction next as [|b tail IHnext]; simpl.
       * constructor; [apply q17_source_bit_pass |].
         constructor; [apply q17_source_bit_pass | constructor].
+      * constructor; [apply q17_source_bit_pass | exact IHnext].
+    + constructor; [apply q17_source_bit_pass | exact IH].
 Qed.
 
 Lemma q17_entry_source_symbol_pass :
