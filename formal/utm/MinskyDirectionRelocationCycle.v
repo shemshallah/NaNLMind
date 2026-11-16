@@ -1527,3 +1527,72 @@ Print Assumptions q15_q22_right_to_q19.
 Print Assumptions q15_q22_left_to_q20.
 Print Assumptions q15_q22_right_relocates_to_q5.
 Print Assumptions q15_q22_left_relocates_to_q5.
+
+
+(** The two possible right-hand data neighbours yield the SAME q5
+    marker on this marked-program layout, even though their final tape
+    contents differ.  This is a paired-trace noninterference result for
+    the q5 marker, not a claim that the two complete tapes are equal.
+    The construction quantifies over every nonempty encoded program and
+    over every untouched final suffix. *)
+Theorem q12_right_marked_program_paired_neighbor_traces :
+  forall row rows final,
+    let scanned := map entry_rewrite
+      (encode_wide_program (row :: rows)) in
+    let after_hit := wide_after_first_payload row ++
+      encode_wide_program rows in
+    (run (reached_direction_cost [0; 5] [] scanned
+            (rev scanned ++ [4]) [5] +
+          (S (length [5; 7; 4; 4]) +
+           S (length (after_hit ++ [source_bit false]))))
+       (entry_config 12 [5; 6]
+         (0 :: 4 :: (scanned ++ source_bit false :: 7 :: final))) =
+     cfg_ml 5
+       (rev (after_hit ++ [source_bit false]) ++ [6; 4; 4; 7; 5; 0])
+       ((if wide_first_payload_bit row then 3 else 2) :: final)) /\
+    (run (reached_direction_cost [0; 5] [] scanned
+            (rev scanned ++ [4]) [5] +
+          (S (length [5; 7; 4; 4]) +
+           S (length (after_hit ++ [source_bit true]))))
+       (entry_config 12 [5; 6]
+         (0 :: 4 :: (scanned ++ source_bit true :: 7 :: final))) =
+     cfg_ml 5
+       (rev (after_hit ++ [source_bit true]) ++ [6; 4; 4; 7; 5; 0])
+       ((if wide_first_payload_bit row then 3 else 2) :: final)).
+Proof.
+  intros row rows final.
+  split; apply q12_right_marked_program_collision_at_q5.
+Qed.
+
+(** Exact correctness condition for the neighbour marker.  Because the
+    q5 result depends only on the first restored program payload, it can
+    agree with at most one of the two possible target neighbours. *)
+Theorem q12_right_marked_program_marker_correct_iff :
+  forall row next,
+    (if wide_first_payload_bit row then 3 else 2) =
+      (if next then 3 else 2) <->
+    wide_first_payload_bit row = next.
+Proof.
+  intros row next.
+  destruct (wide_first_payload_bit row), next; simpl;
+    split; intro H; try discriminate; reflexivity.
+Qed.
+
+(** Positive literal-table control for a safe q19 rail.  The single
+    marked 4 restores to 4, so q19 can pass it and select the actual
+    right-hand raw data neighbour.  This is a constructed q12-entry
+    demonstration, NOT a complete-program source-step simulation. *)
+Theorem q12_right_guarded_cell_relocates_neighbor :
+  forall next final,
+    run 19
+      (entry_config 12 [5; 6]
+        (0 :: 4 :: 4 :: source_bit next :: 7 :: final)) =
+    cfg_ml 5 [6; 4; 4; 7; 5; 0]
+      ((if next then 3 else 2) :: final).
+Proof.
+  intros [|] final; reflexivity.
+Qed.
+
+Print Assumptions q12_right_marked_program_paired_neighbor_traces.
+Print Assumptions q12_right_marked_program_marker_correct_iff.
+Print Assumptions q12_right_guarded_cell_relocates_neighbor.
