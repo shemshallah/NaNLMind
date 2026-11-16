@@ -1060,7 +1060,9 @@ Proof.
     clear Heq.
     induction backwards as [|symbol backwards IHback]; simpl.
     - repeat rewrite <- app_assoc. reflexivity.
-    - now rewrite IHback.
+    - rewrite IHback.
+      repeat rewrite <- app_assoc.
+      reflexivity.
   }
   apply q16_framed_cursor_to_q19.
   - destruct (rev scanned); discriminate.
@@ -1105,7 +1107,9 @@ Proof.
     clear Heq.
     induction backwards as [|symbol backwards IHback]; simpl.
     - repeat rewrite app_assoc. reflexivity.
-    - now rewrite IHback.
+    - rewrite IHback.
+      repeat rewrite <- app_assoc.
+      reflexivity.
   }
   apply q16_framed_cursor_to_q20.
   - destruct (rev scanned); discriminate.
