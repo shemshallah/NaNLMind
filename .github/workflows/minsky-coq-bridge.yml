@@ -159,9 +159,17 @@ jobs:
           coqchk -Q formal/utm NaNLM formal/utm/MinskyNativeBounds.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyNativePages.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyNaN16Words.vo
-          coqc -Q formal/utm NaNLM \
-            -w -notation-overridden,-stdlib-vector \
-            formal/utm/MinskyDirectionRelocationCycle.v
+          if ! coqc -Q formal/utm NaNLM \
+              -w -notation-overridden,-stdlib-vector \
+              formal/utm/MinskyDirectionRelocationCycle.v \
+              > /tmp/minsky-direction-coq.log 2>&1; then
+            echo 'Exact q15-q22 Coq diagnostic follows:'
+            head -n 35 /tmp/minsky-direction-coq.log
+            while IFS= read -r line; do
+              echo "::error title=Coq q15-q22::$line"
+            done < <(head -n 35 /tmp/minsky-direction-coq.log)
+            exit 1
+          fi
           coqchk -Q formal/utm NaNLM formal/utm/MinskyDirectionRelocationCycle.vo
           echo 'NANLM MINSKY Q15-Q22 DIRECTION RELOCATION CYCLE PASS'
 
