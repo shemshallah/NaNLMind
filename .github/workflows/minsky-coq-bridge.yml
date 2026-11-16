@@ -45,6 +45,9 @@ jobs:
           python3 formal/utm/check_minsky_source_execution.py \
             --require-steps 3 --require-both-directions \
             --check-native-expected --audit-naive-gap-decoder
+          python3 formal/utm/check_minsky_source_execution.py \
+            --fixture mth/tests/mth_minsky_compiler_p16_test.nas \
+            --require-steps 2 --check-native-expected
 
       - name: Kernel-check table, full-tape bisimulation and run counting
         run: |
