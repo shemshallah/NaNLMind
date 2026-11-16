@@ -184,7 +184,8 @@ Proof.
     ((rev (dir_head :: dir_remaining) ++
       7 :: map q16_restore (rev (s :: remaining))) ++
       source_bit next :: between ++ 7 :: final).
-  2:{ rewrite app_assoc. reflexivity. }
+  2:{ cbn [app]. repeat rewrite app_assoc.
+      repeat rewrite <- app_assoc. reflexivity. }
   rewrite (q19_to_q5_relocation
     (rev (dir_head :: dir_remaining) ++
      7 :: map q16_restore (rev (s :: remaining)))
