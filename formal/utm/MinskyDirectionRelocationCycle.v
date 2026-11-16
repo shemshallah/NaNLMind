@@ -556,8 +556,60 @@ Proof.
       * constructor.
 Qed.
 
+(** Compose the preceding first-hit result with the *actual* q15--q22
+    direction decision.  The strengthened marked-description premise
+    identifies the complete q15 scan region with a q5-marked encoded
+    program.  This is the exact native outcome when q19 is asked to
+    relocate through that region: it marks the first program payload
+    bit, not the later source-data bit.  The theorem does not assume an
+    abstract source step and does not claim an invariant is preserved. *)
+Theorem q15_q22_right_wide_program_first_hit :
+  forall s remaining dir_head dir_remaining old next outer
+         row rows suffix,
+    Forall q15_pass (rev (s :: remaining)) ->
+    Forall q16_pass (s :: remaining) ->
+    Forall q21_pass (dir_head :: dir_remaining) ->
+    rev (s :: remaining) =
+      map entry_rewrite (encode_wide_program (row :: rows)) ->
+    Forall q15_pass (rev (dir_head :: dir_remaining)) ->
+    run (direction_phase_cost (s :: remaining)
+           (dir_head :: dir_remaining) +
+         S (length (rev (dir_head :: dir_remaining) ++ [7; 4])))
+      (entry_config 15
+        (source_bit old :: dir_head :: dir_remaining ++ 3 :: outer)
+        (rev (s :: remaining) ++ source_bit next :: suffix)) =
+    entry_config (if wide_first_payload_bit row then 18 else 17)
+      (6 :: rev (rev (dir_head :: dir_remaining) ++ [7; 4]) ++
+       source_bit old :: outer)
+      (wide_after_first_payload row ++
+       encode_wide_program rows ++ source_bit next :: suffix).
+Proof.
+  intros s remaining dir_head dir_remaining old next outer
+    row rows suffix H15 H16 H21 Hmarked Hdirection.
+  rewrite writeback_run_add.
+  rewrite (q15_q22_right_to_q19
+    s remaining dir_head dir_remaining old next outer
+    suffix H15 H16 H21).
+  rewrite Hmarked.
+  change
+    (run (S (length (rev (dir_head :: dir_remaining) ++ [7; 4])))
+       (entry_config 19 (source_bit old :: outer)
+         (rev (dir_head :: dir_remaining) ++ [7] ++
+          map q16_restore
+            (map entry_rewrite (encode_wide_program (row :: rows))) ++
+          (source_bit next :: suffix))) =
+     entry_config (if wide_first_payload_bit row then 18 else 17)
+       (6 :: rev (rev (dir_head :: dir_remaining) ++ [7; 4]) ++
+        source_bit old :: outer)
+       (wide_after_first_payload row ++
+        encode_wide_program rows ++ source_bit next :: suffix)).
+  apply q19_wide_program_first_restored_bit.
+  exact Hdirection.
+Qed.
+
 Print Assumptions q16_restores_wide_program.
 Print Assumptions q19_wide_program_first_restored_bit.
+Print Assumptions q15_q22_right_wide_program_first_hit.
 
 (** The preceding right-move theorem deliberately requires the entire
     restored q16 scan to be free of raw bits.  If an earlier 2 or 3 was
