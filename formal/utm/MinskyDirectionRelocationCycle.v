@@ -51,21 +51,27 @@ Proof.
     (source_bit old :: dir_head :: dir_remaining ++ 3 :: outer)
     suffix H15).
   rewrite rev_involutive.
-  change (run (S (length (s :: remaining)) +
+  match goal with
+  | |- _ = ?expected =>
+    change (run (S (length (s :: remaining)) +
                   S (length (dir_head :: dir_remaining)))
     (entry_config 16
       (remaining ++ source_bit old ::
         dir_head :: dir_remaining ++ 3 :: outer)
-      (s :: source_bit next :: suffix)) = _).
+      (s :: source_bit next :: suffix)) = expected)
+  end.
   rewrite writeback_run_add.
   rewrite (q16_restore_to_raw remaining s old
     (dir_head :: dir_remaining ++ 3 :: outer)
     (source_bit next :: suffix) H16).
-  change (run (S (length (dir_head :: dir_remaining)))
+  match goal with
+  | |- _ = ?expected =>
+    change (run (S (length (dir_head :: dir_remaining)))
     (entry_config (if old then 22 else 21)
       (dir_remaining ++ 3 :: outer)
       (dir_head :: 7 :: map q16_restore (rev (s :: remaining)) ++
-       source_bit next :: suffix)) = _).
+       source_bit next :: suffix)) = expected)
+  end.
   assert (Hq : (if old then 22 else 21) = 21 \/
                (if old then 22 else 21) = 22).
   { destruct old; simpl; auto. }
@@ -100,22 +106,28 @@ Proof.
     (source_bit old :: dir_head :: dir_remaining ++
       2 :: source_bit target :: outer) suffix H15).
   rewrite rev_involutive.
-  change (run (S (length (s :: remaining)) +
+  match goal with
+  | |- _ = ?expected =>
+    change (run (S (length (s :: remaining)) +
                   S (length (dir_head :: dir_remaining)))
     (entry_config 16
       (remaining ++ source_bit old ::
         dir_head :: dir_remaining ++
         2 :: source_bit target :: outer)
-      (s :: source_bit next :: suffix)) = _).
+      (s :: source_bit next :: suffix)) = expected)
+  end.
   rewrite writeback_run_add.
   rewrite (q16_restore_to_raw remaining s old
     (dir_head :: dir_remaining ++ 2 :: source_bit target :: outer)
     (source_bit next :: suffix) H16).
-  change (run (S (length (dir_head :: dir_remaining)))
+  match goal with
+  | |- _ = ?expected =>
+    change (run (S (length (dir_head :: dir_remaining)))
     (entry_config (if old then 22 else 21)
       (dir_remaining ++ 2 :: source_bit target :: outer)
       (dir_head :: 7 :: map q16_restore (rev (s :: remaining)) ++
-       source_bit next :: suffix)) = _).
+       source_bit next :: suffix)) = expected)
+  end.
   assert (Hq : (if old then 22 else 21) = 21 \/
                (if old then 22 else 21) = 22).
   { destruct old; simpl; auto. }
@@ -219,13 +231,16 @@ Proof.
   rewrite (q15_q22_left_to_q20
     s remaining dir_head dir_remaining old next target outer
     suffix H15 H16 H21).
-  change (run (S (length
+  match goal with
+  | |- _ = ?expected =>
+    change (run (S (length
       (source_bit old :: rev (dir_head :: dir_remaining))))
     (step (entry_config 20 outer
       (source_bit target :: source_bit old ::
        rev (dir_head :: dir_remaining) ++
        7 :: map q16_restore (rev (s :: remaining)) ++
-       source_bit next :: suffix))) = _).
+       source_bit next :: suffix))) = expected)
+  end.
   rewrite (q20_raw_to_m target outer
     (source_bit old :: rev (dir_head :: dir_remaining) ++
      7 :: map q16_restore (rev (s :: remaining)) ++
