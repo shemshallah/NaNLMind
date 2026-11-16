@@ -1195,6 +1195,75 @@ Qed.
 
 Print Assumptions q13_reached_left_relocates_to_q5.
 
+(** Right relocation must use the FIRST raw bit exposed by q16.
+    The split of the restored scan is exact, so q19 cannot silently
+    pass an earlier 0/1 and relocate a later source-data bit.  The
+    stated q15/q17 safety conditions are the additional obligations
+    needed to complete the native return to q5. *)
+Theorem q12_reached_right_first_hit_returns_q5 :
+  forall remaining s skipped outer scanned next between final
+         before old dir_head dir_remaining before_hit hit after_hit,
+    Forall q12_pass (s :: remaining) ->
+    Forall q14_pass (rev (s :: remaining) ++ skipped) ->
+    Forall q15_pass scanned ->
+    map q14_restore (rev (rev (s :: remaining) ++ skipped)) =
+      before ++ source_bit old :: dir_head :: dir_remaining ->
+    Forall q16_pass (rev scanned ++ 4 :: before) ->
+    Forall q21_pass (dir_head :: dir_remaining) ->
+    map q16_restore (rev (rev scanned ++ 4 :: before)) =
+      before_hit ++ source_bit hit :: after_hit ->
+    Forall q15_pass
+      (rev (dir_head :: dir_remaining) ++ 7 :: before_hit) ->
+    Forall q17_pass (after_hit ++ source_bit next :: between) ->
+    run (reached_direction_cost (s :: remaining) skipped scanned
+           (rev scanned ++ 4 :: before) (dir_head :: dir_remaining) +
+         (S (length
+           (rev (dir_head :: dir_remaining) ++ 7 :: before_hit)) +
+          S (length (after_hit ++ source_bit next :: between))))
+      (entry_config 12 (remaining ++ 6 :: outer)
+        (s :: skipped ++ 4 ::
+         (scanned ++ source_bit next :: between ++ 7 :: final))) =
+    cfg_ml 5
+      (rev (after_hit ++ source_bit next :: between) ++ 6 ::
+       rev (rev (dir_head :: dir_remaining) ++ 7 :: before_hit) ++
+       source_bit old :: outer)
+      ((if hit then 3 else 2) :: final).
+Proof.
+  intros remaining s skipped outer scanned next between final
+    before old dir_head dir_remaining before_hit hit after_hit
+    H12 H14 H15 Hlayout H16 Hdir Hfirst Hsafe Hreturn.
+  rewrite writeback_run_add.
+  rewrite (q12_to_q19_reached_direction
+    remaining s skipped outer scanned next (between ++ 7 :: final)
+    before old dir_head dir_remaining
+    H12 H14 H15 Hlayout H16 Hdir).
+  rewrite Hfirst.
+  replace
+    (rev (dir_head :: dir_remaining) ++
+     7 :: (before_hit ++ source_bit hit :: after_hit) ++
+     source_bit next :: between ++ 7 :: final)
+    with
+    ((rev (dir_head :: dir_remaining) ++ 7 :: before_hit) ++
+     source_bit hit ::
+       (after_hit ++ source_bit next :: between) ++ 7 :: final).
+  2:{ repeat rewrite <- app_assoc; cbn [app].
+      repeat rewrite <- app_assoc; cbn [app]. reflexivity. }
+  rewrite (q19_to_q5_relocation
+    (rev (dir_head :: dir_remaining) ++ 7 :: before_hit)
+    (after_hit ++ source_bit next :: between)
+    hit (source_bit old :: outer) final Hsafe Hreturn).
+  reflexivity.
+Qed.
+
+(** Constructive witness: the return marks the earlier q16-restored 0,
+    rather than the later raw source-data 0. *)
+Example q12_right_first_hit_nineteen_steps :
+  run 19 (entry_config 12 [5; 6] [0; 4; 2; 0; 7]) =
+  cfg_ml 5 [0; 6; 4; 7; 5; 0] [2].
+Proof. reflexivity. Qed.
+
+Print Assumptions q12_reached_right_first_hit_returns_q5.
+
 (** Small real-table witnesses guard against vacuous framed premises. *)
 Example q12_right_direction_eleven_steps :
   run 11 (entry_config 12 [0; 6] [0; 4; 0]) =
