@@ -158,7 +158,8 @@ def main() -> int:
     if args.emit_native_expected or args.check_native_expected:
         initial = encoded_native_tape(width, q0, s0, data, rows)
         final, final_head, native_steps, native_halted = native_run(
-            initial, len(data) + 11 + width)
+            initial, len(data) + 11 + width,
+            max_steps=max(10000, 2048 * width))
         print(f"native steps={native_steps}, halted={native_halted}, "
               f"head={final_head}, length={len(final)}")
         if args.emit_native_expected:
