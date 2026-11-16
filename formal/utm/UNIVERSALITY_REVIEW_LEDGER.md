@@ -1,6 +1,6 @@
 # Concrete Minsky 23×8 universality: referee-facing proof ledger
 
-Status date: 2026-11-14. **Full universality is NOT established.**
+Status date: 2026-11-16. **Full universality is NOT established.**
 This ledger distinguishes computational evidence, Coq-verified lemmas, and
 remaining mathematical obligations. It must not be used as a claim of
 Nature-level completion while any critical obligation below is open.
@@ -32,7 +32,7 @@ Nature-level completion while any critical obligation below is open.
 | `MinskyHeadMoveMacro.v` | Checked: q15 raw-bit search and q16 restore/branch to q21/q22 | No |
 | `MinskyDirectionDecision.v` | Checked: q21/q22 leftward direction-mark decision and bit write | No |
 | `MinskyRelocationMacro.v` | Checked: q17/q18 marker restoration, q19/q20 displaced-M relocation, and q19-to-q5 exact cycle | No |
-| `MinskyDirectionRelocationCycle.v` | Checked: exact q15–q22 left/right direction cycles, obstruction to full-program q19 scans, constructive q15–q22→q19 first hit, and an exact constructed q15→q5 collision/return cycle for arbitrary-width programs | No |
+| `MinskyDirectionRelocationCycle.v` | Checked: exact q15–q22 direction and relocation, q12/q13 reached-cursor bridges, q12/q13→q19/q20, q13→q5 and q12→q5 return paths, a fully constructed q12→q5 program-bit collision for arbitrary-wide programs, and explicit right-neighbour marker mismatch | No |
 | `MinskyMarkedProgram.v` | Checked: marked 0/1→2/3 descriptions admit a logical erasure; an actual unbounded native-table scan preserves a fully decodable arbitrary-width source program and untouched suffix | No |
 | `MinskyVariableBuffer.v` | Checked: exact first-state-bit dispatch after `2*n+4` native steps for all **positive** zero-buffer widths `n`; low return after `3*n+6`; high scan to next X/Y for any finite binary tail | No |
 | `MinskyMacroSimulation.v` | Checked *conditional theorem*: arbitrary-run simulation and both directions of halting equivalence, assuming as-yet-unproved concrete native macro/encoding hypotheses | No |
@@ -278,3 +278,39 @@ model the `M` head marker, source tape/control state, or subsequent
 native scans that may rewrite additional program/control symbols. The
 complete `Rep(M,c,N)` relation and source-step commuting diagram remain
 open. An erasure of program marks cannot substitute for those obligations.
+
+## November 16 constructed q12-to-q5 collision and source-neighbour mismatch
+
+The following theorems are **kernel-checked with the frozen 23-state ×
+8-symbol transition table** at
+[commit `40a591b`](https://github.com/shemshallah/NaNLMind/commit/40a591b78a78710752f3bf1ffc24fb6b7492c539),
+[fast Coq run `43976450108`](https://github.com/shemshallah/NaNLMind/actions/runs/43976450108).
+The separate clean full rebuild is still tracked as an independent gate.
+
+- `q12_right_marked_program_collision_at_q5` starts at an **explicit actual
+  q12 configuration** containing a q5-marked encoded wide program and runs
+  through q14, q15, q16, q21/q22, q19, q17/q18, and back to q5.
+  It discharges the relevant scan premises from structural facts about
+  arbitrary-width encoded rows and gives the exact final zipper and
+  microstep count for every nonempty program. No source-level macro-step
+  assumption is invoked.
+- `q12_right_marked_program_target_mismatch` shows that when the first
+  restored *program* payload bit differs from the intended right-hand
+  *data* neighbour, the returned q5 2/3 marker differs from that
+  neighbour's marker. `nine_bit_right_program_neighbor_mismatch` exhibits
+  this distinction at width nine (program first bit 0, neighbour bit 1).
+  The target comparison is with the neighbour, **not** with the
+  source instruction's `wr_write` field, which has a different role.
+
+**Precise remaining boundary:** This is a constructive q12-entry execution,
+not a proof of reachability of its entry from the canonical full source
+configuration in native q5. It refutes the naive assumption that q19 can
+cross the *restored marked-program region* unchanged; it does not prove
+that this is the only possible encoding, rule out universality, or discharge
+the three conditional `MinskyWideMacroSimulation.v` premises.
+
+Next required proof: (1) derive the source-level q12/q13 entry from a
+computable complete q5 representation, (2) show correct source-row
+selection, write and head relocation under that representation, (3) prove
+the representation invariant persists under all source steps, and
+(4) prove both directions of halting reflection.
