@@ -107,7 +107,7 @@ Definition displaced_write_left (written : bool)
   match dh_left_rev h with
   | [] => {| dh_left_rev := []; dh_current := false;
              dh_right := written :: dh_right h |}
-  | b :: left => {| dh_left_rev := left; dh_current := b;
+  | b :: remaining_left => {| dh_left_rev := remaining_left; dh_current := b;
                    dh_right := written :: dh_right h |}
   end.
 
@@ -116,8 +116,8 @@ Definition displaced_write_right (written : bool)
   match dh_right h with
   | [] => {| dh_left_rev := written :: dh_left_rev h;
              dh_current := false; dh_right := [] |}
-  | b :: right => {| dh_left_rev := written :: dh_left_rev h;
-                    dh_current := b; dh_right := right |}
+  | b :: remaining_right => {| dh_left_rev := written :: dh_left_rev h;
+                    dh_current := b; dh_right := remaining_right |}
   end.
 
 Lemma head_singleton_append :
