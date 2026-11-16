@@ -607,9 +607,124 @@ Proof.
   exact Hdirection.
 Qed.
 
+(** The marked-program premise above is constructive, not an impossible
+    side condition.  Every nonempty encoded wide program admits an
+    oriented q15 tape satisfying both the forward q15 and reverse q16
+    scan restrictions. *)
+Lemma q15_marked_source_scan :
+  forall symbols,
+    Forall entry_scan_symbol symbols ->
+    Forall q15_pass (map entry_rewrite symbols).
+Proof.
+  intros symbols Hscan.
+  induction Hscan as [|s rest Hs _ IH]; simpl.
+  - constructor.
+  - constructor.
+    + destruct Hs as [-> | [-> | ->]]; unfold q15_pass;
+        simpl; [left | right; left | right; right; left]; reflexivity.
+    + exact IH.
+Qed.
+
+Lemma q16_marked_source_scan_reverse :
+  forall symbols,
+    Forall entry_scan_symbol symbols ->
+    Forall q16_pass (rev (map entry_rewrite symbols)).
+Proof.
+  intros symbols Hscan.
+  induction Hscan as [|s rest Hs _ IH]; simpl.
+  - constructor.
+  - rewrite Forall_app.
+    split.
+    + exact IH.
+    + constructor.
+      * destruct Hs as [-> | [-> | ->]]; unfold q16_pass;
+          simpl; [left | right; left | right; right; left]; reflexivity.
+      * constructor.
+Qed.
+
+Lemma marked_wide_program_nonempty :
+  forall row rows,
+    map entry_rewrite (encode_wide_program (row :: rows)) <> [].
+Proof.
+  intros [current scanned next written direction] rows.
+  unfold encode_wide_program, encode_wide_row; simpl.
+  discriminate.
+Qed.
+
+Theorem marked_wide_program_q15_entry_exists :
+  forall row rows,
+    exists s remaining,
+      rev (s :: remaining) =
+        map entry_rewrite (encode_wide_program (row :: rows)) /\
+      Forall q15_pass (rev (s :: remaining)) /\
+      Forall q16_pass (s :: remaining).
+Proof.
+  intros row rows.
+  destruct (rev (map entry_rewrite
+    (encode_wide_program (row :: rows))))
+    as [|s remaining] eqn:Hrev.
+  - exfalso.
+    apply (marked_wide_program_nonempty row rows).
+    rewrite <- (rev_involutive
+      (map entry_rewrite (encode_wide_program (row :: rows)))).
+    now rewrite Hrev.
+  - exists s, remaining.
+    assert (Hlayout : rev (s :: remaining) =
+      map entry_rewrite (encode_wide_program (row :: rows))).
+    {
+      rewrite <- (rev_involutive
+        (map entry_rewrite (encode_wide_program (row :: rows)))).
+      now rewrite Hrev.
+    }
+    split; [exact Hlayout |].
+    split.
+    + rewrite Hlayout.
+      apply q15_marked_source_scan.
+      apply wide_program_scannable.
+    + rewrite <- Hrev.
+      apply q16_marked_source_scan_reverse.
+      apply wide_program_scannable.
+Qed.
+
+(** An explicit nonvacuous native execution for EVERY nonempty wide
+    description.  The 4 direction-side cell satisfies both the q21
+    decision scan and the q19 relocation prefix.  The q15 entry zipper
+    is constructed from the fully marked program; no arbitrary bound on
+    state width or row count is introduced.  It is still an entry-phase
+    execution certificate rather than source-step equivalence. *)
+Theorem q15_q22_right_first_hit_constructive :
+  forall row rows old next outer suffix,
+    exists s remaining,
+      run (direction_phase_cost (s :: remaining) [4] +
+           S (length ([4] ++ [7; 4])))
+        (entry_config 15 (source_bit old :: 4 :: 3 :: outer)
+          (rev (s :: remaining) ++ source_bit next :: suffix)) =
+      entry_config (if wide_first_payload_bit row then 18 else 17)
+        (6 :: rev ([4; 7; 4]) ++ source_bit old :: outer)
+        (wide_after_first_payload row ++
+         encode_wide_program rows ++ source_bit next :: suffix).
+Proof.
+  intros row rows old next outer suffix.
+  destruct (marked_wide_program_q15_entry_exists row rows)
+    as [s [remaining [Hmarked [H15 H16]]]].
+  exists s, remaining.
+  apply (q15_q22_right_wide_program_first_hit
+    s remaining 4 [] old next outer row rows suffix).
+  - exact H15.
+  - exact H16.
+  - constructor.
+    + unfold q21_pass. right; right; left; reflexivity.
+    + constructor.
+  - exact Hmarked.
+  - simpl. constructor.
+    + unfold q15_pass. right; right; left; reflexivity.
+    + constructor.
+Qed.
+
 Print Assumptions q16_restores_wide_program.
 Print Assumptions q19_wide_program_first_restored_bit.
 Print Assumptions q15_q22_right_wide_program_first_hit.
+Print Assumptions q15_q22_right_first_hit_constructive.
 
 (** The preceding right-move theorem deliberately requires the entire
     restored q16 scan to be free of raw bits.  If an earlier 2 or 3 was
