@@ -833,7 +833,7 @@ Proof.
       source_bit next :: 7 :: final =
     (wide_after_first_payload row ++ encode_wide_program rows ++
       [source_bit next]) ++ 7 :: final).
-  { repeat rewrite app_assoc; simpl; reflexivity. }
+  { repeat rewrite <- app_assoc; simpl; reflexivity. }
   rewrite Htail.
   change
     (run (S (length (wide_after_first_payload row ++
