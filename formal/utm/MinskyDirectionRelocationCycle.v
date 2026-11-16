@@ -1386,7 +1386,7 @@ Qed.
 Example nine_bit_right_program_neighbor_mismatch :
   wide_first_payload_bit wide_nine_bit_example <> true /\
   (if wide_first_payload_bit wide_nine_bit_example then 3 else 2) = 2.
-Proof. split; reflexivity. Qed.
+Proof. split; [discriminate | reflexivity]. Qed.
 
 Print Assumptions q12_right_marked_program_target_mismatch.
 
