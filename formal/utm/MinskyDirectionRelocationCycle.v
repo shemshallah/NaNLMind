@@ -1339,7 +1339,7 @@ Proof.
     Forall q17_pass (after_hit ++ [source_bit next])).
   {
     unfold after_hit.
-    rewrite app_assoc.
+    rewrite <- app_assoc.
     apply q17_wide_return_scan_pass.
   }
   pose proof (q12_reached_right_first_hit_returns_q5
