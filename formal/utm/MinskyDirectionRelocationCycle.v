@@ -1120,13 +1120,13 @@ Proof.
 Qed.
 
 (** Small real-table witnesses guard against vacuous framed premises. *)
-Example q12_right_direction_ten_steps :
-  run 10 (entry_config 12 [0; 6] [0; 4; 0]) =
+Example q12_right_direction_eleven_steps :
+  run 11 (entry_config 12 [0; 6] [0; 4; 0]) =
   entry_config 19 [0] [0; 7; 4; 0].
 Proof. reflexivity. Qed.
 
-Example q13_left_direction_ten_steps :
-  run 10 (entry_config 13 [0; 6; 1] [0; 4; 0]) =
+Example q13_left_direction_eleven_steps :
+  run 11 (entry_config 13 [0; 6; 1] [0; 4; 0]) =
   entry_config 20 [] [1; 0; 0; 7; 4; 0].
 Proof. reflexivity. Qed.
 
