@@ -247,18 +247,16 @@ Proof.
      7 :: map q16_restore (rev (s :: remaining)) ++
      source_bit next :: suffix)).
   destruct target.
-  - rewrite (q18_scan_to_marker
+  - exact (q18_scan_to_marker
       (source_bit old :: rev (dir_head :: dir_remaining))
       (6 :: outer)
       (map q16_restore (rev (s :: remaining)) ++
        source_bit next :: suffix) Hreturn').
-    reflexivity.
-  - rewrite (q17_scan_to_marker
+  - exact (q17_scan_to_marker
       (source_bit old :: rev (dir_head :: dir_remaining))
       (6 :: outer)
       (map q16_restore (rev (s :: remaining)) ++
        source_bit next :: suffix) Hreturn').
-    reflexivity.
 Qed.
 
 Print Assumptions q15_q22_right_to_q19.
