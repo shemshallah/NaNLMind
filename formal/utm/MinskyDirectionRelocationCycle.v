@@ -438,7 +438,7 @@ Proof.
       (encode_wide_program (row :: rows) ++ suffix)))) in Hfull.
   destruct Hfull as [_ Hrestored].
   rewrite encode_wide_program_cons in Hrestored.
-  rewrite app_assoc in Hrestored.
+  rewrite <- app_assoc in Hrestored.
   exact (marked_wide_row_not_right_scan_safe row
     (encode_wide_program rows ++ suffix) Hrestored).
 Qed.
