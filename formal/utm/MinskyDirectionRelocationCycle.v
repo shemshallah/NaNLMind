@@ -1056,14 +1056,14 @@ Proof.
           source_bit old :: dir_head :: dir_remaining ++ 3 :: prefix).
   2:{
     rewrite Hlayout.
+    clear H16.
     remember (rev scanned) as backwards eqn:Heq.
     clear Heq.
     induction backwards as [|symbol backwards IHback]; simpl.
     - repeat rewrite <- app_assoc. reflexivity.
     - rewrite IHback.
       repeat rewrite <- app_assoc.
-      try reflexivity.
-      all: match goal with |- ?G => idtac "CURSOR-REMAINDER" G end.
+      reflexivity.
   }
   apply q16_framed_cursor_to_q19.
   - destruct (rev scanned); discriminate.
@@ -1104,6 +1104,7 @@ Proof.
           source_bit old :: dir_head :: dir_remaining ++ 2 :: prefix).
   2:{
     rewrite Hlayout.
+    clear H16.
     remember (rev scanned) as backwards eqn:Heq.
     clear Heq.
     induction backwards as [|symbol backwards IHback]; simpl.
