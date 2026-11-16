@@ -40,7 +40,7 @@ Fixpoint split_m_marker (xs : list nat) :
   | 6 :: rest => Some ([], rest)
   | s :: rest =>
       match split_m_marker rest with
-      | Some (left, right) => Some (s :: left, right)
+      | Some (prefix_bytes, suffix_bytes) => Some (s :: prefix_bytes, suffix_bytes)
       | None => None
       end
   end.
@@ -61,9 +61,9 @@ Definition decode_displaced_head
   | None => None
   | Some (before, after) =>
       match decode_binary_cells before, decode_binary_cells after with
-      | Some left, Some right =>
-          Some {| dh_left_rev := rev left;
-                  dh_current := current; dh_right := right |}
+      | Some decoded_left, Some decoded_right =>
+          Some {| dh_left_rev := rev decoded_left;
+                  dh_current := current; dh_right := decoded_right |}
       | _, _ => None
       end
   end.
