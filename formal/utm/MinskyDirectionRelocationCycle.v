@@ -20,7 +20,7 @@ Import ListNotations.
 From NaNLM Require Import MinskyTable MinskySourceEncoding
   MinskyConcreteEntry MinskyMatchMacro MinskyWritebackMacro
   MinskyHeadMoveMacro MinskyDirectionDecision MinskyRelocationMacro
-  MinskyWideSource MinskyWideConcreteDispatch.
+  MinskyDirectionCycle MinskyWideSource MinskyWideConcreteDispatch.
 
 Definition direction_phase_cost (scan direction_scan : list nat) : nat :=
   S (length (rev scan)) +
@@ -855,11 +855,73 @@ Proof.
     apply q17_wide_return_scan_pass.
 Qed.
 
+(** Reachable cursor bridge, with no synthetic q15 left-hand prefix.
+    The q12/q13-to-q15 theorems produce q15 with X=4 immediately to
+    the left. Following that very configuration across an arbitrary
+    safe right scan reaches q16.  This gives a genuine composition of
+    q12/q13 -> q14 -> q15 -> q16, but does not yet prove a complete
+    encoded-source instruction transition or the later q21/q22 branch. *)
+Theorem q12_to_q16_reached_cursor :
+  forall remaining s skipped prefix scanned next suffix,
+    Forall q12_pass (s :: remaining) ->
+    Forall q14_pass (rev (s :: remaining) ++ skipped) ->
+    Forall q15_pass scanned ->
+    run ((S (length (s :: remaining)) +
+          S (length (rev (s :: remaining) ++ skipped))) +
+         S (length scanned))
+      (entry_config 12 (remaining ++ 6 :: prefix)
+        (s :: skipped ++ 4 ::
+         (scanned ++ source_bit next :: suffix))) =
+    cfg_ml 16
+      (rev scanned ++ 4 ::
+       map q14_restore (rev (rev (s :: remaining) ++ skipped)) ++
+       3 :: prefix)
+      (source_bit next :: suffix).
+Proof.
+  intros remaining s skipped prefix scanned next suffix
+    H12 H14 H15.
+  rewrite writeback_run_add.
+  rewrite (q12_to_q15_direction_cycle
+    remaining s skipped prefix
+    (scanned ++ source_bit next :: suffix) H12 H14).
+  apply q15_scan_to_raw.
+  exact H15.
+Qed.
+
+Theorem q13_to_q16_reached_cursor :
+  forall remaining s skipped prefix scanned next suffix,
+    Forall q13_pass (s :: remaining) ->
+    Forall q14_pass (rev (s :: remaining) ++ skipped) ->
+    Forall q15_pass scanned ->
+    run ((S (length (s :: remaining)) +
+          S (length (rev (s :: remaining) ++ skipped))) +
+         S (length scanned))
+      (entry_config 13 (remaining ++ 6 :: prefix)
+        (s :: skipped ++ 4 ::
+         (scanned ++ source_bit next :: suffix))) =
+    cfg_ml 16
+      (rev scanned ++ 4 ::
+       map q14_restore (rev (rev (s :: remaining) ++ skipped)) ++
+       2 :: prefix)
+      (source_bit next :: suffix).
+Proof.
+  intros remaining s skipped prefix scanned next suffix
+    H13 H14 H15.
+  rewrite writeback_run_add.
+  rewrite (q13_to_q15_direction_cycle
+    remaining s skipped prefix
+    (scanned ++ source_bit next :: suffix) H13 H14).
+  apply q15_scan_to_raw.
+  exact H15.
+Qed.
+
 Print Assumptions q16_restores_wide_program.
 Print Assumptions q19_wide_program_first_restored_bit.
 Print Assumptions q15_q22_right_wide_program_first_hit.
 Print Assumptions q15_q22_right_first_hit_constructive.
 Print Assumptions q15_q22_right_collision_returns_q5.
+Print Assumptions q12_to_q16_reached_cursor.
+Print Assumptions q13_to_q16_reached_cursor.
 
 (** The preceding right-move theorem deliberately requires the entire
     restored q16 scan to be free of raw bits.  If an earlier 2 or 3 was
