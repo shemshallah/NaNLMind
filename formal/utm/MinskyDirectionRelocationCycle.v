@@ -1119,6 +1119,82 @@ Proof.
   - exact Hdir.
 Qed.
 
+(** The actual q13 entry now reaches the end of the LEFT movement macro.
+    The left neighbour must be a raw source bit, and the cells between
+    that bit and q16's marker must be safe for q17/q18.  Both requirements
+    are explicit here; no claim is made that a complete source encoding
+    automatically satisfies them. *)
+Theorem q13_reached_left_relocates_to_q5 :
+  forall remaining s skipped outer scanned next suffix
+         before old dir_head dir_remaining target,
+    Forall q13_pass (s :: remaining) ->
+    Forall q14_pass (rev (s :: remaining) ++ skipped) ->
+    Forall q15_pass scanned ->
+    map q14_restore (rev (rev (s :: remaining) ++ skipped)) =
+      before ++ source_bit old :: dir_head :: dir_remaining ->
+    Forall q16_pass (rev scanned ++ 4 :: before) ->
+    Forall q21_pass (dir_head :: dir_remaining) ->
+    Forall q17_pass (rev (dir_head :: dir_remaining)) ->
+    run (reached_direction_cost (s :: remaining) skipped scanned
+           (rev scanned ++ 4 :: before) (dir_head :: dir_remaining) +
+         (1 + S (length
+           (source_bit old :: rev (dir_head :: dir_remaining)))))
+      (entry_config 13 (remaining ++ 6 :: source_bit target :: outer)
+        (s :: skipped ++ 4 ::
+         (scanned ++ source_bit next :: suffix))) =
+    cfg_ml 5
+      (rev (source_bit old :: rev (dir_head :: dir_remaining)) ++
+       6 :: outer)
+      ((if target then 3 else 2) ::
+       map q16_restore (rev (rev scanned ++ 4 :: before)) ++
+       source_bit next :: suffix).
+Proof.
+  intros remaining s skipped outer scanned next suffix
+    before old dir_head dir_remaining target
+    H13 H14 H15 Hlayout H16 Hdir Hreturn.
+  assert (Hreturn' :
+    Forall q17_pass
+      (source_bit old :: rev (dir_head :: dir_remaining))).
+  {
+    constructor.
+    - destruct old; unfold q17_pass, source_bit; simpl;
+        [right; left; reflexivity | left; reflexivity].
+    - exact Hreturn.
+  }
+  rewrite writeback_run_add.
+  rewrite (q13_to_q20_reached_direction
+    remaining s skipped (source_bit target :: outer) scanned next
+    suffix before old dir_head dir_remaining
+    H13 H14 H15 Hlayout H16 Hdir).
+  match goal with
+  | |- _ = ?expected =>
+    change (run (S (length
+      (source_bit old :: rev (dir_head :: dir_remaining))))
+    (step (entry_config 20 outer
+      (source_bit target :: source_bit old ::
+       rev (dir_head :: dir_remaining) ++
+       7 :: map q16_restore (rev (rev scanned ++ 4 :: before)) ++
+       source_bit next :: suffix))) = expected)
+  end.
+  rewrite (q20_raw_to_m target outer
+    (source_bit old :: rev (dir_head :: dir_remaining) ++
+     7 :: map q16_restore (rev (rev scanned ++ 4 :: before)) ++
+     source_bit next :: suffix)).
+  destruct target.
+  - exact (q18_scan_to_marker
+      (source_bit old :: rev (dir_head :: dir_remaining))
+      (6 :: outer)
+      (map q16_restore (rev (rev scanned ++ 4 :: before)) ++
+       source_bit next :: suffix) Hreturn').
+  - exact (q17_scan_to_marker
+      (source_bit old :: rev (dir_head :: dir_remaining))
+      (6 :: outer)
+      (map q16_restore (rev (rev scanned ++ 4 :: before)) ++
+       source_bit next :: suffix) Hreturn').
+Qed.
+
+Print Assumptions q13_reached_left_relocates_to_q5.
+
 (** Small real-table witnesses guard against vacuous framed premises. *)
 Example q12_right_direction_eleven_steps :
   run 11 (entry_config 12 [0; 6] [0; 4; 0]) =
