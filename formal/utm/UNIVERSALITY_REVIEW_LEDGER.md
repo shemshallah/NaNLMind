@@ -32,7 +32,7 @@ Nature-level completion while any critical obligation below is open.
 | `MinskyHeadMoveMacro.v` | Checked: q15 raw-bit search and q16 restore/branch to q21/q22 | No |
 | `MinskyDirectionDecision.v` | Checked: q21/q22 leftward direction-mark decision and bit write | No |
 | `MinskyRelocationMacro.v` | Checked: q17/q18 marker restoration, q19/q20 displaced-M relocation, and q19-to-q5 exact cycle | No |
-| `MinskyDirectionRelocationCycle.v` | Checked: exact q15–q22 left/right direction cycles, obstruction to full-program q19 scans, q15–q22→q19 first hit, and a constructive admissible entry for any nonempty wide program | No |
+| `MinskyDirectionRelocationCycle.v` | Checked: exact q15–q22 left/right direction cycles, obstruction to full-program q19 scans, constructive q15–q22→q19 first hit, and an exact constructed q15→q5 collision/return cycle for arbitrary-width programs | No |
 | `MinskyMarkedProgram.v` | Checked: marked 0/1→2/3 descriptions admit a logical erasure; an actual unbounded native-table scan preserves a fully decodable arbitrary-width source program and untouched suffix | No |
 | `MinskyVariableBuffer.v` | Checked: exact first-state-bit dispatch after `2*n+4` native steps for all **positive** zero-buffer widths `n`; low return after `3*n+6`; high scan to next X/Y for any finite binary tail | No |
 | `MinskyMacroSimulation.v` | Checked *conditional theorem*: arbitrary-run simulation and both directions of halting equivalence, assuming as-yet-unproved concrete native macro/encoding hypotheses | No |
@@ -217,6 +217,25 @@ both passed for commit `c403c13`. These results establish nonvacuity of
 the q15→q19 collision theorem, not a complete encoded-instruction
 simulation. The full instruction-matching, writeback, source-state and
 source-tape invariants, and nonpremature halting remain open.
+
+The subsequent `q15_q22_right_collision_returns_q5` theorem follows that
+constructed q15 entry all the way through the **literal** q17/q18 return
+scan to q5. It identifies the exact terminal 2/3 bit mark and M=6
+placement, preserves the remaining description and external tape frame,
+and gives an exact finite microstep count independent of any fixed source
+state width. The pinned [fast Coq kernel check](https://github.com/shemshallah/NaNLMind/actions/runs/43917169621)
+and [independent full Coq rebuild](https://github.com/shemshallah/NaNLMind/actions/runs/43917169327)
+passed at `c7062cb` on `main`.
+
+**Reachability caveat:** the constructor supplies a valid q15 tape shape,
+not a proof that the shape arises from the machine's canonical q5-start
+encoding. The earlier q12/q13→q14→q15 theorem enters q15 with an X=4
+as its nearest left symbol, whereas the constructed first-hit witness
+starts with a raw binary symbol. Connecting the phases needs a different,
+correctly framed q15 scan theorem; the latter constructed witness cannot
+be silently substituted for an actual reached instruction phase. Neither
+the source tape/head transition nor native halting reflection has been
+proved by this collision cycle.
 
 ## November 15 native-compiler closure
 
