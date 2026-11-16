@@ -1388,6 +1388,37 @@ Example nine_bit_right_program_neighbor_mismatch :
   (if wide_first_payload_bit wide_nine_bit_example then 3 else 2) = 2.
 Proof. split; [discriminate | reflexivity]. Qed.
 
+(** Every nonempty marked program has SOME data-neighbour value for
+    which the constructed q12 rightward relocation is wrong.  Take the
+    Boolean complement of the first program payload bit.  This is a
+    quantified obstruction to THIS placement of the program on q19's
+    movement rail, not a nonuniversality theorem for the 23x8 table. *)
+Theorem q12_right_marked_program_unavoidable_bad_neighbor :
+  forall row rows final,
+    let next := negb (wide_first_payload_bit row) in
+    let scanned := map entry_rewrite
+      (encode_wide_program (row :: rows)) in
+    let after_hit := wide_after_first_payload row ++
+      encode_wide_program rows in
+    run (reached_direction_cost [0; 5] [] scanned
+           (rev scanned ++ [4]) [5] +
+         (S (length [5; 7; 4; 4]) +
+          S (length (after_hit ++ [source_bit next]))))
+      (entry_config 12 [5; 6]
+        (0 :: 4 :: (scanned ++ source_bit next :: 7 :: final))) =
+    cfg_ml 5
+      (rev (after_hit ++ [source_bit next]) ++ [6; 4; 4; 7; 5; 0])
+      ((if wide_first_payload_bit row then 3 else 2) :: final) /\
+    (if wide_first_payload_bit row then 3 else 2) <>
+      (if next then 3 else 2).
+Proof.
+  intros row rows final.
+  apply q12_right_marked_program_target_mismatch.
+  destruct (wide_first_payload_bit row); discriminate.
+Qed.
+
+Print Assumptions q12_right_marked_program_unavoidable_bad_neighbor.
+
 Print Assumptions q12_right_marked_program_target_mismatch.
 
 Print Assumptions q12_right_marked_program_collision_at_q5.
