@@ -316,6 +316,80 @@ Proof.
   lia.
 Qed.
 
+(** The old relocation premise is equivalent to two checkable
+    properties: the direction-side cells pass q19, and every cell
+    restored by q16 was originally one of 4,5,6,7.  This equivalence
+    makes the necessary invariant explicit at the q15->q5 boundary. *)
+Theorem q19_right_prefix_safe_iff :
+  forall direction scanned,
+    Forall q15_pass
+      (direction ++ 7 :: map q16_restore scanned) <->
+    (Forall q15_pass direction /\
+     Forall (fun symbol => 4 <= symbol <= 7) scanned).
+Proof.
+  intros direction scanned.
+  rewrite Forall_app.
+  split.
+  - intros [Hdirection Htail].
+    split; [exact Hdirection |].
+    apply (proj1 (q19_restored_scan_safe_iff scanned)).
+    inversion Htail as [|? ? _ Hrestored]; subst.
+    exact Hrestored.
+  - intros [Hdirection Hsafe].
+    split; [exact Hdirection |].
+    constructor.
+    + unfold q15_pass.
+      right; right; right; right; right; reflexivity.
+    + exact (proj2 (q19_restored_scan_safe_iff scanned) Hsafe).
+Qed.
+
+(** A usable source-encoding obligation for the rightward case:
+    instead of assuming an opaque q19 scan across the restored region,
+    impose the explicit 4..7 constraint and direction-side scan.
+    The table, transition counts, and output zipper are unchanged. *)
+Theorem q15_q22_right_relocates_with_safe_encoding :
+  forall s remaining dir_head dir_remaining
+         old next outer between final,
+    Forall q15_pass (rev (s :: remaining)) ->
+    Forall q16_pass (s :: remaining) ->
+    Forall q21_pass (dir_head :: dir_remaining) ->
+    Forall q15_pass (rev (dir_head :: dir_remaining)) ->
+    Forall (fun symbol => 4 <= symbol <= 7)
+      (rev (s :: remaining)) ->
+    Forall q17_pass between ->
+    run (direction_phase_cost (s :: remaining)
+           (dir_head :: dir_remaining) +
+         (S (length
+           (rev (dir_head :: dir_remaining) ++
+            7 :: map q16_restore (rev (s :: remaining)))) +
+          S (length between)))
+      (entry_config 15
+        (source_bit old :: dir_head :: dir_remaining ++ 3 :: outer)
+        (rev (s :: remaining) ++
+         source_bit next :: between ++ 7 :: final)) =
+    cfg_ml 5
+      (rev between ++ 6 ::
+       rev (rev (dir_head :: dir_remaining) ++
+            7 :: map q16_restore (rev (s :: remaining))) ++
+       source_bit old :: outer)
+      ((if next then 3 else 2) :: final).
+Proof.
+  intros s remaining dir_head dir_remaining
+    old next outer between final
+    H15 H16 H21 Hdirection Hsafe Hbetween.
+  apply (q15_q22_right_relocates_to_q5
+    s remaining dir_head dir_remaining old next outer between final
+    H15 H16 H21).
+  - apply (proj2 (q19_right_prefix_safe_iff
+        (rev (dir_head :: dir_remaining))
+        (rev (s :: remaining)))).
+    split; assumption.
+  - exact Hbetween.
+Qed.
+
+Print Assumptions q19_right_prefix_safe_iff.
+Print Assumptions q15_q22_right_relocates_with_safe_encoding.
+
 Print Assumptions q19_restored_scan_safe_iff.
 Print Assumptions q19_restoration_two_blocks_full_scan.
 Print Assumptions q19_restoration_three_blocks_full_scan.
