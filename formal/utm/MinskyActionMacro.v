@@ -424,6 +424,7 @@ Proof.
     rewrite (IH (q14_restore s :: left) tail Hrest).
     cbn [rev].
     rewrite map_app. simpl.
+    rewrite (append_singleton_assoc (map q14_restore (rev rest)) (q14_restore s) left).
     reflexivity.
 Qed.
 
