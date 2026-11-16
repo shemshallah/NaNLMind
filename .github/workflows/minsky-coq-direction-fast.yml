@@ -49,6 +49,10 @@ jobs:
       - name: Compile and kernel-check q15-q22 composition
         run: |
           set -euo pipefail
+          # upload-artifact strips the common formal/utm/ directory prefix.
+          # Restore object files only; leave checked-out .v sources untouched.
+          test -s MinskyTable.vo
+          cp ./*.vo formal/utm/
           test -s formal/utm/MinskyTable.vo
           test -s formal/utm/MinskyHeadMoveMacro.vo
           test -s formal/utm/MinskyDirectionDecision.vo
