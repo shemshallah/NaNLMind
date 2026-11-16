@@ -1054,7 +1054,8 @@ Proof.
      3 :: prefix)
     with ((rev scanned ++ 4 :: before) ++
           source_bit old :: dir_head :: dir_remaining ++ 3 :: prefix).
-  2:{ rewrite Hlayout. repeat rewrite app_assoc. reflexivity. }
+  2:{ rewrite Hlayout. repeat rewrite app_assoc.
+      cbn [app]. reflexivity. }
   apply q16_framed_cursor_to_q19.
   - destruct (rev scanned); discriminate.
   - exact H16.
@@ -1092,7 +1093,8 @@ Proof.
      2 :: prefix)
     with ((rev scanned ++ 4 :: before) ++
           source_bit old :: dir_head :: dir_remaining ++ 2 :: prefix).
-  2:{ rewrite Hlayout. repeat rewrite app_assoc. reflexivity. }
+  2:{ rewrite Hlayout. repeat rewrite app_assoc.
+      cbn [app]. reflexivity. }
   apply q16_framed_cursor_to_q20.
   - destruct (rev scanned); discriminate.
   - exact H16.
