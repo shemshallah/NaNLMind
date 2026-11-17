@@ -2557,6 +2557,11 @@ Proof.
         [-> | [-> | [-> | [-> | [-> | [-> | ->]]]]]];
       reflexivity.
   - inversion Hsafe as [|? ? Hsymbol Hrest]; subst.
+    change (run (S (S (length (next :: rest))))
+      (entry_config q (next :: (rest ++ 5 :: outer))
+        (symbol :: suffix)) =
+      entry_config (if Nat.eqb q 7 then 9 else 10) (5 :: outer)
+        (rev (symbol :: next :: rest) ++ suffix)).
     rewrite entry_run_successor.
     rewrite (q78_pass_step q symbol next
       (rest ++ 5 :: outer) suffix Hq Hsymbol).
