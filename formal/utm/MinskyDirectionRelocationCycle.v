@@ -1596,3 +1596,186 @@ Qed.
 Print Assumptions q12_right_marked_program_paired_neighbor_traces.
 Print Assumptions q12_right_marked_program_marker_correct_iff.
 Print Assumptions q12_right_guarded_cell_relocates_neighbor.
+
+
+(** A computable safety contract for a rightward q19 rail.  The Boolean
+    check is independent of source-state width, scan length, and the
+    neighbouring source-data bit. *)
+Definition q19_guarded_railb (scanned : list nat) : bool :=
+  forallb (fun symbol => (4 <=? symbol) && (symbol <=? 7)) scanned.
+
+Theorem q19_guarded_railb_spec :
+  forall scanned,
+    q19_guarded_railb scanned = true <->
+    Forall (fun symbol => 4 <= symbol <= 7) scanned.
+Proof.
+  intros scanned.
+  unfold q19_guarded_railb.
+  split.
+  - intro H.
+    apply forallb_forall in H.
+    apply Forall_forall.
+    intros symbol Hin.
+    specialize (H symbol Hin).
+    apply andb_true_iff in H.
+    destruct H as [Hlo Hhi].
+    split; apply Nat.leb_le; assumption.
+  - intro H.
+    apply forallb_forall.
+    apply Forall_forall in H.
+    intros symbol Hin.
+    specialize (H symbol Hin).
+    destruct H as [Hlo Hhi].
+    apply andb_true_iff.
+    split; apply Nat.leb_le; assumption.
+Qed.
+
+Lemma q19_guarded_rail_q15 :
+  forall scanned,
+    Forall (fun symbol => 4 <= symbol <= 7) scanned ->
+    Forall q15_pass scanned.
+Proof.
+  intros scanned H.
+  induction H as [|symbol rest Hsymbol Hrest IH].
+  - constructor.
+  - constructor.
+    + unfold q15_pass; lia.
+    + exact IH.
+Qed.
+
+Lemma q19_guarded_rail_rev_q16 :
+  forall scanned,
+    Forall (fun symbol => 4 <= symbol <= 7) scanned ->
+    Forall q16_pass (rev scanned).
+Proof.
+  intros scanned H.
+  induction H as [|symbol rest Hsymbol Hrest IH].
+  - constructor.
+  - simpl.
+    rewrite Forall_app.
+    split.
+    + exact IH.
+    + constructor.
+      * unfold q16_pass; lia.
+      * constructor.
+Qed.
+
+(** A complete and exact q12-entry RIGHT relocation theorem for
+    arbitrary scan lengths.  The preconditions expose the needed
+    q15 scan, reverse q16 scan and restored q19 passage separately.
+    Unlike the collided wide-program layout, here the returned q5
+    marker is the ACTUAL neighbouring source-data bit. *)
+Theorem q12_right_guarded_scan_relocates_neighbor :
+  forall scanned next final,
+    Forall q15_pass scanned ->
+    Forall q16_pass (rev scanned ++ [4]) ->
+    Forall q15_pass
+      ([5; 7] ++
+       map q16_restore (rev (rev scanned ++ [4]))) ->
+    run (reached_direction_cost [0; 5] [] scanned
+           (rev scanned ++ [4]) [5] +
+         (S (length
+           ([5; 7] ++
+             map q16_restore (rev (rev scanned ++ [4])))) + 1))
+      (entry_config 12 [5; 6]
+        (0 :: 4 :: (scanned ++ source_bit next :: 7 :: final))) =
+    cfg_ml 5
+      (6 :: rev
+        ([5; 7] ++
+          map q16_restore (rev (rev scanned ++ [4]))) ++ [0])
+      ((if next then 3 else 2) :: final).
+Proof.
+  intros scanned next final Hscan Hback Hsafe.
+  assert (H12 : Forall q12_pass [0; 5]).
+  { repeat constructor; unfold q12_pass; lia. }
+  assert (H14 : Forall q14_pass (rev [0; 5] ++ [])).
+  { repeat constructor; unfold q14_pass; lia. }
+  assert (Hlayout :
+    map q14_restore (rev (rev [0; 5] ++ [])) =
+      [] ++ source_bit false :: 5 :: []) by reflexivity.
+  assert (Hdir : Forall q21_pass [5]).
+  { constructor; [unfold q21_pass; lia | constructor]. }
+  assert (Hreturn : Forall q17_pass []) by constructor.
+  rewrite writeback_run_add.
+  rewrite (q12_to_q19_reached_direction
+    [5] 0 [] [] scanned next (7 :: final)
+    [] false 5 [] H12 H14 Hscan Hlayout Hback Hdir).
+  replace
+    (rev [5] ++
+      7 :: map q16_restore (rev (rev scanned ++ 4 :: [])) ++
+      source_bit next :: 7 :: final)
+    with
+    (([5; 7] ++
+       map q16_restore (rev (rev scanned ++ [4]))) ++
+      source_bit next :: [] ++ 7 :: final).
+  2:{ cbn [rev app]. reflexivity. }
+  rewrite (q19_to_q5_relocation
+    ([5; 7] ++
+      map q16_restore (rev (rev scanned ++ [4])))
+    [] next [0] final Hsafe Hreturn).
+  reflexivity.
+Qed.
+
+(** A successful checked rail gives all three premises automatically.
+    This is a useful compiler/representation interface: construction of
+    a safe rail is the only remaining layout-specific condition. *)
+Theorem q12_right_guarded_railb_sound :
+  forall scanned next final,
+    q19_guarded_railb scanned = true ->
+    run (reached_direction_cost [0; 5] [] scanned
+           (rev scanned ++ [4]) [5] +
+         (S (length
+           ([5; 7] ++
+             map q16_restore (rev (rev scanned ++ [4])))) + 1))
+      (entry_config 12 [5; 6]
+        (0 :: 4 :: (scanned ++ source_bit next :: 7 :: final))) =
+    cfg_ml 5
+      (6 :: rev
+        ([5; 7] ++
+          map q16_restore (rev (rev scanned ++ [4]))) ++ [0])
+      ((if next then 3 else 2) :: final).
+Proof.
+  intros scanned next final Hcheck.
+  apply q19_guarded_railb_spec in Hcheck.
+  apply q12_right_guarded_scan_relocates_neighbor.
+  - apply q19_guarded_rail_q15; exact Hcheck.
+  - rewrite Forall_app.
+    split.
+    + apply q19_guarded_rail_rev_q16; exact Hcheck.
+    + constructor; [unfold q16_pass; lia | constructor].
+  - rewrite rev_app_distr.
+    simpl.
+    rewrite rev_involutive.
+    simpl.
+    rewrite Forall_app.
+    split.
+    + repeat constructor; unfold q15_pass; lia.
+    + constructor.
+      * unfold q15_pass; lia.
+      * apply (proj2 (q19_restored_scan_safe_iff scanned)).
+        exact Hcheck.
+Qed.
+
+(** Every nonempty, conventionally marked wide-program rail FAILS
+    the executable safety check, independent of source-state width.
+    A repair must reroute or encode the payload off q19's raw-bit rail. *)
+Theorem q19_guarded_railb_rejects_marked_wide_program :
+  forall row rows,
+    q19_guarded_railb
+      (map entry_rewrite (encode_wide_program (row :: rows))) = false.
+Proof.
+  intros row rows.
+  destruct (q19_guarded_railb
+    (map entry_rewrite (encode_wide_program (row :: rows))))
+    eqn:Hcheck; [|reflexivity].
+  apply q19_guarded_railb_spec in Hcheck.
+  rewrite encode_wide_program_cons in Hcheck.
+  exfalso.
+  exact (marked_wide_row_not_right_scan_safe row
+    (encode_wide_program rows) Hcheck).
+Qed.
+
+Print Assumptions q19_guarded_railb_spec.
+Print Assumptions q12_right_guarded_scan_relocates_neighbor.
+Print Assumptions q12_right_guarded_railb_sound.
+Print Assumptions q19_guarded_railb_rejects_marked_wide_program.
