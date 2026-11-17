@@ -2180,7 +2180,8 @@ Proof.
   repeat rewrite map_app.
   cbn [map entry_rewrite].
   rewrite Hrewrite.
-  repeat rewrite app_assoc.
+  repeat (rewrite app_nil_l || rewrite app_nil_r ||
+          rewrite <- app_assoc).
   reflexivity.
 Qed.
 
