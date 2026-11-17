@@ -291,9 +291,9 @@ Fixpoint copy_all_clock (bits record_bits : list bool)
   match bits, record_bits with
   | c :: cs, r :: rs =>
       (S (length region) +
-       S (length (rev region ++ [4] ++
+       (S (length (rev region ++ [4] ++
            rev (map source_bit (c :: cs)) ++ processed)) +
-       S (length processed) + S (length cs))
+        (S (length processed) + S (length cs))))
       + copy_all_clock cs rs (match_mark r :: processed)
           (region ++ [match_mark r])
   | _, _ => 0
