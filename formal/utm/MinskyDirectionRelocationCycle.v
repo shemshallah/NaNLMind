@@ -3122,3 +3122,80 @@ Proof.
 Qed.
 
 Print Assumptions q12_protected_second_six_selects_q19_or_q20.
+
+
+(** Independent left-branch vault corruption witness.  Every nonempty
+    wide program has a 4 row delimiter immediately followed by a raw
+    source bit, even when its current-state bit list is empty. *)
+Lemma nonempty_wide_vault_exposes_raw_bit :
+  forall row rows,
+    exists bit suffix,
+      encode_wide_program (row :: rows) =
+      4 :: source_bit bit :: suffix.
+Proof.
+  intros row rows.
+  rewrite encode_wide_program_cons.
+  unfold encode_wide_row.
+  destruct (wr_current row) as [|bit remaining].
+  - exists (wr_read row).
+    eexists; reflexivity.
+  - exists bit.
+    eexists; reflexivity.
+Qed.
+
+(** q20 passes the row marker 4, then consumes and overwrites the
+    *first stored program bit* with 6.  This fact is unconditional over
+    the program fields and the surrounding tape. *)
+Theorem q20_nonempty_wide_vault_overwrites_program_bit :
+  forall row rows rest,
+    exists bit suffix,
+      run 2 (cfg_ml 20 (encode_wide_program (row :: rows))
+        (0 :: rest)) =
+      entry_config (if bit then 18 else 17)
+        (6 :: suffix) (4 :: 0 :: rest).
+Proof.
+  intros row rows rest.
+  destruct (nonempty_wide_vault_exposes_raw_bit row rows)
+    as [bit [suffix Hshape]].
+  rewrite Hshape.
+  exists bit, suffix.
+  destruct bit; reflexivity.
+Qed.
+
+(** The original q12 entry therefore reaches a concrete source-vault
+    overwrite in exactly 8n+54 native transitions on the left branch.
+    The theorem is existential only in the value of the first encoded
+    program bit; it is universal in row contents, tape tail, and rail. *)
+Theorem q12_protected_vault_left_branch_overwrites_program_bit :
+  forall scanned row rows next target tail,
+    q19_q5_roundtrip_railb scanned = true ->
+    exists bit suffix,
+      run (8 * length scanned + 54)
+        (entry_config 12
+          ([5; 6] ++ 6 :: encode_wide_program (row :: rows))
+          (0 :: 4 ::
+            (scanned ++ source_bit next :: 7 ::
+             source_bit false :: source_bit target :: tail))) =
+      entry_config (if bit then 18 else 17)
+        (6 :: suffix)
+        (4 :: 0 :: 7 :: map q16_restore
+          (rev (protected_q16_backscan scanned next false)) ++
+          source_bit target :: tail).
+Proof.
+  intros scanned row rows next target tail Hguard.
+  replace (8 * length scanned + 54)
+    with ((8 * length scanned + 52) + 2) by lia.
+  rewrite writeback_run_add.
+  rewrite (q12_protected_second_six_selects_q19_or_q20
+    scanned (row :: rows) next false target tail Hguard).
+  destruct (q20_nonempty_wide_vault_overwrites_program_bit
+    row rows
+    (7 :: map q16_restore
+      (rev (protected_q16_backscan scanned next false)) ++
+      source_bit target :: tail))
+    as [bit [suffix Hoverwrite]].
+  exists bit, suffix.
+  exact Hoverwrite.
+Qed.
+
+Print Assumptions q12_protected_vault_left_branch_overwrites_program_bit.
