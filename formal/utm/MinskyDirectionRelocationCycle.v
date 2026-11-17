@@ -2587,6 +2587,7 @@ Proof.
   intros scanned next Hguard.
   pose proof (proj1 (q19_q5_roundtrip_railb_spec scanned)
     Hguard) as Hrail.
+  clear Hguard.
   assert (Hrev : Forall q5_return_pass (rev scanned)).
   {
     induction Hrail as [|s rest Hs Hrest IH].
