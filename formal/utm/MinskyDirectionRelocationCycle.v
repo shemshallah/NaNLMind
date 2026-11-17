@@ -3017,8 +3017,8 @@ Proof.
        cfg_ml 21 (mark :: stored)
          (7 :: map q16_restore (rev (s :: rest)) ++
           source_bit target :: tail)).
-    apply q16_restore_to_raw.
-    exact Hsafe.
+    exact (q16_restore_to_raw rest s false
+      (mark :: stored) (source_bit target :: tail) Hsafe).
 Qed.
 
 (** The frozen table, not an abstract branch oracle, selects 19/20.
