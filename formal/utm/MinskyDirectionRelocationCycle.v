@@ -3250,7 +3250,7 @@ Proof.
 Qed.
 
 Lemma protected_q19_control_prefix_safe :
-  forall scanned next extra,
+  forall scanned (next extra : bool),
     q19_q5_roundtrip_railb scanned = true ->
     Forall q15_pass (protected_q19_control_prefix scanned).
 Proof.
