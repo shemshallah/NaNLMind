@@ -3144,7 +3144,7 @@ Qed.
     the program fields and the surrounding tape. *)
 Theorem q20_nonempty_wide_vault_overwrites_program_bit :
   forall row rows rest,
-    exists bit suffix,
+    exists (bit : bool) (suffix : list nat),
       run 2 (cfg_ml 20 (encode_wide_program (row :: rows))
         (0 :: rest)) =
       entry_config (if bit then 18 else 17)
@@ -3165,7 +3165,7 @@ Qed.
 Theorem q12_protected_vault_left_branch_overwrites_program_bit :
   forall scanned row rows next target tail,
     q19_q5_roundtrip_railb scanned = true ->
-    exists bit suffix,
+    exists (bit : bool) (suffix : list nat),
       run (8 * length scanned + 54)
         (entry_config 12
           ([5; 6] ++ 6 :: encode_wide_program (row :: rows))
