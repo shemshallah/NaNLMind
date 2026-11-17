@@ -2922,3 +2922,197 @@ Qed.
 
 Print Assumptions q12_protected_second_six_reenters_q15.
 Print Assumptions q12_protected_second_six_reenters_q16.
+
+
+(** Certified continuation beyond the q16 entry.  The entire restore
+    scan, including the return-control cells, is made explicit.  The
+    remaining program is arbitrary and untouched by this segment. *)
+
+Definition protected_q16_backscan
+    (scanned : list nat) (next extra : bool) : list nat :=
+  rev (scanned ++
+       [6; if next then 3 else 2; if extra then 3 else 2]) ++
+  [4; 7; 5].
+
+Lemma protected_q16_backscan_nonempty :
+  forall scanned next extra,
+    protected_q16_backscan scanned next extra <> [].
+Proof.
+  intros scanned next extra.
+  unfold protected_q16_backscan.
+  destruct (rev (scanned ++
+    [6; if next then 3 else 2; if extra then 3 else 2]));
+    discriminate.
+Qed.
+
+Lemma protected_q16_backscan_length :
+  forall scanned next extra,
+    length (protected_q16_backscan scanned next extra) =
+    length scanned + 6.
+Proof.
+  intros scanned next extra.
+  unfold protected_q16_backscan.
+  repeat rewrite app_length.
+  rewrite rev_length.
+  repeat rewrite app_length.
+  cbn [length].
+  lia.
+Qed.
+
+Lemma protected_q16_backscan_safe :
+  forall scanned next extra,
+    q19_q5_roundtrip_railb scanned = true ->
+    Forall q16_pass (protected_q16_backscan scanned next extra).
+Proof.
+  intros scanned next extra Hguard.
+  pose proof
+    (q15_returned_rail_is_safe scanned next extra Hguard) as Hrail.
+  change (Forall q16_pass
+    (scanned ++
+      [6; if next then 3 else 2; if extra then 3 else 2])) in Hrail.
+  assert (Hrev : forall l, Forall q16_pass l ->
+                            Forall q16_pass (rev l)).
+  {
+    intros l Hsafe.
+    induction Hsafe as [|x xs Hx Hxs IH].
+    - constructor.
+    - cbn [rev].
+      rewrite Forall_app.
+      split.
+      + exact IH.
+      + constructor; [exact Hx | constructor].
+  }
+  unfold protected_q16_backscan.
+  rewrite Forall_app.
+  split.
+  - apply Hrev; exact Hrail.
+  - repeat constructor; unfold q16_pass; auto 10.
+Qed.
+
+(** A q16 traversal consumes precisely one native step for each restored
+    symbol, plus the raw 0, which it rewrites to a 7. *)
+Lemma q16_backscan_crosses_raw_zero :
+  forall backscan mark stored target tail,
+    backscan <> [] ->
+    Forall q16_pass backscan ->
+    run (S (length backscan))
+      (cfg_ml 16 (backscan ++ 0 :: mark :: stored)
+        (source_bit target :: tail)) =
+    cfg_ml 21 (mark :: stored)
+      (7 :: map q16_restore (rev backscan) ++
+       source_bit target :: tail).
+Proof.
+  intros [|s rest] mark stored target tail Hnonempty Hsafe.
+  - contradiction Hnonempty; reflexivity.
+  - change
+      (run (S (length (s :: rest)))
+        (entry_config 16 (rest ++ 0 :: mark :: stored)
+          (s :: source_bit target :: tail)) =
+       cfg_ml 21 (mark :: stored)
+         (7 :: map q16_restore (rev (s :: rest)) ++
+          source_bit target :: tail)).
+    apply q16_restore_to_raw.
+    exact Hsafe.
+Qed.
+
+(** The frozen table, not an abstract branch oracle, selects 19/20.
+    In the left case cfg_ml accounts for the newly exposed outer cell. *)
+Lemma q21_protected_direction_mark :
+  forall (extra : bool) stored rest,
+    step (cfg_ml 21 ((if extra then 3 else 2) :: stored)
+      (7 :: rest)) =
+    if extra
+    then entry_config 19 (0 :: stored) (7 :: rest)
+    else cfg_ml 20 stored (0 :: 7 :: rest).
+Proof.
+  intros extra stored rest.
+  destruct extra; destruct stored; reflexivity.
+Qed.
+
+Theorem q16_protected_backscan_selects_native_branch :
+  forall scanned stored next extra target tail,
+    q19_q5_roundtrip_railb scanned = true ->
+    run (length scanned + 8)
+      (cfg_ml 16
+        (protected_q16_backscan scanned next extra ++
+         0 :: (if extra then 3 else 2) :: stored)
+        (source_bit target :: tail)) =
+    if extra
+    then entry_config 19 (0 :: stored)
+      (7 :: map q16_restore
+        (rev (protected_q16_backscan scanned next extra)) ++
+        source_bit target :: tail)
+    else cfg_ml 20 stored
+      (0 :: 7 :: map q16_restore
+        (rev (protected_q16_backscan scanned next extra)) ++
+        source_bit target :: tail).
+Proof.
+  intros scanned stored next extra target tail Hguard.
+  replace (length scanned + 8)
+    with (S (length (protected_q16_backscan scanned next extra)) + 1).
+  2:{
+    rewrite protected_q16_backscan_length.
+    lia.
+  }
+  rewrite writeback_run_add.
+  rewrite (q16_backscan_crosses_raw_zero
+    (protected_q16_backscan scanned next extra)
+    (if extra then 3 else 2) stored target tail
+    (protected_q16_backscan_nonempty scanned next extra)
+    (protected_q16_backscan_safe scanned next extra Hguard)).
+  change
+    (step (cfg_ml 21 ((if extra then 3 else 2) :: stored)
+      (7 :: map q16_restore
+        (rev (protected_q16_backscan scanned next extra)) ++
+        source_bit target :: tail)) = _).
+  apply q21_protected_direction_mark.
+Qed.
+
+(** Full exact native continuation: for every guarded rail, every
+    encoded wide program, and all three unconstrained data bits,
+    the protected-vault return reaches q19 on the marked-right branch
+    or q20 on the marked-left branch after 8n+52 transitions. *)
+Theorem q12_protected_second_six_selects_q19_or_q20 :
+  forall scanned rows next extra target tail,
+    q19_q5_roundtrip_railb scanned = true ->
+    run (8 * length scanned + 52)
+      (entry_config 12
+        ([5; 6] ++ 6 :: encode_wide_program rows)
+        (0 :: 4 ::
+          (scanned ++ source_bit next :: 7 ::
+           source_bit extra :: source_bit target :: tail))) =
+    if extra
+    then entry_config 19 (0 :: encode_wide_program rows)
+      (7 :: map q16_restore
+        (rev (protected_q16_backscan scanned next extra)) ++
+        source_bit target :: tail)
+    else cfg_ml 20 (encode_wide_program rows)
+      (0 :: 7 :: map q16_restore
+        (rev (protected_q16_backscan scanned next extra)) ++
+        source_bit target :: tail).
+Proof.
+  intros scanned rows next extra target tail Hguard.
+  replace (8 * length scanned + 52)
+    with ((7 * length scanned + 44) + (length scanned + 8))
+    by lia.
+  rewrite writeback_run_add.
+  rewrite (q12_protected_second_six_reenters_q16
+    scanned rows next extra target tail Hguard).
+  replace
+    (rev (scanned ++
+       [6; if next then 3 else 2; if extra then 3 else 2]) ++
+     4 :: 7 :: 5 :: 0 ::
+     (if extra then 3 else 2) :: encode_wide_program rows)
+    with
+    (protected_q16_backscan scanned next extra ++
+     0 :: (if extra then 3 else 2) :: encode_wide_program rows).
+  2:{
+    unfold protected_q16_backscan.
+    rewrite <- app_assoc.
+    reflexivity.
+  }
+  apply q16_protected_backscan_selects_native_branch.
+  exact Hguard.
+Qed.
+
+Print Assumptions q12_protected_second_six_selects_q19_or_q20.
