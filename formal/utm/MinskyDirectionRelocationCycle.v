@@ -3600,7 +3600,7 @@ Proof.
 Qed.
 
 Lemma q1718_sacrificial_five_guard_enters_q1 :
-  forall sacrificial stored tail,
+  forall (sacrificial : bool) stored tail,
     run 5
       (entry_config (if sacrificial then 18 else 17)
         (6 :: 5 :: stored) (0 :: 7 :: tail)) =
