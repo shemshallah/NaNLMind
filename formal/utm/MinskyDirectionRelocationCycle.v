@@ -2152,8 +2152,7 @@ Proof.
   replace (S (length (6 :: rev scanned ++ [4; 7])))
     with (length scanned + 4) in Hreturn.
   2:{
-    rewrite app_length.
-    rewrite rev_length.
+    repeat (rewrite app_length || rewrite rev_length).
     simpl [length].
     lia.
   }
