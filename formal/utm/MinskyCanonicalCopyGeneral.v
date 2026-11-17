@@ -235,17 +235,17 @@ Proof.
   rewrite (q6_scan_one region
     (4 :: rev raw ++ processed ++ 5 :: rev tbuffer ++ 6 :: rev data)
     record_tail Hreg6).
-  replace (cfg_ml 8 (rev region ++
+  replace (cfg_ml 7 (rev region ++
       4 :: rev raw ++ processed ++ 5 :: rev tbuffer ++ 6 :: rev data)
       (3 :: record_tail))
-    with (cfg_ml 8 (xs ++ 5 :: (rev tbuffer ++ 6 :: rev data))
+    with (cfg_ml 7 (xs ++ 5 :: (rev tbuffer ++ 6 :: rev data))
       (3 :: record_tail)).
   2:{ unfold xs. repeat rewrite <- app_assoc. reflexivity. }
   rewrite (cfg_ml_left_scan 8 xs (rev tbuffer ++ 6 :: rev data)
     2 record_tail Hne).
   rewrite <- (length_hd_tl xs Hne).
   rewrite dispatch_run_add.
-  rewrite (q8_scan_to_y (tl xs) (hd 2 xs)
+  rewrite (q7_scan_to_y (tl xs) (hd 2 xs)
     (rev tbuffer ++ 6 :: rev data) (3 :: record_tail) Hscan).
   rewrite (rev_hd_tl xs Hne).
   unfold xs, raw.
