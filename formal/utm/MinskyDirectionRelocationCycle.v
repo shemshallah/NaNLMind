@@ -1875,3 +1875,83 @@ Proof.
 Qed.
 
 Print Assumptions q12_right_guarded_preserves_program_vault.
+
+(** The complete guarded q12 -> q5 relocation has an EXACT linear
+    native microstep clock: three transitions per guarded scan cell,
+    plus sixteen setup/return transitions. *)
+Lemma q12_right_guarded_linear_clock :
+  forall scanned,
+    reached_direction_cost [0; 5] [] scanned
+      (rev scanned ++ [4]) [5] +
+    (S (length
+      ([5; 7] ++
+        map q16_restore (rev (rev scanned ++ [4])))) + 1) =
+    3 * length scanned + 16.
+Proof.
+  intros scanned.
+  unfold reached_direction_cost.
+  repeat rewrite app_length.
+  repeat rewrite rev_length.
+  repeat rewrite map_length.
+  simpl [length].
+  lia.
+Qed.
+
+Theorem q12_right_guarded_program_vault_linear :
+  forall scanned stored next final,
+    q19_guarded_railb scanned = true ->
+    run (3 * length scanned + 16)
+      (entry_config 12 ([5; 6] ++ stored)
+        (0 :: 4 :: (scanned ++ source_bit next :: 7 :: final))) =
+    cfg_ml 5
+      (6 :: rev
+        ([5; 7] ++
+          map q16_restore (rev (rev scanned ++ [4]))) ++
+       0 :: stored)
+      ((if next then 3 else 2) :: final).
+Proof.
+  intros scanned stored next final Hsafe.
+  rewrite <- (q12_right_guarded_linear_clock scanned).
+  apply q12_right_guarded_preserves_program_vault.
+  exact Hsafe.
+Qed.
+
+Lemma q19_guarded_repeat_four :
+  forall n, q19_guarded_railb (repeat 4 n) = true.
+Proof.
+  induction n as [|n IH]; simpl.
+  - reflexivity.
+  - exact IH.
+Qed.
+
+(** An unbounded, fully CONSTRUCTED family: any nonempty wide program,
+    kept in the left-side vault, is preserved while the q12->q5 right
+    transition crosses n safe 4-cells and marks the actual data bit.
+    This proves a possible local tape placement, not its q5 reachability
+    nor correct subsequent instruction lookup. *)
+Theorem q12_right_unbounded_program_vault :
+  forall n row rows next final,
+    run (3 * n + 16)
+      (entry_config 12
+        ([5; 6] ++ encode_wide_program (row :: rows))
+        (0 :: 4 ::
+          (repeat 4 n ++ source_bit next :: 7 :: final))) =
+    cfg_ml 5
+      (6 :: rev
+        ([5; 7] ++
+          map q16_restore
+            (rev (rev (repeat 4 n) ++ [4]))) ++
+       0 :: encode_wide_program (row :: rows))
+      ((if next then 3 else 2) :: final).
+Proof.
+  intros n row rows next final.
+  replace (3 * n + 16)
+    with (3 * length (repeat 4 n) + 16).
+  2:{ rewrite repeat_length. reflexivity. }
+  apply q12_right_guarded_program_vault_linear.
+  apply q19_guarded_repeat_four.
+Qed.
+
+Print Assumptions q12_right_guarded_linear_clock.
+Print Assumptions q12_right_guarded_program_vault_linear.
+Print Assumptions q12_right_unbounded_program_vault.
