@@ -3567,3 +3567,75 @@ Proof.
 Qed.
 
 Print Assumptions q12_sacrificial_raw_stop_preserves_left_program.
+
+
+(** An additional protected Y=5 between the sacrificial raw stop and the
+    wide-program vault can terminate the ensuing q5 return before q5
+    visits any stored source-row bit.  The following are strictly native
+    transition-table results, not a full source-instruction simulation. *)
+
+Theorem q12_sacrificial_stop_arbitrary_suffix :
+  forall scanned stored next sacrificial target tail,
+    q19_q5_roundtrip_railb scanned = true ->
+    run (8 * length scanned + 53)
+      (entry_config 12
+        ([5; 6] ++ 6 :: source_bit sacrificial :: stored)
+        (0 :: 4 ::
+          (scanned ++ source_bit next :: 7 ::
+           source_bit false :: source_bit target :: tail))) =
+    entry_config (if sacrificial then 18 else 17)
+      (6 :: stored)
+      (0 :: 7 :: map q16_restore
+        (rev (protected_q16_backscan scanned next false)) ++
+        source_bit target :: tail).
+Proof.
+  intros scanned stored next sacrificial target tail Hguard.
+  replace (8 * length scanned + 53)
+    with ((8 * length scanned + 52) + 1) by lia.
+  rewrite writeback_run_add.
+  rewrite (q12_protected_selects_branch_arbitrary_stored
+    scanned (source_bit sacrificial :: stored)
+    next false target tail Hguard).
+  destruct sacrificial; reflexivity.
+Qed.
+
+Lemma q1718_sacrificial_five_guard_enters_q1 :
+  forall sacrificial stored tail,
+    run 5
+      (entry_config (if sacrificial then 18 else 17)
+        (6 :: 5 :: stored) (0 :: 7 :: tail)) =
+    entry_config 1 (5 :: stored)
+      (6 :: 2 :: (if sacrificial then 3 else 2) :: tail).
+Proof.
+  intros sacrificial stored tail.
+  destruct sacrificial; reflexivity.
+Qed.
+
+Theorem q12_sacrificial_five_guard_preserves_program_to_q1 :
+  forall scanned rows next sacrificial target tail,
+    q19_q5_roundtrip_railb scanned = true ->
+    run (8 * length scanned + 58)
+      (entry_config 12
+        ([5; 6] ++
+         6 :: source_bit sacrificial :: 5 ::
+         encode_wide_program rows)
+        (0 :: 4 ::
+          (scanned ++ source_bit next :: 7 ::
+           source_bit false :: source_bit target :: tail))) =
+    entry_config 1 (5 :: encode_wide_program rows)
+      (6 :: 2 :: (if sacrificial then 3 else 2) ::
+       map q16_restore
+         (rev (protected_q16_backscan scanned next false)) ++
+       source_bit target :: tail).
+Proof.
+  intros scanned rows next sacrificial target tail Hguard.
+  replace (8 * length scanned + 58)
+    with ((8 * length scanned + 53) + 5) by lia.
+  rewrite writeback_run_add.
+  rewrite (q12_sacrificial_stop_arbitrary_suffix
+    scanned (5 :: encode_wide_program rows)
+    next sacrificial target tail Hguard).
+  apply q1718_sacrificial_five_guard_enters_q1.
+Qed.
+
+Print Assumptions q12_sacrificial_five_guard_preserves_program_to_q1.
