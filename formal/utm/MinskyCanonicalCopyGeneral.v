@@ -189,4 +189,99 @@ Proof.
   reflexivity.
 Qed.
 
+Theorem canonical_q6_copy_one_general :
+  forall processed c bits' region record_tail tbuffer data,
+    Forall q7_pass processed ->
+    Forall q9_pass processed ->
+    Forall q6_pass region ->
+    Forall q7_pass region ->
+    run (S (length region) +
+         (S (length (rev region ++ [4] ++
+             rev (map source_bit (c :: bits')) ++ processed)) +
+          (S (length processed) + S (length bits'))))
+      (entry_config 6
+        (4 :: rev (map source_bit (c :: bits')) ++ processed ++
+         5 :: rev tbuffer ++ 6 :: rev data)
+        (region ++ 1 :: record_tail)) =
+    entry_config 6
+      (4 :: rev (map source_bit bits') ++ 3 :: processed ++
+       5 :: rev tbuffer ++ 6 :: rev data)
+      (region ++ 3 :: record_tail).
+Proof.
+  intros processed c bits' region record_tail tbuffer data
+    Hproc7 Hproc9 Hreg6 Hreg7.
+  set (raw := map source_bit (c :: bits')).
+  set (xs := rev region ++ [4] ++ rev raw ++ processed).
+  assert (Hxs7 : Forall q7_pass xs).
+  { unfold xs. rewrite Forall_app. split.
+    - apply Forall_rev. exact Hreg7.
+    - rewrite Forall_app. split.
+      + constructor.
+        * unfold q7_pass; auto 10.
+        * constructor.
+      + rewrite Forall_app. split.
+        * apply Forall_rev. unfold raw. apply Forall_source_bit_q7.
+        * exact Hproc7. }
+  assert (Hne : xs <> []).
+  { intro H.
+    assert (Hlen : length xs = 0) by (rewrite H; reflexivity).
+    unfold xs in Hlen.
+    repeat rewrite app_length in Hlen.
+    cbn [length] in Hlen.
+    lia. }
+  assert (Hscan : Forall q8_pass (hd 2 xs :: tl xs)).
+  { apply Forall_q7_to_q8. apply Forall_hd_tl; [exact Hne | exact Hxs7]. }
+  rewrite dispatch_run_add.
+  rewrite (q6_scan_one region
+    (4 :: rev raw ++ processed ++ 5 :: rev tbuffer ++ 6 :: rev data)
+    record_tail Hreg6).
+  replace (cfg_ml 8 (rev region ++
+      4 :: rev raw ++ processed ++ 5 :: rev tbuffer ++ 6 :: rev data)
+      (3 :: record_tail))
+    with (cfg_ml 8 (xs ++ 5 :: (rev tbuffer ++ 6 :: rev data))
+      (3 :: record_tail)).
+  2:{ unfold xs. repeat rewrite <- app_assoc. reflexivity. }
+  rewrite (cfg_ml_left_scan 8 xs (rev tbuffer ++ 6 :: rev data)
+    2 record_tail Hne).
+  rewrite <- (length_hd_tl xs Hne).
+  rewrite dispatch_run_add.
+  rewrite (q8_scan_to_y (tl xs) (hd 2 xs)
+    (rev tbuffer ++ 6 :: rev data) (3 :: record_tail) Hscan).
+  rewrite (rev_hd_tl xs Hne).
+  unfold xs, raw.
+  rewrite rev_general_scan.
+  cbn [map].
+  repeat rewrite <- app_assoc.
+  cbn [app].
+  rewrite dispatch_run_add.
+  replace (S (length processed))
+    with (S (length (rev processed)))
+    by (rewrite rev_length; reflexivity).
+  assert (Hne_raw : source_bit c :: map source_bit bits' ++
+      4 :: region ++ 3 :: record_tail <> []).
+  { discriminate. }
+  assert (Hhd_raw : hd 0 (source_bit c :: map source_bit bits' ++
+      4 :: region ++ 3 :: record_tail) = 0 \/
+      hd 0 (source_bit c :: map source_bit bits' ++
+      4 :: region ++ 3 :: record_tail) = 1).
+  { cbn [hd]. destruct c; auto. }
+  rewrite (q9_write_after_marked (rev processed)
+    (source_bit c :: map source_bit bits' ++ 4 :: region ++ 3 :: record_tail)
+    (5 :: rev tbuffer ++ 6 :: rev data)
+    (Forall_rev Hproc9) Hne_raw Hhd_raw).
+  rewrite rev_involutive.
+  cbn [tl].
+  replace (S (length bits'))
+    with (S (length (map source_bit bits')))
+    by (rewrite map_length; reflexivity).
+  rewrite (q11_scan_to_marker (map source_bit bits')
+    (3 :: processed ++ 5 :: rev tbuffer ++ 6 :: rev data)
+    (region ++ 3 :: record_tail)
+    (Forall_source_bit_q11 bits')).
+  repeat rewrite <- app_assoc.
+  reflexivity.
+Qed.
+
+
 Print Assumptions canonical_q6_copy_zero_general.
+Print Assumptions canonical_q6_copy_one_general.
