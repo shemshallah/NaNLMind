@@ -2075,3 +2075,162 @@ Proof. reflexivity. Qed.
 Print Assumptions q5_return_scan_to_first_five.
 Print Assumptions q19_q5_roundtrip_railb_spec.
 Print Assumptions q19_q5_roundtrip_railb_q19.
+
+
+(** The dual guard is fixed by both native restoration and q5 return
+    rewriting: on 4,6,7 neither phase changes the cell value. *)
+Lemma q19_q5_roundtrip_fixed_maps :
+  forall scanned,
+    q19_q5_roundtrip_railb scanned = true ->
+    map q16_restore scanned = scanned /\
+    map entry_rewrite scanned = scanned.
+Proof.
+  intros scanned H.
+  apply (proj1 (q19_q5_roundtrip_railb_spec scanned)) in H.
+  induction H as [|symbol rest Hsymbol Hrest IH].
+  - split; reflexivity.
+  - destruct IH as [IHrestore IHentry].
+    destruct Hsymbol as [-> | [-> | ->]]; simpl;
+      rewrite IHrestore, IHentry; split; reflexivity.
+Qed.
+
+Lemma q19_q5_roundtrip_return_safe :
+  forall scanned,
+    q19_q5_roundtrip_railb scanned = true ->
+    Forall q5_return_pass (6 :: rev scanned ++ [4; 7]).
+Proof.
+  intros scanned H.
+  apply (proj1 (q19_q5_roundtrip_railb_spec scanned)) in H.
+  assert (Hrev : Forall q5_return_pass (rev scanned)).
+  {
+    induction H as [|symbol rest Hsymbol Hrest IH].
+    - constructor.
+    - simpl.
+      rewrite Forall_app.
+      split.
+      + exact IH.
+      + constructor.
+        * destruct Hsymbol as [-> | [-> | ->]];
+            unfold q5_return_pass; auto 10.
+        * constructor.
+  }
+  constructor.
+  - unfold q5_return_pass; auto 10.
+  - rewrite Forall_app.
+    split.
+    + exact Hrev.
+    + constructor.
+      * unfold q5_return_pass; auto 10.
+      * constructor.
+        -- unfold q5_return_pass; auto 10.
+        -- constructor.
+Qed.
+
+(** The actual q5 return moves left across 6, the restored dual-safe
+    rail, the 4 and 7 sentinels, and enters q1 at the FIRST 5.
+    The program remains to the left of the 0-boundary. *)
+Theorem q5_roundtrip_program_vault_return :
+  forall scanned stored next final,
+    q19_q5_roundtrip_railb scanned = true ->
+    run (length scanned + 4)
+      (cfg_ml 5
+        (6 :: rev ([5; 7; 4] ++ scanned) ++ 0 :: stored)
+        ((if next then 3 else 2) :: final)) =
+    entry_config 1 (5 :: 0 :: stored)
+      ([7; 4] ++ scanned ++
+       [6; if next then 3 else 2] ++ final).
+Proof.
+  intros scanned stored next final Hguard.
+  pose proof (q19_q5_roundtrip_return_safe scanned Hguard)
+    as Hsafe.
+  pose proof (proj2 (q19_q5_roundtrip_fixed_maps
+    scanned Hguard)) as Hrewrite.
+  pose proof (q5_return_scan_to_first_five
+    (rev scanned ++ [4; 7]) 6
+    (0 :: stored)
+    ((if next then 3 else 2) :: final) Hsafe) as Hreturn.
+  replace (S (length (6 :: rev scanned ++ [4; 7])))
+    with (length scanned + 4) in Hreturn.
+  2:{
+    rewrite app_length.
+    rewrite rev_length.
+    simpl [length].
+    lia.
+  }
+  assert (Hshape :
+    cfg_ml 5
+      (6 :: rev ([5; 7; 4] ++ scanned) ++ 0 :: stored)
+      ((if next then 3 else 2) :: final) =
+    entry_config 5
+      ((rev scanned ++ [4; 7]) ++ 5 :: 0 :: stored)
+      (6 :: (if next then 3 else 2) :: final)).
+  {
+    unfold cfg_ml.
+    rewrite rev_app_distr.
+    cbn [rev].
+    repeat rewrite app_assoc.
+    reflexivity.
+  }
+  rewrite Hshape.
+  rewrite Hreturn.
+  cbn [rev].
+  rewrite rev_app_distr.
+  cbn [rev].
+  rewrite rev_involutive.
+  repeat rewrite map_app.
+  cbn [map entry_rewrite].
+  rewrite Hrewrite.
+  repeat rewrite app_assoc.
+  reflexivity.
+Qed.
+
+(** Exact end-to-end native q12->q1 trace, for ANY stored source code
+    and ANY finite dual-safe right rail.  Source-level dispatch and
+    source-step simulation remain separate, unproved obligations. *)
+Theorem q12_right_roundtrip_program_vault_to_q1 :
+  forall scanned stored next final,
+    q19_q5_roundtrip_railb scanned = true ->
+    run (4 * length scanned + 20)
+      (entry_config 12 ([5; 6] ++ stored)
+        (0 :: 4 ::
+          (scanned ++ source_bit next :: 7 :: final))) =
+    entry_config 1 (5 :: 0 :: stored)
+      ([7; 4] ++ scanned ++
+       [6; if next then 3 else 2] ++ final).
+Proof.
+  intros scanned stored next final Hguard.
+  pose proof (q19_q5_roundtrip_railb_q19
+    scanned Hguard) as H19.
+  pose proof (proj1 (q19_q5_roundtrip_fixed_maps
+    scanned Hguard)) as Hrestore.
+  replace (4 * length scanned + 20)
+    with ((3 * length scanned + 16) + (length scanned + 4))
+    by lia.
+  rewrite writeback_run_add.
+  rewrite (q12_right_guarded_program_vault_linear
+    scanned stored next final H19).
+  replace (map q16_restore (rev (rev scanned ++ [4])))
+    with (4 :: scanned).
+  2:{
+    rewrite rev_app_distr.
+    cbn [rev].
+    rewrite rev_involutive.
+    cbn [map].
+    rewrite Hrestore.
+    reflexivity.
+  }
+  change
+    (run (length scanned + 4)
+      (cfg_ml 5
+        (6 :: rev ([5; 7; 4] ++ scanned) ++ 0 :: stored)
+        ((if next then 3 else 2) :: final)) =
+     entry_config 1 (5 :: 0 :: stored)
+       ([7; 4] ++ scanned ++
+        [6; if next then 3 else 2] ++ final)).
+  apply q5_roundtrip_program_vault_return.
+  exact Hguard.
+Qed.
+
+Print Assumptions q19_q5_roundtrip_fixed_maps.
+Print Assumptions q5_roundtrip_program_vault_return.
+Print Assumptions q12_right_roundtrip_program_vault_to_q1.
