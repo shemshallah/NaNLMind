@@ -322,3 +322,60 @@ computable complete q5 representation, (2) show correct source-row
 selection, write and head relocation under that representation, (3) prove
 the representation invariant persists under all source steps, and
 (4) prove both directions of halting reflection.
+
+## November 17 guarded right-rail action boundary (kernel-checked)
+
+The guarded q12->q5->q6 placement was introduced to avoid q19 crossing a
+q5-marked program on the right.  The literal-table composition now covers
+the q6 action phase, the q7/q8 return, the q9/q10 writeback entry, and the
+second q12/q13 direction entry:
+
+- `q12_roundtrip_no_raw_suffix_stalls_q6`: if the q6 return frame has no
+  raw 0/1 suffix, q6 remains the state for every further fuel.
+- `q6_guarded_rail_to_q7_or_q8`: q6 crosses the rail, marks the first raw
+  bit 2/3, and enters q7/q8; exact clock `length scanned + 3`.
+- `q78_scan_back_to_first_five` and
+  `q78_returned_vault_to_q9_or_q10`: q7/q8 return to the first Y=5 and
+  q9/q10 re-enter with the exact preserved frame; exact clock
+  `length scanned + 5`.
+- `q910_restored_four_to_q12_or_q13`: the next two literal transitions
+  stop on the route 4 and turn back into q12/q13, leaving M=6 and the
+  marked region on the **right** of the head.
+- `q6_complete_return_to_q12_or_q13`: complete q6 -> q12/q13 return with
+  exact clock `2 * length scanned + 10`.
+- `q12_complete_return_into_six_free_vault`: complete
+  q12 -> q6 -> q7/q8 -> q9/q10 -> q12/q13 cycle with exact clock
+  `6 * length scanned + 32`, preserving the stored wide program verbatim.
+- `q12_complete_vault_cycle_cannot_resume`: for any additional fuel, the
+  state remains 12 or 13 because the left frontier
+  `5 :: 0 :: encode_wide_program rows` is 6-free.
+
+The guarded right-rail placement is consequently **not a complete
+instruction cycle**.  It avoids the q19/program collision for the movement
+half-cycle but destroys the left-accessible M=6 required by the next
+direction phase.  A complete encoding must keep the canonical left-data /
+right-program orientation and make q19 avoid the program by construction,
+or keep a left-accessible 6 marker between Y and the route 4.  See
+[`GUARDED_VAULT_BOUNDARY.md`](GUARDED_VAULT_BOUNDARY.md).
+
+The fast Coq job
+[44147774350](https://github.com/shemshallah/NaNLMind/actions/runs/44147774350)
+passed `coqc` and `coqchk`, and the independent full bridge
+[44147774314](https://github.com/shemshallah/NaNLMind/actions/runs/44147774314)
+rebuilt the dependency chain and checked the cycle at `58e7eb1`.  No
+source-step simulation, canonical q5 reachability, or universality claim
+is added.
+
+### Next critical path after the guarded boundary
+
+1. Define the canonical full-configuration invariant: left data tape, M=6,
+   t-buffer, Y, condition, program rows, Y, tail.
+2. Prove the q5 left scan and the q1 all-match comparison reach q6 for the
+   selected row, including the mismatch restart loop.
+3. Prove q6-q11 writeback and q12-q22 relocation preserve the invariant,
+   with q19 confined to the data/t-buffer region rather than the program.
+4. Lift to arbitrary finite source runs and prove both directions of
+   halting reflection.
+5. Separately construct the reduction from a reference universal machine
+   into the source model, or an equivalent certified universality theorem
+   for that model.
