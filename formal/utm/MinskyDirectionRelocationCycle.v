@@ -14,7 +14,7 @@
     still be connected to these entry configurations.
 *)
 
-From Coq Require Import List Bool Lia.
+From Coq Require Import List Arith Bool Lia.
 Import ListNotations.
 
 From NaNLM Require Import MinskyTable MinskySourceEncoding
