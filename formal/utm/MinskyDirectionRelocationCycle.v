@@ -2216,7 +2216,7 @@ Proof.
     rewrite rev_app_distr.
     cbn [rev].
     rewrite rev_involutive.
-    cbn [map].
+    change (4 :: map q16_restore scanned = 4 :: scanned).
     rewrite Hrestore.
     reflexivity.
   }
