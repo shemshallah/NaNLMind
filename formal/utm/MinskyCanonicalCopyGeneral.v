@@ -321,11 +321,11 @@ Proof.
     intros record_bits processed region record_tail tbuffer data
       Hlen Hproc7 Hproc9 Hreg6 Hreg7.
   - destruct record_bits as [|r rs].
-    + cbn [copy_all_clock map]. reflexivity.
+    + cbn [copy_all_clock]. reflexivity.
     + cbn [length] in Hlen. discriminate Hlen.
   - destruct record_bits as [|r rs].
     + cbn [length] in Hlen. discriminate Hlen.
-    + cbn [copy_all_clock map].
+    + cbn [copy_all_clock].
       rewrite dispatch_run_add.
       destruct r.
       * rewrite (canonical_q6_copy_one_general processed c cs region
