@@ -2986,7 +2986,13 @@ Proof.
   rewrite Forall_app.
   split.
   - apply Hrev; exact Hrail.
-  - repeat constructor; unfold q16_pass; auto 10.
+  - constructor.
+    + unfold q16_pass; auto 10.
+    + constructor.
+      * unfold q16_pass; auto 10.
+      * constructor.
+        -- unfold q16_pass; auto 10.
+        -- constructor.
 Qed.
 
 (** A q16 traversal consumes precisely one native step for each restored
