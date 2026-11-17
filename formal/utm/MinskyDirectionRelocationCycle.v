@@ -2492,6 +2492,7 @@ Proof.
     intros left tail Hscan.
   - reflexivity.
   - inversion Hscan as [|? ? Hsymbol Hrest]; subst.
+    cbn [length app].
     rewrite entry_run_successor.
     rewrite (q6_nonraw_step symbol left (rest ++ tail) Hsymbol).
     rewrite (IH (symbol :: left) tail Hrest).
