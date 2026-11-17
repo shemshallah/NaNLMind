@@ -428,3 +428,51 @@ selection, q6 action copy, q9/q10 writeback, q12-q22 movement, and halting
 reflection remain open.  The q6 entry begins with `map match_mark bits ++
 tail`; the X/Y delimiters in `tail` must be handled explicitly before the
 existing action macros can be composed.
+
+## November 17 canonical q6-q11 first-bit copy cycle (kernel-checked)
+
+After `canonical_q5_match_to_q6`, the first canonical copy cycle is now
+checked for the frozen 23x8 table.  Write the condition as `c :: bits'`.
+
+- `q6_canonical_scan_zero_to_q10` and
+  `q6_canonical_scan_one_to_q9`: q6 scans the marked comparison prefix to
+  the first raw record bit, marks it 2/3, and q8/q7 return to the first
+  Y=5.  The exact scan clock is
+
+  ```text
+  S (length (map match_mark bits))
+  + S (length (rev (map match_mark bits) ++ [4] ++ rev (map match_raw bits)))
+  ```
+
+- `canonical_q6_copy_zero_to_q6` and `canonical_q6_copy_one_to_q6`:
+  q10/q9 write the copied mark into the first raw condition bit, move it to
+  the left of Y, and q11 returns over the remaining raw condition bits and
+  X=4 to q6.  The complete cycle has clock
+
+  ```text
+  (S |region| + S |scan|) + (1 + S |bits'|) = 4 * length bits + 4
+  ```
+
+  and result
+
+  ```text
+  entry_config 6
+    (4 :: rev (map source_bit bits') ++ 2/3 :: 5 ::
+     rev t-buffer ++ 6 :: rev data)
+    (map match_mark bits ++ [2/3] ++ rest).
+  ```
+
+  The first condition bit is moved left of Y, the first record bit stays
+  marked, the remaining condition bits stay raw, and the data tape,
+  t-buffer, M=6 and Y=5 are untouched.
+
+The fast job
+[44182091042](https://github.com/shemshallah/NaNLMind/actions/runs/44182091042)
+and the independent full bridge
+[44182096988](https://github.com/shemshallah/NaNLMind/actions/runs/44182096988)
+passed `coqc` and `coqchk`.  See
+[`CANONICAL_COPY_CYCLE.md`](CANONICAL_COPY_CYCLE.md).
+
+This is one cycle, not an induction.  Source-row selection, mismatch
+restart, the write/direction fields, q12-q22 relocation, halting reflection,
+and the universality reduction remain open.
