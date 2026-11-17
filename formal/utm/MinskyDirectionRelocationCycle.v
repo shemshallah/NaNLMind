@@ -1627,7 +1627,9 @@ Proof.
       split.
       * apply andb_true_iff.
         destruct Hsymbol as [Hlo Hhi].
-        split; apply Nat.leb_le; assumption.
+        split.
+        -- apply (proj2 (Nat.leb_le 4 symbol)). exact Hlo.
+        -- apply (proj2 (Nat.leb_le symbol 7)). exact Hhi.
       * apply (proj2 IH).
         exact Hrest.
 Qed.
