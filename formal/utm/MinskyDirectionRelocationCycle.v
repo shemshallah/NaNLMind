@@ -1602,7 +1602,7 @@ Print Assumptions q12_right_guarded_cell_relocates_neighbor.
     check is independent of source-state width, scan length, and the
     neighbouring source-data bit. *)
 Definition q19_guarded_railb (scanned : list nat) : bool :=
-  forallb (fun symbol => (4 <=? symbol) && (symbol <=? 7)) scanned.
+  forallb (fun symbol => Nat.leb 4 symbol && Nat.leb symbol 7) scanned.
 
 Theorem q19_guarded_railb_spec :
   forall scanned,
