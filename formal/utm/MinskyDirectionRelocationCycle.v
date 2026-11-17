@@ -2567,7 +2567,7 @@ Proof.
       (rest ++ 5 :: outer) suffix Hq Hsymbol).
     rewrite (IH next outer (symbol :: suffix) q Hq Hrest).
     cbn [rev].
-    rewrite append_singleton_assoc.
+    repeat rewrite append_singleton_assoc.
     reflexivity.
 Qed.
 
