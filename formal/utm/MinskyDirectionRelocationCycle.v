@@ -1715,10 +1715,12 @@ Proof.
        map q16_restore (rev (rev scanned ++ [4]))) ++
       source_bit next :: [] ++ 7 :: final).
   2:{ cbn [rev app]. reflexivity. }
-  rewrite (q19_to_q5_relocation
+  pose proof (q19_to_q5_relocation
     ([5; 7] ++
       map q16_restore (rev (rev scanned ++ [4])))
-    [] next [0] final Hsafe Hreturn).
+    [] next [0] final Hsafe Hreturn) as Hfinish.
+  cbn [app] in Hfinish.
+  rewrite Hfinish.
   reflexivity.
 Qed.
 
