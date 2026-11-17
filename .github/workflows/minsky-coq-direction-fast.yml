@@ -7,6 +7,7 @@ on:
     paths:
       - '.github/workflows/minsky-coq-direction-fast.yml'
       - 'formal/utm/MinskyDirectionRelocationCycle.v'
+      - 'formal/utm/MinskyCanonicalMatch.v'
 
 permissions:
   contents: read
@@ -69,3 +70,49 @@ jobs:
           fi
           coqchk -Q formal/utm NaNLM formal/utm/MinskyDirectionRelocationCycle.vo
           echo 'NANLM FAST Q15-Q22 COQCHK PASS'
+
+  canonical-match:
+    runs-on: ubuntu-latest
+    container:
+      image: coqorg/coq:8.20
+      options: --user root
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Locate pinned Coq 8.20
+        run: |
+          set -euo pipefail
+          COQBIN=$(dirname "$(find /home/coq/.opam -name coqc -type f | head -1)")
+          test -x "$COQBIN/coqc"
+          echo "$COQBIN" >> "$GITHUB_PATH"
+          "$COQBIN/coqc" --version
+
+      - name: Restore compiled dependencies from full bridge
+        uses: actions/download-artifact@v4
+        with:
+          name: minsky-coq-bridge-43791910776
+          run-id: 43791910776
+          github-token: ${{ github.token }}
+          path: .
+
+      - name: Compile and kernel-check canonical q5 match
+        run: |
+          set -euo pipefail
+          test -s MinskyTable.vo
+          test -s MinskyConcreteEntry.vo
+          test -s MinskyMatchMacro.vo
+          test -s MinskyConcreteDispatch.vo
+          cp ./*.vo formal/utm/
+          if ! coqc -Q formal/utm NaNLM \
+              -w -notation-overridden,-stdlib-vector \
+              formal/utm/MinskyCanonicalMatch.v \
+              > /tmp/canonical-match-coq.log 2>&1; then
+            tail -n 100 /tmp/canonical-match-coq.log
+            while IFS= read -r line; do
+              echo "::error title=Coq canonical match::$line"
+            done < <(tail -n 100 /tmp/canonical-match-coq.log)
+            exit 1
+          fi
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyCanonicalMatch.vo
+          echo 'NANLM CANONICAL Q5 MATCH COQCHK PASS'
