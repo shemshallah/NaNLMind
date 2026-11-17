@@ -2049,16 +2049,9 @@ Proof.
       * apply (proj1 IH); exact Hrest.
     + intro H.
       inversion H as [|? ? Hsymbol Hrest]; subst.
-      apply andb_true_iff.
-      split.
-      * apply andb_true_iff.
-        split.
-        -- apply andb_true_iff; split;
-           apply Nat.leb_le; lia.
-        -- apply negb_true_iff.
-           apply Nat.eqb_neq.
-           lia.
-      * apply (proj2 IH); exact Hrest.
+      apply (proj2 IH) in Hrest.
+      destruct Hsymbol as [-> | [-> | ->]];
+        simpl; exact Hrest.
 Qed.
 
 Lemma q19_q5_roundtrip_railb_q19 :
