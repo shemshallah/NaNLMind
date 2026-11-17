@@ -1955,3 +1955,127 @@ Qed.
 Print Assumptions q12_right_guarded_linear_clock.
 Print Assumptions q12_right_guarded_program_vault_linear.
 Print Assumptions q12_right_unbounded_program_vault.
+
+
+(** q5's actual return alphabet is broader than the historical
+    entry_scan_symbol predicate: 2, 3, 6, and 7 are also traversed,
+    whereas 5 is the unique return delimiter. *)
+Definition q5_return_pass (symbol : nat) : Prop :=
+  symbol = 0 \/ symbol = 1 \/ symbol = 2 \/ symbol = 3 \/
+  symbol = 4 \/ symbol = 6 \/ symbol = 7.
+
+Lemma q5_return_pass_step :
+  forall symbol next left right,
+    q5_return_pass symbol ->
+    step (entry_config 5 (next :: left) (symbol :: right)) =
+    entry_config 5 left (next :: entry_rewrite symbol :: right).
+Proof.
+  intros symbol next left right H.
+  destruct H as [-> | [-> | [-> | [-> | [-> | [-> | ->]]]]]];
+    reflexivity.
+Qed.
+
+(** Full q5 right-to-left return over the literal frozen table.
+    The scan can contain any non-5 symbol in the actual alphabet. *)
+Theorem q5_return_scan_to_first_five :
+  forall remaining symbol prefix suffix,
+    Forall q5_return_pass (symbol :: remaining) ->
+    run (S (length (symbol :: remaining)))
+      (entry_config 5 (remaining ++ 5 :: prefix)
+        (symbol :: suffix)) =
+    entry_config 1 (5 :: prefix)
+      (map entry_rewrite (rev (symbol :: remaining)) ++ suffix).
+Proof.
+  intros remaining.
+  induction remaining as [|next rest IH];
+    intros symbol prefix suffix Hscan.
+  - inversion Hscan as [|? ? Hsymbol _]; subst.
+    destruct Hsymbol as
+      [-> | [-> | [-> | [-> | [-> | [-> | ->]]]]]];
+      reflexivity.
+  - inversion Hscan as [|? ? Hsymbol Hrest]; subst.
+    change (run (S (S (length (next :: rest))))
+        (entry_config 5 (next :: (rest ++ 5 :: prefix))
+          (symbol :: suffix)) =
+      entry_config 1 (5 :: prefix)
+        (map entry_rewrite (rev (symbol :: next :: rest)) ++ suffix)).
+    rewrite entry_run_successor.
+    rewrite (q5_return_pass_step symbol next
+      (rest ++ 5 :: prefix) suffix Hsymbol).
+    rewrite (IH next prefix (entry_rewrite symbol :: suffix) Hrest).
+    cbn [rev].
+    repeat rewrite map_app.
+    cbn [map].
+    rewrite (append_singleton_assoc
+      (map entry_rewrite (rev rest) ++ [entry_rewrite next])
+      (entry_rewrite symbol) suffix).
+    reflexivity.
+Qed.
+
+(** A two-direction rail must ALSO avoid q5's stop delimiter.
+    This checked contract accepts exactly 4, 6 and 7. *)
+Definition q19_q5_roundtrip_railb (scanned : list nat) : bool :=
+  forallb
+    (fun symbol =>
+      (Nat.leb 4 symbol && Nat.leb symbol 7) &&
+      negb (Nat.eqb symbol 5)) scanned.
+
+Theorem q19_q5_roundtrip_railb_spec :
+  forall scanned,
+    q19_q5_roundtrip_railb scanned = true <->
+    Forall (fun symbol =>
+      symbol = 4 \/ symbol = 6 \/ symbol = 7) scanned.
+Proof.
+  induction scanned as [|symbol rest IH]; simpl.
+  - split; intro H; constructor.
+  - split.
+    + intro H.
+      apply andb_true_iff in H.
+      destruct H as [Hsymbol Hrest].
+      apply andb_true_iff in Hsymbol.
+      destruct Hsymbol as [Hbound Hnotfive].
+      apply andb_true_iff in Hbound.
+      destruct Hbound as [Hlo Hhi].
+      apply Nat.leb_le in Hlo.
+      apply Nat.leb_le in Hhi.
+      apply negb_true_iff in Hnotfive.
+      apply Nat.eqb_neq in Hnotfive.
+      constructor.
+      * assert (symbol = 4 \/ symbol = 6 \/ symbol = 7) by lia.
+        assumption.
+      * apply (proj1 IH); exact Hrest.
+    + intro H.
+      inversion H as [|? ? Hsymbol Hrest]; subst.
+      apply andb_true_iff.
+      split.
+      * apply andb_true_iff.
+        split.
+        -- apply andb_true_iff; split;
+           apply Nat.leb_le; lia.
+        -- apply negb_true_iff.
+           apply Nat.eqb_neq.
+           lia.
+      * apply (proj2 IH); exact Hrest.
+Qed.
+
+Lemma q19_q5_roundtrip_railb_q19 :
+  forall scanned,
+    q19_q5_roundtrip_railb scanned = true ->
+    q19_guarded_railb scanned = true.
+Proof.
+  intros scanned H.
+  apply (proj2 (q19_guarded_railb_spec scanned)).
+  apply (proj1 (q19_q5_roundtrip_railb_spec scanned)) in H.
+  induction H as [|symbol rest Hsymbol Hrest IH].
+  - constructor.
+  - constructor; [destruct Hsymbol as [-> | [-> | ->]]; lia | exact IH].
+Qed.
+
+Example q19_guarded_railb_allows_q5_delimiter :
+  q19_guarded_railb [5] = true /\
+  q19_q5_roundtrip_railb [5] = false.
+Proof. reflexivity. Qed.
+
+Print Assumptions q5_return_scan_to_first_five.
+Print Assumptions q19_q5_roundtrip_railb_spec.
+Print Assumptions q19_q5_roundtrip_railb_q19.
