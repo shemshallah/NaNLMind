@@ -2658,7 +2658,8 @@ Proof.
   all: repeat rewrite rev_app_distr;
     cbn [rev];
     rewrite rev_involutive;
-    repeat rewrite app_assoc;
+    repeat rewrite <- app_assoc;
+    cbn [app];
     reflexivity.
 Qed.
 
