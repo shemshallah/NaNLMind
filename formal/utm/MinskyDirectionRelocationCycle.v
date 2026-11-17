@@ -3209,6 +3209,7 @@ Proof.
   pose proof
     (proj1 (q19_q5_roundtrip_railb_spec scanned) Hguard)
       as Hrail.
+  clear Hguard.
   induction Hrail as [|symbol rest Hsymbol Hrest IH].
   - reflexivity.
   - destruct Hsymbol as [-> | [-> | ->]];
