@@ -9,6 +9,7 @@ on:
       - 'formal/utm/MinskyDirectionRelocationCycle.v'
       - 'formal/utm/MinskyCanonicalMatch.v'
       - 'formal/utm/MinskyCanonicalCopy.v'
+      - 'formal/utm/MinskyCanonicalCopyGeneral.v'
 
 permissions:
   contents: read
@@ -127,4 +128,15 @@ jobs:
             exit 1
           fi
           coqchk -Q formal/utm NaNLM formal/utm/MinskyCanonicalCopy.vo
+          if ! coqc -Q formal/utm NaNLM \
+              -w -notation-overridden,-stdlib-vector \
+              formal/utm/MinskyCanonicalCopyGeneral.v \
+              > /tmp/canonical-copy-general-coq.log 2>&1; then
+            tail -n 100 /tmp/canonical-copy-general-coq.log
+            while IFS= read -r line; do
+              echo "::error title=Coq canonical copy general::$line"
+            done < <(tail -n 100 /tmp/canonical-copy-general-coq.log)
+            exit 1
+          fi
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyCanonicalCopyGeneral.vo
           echo 'NANLM CANONICAL Q5 MATCH COQCHK PASS'
