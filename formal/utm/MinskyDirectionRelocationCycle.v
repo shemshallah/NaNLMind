@@ -2641,10 +2641,10 @@ Proof.
   replace (6 :: rev scanned ++ 4 :: 7 :: 5 :: 0 :: stored)
     with ((6 :: rev scanned ++ [4; 7]) ++ 5 :: 0 :: stored).
   2:{
-    change (6 :: (rev scanned ++ ([4; 7] ++ (5 :: 0 :: stored))) =
-            6 :: ((rev scanned ++ [4; 7]) ++ (5 :: 0 :: stored))).
+    change (6 :: ((rev scanned ++ [4; 7]) ++ (5 :: 0 :: stored)) =
+            6 :: (rev scanned ++ ([4; 7] ++ (5 :: 0 :: stored)))).
     f_equal.
-    symmetry; apply app_assoc.
+    apply app_assoc.
   }
   assert (Hq : (if extra then 7 else 8) = 7 \/
                (if extra then 7 else 8) = 8).
