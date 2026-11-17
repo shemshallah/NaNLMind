@@ -2152,8 +2152,9 @@ Proof.
   replace (S (length (6 :: rev scanned ++ [4; 7])))
     with (length scanned + 4) in Hreturn.
   2:{
+    cbn [length].
     repeat (rewrite app_length || rewrite rev_length).
-    simpl [length].
+    cbn [length].
     lia.
   }
   assert (Hshape :
