@@ -241,8 +241,8 @@ Proof.
     with (cfg_ml 7 (xs ++ 5 :: (rev tbuffer ++ 6 :: rev data))
       (3 :: record_tail)).
   2:{ unfold xs. repeat rewrite <- app_assoc. reflexivity. }
-  rewrite (cfg_ml_left_scan 8 xs (rev tbuffer ++ 6 :: rev data)
-    2 record_tail Hne).
+  rewrite (cfg_ml_left_scan 7 xs (rev tbuffer ++ 6 :: rev data)
+    3 record_tail Hne).
   rewrite <- (length_hd_tl xs Hne).
   rewrite dispatch_run_add.
   rewrite (q7_scan_to_y (tl xs) (hd 2 xs)
