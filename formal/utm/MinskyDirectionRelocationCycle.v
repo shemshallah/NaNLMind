@@ -2070,7 +2070,7 @@ Qed.
 Example q19_guarded_railb_allows_q5_delimiter :
   q19_guarded_railb [5] = true /\
   q19_q5_roundtrip_railb [5] = false.
-Proof. reflexivity. Qed.
+Proof. split; reflexivity. Qed.
 
 Print Assumptions q5_return_scan_to_first_five.
 Print Assumptions q19_q5_roundtrip_railb_spec.
