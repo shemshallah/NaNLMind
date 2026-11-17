@@ -1890,9 +1890,9 @@ Lemma q12_right_guarded_linear_clock :
 Proof.
   intros scanned.
   unfold reached_direction_cost.
-  repeat rewrite app_length.
-  repeat rewrite rev_length.
-  repeat rewrite map_length.
+  repeat (rewrite length_app ||
+          rewrite rev_length ||
+          rewrite map_length).
   simpl [length].
   lia.
 Qed.
