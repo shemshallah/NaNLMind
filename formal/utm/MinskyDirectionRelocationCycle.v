@@ -2405,3 +2405,166 @@ Qed.
 
 Print Assumptions q12_wide_vault_without_six_cannot_exit.
 Print Assumptions q13_wide_vault_without_six_cannot_exit.
+
+
+(** The next return obligations are proved against the same literal table,
+    not an idealized source-level interpreter.  In q6 a 2/3 marker is
+    *not* a raw bit: only 0 and 1 select q8 and q7 respectively. *)
+Definition q6_nonraw (symbol : nat) : Prop :=
+  symbol = 2 \/ symbol = 3 \/ symbol = 4 \/
+  symbol = 5 \/ symbol = 6 \/ symbol = 7.
+
+Lemma q6_nonraw_step :
+  forall symbol left right,
+    q6_nonraw symbol ->
+    step (entry_config 6 left (symbol :: right)) =
+    entry_config 6 (symbol :: left) right.
+Proof.
+  intros symbol left right H.
+  destruct H as [-> | [-> | [-> | [-> | [-> | ->]]]]];
+    reflexivity.
+Qed.
+
+Lemma q6_guarded_rail_safe :
+  forall scanned,
+    q19_q5_roundtrip_railb scanned = true ->
+    Forall q6_nonraw scanned.
+Proof.
+  intros scanned H.
+  apply (proj1 (q19_q5_roundtrip_railb_spec scanned)) in H.
+  induction H as [|s rest Hs Hrest IH].
+  - constructor.
+  - constructor; [destruct Hs as [-> | [-> | ->]];
+      unfold q6_nonraw; auto 10 | exact IH].
+Qed.
+
+Theorem q6_all_fuel_nonraw_right_stays_q6 :
+  forall fuel left right,
+    Forall q6_nonraw right ->
+    c_state (run fuel (entry_config 6 left right)) = 6.
+Proof.
+  induction fuel as [|fuel IH]; intros left right Hright.
+  - reflexivity.
+  - destruct right as [|symbol rest].
+    + change
+        (c_state (run fuel (entry_config 6 (2 :: left) [])) = 6).
+      apply IH; constructor.
+    + inversion Hright as [|? ? Hsymbol Hrest]; subst.
+      rewrite entry_run_successor.
+      rewrite (q6_nonraw_step symbol left rest Hsymbol).
+      apply IH; exact Hrest.
+Qed.
+
+(** If the returned vault has no further unmarked 0/1 to its right,
+    q6 is a permanent sink, including when it reaches finite-tape blank. *)
+Theorem q12_roundtrip_no_raw_suffix_stalls_q6 :
+  forall scanned rows next fuel,
+    q19_q5_roundtrip_railb scanned = true ->
+    c_state (run (4 * length scanned + 22 + fuel)
+      (entry_config 12 ([5; 6] ++ encode_wide_program rows)
+        (0 :: 4 :: (scanned ++ source_bit next :: [7])))) = 6.
+Proof.
+  intros scanned rows next fuel Hguard.
+  rewrite writeback_run_add.
+  rewrite (q12_right_roundtrip_program_vault_to_q6
+    scanned (encode_wide_program rows) next [] Hguard).
+  apply q6_all_fuel_nonraw_right_stays_q6.
+  rewrite Forall_app.
+  split.
+  - apply q6_guarded_rail_safe; exact Hguard.
+  - constructor.
+    + unfold q6_nonraw; auto 10.
+    + constructor.
+      * destruct next; unfold q6_nonraw; simpl; auto 10.
+      * constructor.
+Qed.
+
+(** q6 makes one step per safe rightward cell before its first raw bit.
+    The left zipper is reversed exactly, with no invented delimiters. *)
+Lemma q6_nonraw_scan :
+  forall scanned left tail,
+    Forall q6_nonraw scanned ->
+    run (length scanned)
+      (entry_config 6 left (scanned ++ tail)) =
+    entry_config 6 (rev scanned ++ left) tail.
+Proof.
+  induction scanned as [|symbol rest IH];
+    intros left tail Hscan.
+  - reflexivity.
+  - inversion Hscan as [|? ? Hsymbol Hrest]; subst.
+    rewrite entry_run_successor.
+    rewrite (q6_nonraw_step symbol left (rest ++ tail) Hsymbol).
+    rewrite (IH (symbol :: left) tail Hrest).
+    cbn [rev].
+    rewrite append_singleton_assoc.
+    reflexivity.
+Qed.
+
+Theorem q6_guarded_rail_to_q7_or_q8 :
+  forall scanned stored next extra tail,
+    q19_q5_roundtrip_railb scanned = true ->
+    run (length scanned + 3)
+      (entry_config 6 (4 :: 7 :: 5 :: 0 :: stored)
+        (scanned ++ 6 :: (if next then 3 else 2) ::
+         source_bit extra :: tail)) =
+    entry_config (if extra then 7 else 8)
+      (6 :: rev scanned ++ 4 :: 7 :: 5 :: 0 :: stored)
+      ((if next then 3 else 2) ::
+       (if extra then 3 else 2) :: tail).
+Proof.
+  intros scanned stored next extra tail Hguard.
+  rewrite writeback_run_add.
+  rewrite (q6_nonraw_scan scanned
+    (4 :: 7 :: 5 :: 0 :: stored)
+    (6 :: (if next then 3 else 2) :: source_bit extra :: tail)).
+  - destruct next, extra; reflexivity.
+  - apply q6_guarded_rail_safe; exact Hguard.
+Qed.
+
+(** q7 and q8 cross every non-5 cell unchanged; the first 5 selects
+    q9 and q10 and advances back to the right. *)
+Lemma q78_pass_step :
+  forall q symbol next left right,
+    (q = 7 \/ q = 8) ->
+    q5_return_pass symbol ->
+    step (entry_config q (next :: left) (symbol :: right)) =
+    entry_config q left (next :: symbol :: right).
+Proof.
+  intros q symbol next left right Hq Hsymbol.
+  destruct Hq as [-> | ->];
+    destruct Hsymbol as
+      [-> | [-> | [-> | [-> | [-> | [-> | ->]]]]]];
+    reflexivity.
+Qed.
+
+Theorem q78_scan_back_to_first_five :
+  forall remaining symbol outer suffix q,
+    (q = 7 \/ q = 8) ->
+    Forall q5_return_pass (symbol :: remaining) ->
+    run (S (length (symbol :: remaining)))
+      (entry_config q (remaining ++ 5 :: outer)
+        (symbol :: suffix)) =
+    entry_config (if Nat.eqb q 7 then 9 else 10) (5 :: outer)
+      (rev (symbol :: remaining) ++ suffix).
+Proof.
+  intros remaining.
+  induction remaining as [|next rest IH];
+    intros symbol outer suffix q Hq Hsafe.
+  - inversion Hsafe as [|? ? Hsymbol _]; subst.
+    destruct Hq as [-> | ->];
+      destruct Hsymbol as
+        [-> | [-> | [-> | [-> | [-> | [-> | ->]]]]]];
+      reflexivity.
+  - inversion Hsafe as [|? ? Hsymbol Hrest]; subst.
+    rewrite entry_run_successor.
+    rewrite (q78_pass_step q symbol next
+      (rest ++ 5 :: outer) suffix Hq Hsymbol).
+    rewrite (IH next outer (symbol :: suffix) q Hq Hrest).
+    cbn [rev].
+    rewrite append_singleton_assoc.
+    reflexivity.
+Qed.
+
+Print Assumptions q12_roundtrip_no_raw_suffix_stalls_q6.
+Print Assumptions q6_guarded_rail_to_q7_or_q8.
+Print Assumptions q78_scan_back_to_first_five.
