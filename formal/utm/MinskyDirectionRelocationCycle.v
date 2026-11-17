@@ -2234,3 +2234,174 @@ Qed.
 Print Assumptions q19_q5_roundtrip_fixed_maps.
 Print Assumptions q5_roundtrip_program_vault_return.
 Print Assumptions q12_right_roundtrip_program_vault_to_q1.
+
+(** On the exact q5 return frame, the first two q1 transitions
+    move right over 7 and then 4, selecting q6.  The stored program
+    remains untouched on the far side of the two delimiters. *)
+Lemma q1_returned_vault_enters_q6 :
+  forall scanned stored (next : bool) final,
+    run 2
+      (entry_config 1 (5 :: 0 :: stored)
+        ([7; 4] ++ scanned ++
+         [6; if next then 3 else 2] ++ final)) =
+    entry_config 6 (4 :: 7 :: 5 :: 0 :: stored)
+      (scanned ++ [6; if next then 3 else 2] ++ final).
+Proof. intros scanned stored next final; reflexivity. Qed.
+
+Theorem q12_right_roundtrip_program_vault_to_q6 :
+  forall scanned stored (next : bool) final,
+    q19_q5_roundtrip_railb scanned = true ->
+    run (4 * length scanned + 22)
+      (entry_config 12 ([5; 6] ++ stored)
+        (0 :: 4 ::
+          (scanned ++ source_bit next :: 7 :: final))) =
+    entry_config 6 (4 :: 7 :: 5 :: 0 :: stored)
+      (scanned ++ [6; if next then 3 else 2] ++ final).
+Proof.
+  intros scanned stored next final Hguard.
+  replace (4 * length scanned + 22)
+    with ((4 * length scanned + 20) + 2) by lia.
+  rewrite writeback_run_add.
+  rewrite (q12_right_roundtrip_program_vault_to_q1
+    scanned stored next final Hguard).
+  apply q1_returned_vault_enters_q6.
+Qed.
+
+Print Assumptions q12_right_roundtrip_program_vault_to_q6.
+
+(** A separate negative-control invariant: q12 and q13 scan left,
+    preserving every non-6 symbol, and cannot reach their 6-triggered
+    q14 exit if their entire left frontier is 6-free.  At the left
+    edge of the finite tape, the blank is symbol 2 and is also safe. *)
+Theorem q12_six_free_left_stays_q12 :
+  forall fuel left head right,
+    Forall q12_pass left ->
+    q12_pass head ->
+    c_state (run fuel (entry_config 12 left (head :: right))) = 12.
+Proof.
+  induction fuel as [|fuel IH]; intros left head right Hleft Hhead.
+  - reflexivity.
+  - rewrite entry_run_successor.
+    destruct left as [|next rest].
+    + assert (Hempty :
+        step (entry_config 12 [] (head :: right)) =
+        entry_config 12 [] (2 :: head :: right)).
+      {
+        unfold q12_pass in Hhead.
+        destruct Hhead as
+          [-> | [-> | [-> | [-> | [-> | [-> | ->]]]]]];
+          reflexivity.
+      }
+      rewrite Hempty.
+      apply IH.
+      * constructor.
+      * unfold q12_pass; auto 10.
+    + inversion Hleft as [|? ? Hnext Hrest]; subst.
+      rewrite (q12_pass_step head next rest right Hhead).
+      apply IH; assumption.
+Qed.
+
+Theorem q13_six_free_left_stays_q13 :
+  forall fuel left head right,
+    Forall q13_pass left ->
+    q13_pass head ->
+    c_state (run fuel (entry_config 13 left (head :: right))) = 13.
+Proof.
+  induction fuel as [|fuel IH]; intros left head right Hleft Hhead.
+  - reflexivity.
+  - rewrite entry_run_successor.
+    destruct left as [|next rest].
+    + assert (Hempty :
+        step (entry_config 13 [] (head :: right)) =
+        entry_config 13 [] (2 :: head :: right)).
+      {
+        unfold q13_pass, q12_pass in Hhead.
+        destruct Hhead as
+          [-> | [-> | [-> | [-> | [-> | [-> | ->]]]]]];
+          reflexivity.
+      }
+      rewrite Hempty.
+      apply IH.
+      * constructor.
+      * unfold q13_pass, q12_pass; auto 10.
+    + inversion Hleft as [|? ? Hnext Hrest]; subst.
+      rewrite (q13_pass_step head next rest right Hhead).
+      apply IH; assumption.
+Qed.
+
+Print Assumptions q12_six_free_left_stays_q12.
+Print Assumptions q13_six_free_left_stays_q13.
+
+Lemma q12_source_bit_safe :
+  forall bit, q12_pass (source_bit bit).
+Proof. intros []; unfold q12_pass; simpl; auto 10. Qed.
+
+Lemma q12_source_bits_safe :
+  forall bits, Forall q12_pass (map source_bit bits).
+Proof.
+  induction bits as [|bit bits IH]; simpl.
+  - constructor.
+  - constructor; [apply q12_source_bit_safe | exact IH].
+Qed.
+
+(** Ordinary wide-program records use only 4, 0 and 1.  In particular,
+    unlike a real q12 direction frame they never contain the return
+    trigger 6. *)
+Lemma q12_wide_row_safe :
+  forall row, Forall q12_pass (encode_wide_row row).
+Proof.
+  intros row.
+  unfold encode_wide_row.
+  constructor.
+  - unfold q12_pass; auto 10.
+  - repeat rewrite Forall_app.
+    repeat split;
+      try apply q12_source_bits_safe;
+      repeat (constructor; try apply q12_source_bit_safe).
+Qed.
+
+Lemma q12_wide_program_safe :
+  forall rows, Forall q12_pass (encode_wide_program rows).
+Proof.
+  induction rows as [|row rows IH].
+  - constructor.
+  - rewrite encode_wide_program_cons.
+    rewrite Forall_app.
+    split; [apply q12_wide_row_safe | exact IH].
+Qed.
+
+Theorem q12_wide_vault_without_six_cannot_exit :
+  forall fuel rows final,
+    c_state (run fuel
+      (entry_config 12 (5 :: 0 :: encode_wide_program rows)
+        (7 :: final))) = 12.
+Proof.
+  intros fuel rows final.
+  apply q12_six_free_left_stays_q12.
+  - constructor.
+    + unfold q12_pass; auto 10.
+    + constructor.
+      * unfold q12_pass; auto 10.
+      * apply q12_wide_program_safe.
+  - unfold q12_pass; auto 10.
+Qed.
+
+Theorem q13_wide_vault_without_six_cannot_exit :
+  forall fuel rows final,
+    c_state (run fuel
+      (entry_config 13 (5 :: 0 :: encode_wide_program rows)
+        (7 :: final))) = 13.
+Proof.
+  intros fuel rows final.
+  apply q13_six_free_left_stays_q13.
+  - constructor.
+    + unfold q13_pass, q12_pass; auto 10.
+    + constructor.
+      * unfold q13_pass, q12_pass; auto 10.
+      * change (Forall q12_pass (encode_wide_program rows)).
+        apply q12_wide_program_safe.
+  - unfold q13_pass, q12_pass; auto 10.
+Qed.
+
+Print Assumptions q12_wide_vault_without_six_cannot_exit.
+Print Assumptions q13_wide_vault_without_six_cannot_exit.
