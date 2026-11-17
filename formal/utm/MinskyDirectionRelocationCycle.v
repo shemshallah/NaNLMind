@@ -1855,6 +1855,7 @@ Proof.
     [5] 0 [] stored scanned next (7 :: final)
     [] false 5 [] H12 H14 Hscan Hlayout Hback Hdir) as Hstage.
   cbn [app] in Hstage.
+  cbn [app].
   rewrite Hstage.
   replace
     (rev [5] ++
