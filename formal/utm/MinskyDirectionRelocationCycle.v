@@ -2130,7 +2130,7 @@ Qed.
     rail, the 4 and 7 sentinels, and enters q1 at the FIRST 5.
     The program remains to the left of the 0-boundary. *)
 Theorem q5_roundtrip_program_vault_return :
-  forall scanned stored next final,
+  forall scanned stored (next : bool) final,
     q19_q5_roundtrip_railb scanned = true ->
     run (length scanned + 4)
       (cfg_ml 5
