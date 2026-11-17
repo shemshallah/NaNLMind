@@ -1720,8 +1720,7 @@ Proof.
       map q16_restore (rev (rev scanned ++ [4])))
     [] next [0] final Hsafe Hreturn) as Hfinish.
   cbn [app] in Hfinish.
-  rewrite Hfinish.
-  reflexivity.
+  exact Hfinish.
 Qed.
 
 (** A successful checked rail gives all three premises automatically.
