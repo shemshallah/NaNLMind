@@ -3066,11 +3066,7 @@ Proof.
     (if extra then 3 else 2) stored target tail
     (protected_q16_backscan_nonempty scanned next extra)
     (protected_q16_backscan_safe scanned next extra Hguard)).
-  change
-    (step (cfg_ml 21 ((if extra then 3 else 2) :: stored)
-      (7 :: map q16_restore
-        (rev (protected_q16_backscan scanned next extra)) ++
-        source_bit target :: tail)) = _).
+  cbn [run].
   apply q21_protected_direction_mark.
 Qed.
 
