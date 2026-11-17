@@ -2168,7 +2168,7 @@ Proof.
     unfold cfg_ml.
     rewrite rev_app_distr.
     cbn [rev].
-    repeat rewrite app_assoc.
+    repeat (rewrite app_nil_r || rewrite <- app_assoc).
     reflexivity.
   }
   rewrite Hshape.
