@@ -379,3 +379,52 @@ is added.
 5. Separately construct the reduction from a reference universal machine
    into the source model, or an equivalent certified universality theorem
    for that model.
+
+## November 17 canonical q5 match to q6 (kernel-checked)
+
+The first canonical-layout phase theorem is now checked for the frozen
+23x8 table.  It starts at the native compiler's q5 entry with the source
+condition left of Y=5 and the record prefix right of X=4, and reaches the
+literal q6 action-copy entry.
+
+- `wide_mark` extends the q0/q4 comparison alphabet to `{2,3,4,6,7}`.
+  This lets the record delimiter X=4 sit inside the already-marked prefix
+  while keeping Y=5 as the terminating left delimiter.
+- `wide_mark_scans`, `q1_zero_match_with_wide_marks`,
+  `q1_one_match_with_wide_marks`, `q1_match_one_bit_with_wide_marks`,
+  `q1_all_matching_bits_wide`, and `q1_all_matching_bits_wide_four` lift
+  the comparison macros to the extended alphabet.
+- `canonical_q5_scan` runs the q5 left scan over the condition to Y=5 and
+  returns q1 with the condition marked `2/3`, in exact `|bits| + 2` steps.
+- `canonical_q5_match_to_q6` composes the q5 scan, the q1 all-match
+  comparison against the record's current-state/read prefix, and the final
+  q1 crossing of X=4.  The exact clock is
+
+  ```text
+  (|bits| + 2) + (matched_comparison_steps bits 0 1 + (|bits| + 1))
+  ```
+
+  and the result is
+
+  ```text
+  entry_config 6
+    (4 :: rev (map match_raw bits) ++ 5 :: rev t-buffer ++ 6 :: rev data)
+    (map match_mark bits ++ tail).
+  ```
+
+  The condition is restored raw, the record prefix is marked, and the
+  data tape, M=6, t-buffer, Y=5, and program tail are untouched.
+
+The fast Coq job
+[44167307045](https://github.com/shemshallah/NaNLMind/actions/runs/44167307045)
+passed `coqc` and `coqchk`, and the independent full bridge
+[44167314930](https://github.com/shemshallah/NaNLMind/actions/runs/44167314930)
+rebuilt the dependency chain and checked the module.  See
+[`CANONICAL_Q5_MATCH.md`](CANONICAL_Q5_MATCH.md).
+
+This closes only the first canonical phase.  The theorem assumes a matching
+condition/record prefix and stops at q6.  Mismatch/restart, source-row
+selection, q6 action copy, q9/q10 writeback, q12-q22 movement, and halting
+reflection remain open.  The q6 entry begins with `map match_mark bits ++
+tail`; the X/Y delimiters in `tail` must be handled explicitly before the
+existing action macros can be composed.
