@@ -1609,25 +1609,27 @@ Theorem q19_guarded_railb_spec :
     q19_guarded_railb scanned = true <->
     Forall (fun symbol => 4 <= symbol <= 7) scanned.
 Proof.
-  intros scanned.
-  unfold q19_guarded_railb.
-  split.
-  - intro H.
-    apply forallb_forall in H.
-    apply Forall_forall.
-    intros symbol Hin.
-    specialize (H symbol Hin).
-    apply andb_true_iff in H.
-    destruct H as [Hlo Hhi].
-    split; apply Nat.leb_le; assumption.
-  - intro H.
-    apply forallb_forall.
-    apply Forall_forall in H.
-    intros symbol Hin.
-    specialize (H symbol Hin).
-    destruct H as [Hlo Hhi].
-    apply andb_true_iff.
-    split; apply Nat.leb_le; assumption.
+  induction scanned as [|symbol rest IH]; simpl.
+  - split; intro H; constructor.
+  - split.
+    + intro H.
+      apply andb_true_iff in H.
+      destruct H as [Hsymbol Hrest].
+      constructor.
+      * apply andb_true_iff in Hsymbol.
+        destruct Hsymbol as [Hlo Hhi].
+        split; apply Nat.leb_le; assumption.
+      * apply (proj1 IH) in Hrest.
+        exact Hrest.
+    + intro H.
+      inversion H as [|? ? Hsymbol Hrest]; subst.
+      apply andb_true_iff.
+      split.
+      * apply andb_true_iff.
+        destruct Hsymbol as [Hlo Hhi].
+        split; apply Nat.leb_le; assumption.
+      * apply (proj2 IH).
+        exact Hrest.
 Qed.
 
 Lemma q19_guarded_rail_q15 :
