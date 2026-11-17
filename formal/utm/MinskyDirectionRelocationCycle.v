@@ -2641,8 +2641,7 @@ Proof.
   replace (6 :: rev scanned ++ 4 :: 7 :: 5 :: 0 :: stored)
     with ((6 :: rev scanned ++ [4; 7]) ++ 5 :: 0 :: stored).
   2:{
-    cbn [app].
-    rewrite app_assoc.
+    repeat rewrite app_assoc.
     reflexivity.
   }
   assert (Hq : (if extra then 7 else 8) = 7 \/
