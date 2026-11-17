@@ -3422,3 +3422,153 @@ Proof.
 Qed.
 
 Print Assumptions q20_any_finite_passable_spacer_still_hits_program.
+
+
+(** Constructive boundary: unlike a passable spacer, a sacrificial raw
+    stop can terminate the q20 scan before it enters the stored wide
+    program.  First generalize the already checked return over arbitrary
+    stored material, preserving the 23x8 native transition table. *)
+
+Theorem q12_protected_return_to_q15_arbitrary_stored :
+  forall scanned stored next extra tail,
+    q19_q5_roundtrip_railb scanned = true ->
+    run (6 * length scanned + 40)
+      (entry_config 12 ([5; 6] ++ 6 :: stored)
+        (0 :: 4 ::
+         (scanned ++ source_bit next :: 7 :: source_bit extra :: tail))) =
+    entry_config 15
+      (4 :: 7 :: 5 :: 0 :: (if extra then 3 else 2) :: stored)
+      (scanned ++
+       [6; if next then 3 else 2; if extra then 3 else 2] ++ tail).
+Proof.
+  intros scanned stored next extra tail Hguard.
+  replace (6 * length scanned + 40)
+    with ((6 * length scanned + 32) + 8) by lia.
+  rewrite writeback_run_add.
+  rewrite (q12_complete_return_with_arbitrary_stored
+    scanned (6 :: stored) next extra tail Hguard).
+  apply q12q13_protected_six_reopens_q15.
+Qed.
+
+Theorem q12_protected_return_to_q16_arbitrary_stored :
+  forall scanned stored next extra target tail,
+    q19_q5_roundtrip_railb scanned = true ->
+    run (7 * length scanned + 44)
+      (entry_config 12 ([5; 6] ++ 6 :: stored)
+        (0 :: 4 ::
+         (scanned ++ source_bit next :: 7 ::
+          source_bit extra :: source_bit target :: tail))) =
+    cfg_ml 16
+      (rev (scanned ++
+        [6; if next then 3 else 2; if extra then 3 else 2]) ++
+       4 :: 7 :: 5 :: 0 ::
+       (if extra then 3 else 2) :: stored)
+      (source_bit target :: tail).
+Proof.
+  intros scanned stored next extra target tail Hguard.
+  replace (7 * length scanned + 44)
+    with ((6 * length scanned + 40) +
+          S (length (scanned ++
+            [6; if next then 3 else 2; if extra then 3 else 2]))).
+  2:{
+    rewrite app_length.
+    cbn [length].
+    lia.
+  }
+  rewrite writeback_run_add.
+  rewrite (q12_protected_return_to_q15_arbitrary_stored
+    scanned stored next extra (source_bit target :: tail) Hguard).
+  replace
+    (scanned ++
+     [6; if next then 3 else 2; if extra then 3 else 2] ++
+     source_bit target :: tail)
+    with
+    ((scanned ++
+      [6; if next then 3 else 2; if extra then 3 else 2]) ++
+      source_bit target :: tail).
+  2:{
+    rewrite <- app_assoc.
+    reflexivity.
+  }
+  apply q15_scan_to_raw.
+  apply q15_returned_rail_is_safe; exact Hguard.
+Qed.
+
+Theorem q12_protected_selects_branch_arbitrary_stored :
+  forall scanned stored next extra target tail,
+    q19_q5_roundtrip_railb scanned = true ->
+    run (8 * length scanned + 52)
+      (entry_config 12 ([5; 6] ++ 6 :: stored)
+        (0 :: 4 ::
+          (scanned ++ source_bit next :: 7 ::
+           source_bit extra :: source_bit target :: tail))) =
+    if extra
+    then entry_config 19 (0 :: stored)
+      (7 :: map q16_restore
+        (rev (protected_q16_backscan scanned next extra)) ++
+        source_bit target :: tail)
+    else cfg_ml 20 stored
+      (0 :: 7 :: map q16_restore
+        (rev (protected_q16_backscan scanned next extra)) ++
+        source_bit target :: tail).
+Proof.
+  intros scanned stored next extra target tail Hguard.
+  replace (8 * length scanned + 52)
+    with ((7 * length scanned + 44) + (length scanned + 8))
+    by lia.
+  rewrite writeback_run_add.
+  rewrite (q12_protected_return_to_q16_arbitrary_stored
+    scanned stored next extra target tail Hguard).
+  replace
+    (rev (scanned ++
+       [6; if next then 3 else 2; if extra then 3 else 2]) ++
+     4 :: 7 :: 5 :: 0 ::
+     (if extra then 3 else 2) :: stored)
+    with
+    (protected_q16_backscan scanned next extra ++
+     0 :: (if extra then 3 else 2) :: stored).
+  2:{
+    unfold protected_q16_backscan.
+    rewrite <- app_assoc.
+    reflexivity.
+  }
+  apply q16_protected_backscan_selects_native_branch.
+  exact Hguard.
+Qed.
+
+(** A sacrificial raw bit is consumed instead of the stored instruction,
+    and the encoded program survives unchanged as the tail behind 6.
+    This is a ONE-BRANCH, ONE-RETURN prefix property, not a complete
+    source-machine instruction simulation. *)
+Theorem q12_sacrificial_raw_stop_preserves_left_program :
+  forall scanned rows next sacrificial target tail,
+    q19_q5_roundtrip_railb scanned = true ->
+    run (8 * length scanned + 53)
+      (entry_config 12
+        ([5; 6] ++ 6 :: source_bit sacrificial ::
+          encode_wide_program rows)
+        (0 :: 4 ::
+          (scanned ++ source_bit next :: 7 ::
+           source_bit false :: source_bit target :: tail))) =
+    entry_config (if sacrificial then 18 else 17)
+      (6 :: encode_wide_program rows)
+      (0 :: 7 :: map q16_restore
+        (rev (protected_q16_backscan scanned next false)) ++
+        source_bit target :: tail).
+Proof.
+  intros scanned rows next sacrificial target tail Hguard.
+  replace (8 * length scanned + 53)
+    with ((8 * length scanned + 52) + 1) by lia.
+  rewrite writeback_run_add.
+  rewrite (q12_protected_selects_branch_arbitrary_stored
+    scanned (source_bit sacrificial :: encode_wide_program rows)
+    next false target tail Hguard).
+  change (step (entry_config 20
+    (encode_wide_program rows)
+    (source_bit sacrificial :: 0 :: 7 :: map q16_restore
+      (rev (protected_q16_backscan scanned next false)) ++
+      source_bit target :: tail)) = _).
+  destruct sacrificial; reflexivity.
+Qed.
+
+Print Assumptions q12_sacrificial_raw_stop_preserves_left_program.
