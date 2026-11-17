@@ -3195,3 +3195,161 @@ Proof.
 Qed.
 
 Print Assumptions q12_protected_vault_left_branch_overwrites_program_bit.
+
+
+(** Independent right-branch collision: the q16 restoration maps the
+    two 2/3 control marks back to *raw bits*.  Thus q19 sees the old
+    [next] mark before the supplied [target] bit. *)
+Lemma q16_restore_guarded_scanned_identity :
+  forall scanned,
+    q19_q5_roundtrip_railb scanned = true ->
+    map q16_restore scanned = scanned.
+Proof.
+  intros scanned Hguard.
+  pose proof
+    (proj1 (q19_q5_roundtrip_railb_spec scanned) Hguard)
+      as Hrail.
+  induction Hrail as [|symbol rest Hsymbol Hrest IH].
+  - reflexivity.
+  - destruct Hsymbol as [-> | [-> | ->]];
+      simpl; f_equal; exact IH.
+Qed.
+
+Lemma protected_q16_restored_control_shape :
+  forall scanned next extra,
+    q19_q5_roundtrip_railb scanned = true ->
+    map q16_restore
+      (rev (protected_q16_backscan scanned next extra)) =
+    [5; 7; 4] ++ scanned ++
+      [6; source_bit next; source_bit extra].
+Proof.
+  intros scanned next extra Hguard.
+  unfold protected_q16_backscan.
+  rewrite rev_app_distr.
+  rewrite rev_involutive.
+  cbn [rev].
+  repeat rewrite map_app.
+  rewrite (q16_restore_guarded_scanned_identity scanned Hguard).
+  destruct next, extra; reflexivity.
+Qed.
+
+Definition protected_q19_control_prefix (scanned : list nat) : list nat :=
+  [7; 5; 7; 4] ++ scanned ++ [6].
+
+Lemma protected_q19_control_prefix_length :
+  forall scanned,
+    length (protected_q19_control_prefix scanned) =
+    length scanned + 5.
+Proof.
+  intro scanned.
+  unfold protected_q19_control_prefix.
+  repeat rewrite app_length.
+  cbn [length].
+  lia.
+Qed.
+
+Lemma protected_q19_control_prefix_safe :
+  forall scanned next extra,
+    q19_q5_roundtrip_railb scanned = true ->
+    Forall q15_pass (protected_q19_control_prefix scanned).
+Proof.
+  intros scanned next extra Hguard.
+  pose proof
+    (q15_returned_rail_is_safe scanned next extra Hguard)
+    as Hrail.
+  rewrite Forall_app in Hrail.
+  destruct Hrail as [Hscan _].
+  unfold protected_q19_control_prefix.
+  rewrite Forall_app.
+  split.
+  - constructor.
+    + unfold q15_pass; auto 10.
+    + constructor.
+      * unfold q15_pass; auto 10.
+      * constructor.
+        -- unfold q15_pass; auto 10.
+        -- constructor.
+           ++ unfold q15_pass; auto 10.
+           ++ constructor.
+  - rewrite Forall_app.
+    split.
+    + exact Hscan.
+    + constructor.
+      * unfold q15_pass; auto 10.
+      * constructor.
+Qed.
+
+Lemma q19_control_frame_exact :
+  forall scanned next extra target tail,
+    q19_q5_roundtrip_railb scanned = true ->
+    (7 :: map q16_restore
+       (rev (protected_q16_backscan scanned next extra)) ++
+       source_bit target :: tail) =
+    protected_q19_control_prefix scanned ++
+      source_bit next :: source_bit extra :: source_bit target :: tail.
+Proof.
+  intros scanned next extra target tail Hguard.
+  rewrite (protected_q16_restored_control_shape
+    scanned next extra Hguard).
+  unfold protected_q19_control_prefix.
+  repeat rewrite <- app_assoc.
+  reflexivity.
+Qed.
+
+(** After n+6 additional transitions q19 consumes the *earlier* control
+    bit and enters q17/q18.  The intended target remains on the right
+    tape: it was never reached. *)
+Theorem q19_protected_return_consumes_control_not_target :
+  forall scanned stored next extra target tail,
+    q19_q5_roundtrip_railb scanned = true ->
+    run (length scanned + 6)
+      (entry_config 19 (0 :: stored)
+        (7 :: map q16_restore
+          (rev (protected_q16_backscan scanned next extra)) ++
+          source_bit target :: tail)) =
+    entry_config (if next then 18 else 17)
+      (6 :: rev (protected_q19_control_prefix scanned) ++ 0 :: stored)
+      (source_bit extra :: source_bit target :: tail).
+Proof.
+  intros scanned stored next extra target tail Hguard.
+  replace (length scanned + 6)
+    with (S (length (protected_q19_control_prefix scanned))).
+  2:{
+    rewrite protected_q19_control_prefix_length.
+    lia.
+  }
+  rewrite (q19_control_frame_exact
+    scanned next extra target tail Hguard).
+  apply q19_scan_to_m.
+  apply (protected_q19_control_prefix_safe scanned next extra).
+  exact Hguard.
+Qed.
+
+(** In the full protected-vault cycle, the marked-right path reaches
+    this wrong raw-bit relocation in exactly 9n+58 native steps. *)
+Theorem q12_protected_vault_right_branch_consumes_control_bit :
+  forall scanned rows next target tail,
+    q19_q5_roundtrip_railb scanned = true ->
+    run (9 * length scanned + 58)
+      (entry_config 12
+        ([5; 6] ++ 6 :: encode_wide_program rows)
+        (0 :: 4 ::
+          (scanned ++ source_bit next :: 7 ::
+           source_bit true :: source_bit target :: tail))) =
+    entry_config (if next then 18 else 17)
+      (6 :: rev (protected_q19_control_prefix scanned) ++
+       0 :: encode_wide_program rows)
+      (source_bit true :: source_bit target :: tail).
+Proof.
+  intros scanned rows next target tail Hguard.
+  replace (9 * length scanned + 58)
+    with ((8 * length scanned + 52) + (length scanned + 6))
+    by lia.
+  rewrite writeback_run_add.
+  rewrite (q12_protected_second_six_selects_q19_or_q20
+    scanned rows next true target tail Hguard).
+  apply q19_protected_return_consumes_control_not_target.
+  exact Hguard.
+Qed.
+
+Print Assumptions q12_protected_vault_right_branch_consumes_control_bit.
