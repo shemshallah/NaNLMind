@@ -3354,3 +3354,71 @@ Proof.
 Qed.
 
 Print Assumptions q12_protected_vault_right_branch_consumes_control_bit.
+
+
+(** A stronger layout obstruction independent of the q12 return clock.
+    Inserting any finite spacer of q20-passable 2..7 symbols between
+    the returned head and an ordinary wide program does not shield the
+    program's first raw bit.  q20 passes every spacer cell. *)
+
+Lemma q20_cfg_ml_passable_prefix_to_first_raw :
+  forall prefix bit stored rest,
+    prefix <> [] ->
+    Forall q15_pass prefix ->
+    run (S (length prefix))
+      (cfg_ml 20 (prefix ++ source_bit bit :: stored) rest) =
+    entry_config (if bit then 18 else 17)
+      (6 :: stored) (rev prefix ++ rest).
+Proof.
+  intros [|s remaining] bit stored rest Hnonempty Hpass.
+  - contradiction Hnonempty; reflexivity.
+  - change
+      (run (S (length (s :: remaining)))
+        (entry_config 20
+          (remaining ++ source_bit bit :: stored) (s :: rest)) =
+       entry_config (if bit then 18 else 17)
+         (6 :: stored) (rev (s :: remaining) ++ rest)).
+    exact (q20_scan_to_m remaining s bit stored rest Hpass).
+Qed.
+
+Theorem q20_any_finite_passable_spacer_still_hits_program :
+  forall spacer row rows rest,
+    Forall q15_pass spacer ->
+    exists (bit : bool) (suffix : list nat),
+      run (length spacer + 2)
+        (cfg_ml 20
+          (spacer ++ encode_wide_program (row :: rows))
+          (0 :: rest)) =
+      entry_config (if bit then 18 else 17)
+        (6 :: suffix)
+        (rev (spacer ++ [4]) ++ 0 :: rest).
+Proof.
+  intros spacer row rows rest Hspacer.
+  destruct (nonempty_wide_vault_exposes_raw_bit row rows)
+    as [bit [suffix Hshape]].
+  exists bit, suffix.
+  rewrite Hshape.
+  replace (length spacer + 2)
+    with (S (length (spacer ++ [4]))).
+  2:{
+    rewrite app_length.
+    cbn [length].
+    lia.
+  }
+  replace (spacer ++ 4 :: source_bit bit :: suffix)
+    with ((spacer ++ [4]) ++ source_bit bit :: suffix).
+  2:{
+    rewrite <- app_assoc.
+    reflexivity.
+  }
+  apply q20_cfg_ml_passable_prefix_to_first_raw.
+  - destruct spacer; discriminate.
+  - rewrite Forall_app.
+    split.
+    + exact Hspacer.
+    + constructor.
+      * unfold q15_pass; auto 10.
+      * constructor.
+Qed.
+
+Print Assumptions q20_any_finite_passable_spacer_still_hits_program.
