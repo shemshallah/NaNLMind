@@ -2214,9 +2214,8 @@ Proof.
     with (4 :: scanned).
   2:{
     rewrite rev_app_distr.
-    cbn [rev].
     rewrite rev_involutive.
-    change (4 :: map q16_restore scanned = 4 :: scanned).
+    rewrite map_app.
     rewrite Hrestore.
     reflexivity.
   }
