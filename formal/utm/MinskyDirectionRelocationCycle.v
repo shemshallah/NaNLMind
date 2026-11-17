@@ -2569,3 +2569,190 @@ Qed.
 Print Assumptions q12_roundtrip_no_raw_suffix_stalls_q6.
 Print Assumptions q6_guarded_rail_to_q7_or_q8.
 Print Assumptions q78_scan_back_to_first_five.
+
+
+(** q7/q8 encounter the first 5 on their left after passing the
+    newly marked bit, the 6 return marker, the dual-safe rail, 4 and 7. *)
+Lemma q78_return_rail_safe :
+  forall scanned next,
+    q19_q5_roundtrip_railb scanned = true ->
+    Forall q5_return_pass
+      ((if next then 3 else 2) :: 6 :: rev scanned ++ [4; 7]).
+Proof.
+  intros scanned next Hguard.
+  pose proof (proj1 (q19_q5_roundtrip_railb_spec scanned)
+    Hguard) as Hrail.
+  assert (Hrev : Forall q5_return_pass (rev scanned)).
+  {
+    induction Hrail as [|s rest Hs Hrest IH].
+    - constructor.
+    - cbn [rev].
+      rewrite Forall_app.
+      split.
+      + exact IH.
+      + constructor.
+        * destruct Hs as [-> | [-> | ->]];
+            unfold q5_return_pass; auto 10.
+        * constructor.
+  }
+  constructor.
+  - destruct next; unfold q5_return_pass; simpl; auto 10.
+  - constructor.
+    + unfold q5_return_pass; auto 10.
+    + rewrite Forall_app.
+      split.
+      * exact Hrev.
+      * constructor.
+        -- unfold q5_return_pass; auto 10.
+        -- constructor.
+           ++ unfold q5_return_pass; auto 10.
+           ++ constructor.
+Qed.
+
+Theorem q78_returned_vault_to_q9_or_q10 :
+  forall scanned stored next extra tail,
+    q19_q5_roundtrip_railb scanned = true ->
+    run (length scanned + 5)
+      (entry_config (if extra then 7 else 8)
+        (6 :: rev scanned ++ 4 :: 7 :: 5 :: 0 :: stored)
+        ((if next then 3 else 2) ::
+         (if extra then 3 else 2) :: tail)) =
+    entry_config (if extra then 9 else 10) (5 :: 0 :: stored)
+      ([7; 4] ++ scanned ++
+       [6; if next then 3 else 2; if extra then 3 else 2] ++ tail).
+Proof.
+  intros scanned stored next extra tail Hguard.
+  replace (length scanned + 5)
+    with (S (length
+      ((if next then 3 else 2) :: 6 :: rev scanned ++ [4; 7]))).
+  2:{
+    cbn [length].
+    repeat rewrite app_length.
+    rewrite rev_length.
+    cbn [length].
+    lia.
+  }
+  replace (6 :: rev scanned ++ 4 :: 7 :: 5 :: 0 :: stored)
+    with ((6 :: rev scanned ++ [4; 7]) ++ 5 :: 0 :: stored).
+  2:{
+    cbn [app].
+    rewrite app_assoc.
+    reflexivity.
+  }
+  assert (Hq : (if extra then 7 else 8) = 7 \/
+               (if extra then 7 else 8) = 8).
+  { destruct extra; simpl; auto. }
+  rewrite (q78_scan_back_to_first_five
+    (6 :: rev scanned ++ [4; 7]) (if next then 3 else 2)
+    (0 :: stored) ((if extra then 3 else 2) :: tail)
+    (if extra then 7 else 8) Hq
+    (q78_return_rail_safe scanned next Hguard)).
+  destruct next, extra; simpl.
+  all: repeat rewrite rev_app_distr;
+    cbn [rev];
+    rewrite rev_involutive;
+    repeat rewrite app_assoc;
+    reflexivity.
+Qed.
+
+(** Literal q9/q10 reads 7, then reads 4 and turns back left:
+    q9 selects q12, q10 selects q13.  The head is on 7 again. *)
+Lemma q910_restored_four_to_q12_or_q13 :
+  forall scanned stored next extra tail,
+    run 2
+      (entry_config (if extra then 9 else 10) (5 :: 0 :: stored)
+        ([7; 4] ++ scanned ++
+         [6; if next then 3 else 2; if extra then 3 else 2] ++ tail)) =
+    entry_config (if extra then 12 else 13) (5 :: 0 :: stored)
+      ([7; 4] ++ scanned ++
+       [6; if next then 3 else 2; if extra then 3 else 2] ++ tail).
+Proof.
+  intros scanned stored next extra tail.
+  destruct extra; reflexivity.
+Qed.
+
+(** Complete post-q6 return along a suffix beginning with one raw bit.
+    This is not a claim about every possible suffix: q6 needs that bit
+    to leave its rightward scan. *)
+Theorem q6_complete_return_to_q12_or_q13 :
+  forall scanned stored next extra tail,
+    q19_q5_roundtrip_railb scanned = true ->
+    run (2 * length scanned + 10)
+      (entry_config 6 (4 :: 7 :: 5 :: 0 :: stored)
+        (scanned ++ 6 :: (if next then 3 else 2) ::
+         source_bit extra :: tail)) =
+    entry_config (if extra then 12 else 13) (5 :: 0 :: stored)
+      ([7; 4] ++ scanned ++
+       [6; if next then 3 else 2; if extra then 3 else 2] ++ tail).
+Proof.
+  intros scanned stored next extra tail Hguard.
+  replace (2 * length scanned + 10)
+    with ((length scanned + 3) + ((length scanned + 5) + 2))
+    by lia.
+  rewrite writeback_run_add.
+  rewrite (q6_guarded_rail_to_q7_or_q8
+    scanned stored next extra tail Hguard).
+  rewrite writeback_run_add.
+  rewrite (q78_returned_vault_to_q9_or_q10
+    scanned stored next extra tail Hguard).
+  apply q910_restored_four_to_q12_or_q13.
+Qed.
+
+(** The complete native q12->q6->q7/q8->q9/q10->q12/q13
+    cycle has an exact affine step count, with the stored program intact.
+    The final raw bit is provided by the explicit post-7 suffix. *)
+Theorem q12_complete_return_into_six_free_vault :
+  forall scanned rows next extra tail,
+    q19_q5_roundtrip_railb scanned = true ->
+    run (6 * length scanned + 32)
+      (entry_config 12 ([5; 6] ++ encode_wide_program rows)
+        (0 :: 4 ::
+         (scanned ++ source_bit next :: 7 :: source_bit extra :: tail))) =
+    entry_config (if extra then 12 else 13)
+      (5 :: 0 :: encode_wide_program rows)
+      ([7; 4] ++ scanned ++
+       [6; if next then 3 else 2; if extra then 3 else 2] ++ tail).
+Proof.
+  intros scanned rows next extra tail Hguard.
+  replace (6 * length scanned + 32)
+    with ((4 * length scanned + 22) + (2 * length scanned + 10))
+    by lia.
+  rewrite writeback_run_add.
+  rewrite (q12_right_roundtrip_program_vault_to_q6
+    scanned (encode_wide_program rows) next
+    (source_bit extra :: tail) Hguard).
+  apply q6_complete_return_to_q12_or_q13.
+  exact Hguard.
+Qed.
+
+(** Main all-fuel consequence: after the complete native return,
+    there is no 6 anywhere to the left of the q12/q13 head.
+    Neither state can escape, for any additional finite fuel. *)
+Theorem q12_complete_vault_cycle_cannot_resume :
+  forall scanned rows next extra tail fuel,
+    q19_q5_roundtrip_railb scanned = true ->
+    c_state (run (6 * length scanned + 32 + fuel)
+      (entry_config 12 ([5; 6] ++ encode_wide_program rows)
+        (0 :: 4 ::
+         (scanned ++ source_bit next :: 7 :: source_bit extra :: tail)))) =
+    if extra then 12 else 13.
+Proof.
+  intros scanned rows next extra tail fuel Hguard.
+  rewrite writeback_run_add.
+  rewrite (q12_complete_return_into_six_free_vault
+    scanned rows next extra tail Hguard).
+  destruct extra.
+  - change (c_state (run fuel
+      (entry_config 12 (5 :: 0 :: encode_wide_program rows)
+        (7 :: (4 :: scanned ++
+          6 :: (if next then 3 else 2) :: 3 :: tail)))) = 12).
+    apply q12_wide_vault_without_six_cannot_exit.
+  - change (c_state (run fuel
+      (entry_config 13 (5 :: 0 :: encode_wide_program rows)
+        (7 :: (4 :: scanned ++
+          6 :: (if next then 3 else 2) :: 2 :: tail)))) = 13).
+    apply q13_wide_vault_without_six_cannot_exit.
+Qed.
+
+Print Assumptions q12_complete_return_into_six_free_vault.
+Print Assumptions q12_complete_vault_cycle_cannot_resume.
