@@ -3563,11 +3563,6 @@ Proof.
   rewrite (q12_protected_selects_branch_arbitrary_stored
     scanned (source_bit sacrificial :: encode_wide_program rows)
     next false target tail Hguard).
-  change (step (entry_config 20
-    (encode_wide_program rows)
-    (source_bit sacrificial :: 0 :: 7 :: map q16_restore
-      (rev (protected_q16_backscan scanned next false)) ++
-      source_bit target :: tail)) = _).
   destruct sacrificial; reflexivity.
 Qed.
 
