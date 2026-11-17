@@ -61,10 +61,10 @@ jobs:
               -w -notation-overridden,-stdlib-vector \
               formal/utm/MinskyDirectionRelocationCycle.v \
               > /tmp/direction-fast-coq.log 2>&1; then
-            head -n 45 /tmp/direction-fast-coq.log
+            tail -n 80 /tmp/direction-fast-coq.log
             while IFS= read -r line; do
               echo "::error title=Coq q15-q22::$line"
-            done < <(head -n 45 /tmp/direction-fast-coq.log)
+            done < <(tail -n 80 /tmp/direction-fast-coq.log)
             exit 1
           fi
           coqchk -Q formal/utm NaNLM formal/utm/MinskyDirectionRelocationCycle.vo
