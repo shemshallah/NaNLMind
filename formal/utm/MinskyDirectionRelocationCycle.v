@@ -2502,7 +2502,7 @@ Proof.
 Qed.
 
 Theorem q6_guarded_rail_to_q7_or_q8 :
-  forall scanned stored next extra tail,
+  forall scanned stored (next extra : bool) tail,
     q19_q5_roundtrip_railb scanned = true ->
     run (length scanned + 3)
       (entry_config 6 (4 :: 7 :: 5 :: 0 :: stored)
@@ -2574,7 +2574,7 @@ Print Assumptions q78_scan_back_to_first_five.
 (** q7/q8 encounter the first 5 on their left after passing the
     newly marked bit, the 6 return marker, the dual-safe rail, 4 and 7. *)
 Lemma q78_return_rail_safe :
-  forall scanned next,
+  forall scanned (next : bool),
     q19_q5_roundtrip_railb scanned = true ->
     Forall q5_return_pass
       ((if next then 3 else 2) :: 6 :: rev scanned ++ [4; 7]).
@@ -2610,7 +2610,7 @@ Proof.
 Qed.
 
 Theorem q78_returned_vault_to_q9_or_q10 :
-  forall scanned stored next extra tail,
+  forall scanned stored (next extra : bool) tail,
     q19_q5_roundtrip_railb scanned = true ->
     run (length scanned + 5)
       (entry_config (if extra then 7 else 8)
@@ -2658,7 +2658,7 @@ Qed.
 (** Literal q9/q10 reads 7, then reads 4 and turns back left:
     q9 selects q12, q10 selects q13.  The head is on 7 again. *)
 Lemma q910_restored_four_to_q12_or_q13 :
-  forall scanned stored next extra tail,
+  forall scanned stored (next extra : bool) tail,
     run 2
       (entry_config (if extra then 9 else 10) (5 :: 0 :: stored)
         ([7; 4] ++ scanned ++
@@ -2675,7 +2675,7 @@ Qed.
     This is not a claim about every possible suffix: q6 needs that bit
     to leave its rightward scan. *)
 Theorem q6_complete_return_to_q12_or_q13 :
-  forall scanned stored next extra tail,
+  forall scanned stored (next extra : bool) tail,
     q19_q5_roundtrip_railb scanned = true ->
     run (2 * length scanned + 10)
       (entry_config 6 (4 :: 7 :: 5 :: 0 :: stored)
