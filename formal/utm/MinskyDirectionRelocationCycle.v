@@ -1751,17 +1751,19 @@ Proof.
     split.
     + apply q19_guarded_rail_rev_q16; exact Hcheck.
     + constructor; [unfold q16_pass; lia | constructor].
-  - rewrite rev_app_distr.
-    simpl.
-    rewrite rev_involutive.
-    simpl.
-    rewrite Forall_app.
-    split.
-    + repeat constructor; unfold q15_pass; lia.
-    + constructor.
-      * unfold q15_pass; lia.
-      * apply (proj2 (q19_restored_scan_safe_iff scanned)).
-        exact Hcheck.
+  - replace
+      ([5; 7] ++
+        map q16_restore (rev (rev scanned ++ [4])))
+      with (5 :: 7 :: 4 :: map q16_restore scanned).
+    2:{ rewrite rev_app_distr.
+        simpl.
+        rewrite rev_involutive.
+        reflexivity. }
+    constructor; [unfold q15_pass; lia |].
+    constructor; [unfold q15_pass; lia |].
+    constructor; [unfold q15_pass; lia |].
+    apply (proj2 (q19_restored_scan_safe_iff scanned)).
+    exact Hcheck.
 Qed.
 
 (** Every nonempty, conventionally marked wide-program rail FAILS
