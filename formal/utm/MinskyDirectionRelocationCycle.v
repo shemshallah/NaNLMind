@@ -1788,3 +1788,89 @@ Print Assumptions q19_guarded_railb_spec.
 Print Assumptions q12_right_guarded_scan_relocates_neighbor.
 Print Assumptions q12_right_guarded_railb_sound.
 Print Assumptions q19_guarded_railb_rejects_marked_wide_program.
+
+(** A second, stronger placement invariant: the entire program vault can
+    sit on the LEFT of the displaced old data bit while the RIGHT rail
+    is guarded.  The literal 23x8 machine returns the correct next-data
+    marker and preserves the vault verbatim.  It is a q12-entry framed
+    execution, NOT a claim that the canonical q5 source encoding reaches
+    this entry or that q5 subsequently selects the correct source row. *)
+Theorem q12_right_guarded_preserves_program_vault :
+  forall scanned stored next final,
+    q19_guarded_railb scanned = true ->
+    run (reached_direction_cost [0; 5] [] scanned
+           (rev scanned ++ [4]) [5] +
+         (S (length
+           ([5; 7] ++
+             map q16_restore (rev (rev scanned ++ [4])))) + 1))
+      (entry_config 12 ([5; 6] ++ stored)
+        (0 :: 4 :: (scanned ++ source_bit next :: 7 :: final))) =
+    cfg_ml 5
+      (6 :: rev
+        ([5; 7] ++
+          map q16_restore (rev (rev scanned ++ [4]))) ++
+       0 :: stored)
+      ((if next then 3 else 2) :: final).
+Proof.
+  intros scanned stored next final Hcheck.
+  pose proof (proj1 (q19_guarded_railb_spec scanned) Hcheck)
+    as Hguard.
+  assert (Hscan : Forall q15_pass scanned).
+  { apply q19_guarded_rail_q15; exact Hguard. }
+  assert (Hback : Forall q16_pass (rev scanned ++ [4])).
+  {
+    rewrite Forall_app.
+    split.
+    - apply q19_guarded_rail_rev_q16; exact Hguard.
+    - constructor; [unfold q16_pass; lia | constructor].
+  }
+  assert (Hsafe : Forall q15_pass
+    ([5; 7] ++ map q16_restore (rev (rev scanned ++ [4])))).
+  {
+    replace
+      ([5; 7] ++ map q16_restore (rev (rev scanned ++ [4])))
+      with (5 :: 7 :: 4 :: map q16_restore scanned).
+    2:{ rewrite rev_app_distr.
+        simpl.
+        rewrite rev_involutive.
+        reflexivity. }
+    constructor; [unfold q15_pass; lia |].
+    constructor; [unfold q15_pass; lia |].
+    constructor; [unfold q15_pass; lia |].
+    apply (proj2 (q19_restored_scan_safe_iff scanned)).
+    exact Hguard.
+  }
+  assert (H12 : Forall q12_pass [0; 5]).
+  { repeat constructor; unfold q12_pass; lia. }
+  assert (H14 : Forall q14_pass (rev [0; 5] ++ [])).
+  { repeat constructor; unfold q14_pass; lia. }
+  assert (Hlayout :
+    map q14_restore (rev (rev [0; 5] ++ [])) =
+      [] ++ source_bit false :: 5 :: []) by reflexivity.
+  assert (Hdir : Forall q21_pass [5]).
+  { constructor; [unfold q21_pass; lia | constructor]. }
+  assert (Hreturn : Forall q17_pass []) by constructor.
+  rewrite writeback_run_add.
+  pose proof (q12_to_q19_reached_direction
+    [5] 0 [] stored scanned next (7 :: final)
+    [] false 5 [] H12 H14 Hscan Hlayout Hback Hdir) as Hstage.
+  cbn [app] in Hstage.
+  rewrite Hstage.
+  replace
+    (rev [5] ++
+      7 :: map q16_restore (rev (rev scanned ++ 4 :: [])) ++
+      source_bit next :: 7 :: final)
+    with
+    (([5; 7] ++
+       map q16_restore (rev (rev scanned ++ [4]))) ++
+      source_bit next :: [] ++ 7 :: final).
+  2:{ cbn [rev app]. reflexivity. }
+  pose proof (q19_to_q5_relocation
+    ([5; 7] ++
+      map q16_restore (rev (rev scanned ++ [4])))
+    [] next (0 :: stored) final Hsafe Hreturn) as Hfinish.
+  cbn [app] in Hfinish.
+  exact Hfinish.
+Qed.
+
+Print Assumptions q12_right_guarded_preserves_program_vault.
