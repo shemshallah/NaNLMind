@@ -1701,10 +1701,11 @@ Proof.
   { constructor; [unfold q21_pass; lia | constructor]. }
   assert (Hreturn : Forall q17_pass []) by constructor.
   rewrite writeback_run_add.
-  match goal with |- ?G => idtac "Q12_GUARDED_STAGE" G end.
-  rewrite (q12_to_q19_reached_direction
+  pose proof (q12_to_q19_reached_direction
     [5] 0 [] [] scanned next (7 :: final)
-    [] false 5 [] H12 H14 Hscan Hlayout Hback Hdir).
+    [] false 5 [] H12 H14 Hscan Hlayout Hback Hdir) as Hstage.
+  cbn [app] in Hstage.
+  rewrite Hstage.
   replace
     (rev [5] ++
       7 :: map q16_restore (rev (rev scanned ++ 4 :: [])) ++
