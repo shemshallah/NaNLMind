@@ -2764,3 +2764,161 @@ Qed.
 
 Print Assumptions q12_complete_return_into_six_free_vault.
 Print Assumptions q12_complete_vault_cycle_cannot_resume.
+
+
+(** A constructive delimiter repair.  The earlier obstruction consumes the
+    sole 6 to the left of the current q12 head.  Here the stored vault
+    starts with an additional protected 6, before any wide source rows.
+    The frozen 23x8 table is unchanged. *)
+
+(** Generalize the exact q12 return over an arbitrary stored suffix.
+    The wide-program encoding will be instantiated only at the next step. *)
+Theorem q12_complete_return_with_arbitrary_stored :
+  forall scanned stored next extra tail,
+    q19_q5_roundtrip_railb scanned = true ->
+    run (6 * length scanned + 32)
+      (entry_config 12 ([5; 6] ++ stored)
+        (0 :: 4 ::
+         (scanned ++ source_bit next :: 7 :: source_bit extra :: tail))) =
+    entry_config (if extra then 12 else 13) (5 :: 0 :: stored)
+      ([7; 4] ++ scanned ++
+       [6; if next then 3 else 2; if extra then 3 else 2] ++ tail).
+Proof.
+  intros scanned stored next extra tail Hguard.
+  replace (6 * length scanned + 32)
+    with ((4 * length scanned + 22) + (2 * length scanned + 10))
+    by lia.
+  rewrite writeback_run_add.
+  rewrite (q12_right_roundtrip_program_vault_to_q6
+    scanned stored next (source_bit extra :: tail) Hguard).
+  apply q6_complete_return_to_q12_or_q13.
+  exact Hguard.
+Qed.
+
+(** q12/q13 return left across 7,5,0; the protected 6 selects q14.
+    q14 immediately crosses 0,5,7,4 and enters q15.  Every transition
+    here is executable by reflexive reduction of the frozen table. *)
+Lemma q12q13_protected_six_reopens_q15 :
+  forall scanned stored (next extra : bool) tail,
+    run 8
+      (entry_config (if extra then 12 else 13)
+        (5 :: 0 :: 6 :: stored)
+        ([7; 4] ++ scanned ++
+         [6; if next then 3 else 2; if extra then 3 else 2] ++ tail)) =
+    entry_config 15
+      (4 :: 7 :: 5 :: 0 :: (if extra then 3 else 2) :: stored)
+      (scanned ++
+       [6; if next then 3 else 2; if extra then 3 else 2] ++ tail).
+Proof.
+  intros scanned stored next extra tail.
+  destruct extra; reflexivity.
+Qed.
+
+(** The program is now behind a surviving 2/3 direction mark; no source
+    row is edited by the eight-step reentry.  Exact cost: 6n+40. *)
+Theorem q12_protected_second_six_reenters_q15 :
+  forall scanned rows next extra tail,
+    q19_q5_roundtrip_railb scanned = true ->
+    run (6 * length scanned + 40)
+      (entry_config 12
+        ([5; 6] ++ 6 :: encode_wide_program rows)
+        (0 :: 4 ::
+         (scanned ++ source_bit next :: 7 :: source_bit extra :: tail))) =
+    entry_config 15
+      (4 :: 7 :: 5 :: 0 ::
+       (if extra then 3 else 2) :: encode_wide_program rows)
+      (scanned ++
+       [6; if next then 3 else 2; if extra then 3 else 2] ++ tail).
+Proof.
+  intros scanned rows next extra tail Hguard.
+  replace (6 * length scanned + 40)
+    with ((6 * length scanned + 32) + 8) by lia.
+  rewrite writeback_run_add.
+  rewrite (q12_complete_return_with_arbitrary_stored
+    scanned (6 :: encode_wide_program rows) next extra tail Hguard).
+  apply q12q13_protected_six_reopens_q15.
+Qed.
+
+Lemma q15_returned_rail_is_safe :
+  forall scanned (next extra : bool),
+    q19_q5_roundtrip_railb scanned = true ->
+    Forall q15_pass
+      (scanned ++ [6; if next then 3 else 2;
+                       if extra then 3 else 2]).
+Proof.
+  intros scanned next extra Hguard.
+  pose proof (q6_guarded_rail_safe scanned Hguard) as Hsafe.
+  clear Hguard.
+  assert (Hrail : Forall q15_pass scanned).
+  {
+    induction Hsafe as [|s rest Hs Hrest IH].
+    - constructor.
+    - constructor.
+      + unfold q6_nonraw in Hs.
+        unfold q15_pass.
+        tauto.
+      + exact IH.
+  }
+  rewrite Forall_app.
+  split.
+  - exact Hrail.
+  - constructor.
+    + unfold q15_pass; auto 10.
+    + constructor.
+      * destruct next; unfold q15_pass; simpl; auto 10.
+      * constructor.
+        -- destruct extra; unfold q15_pass; simpl; auto 10.
+        -- constructor.
+Qed.
+
+(** With another unmarked data bit available to q15, the second sentinel
+    enables a complete native reentry to q16.  Cost: 7n+44.  This does
+    NOT by itself identify a simulated source instruction or prove
+    that the new vault encoding is globally invariant. *)
+Theorem q12_protected_second_six_reenters_q16 :
+  forall scanned rows next extra target tail,
+    q19_q5_roundtrip_railb scanned = true ->
+    run (7 * length scanned + 44)
+      (entry_config 12
+        ([5; 6] ++ 6 :: encode_wide_program rows)
+        (0 :: 4 ::
+         (scanned ++ source_bit next :: 7 ::
+          source_bit extra :: source_bit target :: tail))) =
+    cfg_ml 16
+      (rev (scanned ++
+        [6; if next then 3 else 2; if extra then 3 else 2]) ++
+       4 :: 7 :: 5 :: 0 ::
+       (if extra then 3 else 2) :: encode_wide_program rows)
+      (source_bit target :: tail).
+Proof.
+  intros scanned rows next extra target tail Hguard.
+  replace (7 * length scanned + 44)
+    with ((6 * length scanned + 40) +
+          S (length (scanned ++
+            [6; if next then 3 else 2; if extra then 3 else 2]))).
+  2:{
+    rewrite app_length.
+    cbn [length].
+    lia.
+  }
+  rewrite writeback_run_add.
+  rewrite (q12_protected_second_six_reenters_q15
+    scanned rows next extra (source_bit target :: tail) Hguard).
+  replace
+    (scanned ++
+     [6; if next then 3 else 2; if extra then 3 else 2] ++
+     source_bit target :: tail)
+    with
+    ((scanned ++
+      [6; if next then 3 else 2; if extra then 3 else 2]) ++
+      source_bit target :: tail).
+  2:{
+    rewrite <- app_assoc.
+    reflexivity.
+  }
+  apply q15_scan_to_raw.
+  apply q15_returned_rail_is_safe; exact Hguard.
+Qed.
+
+Print Assumptions q12_protected_second_six_reenters_q15.
+Print Assumptions q12_protected_second_six_reenters_q16.
