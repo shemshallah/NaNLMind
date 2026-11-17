@@ -2036,6 +2036,9 @@ Proof.
       destruct Hsymbol as [Hbound Hnotfive].
       apply andb_true_iff in Hbound.
       destruct Hbound as [Hlo Hhi].
+      change (Nat.leb 4 symbol = true) in Hlo.
+      change (Nat.leb symbol 7 = true) in Hhi.
+      change (negb (Nat.eqb symbol 5) = true) in Hnotfive.
       apply Nat.leb_le in Hlo.
       apply Nat.leb_le in Hhi.
       apply negb_true_iff in Hnotfive.
