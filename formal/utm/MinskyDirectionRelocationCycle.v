@@ -4457,10 +4457,18 @@ Theorem q5_q1_native_tagged_return_reenters_q0 :
 Proof.
   intros first rest sacrificial stored suffix.
   rewrite writeback_run_add.
+  replace (S (length
+    (map q0_stable_control_tag (first :: rest))))
+    with (S (length
+      (q0_stable_control_tag first ::
+       map q0_stable_control_tag rest))) by reflexivity.
   rewrite (q5_native_tagged_return_preserves_control_rail
     first rest stored
     (6 :: 2 :: (if sacrificial then 3 else 2) :: suffix)).
   rewrite writeback_run_add.
+  replace (length (map q0_stable_control_tag (first :: rest)))
+    with (length (rev (map q0_stable_control_tag (first :: rest)))).
+  2:{ rewrite rev_length. reflexivity. }
   rewrite (q1_scan_tagged_rail
     (rev (map q0_stable_control_tag (first :: rest)))
     (5 :: stored)
