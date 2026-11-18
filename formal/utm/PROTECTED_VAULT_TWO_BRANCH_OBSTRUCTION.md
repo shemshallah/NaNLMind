@@ -59,3 +59,47 @@ A phase-separated control rail that delays restoration of 2/3 control marks, com
 **Not proved:** reachability of this q12 frame from the canonical entry; any complete source-instruction simulation; impossibility of other encodings; non-universality of the frozen 23×8 machine; or any result about unrelated NaNLM architectures.
 
 The original literal transition table remains unchanged. The negative result is specific to this protected-vault layout.
+
+
+## Protected raw-stop and five-guard continuation — certified extension
+
+This extension was completed and independently verified on 2026-11-17/18. It refines the left-branch repair without altering the frozen 23-state by 8-symbol transition table.
+
+Proof commit: [bde6543](https://github.com/shemshallah/NaNLMind/commit/bde6543a4e49ed9602bc663864fd9fd11794abe1).
+
+Independent verification on the same commit:
+
+- [Fast cycle and canonical-match coqchk, both SUCCESS](https://github.com/shemshallah/NaNLMind/actions/runs/44226433010).
+- [Full independent mechanized UTM/Minsky build, SUCCESS](https://github.com/shemshallah/NaNLMind/actions/runs/44226433020).
+- [Representation bridge, SUCCESS](https://github.com/shemshallah/NaNLMind/actions/runs/44226433028).
+- [Repository CI, SUCCESS](https://github.com/shemshallah/NaNLMind/actions/runs/44226433204).
+
+The revised left tape starts with [5;6], a protected 6, an extra sacrificial raw source bit, a protected 5, and finally the entire encoded wide program. The original right control rail has extra=false, a guarded scanned prefix, next, marker 7, and the intended target.
+
+The following universal quantified theorems now hold under q19_q5_roundtrip_railb scanned = true (each scanned symbol is 4, 6 or 7):
+
+| Coq theorem | Exact native clock | Certified outcome |
+| --- | ---: | --- |
+| q12_sacrificial_stop_arbitrary_suffix | 8n + 53 | q20 consumes the sacrificial raw bit; the stored suffix is unmodified at q17 or q18. |
+| q12_sacrificial_five_guard_preserves_program_to_q1 | 8n + 58 | The protected 5 terminates the return through q5 and reaches q1 with all encoded source rows intact. |
+| q12_sacrificial_five_guard_reenters_q0 | 8n + 60 | Two additional q1 steps reach q0, with the program still intact. |
+| q12_sacrificial_guard_dispatches_early_next | 9n + 66 | q0 encounters restored next before target. A zero next enters q2; a one next enters q3. The intended target remains unconsumed in either outcome. |
+
+These clocks measure native steps of MinskyTable.run. The proof does not assume finite enumeration, a fixed scanned length, a fixed program width, or a fixed target value. The q0 early-dispatch theorem explicitly preserves both branches and the remaining target bit.
+
+### Mechanism of the new obstruction
+
+The extra sacrificial raw bit fixes the original immediate program-overwrite problem. The protected 5 stops the q5 return before q5 enters the saved source program. Neither repair, however, changes the ordering of the control symbols restored by q16. Immediately before q0 dispatch, the right scan prefix is
+
+    [sacrificial_mark;5;7;4] ++ map q16_restore scanned ++
+    [6;source_bit next;0;source_bit target] ++ tail.
+
+Every symbol before next is q0-passable. Thus the next raw bit is selected before the target on both branches. The result is an exact native layout-specific obstruction even though the encoded wide program has survived the repair.
+
+### Required design change and open obligations
+
+A successful whole-instruction layout needs a phase-separated control representation or a true control relocation that prevents restored next from being the first raw bit consumed by q0. Potential approaches include moving the temporary next bit outside q0's rightward scan, or protecting it with a passable marker until the intended target is processed. These are research proposals, not proved repairs.
+
+Still open: canonical-entry reachability for the repaired frame; source-state correspondence; both left and right instruction semantics; total program preservation across a whole instruction; halting equivalence; and any universality theorem for the literal 23x8 table. Nothing here excludes other encodings of the same table.
+
+**Publication status:** a self-contained, kernel-certified partial obstruction and repair-analysis package is available. Novelty, framing and comparison with the literature remain separate scholarly checks.
