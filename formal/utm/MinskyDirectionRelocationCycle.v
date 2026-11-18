@@ -4479,3 +4479,61 @@ Proof.
 Qed.
 
 Print Assumptions q5_q1_native_tagged_return_reenters_q0.
+
+
+(** Conditional end-to-end return/dispatch from an explicit q5 entry:
+    q5 restores a 6/7 rail, q1 traverses it and exits through 6,2,
+    and q0 passes the displacement mark and BOTH stable control tags
+    before reading the intended raw target.  Neither branch claims
+    upstream reachability from canonical q12. *)
+Theorem q5_q1_q0_native_tagged_target_dispatch :
+  forall (first : bool) (rest : list bool)
+         (sacrificial next extra target : bool)
+         (stored tail : list nat),
+    run ((S (length (map q0_stable_control_tag (first :: rest))) +
+          (length (map q0_stable_control_tag (first :: rest)) + 2)) + 4)
+      (entry_config 5
+        (map q0_stable_control_tag rest ++ 5 :: stored)
+        (q0_stable_control_tag first ::
+         6 :: 2 :: (if sacrificial then 3 else 2) ::
+         q0_stable_control_tag next ::
+         q0_stable_control_tag extra ::
+         source_bit target :: tail)) =
+    if target
+    then entry_config 3
+      (3 :: rev
+        ([if sacrificial then 3 else 2] ++
+         [q0_stable_control_tag next; q0_stable_control_tag extra]) ++
+       0 :: 6 :: map q0_stable_control_tag (first :: rest) ++
+       5 :: stored) tail
+    else cfg_ml 2
+      (rev
+        ([if sacrificial then 3 else 2] ++
+         [q0_stable_control_tag next; q0_stable_control_tag extra]) ++
+       0 :: 6 :: map q0_stable_control_tag (first :: rest) ++
+       5 :: stored) (2 :: tail).
+Proof.
+  intros first rest sacrificial next extra target stored tail.
+  rewrite writeback_run_add.
+  rewrite (q5_q1_native_tagged_return_reenters_q0
+    first rest sacrificial stored
+    (q0_stable_control_tag next ::
+     q0_stable_control_tag extra ::
+     source_bit target :: tail)).
+  replace 4
+    with (length [if sacrificial then 3 else 2] + 3)
+    by reflexivity.
+  rewrite (q0_tagged_control_pair_dispatches_target
+    [if sacrificial then 3 else 2]
+    (0 :: 6 :: map q0_stable_control_tag (first :: rest) ++
+     5 :: stored)
+    tail next extra target).
+  2:{
+    constructor.
+    - destruct sacrificial; unfold q0_pass; auto 12.
+    - constructor.
+  }
+  reflexivity.
+Qed.
+
+Print Assumptions q5_q1_q0_native_tagged_target_dispatch.
