@@ -366,9 +366,7 @@ Proof.
     intros left right processed region record_bits record_tail tbuffer data
       Hleft Hright Hlen Hproc7 Hproc9 Hreg6 Hreg7.
   - destruct record_bits as [|r rs].
-    + cbn [copy_all_clock map].
-      rewrite Hleft, Hright.
-      cbn [app]. reflexivity.
+    + cbn [copy_all_clock map]. rewrite Hleft, Hright. cbn [app]. reflexivity.
     + cbn [length] in Hlen. discriminate Hlen.
   - destruct record_bits as [|r rs].
     + cbn [length] in Hlen. discriminate Hlen.
@@ -388,20 +386,31 @@ Proof.
           by (repeat rewrite <- app_assoc; cbn [app]; reflexivity).
         replace (region ++ 3 :: map match_mark rs ++ record_tail)
           with ((region ++ [3]) ++ map match_mark rs ++ record_tail)
-          by (apply app_cons_singleton).
-        apply (IH (4 :: rev (map source_bit cs) ++ 3 :: processed ++
+          by (symmetry; apply app_cons_singleton).
+        assert (Hleft' : 4 :: rev (map source_bit cs) ++ 3 :: processed ++
+            5 :: rev tbuffer ++ 6 :: rev data =
+          4 :: rev (map source_bit cs) ++ (3 :: processed) ++
+            5 :: rev tbuffer ++ 6 :: rev data).
+        { cbn [app]. reflexivity. }
+        assert (Hright' : region ++ 3 :: map source_bit rs ++ record_tail =
+          (region ++ [3]) ++ map source_bit rs ++ record_tail).
+        { symmetry; apply app_cons_singleton. }
+        assert (Hproc7' : Forall q7_pass (3 :: processed)).
+        { constructor; [unfold q7_pass; auto 10 | exact Hproc7]. }
+        assert (Hproc9' : Forall q9_pass (3 :: processed)).
+        { constructor; [unfold q9_pass; auto 10 | exact Hproc9]. }
+        assert (Hreg6' : Forall q6_pass (region ++ [3])).
+        { apply Forall_app; split; [exact Hreg6 | constructor;
+            [unfold q6_pass; auto 10 | constructor]]. }
+        assert (Hreg7' : Forall q7_pass (region ++ [3])).
+        { apply Forall_app; split; [exact Hreg7 | constructor;
+            [unfold q7_pass; auto 10 | constructor]]. }
+        exact (IH
+          (4 :: rev (map source_bit cs) ++ 3 :: processed ++
             5 :: rev tbuffer ++ 6 :: rev data)
           (region ++ 3 :: map source_bit rs ++ record_tail)
-          (3 :: processed) (region ++ [3]) rs record_tail tbuffer data).
-        -- cbn [app]. reflexivity.
-        -- symmetry; apply app_cons_singleton.
-        -- exact Hlen'.
-        -- constructor; [unfold q7_pass; auto 10 | exact Hproc7].
-        -- constructor; [unfold q9_pass; auto 10 | exact Hproc9].
-        -- apply Forall_app; split; [exact Hreg6 | constructor;
-             [unfold q6_pass; auto 10 | constructor]].
-        -- apply Forall_app; split; [exact Hreg7 | constructor;
-             [unfold q7_pass; auto 10 | constructor]].
+          (3 :: processed) (region ++ [3]) rs record_tail tbuffer data
+          Hleft' Hright' Hlen' Hproc7' Hproc9' Hreg6' Hreg7').
       * rewrite Hleft, Hright.
         rewrite (canonical_q6_copy_unfolded processed c cs region rs
           record_tail tbuffer data false Hproc7 Hproc9 Hreg6 Hreg7).
@@ -413,20 +422,31 @@ Proof.
           by (repeat rewrite <- app_assoc; cbn [app]; reflexivity).
         replace (region ++ 2 :: map match_mark rs ++ record_tail)
           with ((region ++ [2]) ++ map match_mark rs ++ record_tail)
-          by (apply app_cons_singleton).
-        apply (IH (4 :: rev (map source_bit cs) ++ 2 :: processed ++
+          by (symmetry; apply app_cons_singleton).
+        assert (Hleft' : 4 :: rev (map source_bit cs) ++ 2 :: processed ++
+            5 :: rev tbuffer ++ 6 :: rev data =
+          4 :: rev (map source_bit cs) ++ (2 :: processed) ++
+            5 :: rev tbuffer ++ 6 :: rev data).
+        { cbn [app]. reflexivity. }
+        assert (Hright' : region ++ 2 :: map source_bit rs ++ record_tail =
+          (region ++ [2]) ++ map source_bit rs ++ record_tail).
+        { symmetry; apply app_cons_singleton. }
+        assert (Hproc7' : Forall q7_pass (2 :: processed)).
+        { constructor; [unfold q7_pass; auto 10 | exact Hproc7]. }
+        assert (Hproc9' : Forall q9_pass (2 :: processed)).
+        { constructor; [unfold q9_pass; auto 10 | exact Hproc9]. }
+        assert (Hreg6' : Forall q6_pass (region ++ [2])).
+        { apply Forall_app; split; [exact Hreg6 | constructor;
+            [unfold q6_pass; auto 10 | constructor]]. }
+        assert (Hreg7' : Forall q7_pass (region ++ [2])).
+        { apply Forall_app; split; [exact Hreg7 | constructor;
+            [unfold q7_pass; auto 10 | constructor]]. }
+        exact (IH
+          (4 :: rev (map source_bit cs) ++ 2 :: processed ++
             5 :: rev tbuffer ++ 6 :: rev data)
           (region ++ 2 :: map source_bit rs ++ record_tail)
-          (2 :: processed) (region ++ [2]) rs record_tail tbuffer data).
-        -- cbn [app]. reflexivity.
-        -- symmetry; apply app_cons_singleton.
-        -- exact Hlen'.
-        -- constructor; [unfold q7_pass; auto 10 | exact Hproc7].
-        -- constructor; [unfold q9_pass; auto 10 | exact Hproc9].
-        -- apply Forall_app; split; [exact Hreg6 | constructor;
-             [unfold q6_pass; auto 10 | constructor]].
-        -- apply Forall_app; split; [exact Hreg7 | constructor;
-             [unfold q7_pass; auto 10 | constructor]].
+          (2 :: processed) (region ++ [2]) rs record_tail tbuffer data
+          Hleft' Hright' Hlen' Hproc7' Hproc9' Hreg6' Hreg7').
 Qed.
 
 Print Assumptions canonical_q6_copy_all.
