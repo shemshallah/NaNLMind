@@ -319,6 +319,15 @@ Proof.
       Hproc7 Hproc9 Hreg6 Hreg7).
 Qed.
 
+Lemma app_cons_singleton :
+  forall (l : list nat) x r,
+    l ++ x :: r = (l ++ [x]) ++ r.
+Proof.
+  intros l x r.
+  rewrite app_assoc.
+  reflexivity.
+Qed.
+
 Print Assumptions canonical_q6_copy_unfolded.
 
 Fixpoint copy_all_clock (bits record_bits : list bool)
@@ -367,9 +376,11 @@ Proof.
       destruct r.
       * rewrite (canonical_q6_copy_unfolded processed c cs region rs
           record_tail tbuffer data true Hproc7 Hproc9 Hreg6 Hreg7).
-        cbn [match_mark map rev].
-        repeat rewrite app_assoc in IH.
-        repeat rewrite <- app_assoc.
+        replace (region ++ 3 :: map source_bit rs ++ record_tail)
+          with ((region ++ [3]) ++ map source_bit rs ++ record_tail)
+          by (apply app_cons_singleton).
+        cbn [match_mark map rev app] in IH.
+        cbn [match_mark map rev app].
         apply (IH rs (3 :: processed) (region ++ [3])
           record_tail tbuffer data).
         -- exact Hlen'.
@@ -381,9 +392,11 @@ Proof.
              [unfold q7_pass; auto 10 | constructor]].
       * rewrite (canonical_q6_copy_unfolded processed c cs region rs
           record_tail tbuffer data false Hproc7 Hproc9 Hreg6 Hreg7).
-        cbn [match_mark map rev].
-        repeat rewrite app_assoc in IH.
-        repeat rewrite <- app_assoc.
+        replace (region ++ 2 :: map source_bit rs ++ record_tail)
+          with ((region ++ [2]) ++ map source_bit rs ++ record_tail)
+          by (apply app_cons_singleton).
+        cbn [match_mark map rev app] in IH.
+        cbn [match_mark map rev app].
         apply (IH rs (2 :: processed) (region ++ [2])
           record_tail tbuffer data).
         -- exact Hlen'.
