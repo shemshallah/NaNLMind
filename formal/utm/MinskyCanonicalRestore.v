@@ -166,9 +166,16 @@ Corollary canonical_restore_q16_decision :
        source_bit bit :: tail).
 Proof.
   intros m marked old prefix bit tail Hm Hmarked.
-  replace (rev (marked ++ [m])) with (m :: rev marked).
-  2:{ rewrite rev_app_distr. reflexivity. }
-  cbn [cfg_ml].
+  replace (rev (marked ++ [m]) ++ 4 :: source_bit old :: prefix)
+    with (m :: ((rev marked ++ [4]) ++ (source_bit old :: prefix))).
+  2:{
+    rewrite rev_app_distr. cbn [rev].
+    repeat rewrite <- app_assoc. reflexivity.
+  }
+  change (run (S (length (m :: rev marked ++ [4])))
+    (entry_config 16
+      ((rev marked ++ [4]) ++ (source_bit old :: prefix))
+      (m :: source_bit bit :: tail)) = _).
   assert (Hscan : Forall q16_pass (m :: rev marked ++ [4])).
   {
     constructor.
@@ -179,11 +186,6 @@ Proof.
         * unfold q16_pass; auto 10.
         * constructor.
   }
-  assert (Hframe :
-    rev marked ++ 4 :: source_bit old :: prefix =
-    (rev marked ++ [4]) ++ source_bit old :: prefix)
-    by (rewrite <- app_assoc; reflexivity).
-  rewrite Hframe.
   apply (q16_restore_to_raw (rev marked ++ [4]) m old prefix
     (source_bit bit :: tail) Hscan).
 Qed.
