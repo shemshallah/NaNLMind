@@ -609,3 +609,66 @@ passed `coqc` and `coqchk`.  The full bridge is
 This is a macro phase.  q15/q16 raw-bit search, q21/q22 decision, q19/q20
 relocation, q17/q18 return, the source write/head transition, halting
 reflection, and the universality reduction remain open.
+
+## November 18 canonical decision, relocation and q5 return (kernel-checked)
+
+The restore phase now continues through q15/q16, q21/q22 and, under
+explicit safety premises, q19/q20 and q17/q18 back to q5.
+`MinskyCanonicalDecision.v` contains:
+
+- `canonical_restore_q12_q15_capture` and
+  `canonical_restore_q13_q15_capture`: the restore clock plus
+  `S |marked ++ [2/3]|` reaches the q16 cursor
+
+  ```text
+  cfg_ml 16
+    (rev (marked ++ [m]) ++ 4 ::
+     map q14_restore (rev T) ++ 3/2 :: rev data)
+    (source_bit bit :: tail).
+  ```
+
+- `canonical_restore_q16_decision`: q16 scans the backscan and X=4,
+  restores `2->0` / `3->1`, writes 7 at the raw cell behind X=4 and
+  selects q21 (bit 0) or q22 (bit 1).
+
+- `canonical_q12_restore_to_q16_decision` and
+  `canonical_q13_restore_to_q16_decision`: since the canonical last
+  record mark is `match_mark b`, `q14_restore` exposes exactly
+  `source_bit b`, so the restore joins the decision phase without an
+  extra structural premise.
+
+- `canonical_q16_decision_to_q19` and `canonical_q16_decision_to_q20`:
+  q21/q22 scan the restored direction block to the stored 3/2 marker and
+  enter q19 (right) or q20 (left).
+
+- `canonical_q16_decision_right_to_q5`: q19 displaces the next raw cell
+  by 6 and q17/q18 return to a following 7 in q5, with exact clock.
+
+- `canonical_q16_decision_left_to_q5`: q20 steps onto the left target
+  raw cell, writes 6, and q17/q18 scan back to the 7 left by q16,
+  returning to q5.
+
+Verification: restore corollaries fast
+[44400890924](https://github.com/shemshallah/NaNLMind/actions/runs/44400890924)
+and bridge
+[44402415039](https://github.com/shemshallah/NaNLMind/actions/runs/44402415039);
+q16 decision and q19/q20 fast
+[44405460764](https://github.com/shemshallah/NaNLMind/actions/runs/44405460764)
+and bridge
+[44405995495](https://github.com/shemshallah/NaNLMind/actions/runs/44405995495);
+q19/q20-to-q5 fast
+[44406270655](https://github.com/shemshallah/NaNLMind/actions/runs/44406270655);
+restore-to-decision fast
+[44408127139](https://github.com/shemshallah/NaNLMind/actions/runs/44408127139)
+and full bridge
+[44408794555](https://github.com/shemshallah/NaNLMind/actions/runs/44408794555)
+on accepted commit `f1798b4`.
+
+Scope: these are exact native macro compositions with explicit
+passability/safety hypotheses.  The right q19 relocation requires the
+restored scan to be entirely q15-passable; the left branch requires the
+q17 return rail to be q17-passable.  The raw canonical layout restores
+2/3 marks to 0/1, so the documented premature-raw-capture obstruction
+still applies.  Discharging these side conditions requires the tagged
+6/7 control channel documented above.  No single source step, halting
+reflection, or universality claim is made here.
