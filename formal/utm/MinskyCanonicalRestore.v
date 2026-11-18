@@ -172,10 +172,13 @@ Proof.
     rewrite rev_app_distr. cbn [rev].
     repeat rewrite <- app_assoc. reflexivity.
   }
-  change (run (S (length (m :: rev marked ++ [4])))
-    (entry_config 16
-      ((rev marked ++ [4]) ++ (source_bit old :: prefix))
-      (m :: source_bit bit :: tail)) = _).
+  match goal with
+  | |- _ = ?expected =>
+    change (run (S (length (m :: rev marked ++ [4])))
+      (entry_config 16
+        ((rev marked ++ [4]) ++ (source_bit old :: prefix))
+        (m :: source_bit bit :: tail)) = expected)
+  end.
   assert (Hscan : Forall q16_pass (m :: rev marked ++ [4])).
   {
     constructor.
