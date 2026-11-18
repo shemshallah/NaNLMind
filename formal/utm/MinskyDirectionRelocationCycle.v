@@ -3959,3 +3959,85 @@ Proof.
 Qed.
 
 Print Assumptions q0_protected_prefix_with_tagged_controls_reads_target.
+
+
+(** Upstream-compatible local property: q16 scans arbitrary finite
+    6/7-tagged control rails without rewriting their information.
+    The final transition to q21/q22 still depends on a separate raw
+    delimiter to the left.  This does not establish that q12 can
+    construct the tagged rail, nor a whole-instruction simulation. *)
+Lemma q16_stable_control_tag_pass :
+  forall b, q16_pass (q0_stable_control_tag b).
+Proof.
+  intros []; unfold q16_pass, q0_stable_control_tag; auto 12.
+Qed.
+
+Lemma q16_stable_control_rail_safe :
+  forall bits,
+    Forall q16_pass (map q0_stable_control_tag bits).
+Proof.
+  induction bits as [|b rest IH].
+  - constructor.
+  - constructor.
+    + apply q16_stable_control_tag_pass.
+    + exact IH.
+Qed.
+
+Lemma q16_stable_control_tag_restore :
+  forall b,
+    q16_restore (q0_stable_control_tag b) =
+    q0_stable_control_tag b.
+Proof.
+  intros []; reflexivity.
+Qed.
+
+Theorem q16_stable_control_rail_restore_identity :
+  forall bits,
+    map q16_restore (map q0_stable_control_tag bits) =
+    map q0_stable_control_tag bits.
+Proof.
+  induction bits as [|b rest IH].
+  - reflexivity.
+  - simpl.
+    rewrite q16_stable_control_tag_restore.
+    rewrite IH.
+    reflexivity.
+Qed.
+
+Lemma q16_stable_control_rail_reverse_restore :
+  forall bits,
+    map q16_restore (rev (map q0_stable_control_tag bits)) =
+    rev (map q0_stable_control_tag bits).
+Proof.
+  intro bits.
+  rewrite map_rev.
+  rewrite q16_stable_control_rail_restore_identity.
+  reflexivity.
+Qed.
+
+Theorem q16_native_tagged_backscan_preserves_control_rail :
+  forall (first : bool) (rest : list bool)
+         (old : bool) (left suffix : list nat),
+    run (S (length
+      (q0_stable_control_tag first ::
+       map q0_stable_control_tag rest)))
+      (entry_config 16
+        (map q0_stable_control_tag rest ++
+         source_bit old :: left)
+        (q0_stable_control_tag first :: suffix)) =
+    cfg_ml (if old then 22 else 21) left
+      (7 :: rev (map q0_stable_control_tag (first :: rest)) ++
+       suffix).
+Proof.
+  intros first rest old left suffix.
+  rewrite (q16_restore_to_raw
+    (map q0_stable_control_tag rest)
+    (q0_stable_control_tag first)
+    old left suffix).
+  - rewrite (q16_stable_control_rail_reverse_restore
+      (first :: rest)).
+    reflexivity.
+  - apply q16_stable_control_rail_safe.
+Qed.
+
+Print Assumptions q16_native_tagged_backscan_preserves_control_rail.
