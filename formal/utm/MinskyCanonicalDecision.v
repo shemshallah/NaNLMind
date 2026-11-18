@@ -87,6 +87,92 @@ Qed.
 Print Assumptions canonical_q16_decision_to_q19.
 Print Assumptions canonical_q16_decision_to_q20.
 
+(** The restore frame's last record mark is [match_mark b]; q14 restores
+    it to the raw bit [source_bit b], which is exactly the decision bit q16
+    writes as 7 before selecting q21/q22.  This closes q12 directly onto the
+    decision phase. *)
+Corollary canonical_q12_restore_to_q16_decision :
+  forall marked tbuffer data (b : bool) rest bit tail,
+    Forall q12_pass (match_mark b :: rest ++ 5 :: rev tbuffer) ->
+    Forall q14_pass (tbuffer ++ [5] ++ rev rest ++ [match_mark b]) ->
+    Forall q15_pass (marked ++ [2]) ->
+    q16_pass 2 ->
+    Forall q16_pass marked ->
+    run (S (length (match_mark b :: rest ++ 5 :: rev tbuffer)) +
+         S (length (tbuffer ++ [5] ++ rev rest ++ [match_mark b])) +
+         S (length (marked ++ [2])) +
+         S (length (2 :: rev marked ++ [4])))
+      (cfg_ml 12
+        (match_mark b :: rest ++ 5 :: rev tbuffer ++ 6 :: rev data)
+        (4 :: marked ++ 2 :: source_bit bit :: tail)) =
+    cfg_ml (if b then 22 else 21)
+      (map q14_restore (rest ++ 5 :: rev tbuffer) ++ 3 :: rev data)
+      (7 :: map q16_restore (rev (2 :: rev marked ++ [4])) ++
+       source_bit bit :: tail).
+Proof.
+  intros marked tbuffer data b rest bit tail H12 H14 H15 Hm Hmarked.
+  rewrite dispatch_run_add.
+  rewrite (canonical_restore_q12_q15_capture (match_mark b) rest
+    tbuffer data marked bit tail H12 H14 H15).
+  assert (Hrev :
+    rev (tbuffer ++ [5] ++ rev rest ++ [match_mark b]) =
+    match_mark b :: rest ++ 5 :: rev tbuffer).
+  { rewrite <- (rev_restore_scan (match_mark b) rest tbuffer).
+    rewrite rev_involutive. reflexivity. }
+  rewrite Hrev.
+  replace (map q14_restore
+      (match_mark b :: rest ++ 5 :: rev tbuffer))
+    with (source_bit b ::
+      map q14_restore (rest ++ 5 :: rev tbuffer))
+    by (destruct b; reflexivity).
+  apply (canonical_restore_q16_decision 2 marked b
+    (map q14_restore (rest ++ 5 :: rev tbuffer) ++ 3 :: rev data)
+    bit tail Hm Hmarked).
+Qed.
+
+(** The q13 branch is identical with direction mark 3 and trailing 2. *)
+Corollary canonical_q13_restore_to_q16_decision :
+  forall marked tbuffer data (b : bool) rest bit tail,
+    Forall q12_pass (match_mark b :: rest ++ 5 :: rev tbuffer) ->
+    Forall q14_pass (tbuffer ++ [5] ++ rev rest ++ [match_mark b]) ->
+    Forall q15_pass (marked ++ [3]) ->
+    q16_pass 3 ->
+    Forall q16_pass marked ->
+    run (S (length (match_mark b :: rest ++ 5 :: rev tbuffer)) +
+         S (length (tbuffer ++ [5] ++ rev rest ++ [match_mark b])) +
+         S (length (marked ++ [3])) +
+         S (length (3 :: rev marked ++ [4])))
+      (cfg_ml 13
+        (match_mark b :: rest ++ 5 :: rev tbuffer ++ 6 :: rev data)
+        (4 :: marked ++ 3 :: source_bit bit :: tail)) =
+    cfg_ml (if b then 22 else 21)
+      (map q14_restore (rest ++ 5 :: rev tbuffer) ++ 2 :: rev data)
+      (7 :: map q16_restore (rev (3 :: rev marked ++ [4])) ++
+       source_bit bit :: tail).
+Proof.
+  intros marked tbuffer data b rest bit tail H13 H14 H15 Hm Hmarked.
+  rewrite dispatch_run_add.
+  rewrite (canonical_restore_q13_q15_capture (match_mark b) rest
+    tbuffer data marked bit tail H13 H14 H15).
+  assert (Hrev :
+    rev (tbuffer ++ [5] ++ rev rest ++ [match_mark b]) =
+    match_mark b :: rest ++ 5 :: rev tbuffer).
+  { rewrite <- (rev_restore_scan (match_mark b) rest tbuffer).
+    rewrite rev_involutive. reflexivity. }
+  rewrite Hrev.
+  replace (map q14_restore
+      (match_mark b :: rest ++ 5 :: rev tbuffer))
+    with (source_bit b ::
+      map q14_restore (rest ++ 5 :: rev tbuffer))
+    by (destruct b; reflexivity).
+  apply (canonical_restore_q16_decision 3 marked b
+    (map q14_restore (rest ++ 5 :: rev tbuffer) ++ 2 :: rev data)
+    bit tail Hm Hmarked).
+Qed.
+
+Print Assumptions canonical_q12_restore_to_q16_decision.
+Print Assumptions canonical_q13_restore_to_q16_decision.
+
 (** Rightward relocation: q19 scans the restored marker block and the
     7 written by q16, displaces the next raw record bit by 6, and q17/q18
     return to a following 7 marker in q5. *)
