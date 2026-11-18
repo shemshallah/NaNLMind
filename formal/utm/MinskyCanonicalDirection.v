@@ -84,6 +84,7 @@ Lemma q8_reversed_frame :
 Proof.
   intros record_marks marked x tail.
   repeat rewrite app_assoc.
+  cbn [app].
   reflexivity.
 Qed.
 
