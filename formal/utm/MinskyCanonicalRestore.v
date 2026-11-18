@@ -32,6 +32,7 @@ Proof.
   intros s remaining tbuffer data marked record_tail H1 H2.
   rewrite dispatch_run_add.
   cbn [cfg_ml].
+  match goal with |- ?G => idtac "RESTORE GOAL:" G end.
   replace (remaining ++ 5 :: rev tbuffer ++ 6 :: rev data)
     with ((remaining ++ 5 :: rev tbuffer) ++ 6 :: rev data)
     by (repeat rewrite <- app_assoc; reflexivity).
