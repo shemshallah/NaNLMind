@@ -4571,3 +4571,35 @@ Proof.
 Qed.
 
 Print Assumptions q5_relocation_mark_cannot_directly_supply_six_gate.
+
+
+(** A constructive alternative to the direct six-gate mismatch:
+    a q5 left-scan buffer [2;6] emerges in reversed order [6;2]
+    behind the stable control rail at q1.  Thus the return gate can be
+    constructed by a native q5 scan instead of assumed in q5's suffix.
+    A source-level q19/q20 arrival still has to match this layout. *)
+Theorem q5_buffered_tagged_rail_exposes_six_two_gate :
+  forall (bits : list bool) (stored suffix : list nat),
+    run (S (length
+      (2 :: 6 :: map q0_stable_control_tag bits)))
+      (entry_config 5
+        (6 :: map q0_stable_control_tag bits ++ 5 :: stored)
+        (2 :: suffix)) =
+    entry_config 1 (5 :: stored)
+      (rev (map q0_stable_control_tag bits) ++ 6 :: 2 :: suffix).
+Proof.
+  intros bits stored suffix.
+  rewrite (q5_return_scan_to_first_five
+    (6 :: map q0_stable_control_tag bits)
+    2 stored suffix).
+  - cbn [rev].
+    repeat rewrite app_assoc.
+    reflexivity.
+  - constructor.
+    + unfold q5_return_pass; auto 12.
+    + constructor.
+      * unfold q5_return_pass; auto 12.
+      * apply q5_stable_control_rail_safe.
+Qed.
+
+Print Assumptions q5_buffered_tagged_rail_exposes_six_two_gate.
