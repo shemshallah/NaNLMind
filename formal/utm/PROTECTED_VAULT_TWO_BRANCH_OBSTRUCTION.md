@@ -179,3 +179,23 @@ Authoritative source: `formal/utm/MinskyDirectionRelocationCycle.v`.
 **Remaining major gap:** these are genuine native transition theorems for supplied starting configurations, not proofs of their reachability from the canonical encoded source machine. In particular, the earlier q12 cycle restores raw temporary controls and provably dispatches the wrong raw bit on the guarded repaired layout. Establishing an exact q12-to-tagged-rail construction, preserving the source program and both direction semantics, is still open. So are all-instruction simulation, halt equivalence, and a universality theorem for the literal 23×8 table.
 
 **Research status:** a strengthened, reproducible, kernel-certified partial theorem package is available. A major/open-problem closure is **not** claimed.
+
+
+## Certified q5→q1→q0 tagged return and target dispatch (2026-11-18)
+
+A second exact native composition closes the **local q5 return-to-target path**, provided the starting q5 zipper tape contains the explicitly stated stable-tag rail, protected left-side `5`, `6,2` exit gate, two 6/7-tagged controls, and a final raw target. Every theorem remains quantified over arbitrary nonempty rails, both Boolean values, and surrounding stored data.
+
+- `q5_native_tagged_return_preserves_control_rail`: after `rail length + 1` native steps, q5 reaches q1 and preserves every 6/7 tag while crossing to the explicit left-side 5 delimiter.
+- `q1_scan_tagged_rail`: q1 passes an arbitrary finite 6/7 rail without modification, with an exact step count equal to rail length.
+- `q5_q1_native_tagged_return_reenters_q0`: q5 then q1 use the explicit `6,2` gate and reach q0 in `2 × rail length + 2` native steps. The moved rail is preserved on the left tape.
+- `q5_q1_q0_native_tagged_target_dispatch`: after the q0 reentry, one additional 2/3 displacement mark and two 6/7 control tags are passed without consuming a raw control; q0 reads the **intended target** and enters q2 or q3 according to the target. Total clock: `2 × rail length + 6` native steps.
+
+This fixes the *local* early-raw-control problem for a supplied tagged q5 entry layout. The frozen 23×8 table is unchanged. The q5→q0 theorem is **not** a proof that the q15→q5 relocation produces this exact q5 zipper, nor that a canonical q12 entry creates the tags. Matching the end and start layouts of consecutive certified macros is a separate necessary bridge.
+
+Source: `formal/utm/MinskyDirectionRelocationCycle.v`.
+
+- [q5 tag return commit 73e3fc0](https://github.com/shemshallah/NaNLMind/commit/73e3fc083caef026ff974024ede755f0b26fd2e9) — [fast Coq success](https://github.com/shemshallah/NaNLMind/actions/runs/44375887114).
+- [q5→q1→q0 commit 2818208](https://github.com/shemshallah/NaNLMind/commit/2818208a89d23e7e2401e745aae1e2c9afacc858) — [fast Coq success](https://github.com/shemshallah/NaNLMind/actions/runs/44376803500).
+- [full conditional target-dispatch commit 98b3741](https://github.com/shemshallah/NaNLMind/commit/98b37412442df9cc589da718320f366a42d89f5e) — [fast Coq and canonical-match success](https://github.com/shemshallah/NaNLMind/actions/runs/44377907058), [independent full UTM/Minsky success](https://github.com/shemshallah/NaNLMind/actions/runs/44377907045), [representation bridge success](https://github.com/shemshallah/NaNLMind/actions/runs/44377906939), and [CI success](https://github.com/shemshallah/NaNLMind/actions/runs/44377907082).
+
+**Research status:** another kernel-certified constructive partial theorem package is complete, but no major/open-problem closure is established. The next decisive work is proof or refutation of q12→tagged-control formation and exact composition of the q15/q5 zipper layouts through both move directions, including source-state and program-preservation invariants.
