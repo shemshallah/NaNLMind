@@ -4308,3 +4308,74 @@ Qed.
 
 Print Assumptions tagged_rail_right_relocates_to_q5.
 Print Assumptions tagged_rail_left_relocates_to_q5.
+
+
+(** Closing the local tag-preservation audit at q5.  This theorem
+    requires the distinguished left-side 5 delimiter and begins in q5;
+    it does not assert that the preceding q19/q20 branches produce this
+    exact zipper shape for a complete encoded instruction. *)
+Lemma q5_stable_control_tag_pass :
+  forall b, q5_return_pass (q0_stable_control_tag b).
+Proof.
+  intros []; unfold q5_return_pass, q0_stable_control_tag; auto 12.
+Qed.
+
+Lemma q5_stable_control_rail_safe :
+  forall bits,
+    Forall q5_return_pass (map q0_stable_control_tag bits).
+Proof.
+  induction bits as [|b rest IH].
+  - constructor.
+  - constructor.
+    + apply q5_stable_control_tag_pass.
+    + exact IH.
+Qed.
+
+Lemma q5_stable_control_tag_restore :
+  forall b,
+    entry_rewrite (q0_stable_control_tag b) =
+    q0_stable_control_tag b.
+Proof.
+  intros []; reflexivity.
+Qed.
+
+Lemma q5_stable_control_rail_restore_identity :
+  forall bits,
+    map entry_rewrite (map q0_stable_control_tag bits) =
+    map q0_stable_control_tag bits.
+Proof.
+  induction bits as [|b rest IH].
+  - reflexivity.
+  - simpl.
+    rewrite q5_stable_control_tag_restore.
+    rewrite IH.
+    reflexivity.
+Qed.
+
+Theorem q5_native_tagged_return_preserves_control_rail :
+  forall (first : bool) (rest : list bool)
+         (prefix suffix : list nat),
+    run (S (length
+      (q0_stable_control_tag first ::
+       map q0_stable_control_tag rest)))
+      (entry_config 5
+        (map q0_stable_control_tag rest ++ 5 :: prefix)
+        (q0_stable_control_tag first :: suffix)) =
+    entry_config 1 (5 :: prefix)
+      (rev (map q0_stable_control_tag (first :: rest)) ++ suffix).
+Proof.
+  intros first rest prefix suffix.
+  rewrite (q5_return_scan_to_first_five
+    (map q0_stable_control_tag rest)
+    (q0_stable_control_tag first) prefix suffix).
+  - rewrite map_rev.
+    cbn [map].
+    rewrite q5_stable_control_tag_restore.
+    rewrite q5_stable_control_rail_restore_identity.
+    reflexivity.
+  - constructor.
+    + apply q5_stable_control_tag_pass.
+    + apply q5_stable_control_rail_safe.
+Qed.
+
+Print Assumptions q5_native_tagged_return_preserves_control_rail.
