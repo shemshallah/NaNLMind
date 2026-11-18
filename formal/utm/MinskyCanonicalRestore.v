@@ -88,40 +88,109 @@ Qed.
 Print Assumptions canonical_q12_restore_to_q15.
 Print Assumptions canonical_q13_restore_to_q15.
 
-(** A direct q15 corollary from the restore frame: the q15 scan consumes
-    the marked region plus the direction mark and exposes the next raw
-    data bit. *)
-Corollary canonical_restore_q15_capture :
-  forall marked dir left bit tail,
-    Forall q15_pass (marked ++ [dir]) ->
-    run (S (length (marked ++ [dir])))
-      (entry_config 15 left (marked ++ dir :: source_bit bit :: tail)) =
-    cfg_ml 16 (rev (marked ++ [dir]) ++ left) (source_bit bit :: tail).
+(** Compose the q12 restore with the q15 capture.  The direction mark 2 is
+    crossed by q15, and the first bit of the remaining record follows it. *)
+Corollary canonical_restore_q12_q15_capture :
+  forall s remaining tbuffer data marked bit tail,
+    Forall q12_pass (s :: remaining ++ 5 :: rev tbuffer) ->
+    Forall q14_pass (tbuffer ++ [5] ++ rev remaining ++ [s]) ->
+    Forall q15_pass (marked ++ [2]) ->
+    run (S (length (s :: remaining ++ 5 :: rev tbuffer)) +
+         S (length (tbuffer ++ [5] ++ rev remaining ++ [s])) +
+         S (length (marked ++ [2])))
+      (cfg_ml 12
+        (s :: remaining ++ 5 :: rev tbuffer ++ 6 :: rev data)
+        (4 :: marked ++ 2 :: source_bit bit :: tail)) =
+    cfg_ml 16
+      (rev (marked ++ [2]) ++ 4 ::
+       map q14_restore
+         (rev (tbuffer ++ [5] ++ rev remaining ++ [s])) ++
+       3 :: rev data)
+      (source_bit bit :: tail).
 Proof.
-  intros marked dir left bit tail Hscan.
+  intros s remaining tbuffer data marked bit tail H12 H14 H15.
+  rewrite dispatch_run_add.
+  rewrite (canonical_q12_restore_to_q15 s remaining tbuffer data marked
+    (source_bit bit :: tail) H12 H14).
+  replace (marked ++ 2 :: source_bit bit :: tail)
+    with ((marked ++ [2]) ++ source_bit bit :: tail)
+    by (rewrite app_assoc; reflexivity).
   apply q15_scan_to_raw.
-  exact Hscan.
+  exact H15.
 Qed.
 
-(** q16 then scans the q15-marked region and X=4, restores it, writes 7 at
-    the previous raw bit, and chooses q21/q22 from that bit. *)
+(** The q13 restore branch, with direction mark 3 and trailing mark 2. *)
+Corollary canonical_restore_q13_q15_capture :
+  forall s remaining tbuffer data marked bit tail,
+    Forall q12_pass (s :: remaining ++ 5 :: rev tbuffer) ->
+    Forall q14_pass (tbuffer ++ [5] ++ rev remaining ++ [s]) ->
+    Forall q15_pass (marked ++ [3]) ->
+    run (S (length (s :: remaining ++ 5 :: rev tbuffer)) +
+         S (length (tbuffer ++ [5] ++ rev remaining ++ [s])) +
+         S (length (marked ++ [3])))
+      (cfg_ml 13
+        (s :: remaining ++ 5 :: rev tbuffer ++ 6 :: rev data)
+        (4 :: marked ++ 3 :: source_bit bit :: tail)) =
+    cfg_ml 16
+      (rev (marked ++ [3]) ++ 4 ::
+       map q14_restore
+         (rev (tbuffer ++ [5] ++ rev remaining ++ [s])) ++
+       2 :: rev data)
+      (source_bit bit :: tail).
+Proof.
+  intros s remaining tbuffer data marked bit tail H13 H14 H15.
+  rewrite dispatch_run_add.
+  rewrite (canonical_q13_restore_to_q15 s remaining tbuffer data marked
+    (source_bit bit :: tail) H13 H14).
+  replace (marked ++ 3 :: source_bit bit :: tail)
+    with ((marked ++ [3]) ++ source_bit bit :: tail)
+    by (rewrite app_assoc; reflexivity).
+  apply q15_scan_to_raw.
+  exact H15.
+Qed.
+
+(** q16 now scans left across the direction mark, the q15-marked region and
+    X=4, restores 2->0 and 3->1, writes 7 at the raw cell behind X=4, and
+    selects q21 (bit 0) or q22 (bit 1).  [m] is the direction mark crossed
+    by q15 (2 or 3); [4] is X. *)
 Corollary canonical_restore_q16_decision :
-  forall marked dir prefix bit_prev bit tail,
-    Forall q16_pass (rev (marked ++ [dir]) ++ [4]) ->
-    run (S (length (rev (marked ++ [dir]) ++ [4])))
+  forall m marked old prefix bit tail,
+    q16_pass m ->
+    Forall q16_pass marked ->
+    run (S (length (m :: rev marked ++ [4])))
       (cfg_ml 16
-        (rev (marked ++ [dir]) ++ 4 :: source_bit bit_prev :: prefix)
+        (rev (marked ++ [m]) ++ 4 :: source_bit old :: prefix)
         (source_bit bit :: tail)) =
-    cfg_ml (if bit_prev then 22 else 21) prefix
-      (7 :: map q16_restore (rev (rev (marked ++ [dir]) ++ [4])) ++
+    cfg_ml (if old then 22 else 21) prefix
+      (7 :: map q16_restore (rev (m :: rev marked ++ [4])) ++
        source_bit bit :: tail).
 Proof.
-  intros marked dir prefix bit_prev bit tail Hscan.
-  apply (q16_restore_to_raw (tl (rev (marked ++ [dir]) ++ [4]))
-    (hd 2 (rev (marked ++ [dir]) ++ [4])) bit_prev
-    prefix (source_bit bit :: tail)).
-  exact Hscan.
+  intros m marked old prefix bit tail Hm Hmarked.
+  replace (rev (marked ++ [m])) with (m :: rev marked).
+  2:{
+    rewrite rev_app_distr. cbn [rev]. rewrite app_nil_r.
+    reflexivity.
+  }
+  cbn [cfg_ml].
+  assert (Hscan : Forall q16_pass (m :: rev marked ++ [4])).
+  {
+    constructor.
+    - exact Hm.
+    - rewrite Forall_app. split.
+      + apply Forall_rev. exact Hmarked.
+      + constructor.
+        * unfold q16_pass; auto 10.
+        * constructor.
+  }
+  assert (Hframe :
+    rev marked ++ 4 :: source_bit old :: prefix =
+    (rev marked ++ [4]) ++ source_bit old :: prefix)
+    by (rewrite app_assoc; reflexivity).
+  rewrite Hframe.
+  apply (q16_restore_to_raw (rev marked ++ [4]) m old prefix
+    (source_bit bit :: tail) Hscan).
 Qed.
 
-Print Assumptions canonical_restore_q15_capture.
+Print Assumptions canonical_restore_q12_q15_capture.
+Print Assumptions canonical_restore_q13_q15_capture.
 Print Assumptions canonical_restore_q16_decision.
