@@ -3857,3 +3857,104 @@ Proof.
 Qed.
 
 Print Assumptions q0_any_finite_passable_spacer_still_reads_first_raw.
+
+
+(** A constructive q0-LOCAL replacement for the failed raw-control rail:
+    store BOTH control bits in q0-passable, q16-stable symbols 6/7.
+    This changes the proposed entry layout, not the frozen machine.
+    It proves the q0 target dispatch once this entry configuration is
+    supplied, but does NOT prove that the earlier q12/q16 cycle creates it. *)
+Definition q0_stable_control_tag (b : bool) : nat :=
+  if b then 7 else 6.
+
+Lemma q0_stable_control_tag_pass :
+  forall b, q0_pass (q0_stable_control_tag b).
+Proof.
+  intros []; unfold q0_pass, q0_stable_control_tag; auto 12.
+Qed.
+
+Lemma q0_two_stable_control_tags_pass :
+  forall next extra,
+    Forall q0_pass
+      [q0_stable_control_tag next; q0_stable_control_tag extra].
+Proof.
+  intros next extra.
+  constructor.
+  - apply q0_stable_control_tag_pass.
+  - constructor.
+    + apply q0_stable_control_tag_pass.
+    + constructor.
+Qed.
+
+Theorem q0_tagged_control_pair_dispatches_target :
+  forall (prefix left tail : list nat) (next extra target : bool),
+    Forall q0_pass prefix ->
+    run (length prefix + 3)
+      (entry_config 0 left
+        (prefix ++
+         [q0_stable_control_tag next;
+          q0_stable_control_tag extra] ++
+         source_bit target :: tail)) =
+    if target
+    then entry_config 3
+      (3 :: rev (prefix ++
+        [q0_stable_control_tag next;
+         q0_stable_control_tag extra]) ++ left) tail
+    else cfg_ml 2
+      (rev (prefix ++
+        [q0_stable_control_tag next;
+         q0_stable_control_tag extra]) ++ left) (2 :: tail).
+Proof.
+  intros prefix left tail next extra target Hprefix.
+  assert (Htagged :
+    Forall q0_pass
+      (prefix ++
+       [q0_stable_control_tag next;
+        q0_stable_control_tag extra])).
+  {
+    rewrite Forall_app.
+    split.
+    - exact Hprefix.
+    - apply q0_two_stable_control_tags_pass.
+  }
+  replace (length prefix + 3)
+    with (S (length
+      (prefix ++
+       [q0_stable_control_tag next;
+        q0_stable_control_tag extra]))).
+  2:{ rewrite app_length. cbn [length]. lia. }
+  destruct target.
+  - apply q0_scan_one; exact Htagged.
+  - apply q0_scan_zero; exact Htagged.
+Qed.
+
+Theorem q0_protected_prefix_with_tagged_controls_reads_target :
+  forall scanned sacrificial next extra target stored tail,
+    q19_q5_roundtrip_railb scanned = true ->
+    run (length scanned + 8)
+      (entry_config 0 (0 :: 6 :: 5 :: stored)
+        (q0_protected_prefix scanned sacrificial ++
+         [q0_stable_control_tag next;
+          q0_stable_control_tag extra] ++
+         source_bit target :: tail)) =
+    if target
+    then entry_config 3
+      (3 :: rev (q0_protected_prefix scanned sacrificial ++
+        [q0_stable_control_tag next;
+         q0_stable_control_tag extra]) ++
+       0 :: 6 :: 5 :: stored) tail
+    else cfg_ml 2
+      (rev (q0_protected_prefix scanned sacrificial ++
+        [q0_stable_control_tag next;
+         q0_stable_control_tag extra]) ++
+       0 :: 6 :: 5 :: stored) (2 :: tail).
+Proof.
+  intros scanned sacrificial next extra target stored tail Hguard.
+  replace (length scanned + 8)
+    with (length (q0_protected_prefix scanned sacrificial) + 3).
+  2:{ rewrite q0_protected_prefix_length; lia. }
+  apply q0_tagged_control_pair_dispatches_target.
+  apply q0_protected_prefix_safe; exact Hguard.
+Qed.
+
+Print Assumptions q0_protected_prefix_with_tagged_controls_reads_target.
