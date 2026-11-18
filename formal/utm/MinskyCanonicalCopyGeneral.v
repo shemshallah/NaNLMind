@@ -389,12 +389,12 @@ Proof.
         rewrite (canonical_q6_copy_unfolded processed c cs region rs
           record_tail tbuffer data true Hproc7 Hproc9 Hreg6 Hreg7).
         cbn [match_mark map rev].
-        replace (4 :: rev (map match_mark rs) ++ [3] ++
+        replace (4 :: (rev (map match_mark rs) ++ [3]) ++
             processed ++ 5 :: rev tbuffer ++ 6 :: rev data)
           with (4 :: rev (map match_mark rs) ++ (3 :: processed) ++
             5 :: rev tbuffer ++ 6 :: rev data)
           by (repeat rewrite <- app_assoc; cbn [app]; reflexivity).
-        replace (region ++ 3 :: map match_mark rs ++ record_tail)
+        replace (region ++ (3 :: map match_mark rs) ++ record_tail)
           with ((region ++ [3]) ++ map match_mark rs ++ record_tail)
           by (symmetry; apply app_cons_singleton).
         assert (Hleft' : 4 :: rev (map source_bit cs) ++ 3 :: processed ++
@@ -425,12 +425,12 @@ Proof.
         rewrite (canonical_q6_copy_unfolded processed c cs region rs
           record_tail tbuffer data false Hproc7 Hproc9 Hreg6 Hreg7).
         cbn [match_mark map rev].
-        replace (4 :: rev (map match_mark rs) ++ [2] ++
+        replace (4 :: (rev (map match_mark rs) ++ [2]) ++
             processed ++ 5 :: rev tbuffer ++ 6 :: rev data)
           with (4 :: rev (map match_mark rs) ++ (2 :: processed) ++
             5 :: rev tbuffer ++ 6 :: rev data)
           by (repeat rewrite <- app_assoc; cbn [app]; reflexivity).
-        replace (region ++ 2 :: map match_mark rs ++ record_tail)
+        replace (region ++ (2 :: map match_mark rs) ++ record_tail)
           with ((region ++ [2]) ++ map match_mark rs ++ record_tail)
           by (symmetry; apply app_cons_singleton).
         assert (Hleft' : 4 :: rev (map source_bit cs) ++ 2 :: processed ++
