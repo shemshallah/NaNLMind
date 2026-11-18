@@ -548,3 +548,31 @@ append/snoc witness is `region_snoc_cons`.  This is one source-state-copy
 phase, not a source-step theorem.  The write/direction fields, q12-q22
 relocation, the return to q5, halting reflection, and the universality
 reduction remain open.
+
+## November 18 canonical direction-bit capture (kernel-checked)
+
+After the all-condition copy induction, the next phase captures the raw
+direction bit:
+
+- `q9_scan_marked_to_q12` and `q10_scan_marked_to_q13` scan a marked prefix
+  to X=4 and enter q12/q13 with the correct `cfg_ml` head placement.
+- `q8_reversed_frame` normalizes the q7/q8-reversed frame
+  `((record_marks ++ [4]) ++ marked) ++ x :: tail` to
+  `record_marks ++ 4 :: marked ++ x :: tail`.
+- `canonical_q6_direction_capture` runs q6 over the marked region to the
+  raw direction bit, returns via q7/q8, and enters q12 (direction 1) or q13
+  (direction 0), with the clock
+
+  ```text
+  S |marked|
+  + S |rev marked ++ [4] ++ rev record_marks|
+  + S |record_marks|.
+  ```
+
+The fast job
+[44376789679](https://github.com/shemshallah/NaNLMind/actions/runs/44376789679)
+passed `coqc` and `coqchk`.  The full bridge is
+[44377481394](https://github.com/shemshallah/NaNLMind/actions/runs/44377481394).
+
+This is direction capture only.  q12-q22 relocation, the source write/head
+transition, halting reflection, and the universality reduction remain open.
