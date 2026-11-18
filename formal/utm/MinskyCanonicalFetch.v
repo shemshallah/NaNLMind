@@ -41,8 +41,8 @@ Theorem canonical_q5_match_copy_direction :
     cfg_ml (if dir then 12 else 13)
       (rev (map match_mark action_bits) ++ 5 :: rev tbuffer ++
        6 :: rev data)
-      (4 :: map match_mark bits ++ map match_mark action_bits ++
-           (if dir then 3 else 2) :: tail).
+      (4 :: ((map match_mark bits ++ map match_mark action_bits) ++
+             ((if dir then 3 else 2) :: tail))).
 Proof.
   intros bits action_bits tbuffer data dir tail Hlen.
   assert (Hreg6 : Forall q6_pass (map match_mark bits)).
