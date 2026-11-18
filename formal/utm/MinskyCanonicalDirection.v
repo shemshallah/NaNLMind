@@ -33,8 +33,8 @@ Lemma q9_scan_marked_to_q12 :
   forall scanned left tail,
     Forall q9_pass scanned ->
     run (S (length scanned))
-      (entry_config 9 left (scanned ++ [4] ++ tail)) =
-    cfg_ml 12 (rev scanned ++ left) ([4] ++ tail).
+      (entry_config 9 left (scanned ++ 4 :: tail)) =
+    cfg_ml 12 (rev scanned ++ left) (4 :: tail).
 Proof.
   intros scanned.
   induction scanned as [|s rest IH]; intros left tail Hscan.
@@ -43,8 +43,8 @@ Proof.
     destruct left as [|x xs]; reflexivity.
   - inversion Hscan as [|? ? Hs Hrest]; subst.
     change (run (S (S (length rest)))
-      (entry_config 9 left (s :: (rest ++ [4] ++ tail))) =
-      cfg_ml 12 (rev (s :: rest) ++ left) ([4] ++ tail)).
+      (entry_config 9 left (s :: (rest ++ 4 :: tail))) =
+      cfg_ml 12 (rev (s :: rest) ++ left) (4 :: tail)).
     rewrite entry_run_successor.
     rewrite (q9_pass_step s left (rest ++ 4 :: tail) Hs).
     rewrite (IH (s :: left) tail Hrest).
@@ -57,8 +57,8 @@ Lemma q10_scan_marked_to_q13 :
   forall scanned left tail,
     Forall q9_pass scanned ->
     run (S (length scanned))
-      (entry_config 10 left (scanned ++ [4] ++ tail)) =
-    cfg_ml 13 (rev scanned ++ left) ([4] ++ tail).
+      (entry_config 10 left (scanned ++ 4 :: tail)) =
+    cfg_ml 13 (rev scanned ++ left) (4 :: tail).
 Proof.
   intros scanned.
   induction scanned as [|s rest IH]; intros left tail Hscan.
@@ -67,8 +67,8 @@ Proof.
     destruct left as [|x xs]; reflexivity.
   - inversion Hscan as [|? ? Hs Hrest]; subst.
     change (run (S (S (length rest)))
-      (entry_config 10 left (s :: (rest ++ [4] ++ tail))) =
-      cfg_ml 13 (rev (s :: rest) ++ left) ([4] ++ tail)).
+      (entry_config 10 left (s :: (rest ++ 4 :: tail))) =
+      cfg_ml 13 (rev (s :: rest) ++ left) (4 :: tail)).
     rewrite entry_run_successor.
     rewrite (q10_pass_step s left (rest ++ 4 :: tail) Hs).
     rewrite (IH (s :: left) tail Hrest).
@@ -135,7 +135,7 @@ Proof.
     rewrite (rev_hd_tl xs Hne).
     unfold xs.
     rewrite rev_app_distr. cbn [rev]. rewrite rev_involutive.
-    repeat rewrite <- app_assoc. cbn [app].
+    cbn [app].
     rewrite (q9_scan_marked_to_q12 record_marks
       (5 :: rev tbuffer ++ 6 :: rev data)
       (marked ++ 3 :: record_tail) Hrec9).
@@ -159,7 +159,7 @@ Proof.
     rewrite (rev_hd_tl xs Hne).
     unfold xs.
     rewrite rev_app_distr. cbn [rev]. rewrite rev_involutive.
-    repeat rewrite <- app_assoc. cbn [app].
+    cbn [app].
     rewrite (q10_scan_marked_to_q13 record_marks
       (5 :: rev tbuffer ++ 6 :: rev data)
       (marked ++ 2 :: record_tail) Hrec9).
