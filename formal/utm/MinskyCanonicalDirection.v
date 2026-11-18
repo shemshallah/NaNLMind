@@ -40,6 +40,7 @@ Proof.
   induction scanned as [|s rest IH]; intros left tail Hscan.
   - cbn [length rev app run].
     vm_compute.
+    cbn [cfg_ml].
     reflexivity.
   - inversion Hscan as [|? ? Hs Hrest]; subst.
     change (run (S (S (length rest)))
@@ -64,6 +65,7 @@ Proof.
   induction scanned as [|s rest IH]; intros left tail Hscan.
   - cbn [length rev app run].
     vm_compute.
+    cbn [cfg_ml].
     reflexivity.
   - inversion Hscan as [|? ? Hs Hrest]; subst.
     change (run (S (S (length rest)))
