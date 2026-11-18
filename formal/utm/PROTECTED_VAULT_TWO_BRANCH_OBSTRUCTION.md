@@ -103,3 +103,52 @@ A successful whole-instruction layout needs a phase-separated control representa
 Still open: canonical-entry reachability for the repaired frame; source-state correspondence; both left and right instruction semantics; total program preservation across a whole instruction; halting equivalence; and any universality theorem for the literal 23x8 table. Nothing here excludes other encodings of the same table.
 
 **Publication status:** a self-contained, kernel-certified partial obstruction and repair-analysis package is available. Novelty, framing and comparison with the literature remain separate scholarly checks.
+
+
+## General first-raw no-go and constructive 6/7 tag channel
+
+Following the guarded 9n+66 obstruction, two distinct facts are now formally checked. They should not be conflated: the first is a general negative theorem, and the second is a positive local compatibility result for a different proposed layout.
+
+### First-raw no-go for any finite q0-passable spacer
+
+Coq theorem: q0_any_finite_passable_spacer_still_reads_first_raw.
+
+For every finite spacer whose symbols are q0-passable (2 through 7), both choices of next and target, and arbitrary surrounding tape, q0 scans the spacer and dispatches on the first raw next bit after exactly 1 + length spacer native steps. The target bit remains farther right.
+
+- [Commit 7537d36](https://github.com/shemshallah/NaNLMind/commit/7537d36dc2999aa5c2ada3c0d64a07ee8951c16d).
+- [Fast Coq compilation and kernel check: SUCCESS](https://github.com/shemshallah/NaNLMind/actions/runs/44228628580).
+
+Thus inserting additional 2/3/4/5/6/7 padding immediately before an early raw control bit cannot make q0 skip that bit. This is a structural no-go for a passive-spacer repair, not a claim about other encodings of the 23x8 table.
+
+### Constructive q0-local tag pair
+
+Proposed stable control tagging:
+
+    stable_tag(false) = 6
+    stable_tag(true)  = 7
+
+These two symbols are passed unchanged by q0 and by q16's restore map. A revised q0 input would put both the next and extra controls in tagged form before the intended raw target.
+
+The theorem q0_tagged_control_pair_dispatches_target proves that for every q0-passable prefix, q0 passes both tags and branches according to target after exactly length prefix + 3 native steps. The theorem q0_protected_prefix_with_tagged_controls_reads_target specializes this to the guarded protected prefix: length scanned + 8 native steps, arbitrary source suffix and both target choices.
+
+- [Verified q0-tag commit 69f5980](https://github.com/shemshallah/NaNLMind/commit/69f598062916fec85a36f7dff613fb64c0c8192d).
+- [Full independent UTM/Minsky build: SUCCESS](https://github.com/shemshallah/NaNLMind/actions/runs/44229700919).
+- [Fast Coq: SUCCESS](https://github.com/shemshallah/NaNLMind/actions/runs/44229700901).
+
+### Native q16 compatibility of arbitrary tagged rails
+
+Coq theorem: q16_native_tagged_backscan_preserves_control_rail.
+
+For any nonempty finite sequence of encoded Boolean control tags, an explicit native q16 backscan returns the entire tag rail unchanged, branches into q21 or q22 according to the separate raw delimiter, and has the exact fuel specified in the theorem. The associated map-level and safety lemmas hold for arbitrary finite tag rails.
+
+- [Verified q16-tag commit b2ff42f](https://github.com/shemshallah/NaNLMind/commit/b2ff42fafaf4dcb3e0f096d7ffa75129d2cd1d87).
+- [Fast Coq and coqchk: SUCCESS](https://github.com/shemshallah/NaNLMind/actions/runs/44232722252).
+- [Independent full Minsky/UTM mechanized build: SUCCESS](https://github.com/shemshallah/NaNLMind/actions/runs/44232722318).
+- [Representation bridge: SUCCESS](https://github.com/shemshallah/NaNLMind/actions/runs/44232722404).
+- [Repository CI: SUCCESS](https://github.com/shemshallah/NaNLMind/actions/runs/44232722289).
+
+### Exact remaining bridge
+
+The two positive local theorems do not yet compose into a complete q12-to-q0 return. The old q12 phase begins with raw controls and q16 normally restores 2/3 marks to raw 0/1, giving the proved premature next-bit capture. The new proofs show what would work once both controls are represented by stable 6/7 tags, but the actual frozen-machine construction of that representation from the canonical q12 frame remains unproved.
+
+The next research obligation is an exact native q12-to-tagged-q16 configuration theorem, with source-bit recoverability, preserved encoded program, and both directions. No whole-instruction simulation, halting equivalence, or universality claim is made by these local repairs.
