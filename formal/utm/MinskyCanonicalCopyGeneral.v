@@ -369,7 +369,7 @@ Proof.
           record_tail tbuffer data true Hproc7 Hproc9 Hreg6 Hreg7).
         cbn [match_mark map rev].
         repeat rewrite app_assoc in IH.
-        repeat rewrite app_assoc.
+        repeat rewrite <- app_assoc.
         apply (IH rs (3 :: processed) (region ++ [3])
           record_tail tbuffer data).
         -- exact Hlen'.
@@ -383,7 +383,7 @@ Proof.
           record_tail tbuffer data false Hproc7 Hproc9 Hreg6 Hreg7).
         cbn [match_mark map rev].
         repeat rewrite app_assoc in IH.
-        repeat rewrite app_assoc.
+        repeat rewrite <- app_assoc.
         apply (IH rs (2 :: processed) (region ++ [2])
           record_tail tbuffer data).
         -- exact Hlen'.
