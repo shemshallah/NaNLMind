@@ -100,7 +100,7 @@ Proof.
     ((map match_mark bits ++ map match_mark action_bits) ++
      source_bit dir :: tail)
     by (rewrite <- app_assoc; reflexivity).
-  match goal with |- ?G => idtac "FETCHGOAL:" G end.
+  rewrite app_nil_r.
   rewrite (canonical_q6_direction_capture
     (map match_mark bits ++ map match_mark action_bits)
     (map match_mark action_bits) tail tbuffer data dir
