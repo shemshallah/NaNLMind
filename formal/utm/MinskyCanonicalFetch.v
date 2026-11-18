@@ -101,11 +101,10 @@ Proof.
      source_bit dir :: tail)
     by (rewrite <- app_assoc; reflexivity).
   cbn [app].
-  rewrite (canonical_q6_direction_capture
+  exact (canonical_q6_direction_capture
     (map match_mark bits ++ map match_mark action_bits)
     (map match_mark action_bits) tail tbuffer data dir
     Hmarked6 Hmarked7 Hrec7 Hrec9).
-  reflexivity.
 Qed.
 
 Print Assumptions canonical_q5_match_copy_direction.
