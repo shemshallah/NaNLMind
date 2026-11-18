@@ -3829,3 +3829,31 @@ Proof.
 Qed.
 
 Print Assumptions q12_sacrificial_guard_dispatches_early_next.
+
+
+(** A general no-passable-spacer principle for the q0 read phase.
+    Regardless of the finite passable prefix, q0 dispatches at the first
+    raw next/control bit.  Any later raw target remains in the tape.
+    This is a literal table theorem, independent of the protected-vault
+    special case. *)
+Theorem q0_any_finite_passable_spacer_still_reads_first_raw :
+  forall (spacer : list nat) (next target : bool)
+         (left tail : list nat),
+    Forall q0_pass spacer ->
+    run (S (length spacer))
+      (entry_config 0 left
+        (spacer ++ source_bit next :: source_bit target :: tail)) =
+    if next
+    then entry_config 3
+      (3 :: rev spacer ++ left)
+      (source_bit target :: tail)
+    else cfg_ml 2 (rev spacer ++ left)
+      (2 :: source_bit target :: tail).
+Proof.
+  intros spacer next target left tail Hpass.
+  destruct next.
+  - apply q0_scan_one; exact Hpass.
+  - apply q0_scan_zero; exact Hpass.
+Qed.
+
+Print Assumptions q0_any_finite_passable_spacer_still_reads_first_raw.
