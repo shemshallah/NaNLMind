@@ -24,8 +24,8 @@ and the right tape `marked ++ 2/3 :: source_bit bit :: tail`.
 
 - `canonical_restore_q12_q15_capture` and
   `canonical_restore_q13_q15_capture`.
-  q15 crosses `marked ++ [2]` (or `[3]`), reaches the raw record bit and
-  enters q16 with
+  q15 crosses `marked ++ [3]` (q12, right) or `marked ++ [2]` (q13,
+  left), reaches the raw record bit and enters q16 with
 
   ```text
   cfg_ml 16
@@ -49,7 +49,10 @@ and the right tape `marked ++ 2/3 :: source_bit bit :: tail`.
 ### Restore directly to the decision bit
 
 - `canonical_q12_restore_to_q16_decision` and
-  `canonical_q13_restore_to_q16_decision`.
+  `canonical_q13_restore_to_q16_decision` (correct native marks: q12
+  carries 3, q13 carries 2).  The `_next` variants `canonical_q12_restore_q16_decision_next`
+  and `canonical_q13_restore_q16_decision_next` let the q15 scan cross the
+  next record's `X=4` before reaching its first raw current bit.
   In the canonical record the last consumed mark is `match_mark b`
   (`2` for `false`, `3` for `true`).  `q14_restore (match_mark b)` is
   exactly `source_bit b`, so the decision bit is exposed without an extra

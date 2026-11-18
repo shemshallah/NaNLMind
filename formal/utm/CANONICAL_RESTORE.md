@@ -41,8 +41,12 @@ so `cfg_ml` exposes the head `s`.
     (marked ++ 2/3 :: record_tail).
   ```
 
-  The q12 branch carries the direction mark 2 and restores `3 :: rev data`;
-  the q13 branch carries 3 and restores `2 :: rev data`.
+  The native q9/q10 pairing sends direction 1 to q12 and direction 0 to
+  q13.  The q12 branch therefore carries direction mark 3 and restores
+  `3 :: rev data`; q13 carries mark 2 and restores `2 :: rev data`.
+  `canonical_q12_restore_to_q15_mark` and
+  `canonical_q13_restore_to_q15_mark` keep the right-hand direction mark
+  abstract, so the carried data can be instantiated with the native mark.
 
 ## Scope
 
@@ -66,7 +70,8 @@ full bridge
 
 - `canonical_restore_q12_q15_capture` and
   `canonical_restore_q13_q15_capture` compose the restore with the q15
-  scan over `marked ++ [2]` / `marked ++ [3]`, reaching q16 with
+  scan over `marked ++ [3]` (q12, right) / `marked ++ [2]` (q13, left),
+  reaching q16 with
 
   ```text
   cfg_ml 16
