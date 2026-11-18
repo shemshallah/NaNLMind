@@ -102,6 +102,9 @@ jobs:
             formal/utm/MinskyCanonicalDirection.v
           coqc -Q formal/utm NaNLM \
             -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyCanonicalRestore.v
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyWritebackMacro.v
           coqc -Q formal/utm NaNLM \
             -w -notation-overridden,-stdlib-vector \
@@ -161,6 +164,7 @@ jobs:
           coqchk -Q formal/utm NaNLM formal/utm/MinskyCanonicalCopy.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyCanonicalCopyGeneral.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyCanonicalDirection.vo
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyCanonicalRestore.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyMismatchErasure.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyActionMacro.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyWritebackMacro.vo
@@ -227,6 +231,8 @@ jobs:
             formal/utm/MinskyCanonicalCopyGeneral.vo
             formal/utm/MinskyCanonicalDirection.v
             formal/utm/MinskyCanonicalDirection.vo
+            formal/utm/MinskyCanonicalRestore.v
+            formal/utm/MinskyCanonicalRestore.vo
             formal/utm/MinskyMismatchErasure.v
             formal/utm/MinskyMismatchErasure.vo
             formal/utm/MinskyActionMacro.v
