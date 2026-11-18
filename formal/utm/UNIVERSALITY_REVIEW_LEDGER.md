@@ -672,3 +672,50 @@ q17 return rail to be q17-passable.  The raw canonical layout restores
 still applies.  Discharging these side conditions requires the tagged
 6/7 control channel documented above.  No single source step, halting
 reflection, or universality claim is made here.
+
+## November 18 canonical fetch: match, copy and direction capture (kernel-checked)
+
+`MinskyCanonicalFetch.v` is the first theorem that joins three canonical
+phases into one exact native clock:
+
+1. `canonical_q5_match_to_q6`,
+2. `canonical_q6_copy_all` over the next-state/write action field,
+3. `canonical_q6_direction_capture`.
+
+For condition bits `condition`, action bits `action` of equal length,
+and direction bit `dir`, the literal q5 entry
+
+```text
+left  = rev (map source_bit condition) ++ 5 :: rev t-buffer ++ 6 :: rev data
+right = 4 :: map source_bit condition ++ map source_bit action ++
+        source_bit dir :: tail
+```
+
+runs to
+
+```text
+cfg_ml (if dir then 12 else 13)
+  (rev (map match_mark action) ++ 5 :: rev t-buffer ++ 6 :: rev data)
+  (4 :: ((map match_mark condition ++ map match_mark action) ++
+         ((if dir then 3 else 2) :: tail))).
+```
+
+The clock is the literal sum of the q5-match clock, the
+`copy_all_clock condition action [] (map match_mark condition)` clock,
+and the q9/q10 direction clock.  All `Forall` premises are derived from
+the record marks being `2/3`; the theorem adds no passability premise.
+
+Verification: fast q15-q22 job
+[44417282186](https://github.com/shemshallah/NaNLMind/actions/runs/44417282186)
+on `ea2ae34`; full bridge
+[44417941360](https://github.com/shemshallah/NaNLMind/actions/runs/44417941360)
+was dispatched on the same commit.
+
+Scope: one record fetch/decode/capture.  It stops at q12/q13 before
+restore, q15/q16, q21/q22, writeback, relocation or any source step.
+The raw-control ordering obstruction and the tagged control channel
+remain open, as do halting reflection and universality.
+
+Next: generalize the q15 capture so its scan may cross the next record's
+`X=4` and passable prefix, then compose this fetch result with
+`canonical_q12_restore_to_q16_decision`.
