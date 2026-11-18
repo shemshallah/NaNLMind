@@ -576,3 +576,36 @@ passed `coqc` and `coqchk`.  The full bridge is
 
 This is direction capture only.  q12-q22 relocation, the source write/head
 transition, halting reflection, and the universality reduction remain open.
+
+## November 18 canonical q12/q13 restore to q15 (kernel-checked)
+
+The direction-capture frame is decomposed as `left = s :: remaining` so
+`cfg_ml` exposes its head.  q12/q13 then scan left to M=6 and q14 restores
+the marked cells rightward to X=4:
+
+- `rev_restore_scan` normalizes the q12/q13 output reversal.
+- `canonical_q12_restore_to_q15` and `canonical_q13_restore_to_q15` have
+  clock
+
+  ```text
+  S |s :: remaining ++ 5 :: rev t-buffer|
+  + S |t-buffer ++ [5] ++ rev remaining ++ [s]|
+  ```
+
+  and end at
+
+  ```text
+  entry_config 15
+    (4 :: map q14_restore
+      (rev (t-buffer ++ [5] ++ rev remaining ++ [s])) ++ 3/2 :: rev data)
+    (marked ++ 2/3 :: record_tail).
+  ```
+
+The fast job
+[44387137354](https://github.com/shemshallah/NaNLMind/actions/runs/44387137354)
+passed `coqc` and `coqchk`.  The full bridge is
+[44387853435](https://github.com/shemshallah/NaNLMind/actions/runs/44387853435).
+
+This is a macro phase.  q15/q16 raw-bit search, q21/q22 decision, q19/q20
+relocation, q17/q18 return, the source write/head transition, halting
+reflection, and the universality reduction remain open.
