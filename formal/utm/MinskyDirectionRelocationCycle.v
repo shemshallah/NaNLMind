@@ -4189,3 +4189,116 @@ Qed.
 
 Print Assumptions tagged_rail_q15_q22_right_to_q19.
 Print Assumptions tagged_rail_q15_q22_left_to_q20.
+
+
+(** At the relocation stage, every stable 6/7 tag remains q19-passable.
+    The q19 hypothesis on the direction rail must be stated separately:
+    q21 may pass raw 0/1 controls that would stop q19 too early. *)
+Lemma q16_tagged_scan_restore_cons :
+  forall (first : bool) (rest : list bool),
+    map q16_restore
+      (rev (q0_stable_control_tag first ::
+            map q0_stable_control_tag rest)) =
+    rev (map q0_stable_control_tag (first :: rest)).
+Proof.
+  intros first rest.
+  rewrite map_rev.
+  cbn [map].
+  rewrite q16_stable_control_tag_restore.
+  rewrite q16_stable_control_rail_restore_identity.
+  reflexivity.
+Qed.
+
+Theorem tagged_rail_right_relocates_to_q5 :
+  forall (first : bool) (rest : list bool)
+         dir_head dir_remaining old target outer between final,
+    Forall q21_pass (dir_head :: dir_remaining) ->
+    Forall q15_pass (rev (dir_head :: dir_remaining)) ->
+    Forall q17_pass between ->
+    run (direction_phase_cost
+           (map q0_stable_control_tag (first :: rest))
+           (dir_head :: dir_remaining) +
+         (S (length
+           (rev (dir_head :: dir_remaining) ++
+            7 :: rev (map q0_stable_control_tag (first :: rest)))) +
+          S (length between)))
+      (entry_config 15
+        (source_bit old :: dir_head :: dir_remaining ++ 3 :: outer)
+        (rev (map q0_stable_control_tag (first :: rest)) ++
+         source_bit target :: between ++ 7 :: final)) =
+    cfg_ml 5
+      (rev between ++ 6 ::
+       rev (rev (dir_head :: dir_remaining) ++
+            7 :: rev (map q0_stable_control_tag (first :: rest))) ++
+       source_bit old :: outer)
+      ((if target then 3 else 2) :: final).
+Proof.
+  intros first rest dir_head dir_remaining old target outer between final
+    H21 Hdir Hbetween.
+  eapply eq_trans.
+  - apply (q15_q22_right_relocates_to_q5
+      (q0_stable_control_tag first)
+      (map q0_stable_control_tag rest)
+      dir_head dir_remaining old target outer between final).
+    + change (Forall q15_pass
+        (rev (map q0_stable_control_tag (first :: rest)))).
+      apply q15_stable_control_rail_reverse_safe.
+    + constructor.
+      * apply q16_stable_control_tag_pass.
+      * apply q16_stable_control_rail_safe.
+    + exact H21.
+    + rewrite q16_tagged_scan_restore_cons.
+      rewrite Forall_app.
+      split.
+      * exact Hdir.
+      * constructor.
+        -- unfold q15_pass; auto 12.
+        -- apply q15_stable_control_rail_reverse_safe.
+    + exact Hbetween.
+  - rewrite q16_tagged_scan_restore_cons.
+    reflexivity.
+Qed.
+
+Theorem tagged_rail_left_relocates_to_q5 :
+  forall (first : bool) (rest : list bool)
+         dir_head dir_remaining old next target outer suffix,
+    Forall q21_pass (dir_head :: dir_remaining) ->
+    Forall q17_pass (rev (dir_head :: dir_remaining)) ->
+    run (direction_phase_cost
+           (map q0_stable_control_tag (first :: rest))
+           (dir_head :: dir_remaining) +
+         (1 + S (length
+           (source_bit old :: rev (dir_head :: dir_remaining)))))
+      (entry_config 15
+        (source_bit old :: dir_head :: dir_remaining ++
+         2 :: source_bit target :: outer)
+        (rev (map q0_stable_control_tag (first :: rest)) ++
+         source_bit next :: suffix)) =
+    cfg_ml 5
+      (rev (source_bit old :: rev (dir_head :: dir_remaining)) ++
+       6 :: outer)
+      ((if target then 3 else 2) ::
+       rev (map q0_stable_control_tag (first :: rest)) ++
+       source_bit next :: suffix).
+Proof.
+  intros first rest dir_head dir_remaining old next target outer suffix
+    H21 Hreturn.
+  eapply eq_trans.
+  - apply (q15_q22_left_relocates_to_q5
+      (q0_stable_control_tag first)
+      (map q0_stable_control_tag rest)
+      dir_head dir_remaining old next target outer suffix).
+    + change (Forall q15_pass
+        (rev (map q0_stable_control_tag (first :: rest)))).
+      apply q15_stable_control_rail_reverse_safe.
+    + constructor.
+      * apply q16_stable_control_tag_pass.
+      * apply q16_stable_control_rail_safe.
+    + exact H21.
+    + exact Hreturn.
+  - rewrite q16_tagged_scan_restore_cons.
+    reflexivity.
+Qed.
+
+Print Assumptions tagged_rail_right_relocates_to_q5.
+Print Assumptions tagged_rail_left_relocates_to_q5.
