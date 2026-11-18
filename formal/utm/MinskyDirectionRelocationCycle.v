@@ -4589,6 +4589,14 @@ Theorem q5_buffered_tagged_rail_exposes_six_two_gate :
       (rev (map q0_stable_control_tag bits) ++ 6 :: 2 :: suffix).
 Proof.
   intros bits stored suffix.
+  match goal with
+  | |- _ = ?expected =>
+    change (run (S (length
+      (2 :: 6 :: map q0_stable_control_tag bits)))
+      (entry_config 5
+        ((6 :: map q0_stable_control_tag bits) ++ 5 :: stored)
+        (2 :: suffix)) = expected)
+  end.
   rewrite (q5_return_scan_to_first_five
     (6 :: map q0_stable_control_tag bits)
     2 stored suffix).
