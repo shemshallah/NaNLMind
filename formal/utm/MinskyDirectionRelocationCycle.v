@@ -4109,3 +4109,79 @@ Proof.
 Qed.
 
 Print Assumptions q15_q16_native_tagged_control_rail_roundtrip.
+
+
+(** The tagged rail also passes through the certified q21/q22
+    direction-selection phase.  Both directional outcomes are stated;
+    the tag-rail preservation follows from its 6/7 restore identity. *)
+Theorem tagged_rail_q15_q22_right_to_q19 :
+  forall (first : bool) (rest : list bool)
+         dir_head dir_remaining old target outer suffix,
+    Forall q21_pass (dir_head :: dir_remaining) ->
+    run (direction_phase_cost
+      (map q0_stable_control_tag (first :: rest))
+      (dir_head :: dir_remaining))
+      (entry_config 15
+        (source_bit old :: dir_head :: dir_remaining ++ 3 :: outer)
+        (rev (map q0_stable_control_tag (first :: rest)) ++
+         source_bit target :: suffix)) =
+    entry_config 19 (source_bit old :: outer)
+      (rev (dir_head :: dir_remaining) ++
+       7 :: rev (map q0_stable_control_tag (first :: rest)) ++
+       source_bit target :: suffix).
+Proof.
+  intros first rest dir_head dir_remaining old target outer suffix H21.
+  eapply eq_trans.
+  - apply (q15_q22_right_to_q19
+      (q0_stable_control_tag first)
+      (map q0_stable_control_tag rest)
+      dir_head dir_remaining old target outer suffix).
+    + apply q15_stable_control_rail_reverse_safe.
+    + constructor.
+      * apply q16_stable_control_tag_pass.
+      * apply q16_stable_control_rail_safe.
+    + exact H21.
+  - rewrite map_rev.
+    cbn [map].
+    rewrite q16_stable_control_tag_restore.
+    rewrite q16_stable_control_rail_restore_identity.
+    reflexivity.
+Qed.
+
+Theorem tagged_rail_q15_q22_left_to_q20 :
+  forall (first : bool) (rest : list bool)
+         dir_head dir_remaining old next target outer suffix,
+    Forall q21_pass (dir_head :: dir_remaining) ->
+    run (direction_phase_cost
+      (map q0_stable_control_tag (first :: rest))
+      (dir_head :: dir_remaining))
+      (entry_config 15
+        (source_bit old :: dir_head :: dir_remaining ++
+         2 :: source_bit target :: outer)
+        (rev (map q0_stable_control_tag (first :: rest)) ++
+         source_bit next :: suffix)) =
+    cfg_ml 20 (source_bit target :: outer)
+      (source_bit old :: rev (dir_head :: dir_remaining) ++
+       7 :: rev (map q0_stable_control_tag (first :: rest)) ++
+       source_bit next :: suffix).
+Proof.
+  intros first rest dir_head dir_remaining old next target outer suffix H21.
+  eapply eq_trans.
+  - apply (q15_q22_left_to_q20
+      (q0_stable_control_tag first)
+      (map q0_stable_control_tag rest)
+      dir_head dir_remaining old next target outer suffix).
+    + apply q15_stable_control_rail_reverse_safe.
+    + constructor.
+      * apply q16_stable_control_tag_pass.
+      * apply q16_stable_control_rail_safe.
+    + exact H21.
+  - rewrite map_rev.
+    cbn [map].
+    rewrite q16_stable_control_tag_restore.
+    rewrite q16_stable_control_rail_restore_identity.
+    reflexivity.
+Qed.
+
+Print Assumptions tagged_rail_q15_q22_right_to_q19.
+Print Assumptions tagged_rail_q15_q22_left_to_q20.
