@@ -72,10 +72,11 @@ Proof.
   assert (Hscan2 : Forall q14_pass (tbuffer ++ [5] ++ ms ++ [m]))
     by (apply q14_restore_safe; assumption).
   rewrite dispatch_run_add.
-  change (run (S (length (tbuffer ++ [5] ++ ms ++ [m])))
-    (run (S (length (m :: rev ms ++ 5 :: rev tbuffer)))
-      (cfg_ml 12 (rev (m :: ms) ++ 5 :: rev tbuffer ++ 6 :: rev data)
-        (4 :: marked ++ 2 :: record_tail))) = _).
+  replace (cfg_ml 12 (rev (m :: ms) ++ 5 :: rev tbuffer ++ 6 :: rev data)
+      (4 :: marked ++ 2 :: record_tail))
+    with (entry_config 12 (rev ms ++ 5 :: rev tbuffer ++ 6 :: rev data)
+      (m :: 4 :: marked ++ 2 :: record_tail))
+    by (unfold cfg_ml; reflexivity).
   rewrite (q12_scan_to_m (rev ms ++ 5 :: rev tbuffer) m (rev data)
     (4 :: marked ++ 2 :: record_tail) Hscan1).
   rewrite (q14_scan_to_x (tbuffer ++ [5] ++ ms ++ [m])
@@ -104,10 +105,11 @@ Proof.
   assert (Hscan2 : Forall q14_pass (tbuffer ++ [5] ++ ms ++ [m]))
     by (apply q14_restore_safe; assumption).
   rewrite dispatch_run_add.
-  change (run (S (length (tbuffer ++ [5] ++ ms ++ [m])))
-    (run (S (length (m :: rev ms ++ 5 :: rev tbuffer)))
-      (cfg_ml 13 (rev (m :: ms) ++ 5 :: rev tbuffer ++ 6 :: rev data)
-        (4 :: marked ++ 3 :: record_tail))) = _).
+  replace (cfg_ml 13 (rev (m :: ms) ++ 5 :: rev tbuffer ++ 6 :: rev data)
+      (4 :: marked ++ 3 :: record_tail))
+    with (entry_config 13 (rev ms ++ 5 :: rev tbuffer ++ 6 :: rev data)
+      (m :: 4 :: marked ++ 3 :: record_tail))
+    by (unfold cfg_ml; reflexivity).
   rewrite (q13_scan_to_m (rev ms ++ 5 :: rev tbuffer) m (rev data)
     (4 :: marked ++ 3 :: record_tail) Hscan1).
   rewrite (q14_scan_to_x (tbuffer ++ [5] ++ ms ++ [m])
