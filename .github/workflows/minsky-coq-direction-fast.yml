@@ -13,6 +13,7 @@ on:
       - 'formal/utm/MinskyCanonicalDirection.v'
       - 'formal/utm/MinskyCanonicalRestore.v'
       - 'formal/utm/MinskyCanonicalDecision.v'
+      - 'formal/utm/MinskyCanonicalFetch.v'
 
 permissions:
   contents: read
@@ -175,4 +176,15 @@ jobs:
             exit 1
           fi
           coqchk -Q formal/utm NaNLM formal/utm/MinskyCanonicalDecision.vo
+          if ! coqc -Q formal/utm NaNLM \
+              -w -notation-overridden,-stdlib-vector \
+              formal/utm/MinskyCanonicalFetch.v \
+              > /tmp/canonical-fetch-coq.log 2>&1; then
+            tail -n 100 /tmp/canonical-fetch-coq.log
+            while IFS= read -r line; do
+              echo "::error title=Coq canonical fetch::$line"
+            done < <(tail -n 100 /tmp/canonical-fetch-coq.log)
+            exit 1
+          fi
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyCanonicalFetch.vo
           echo 'NANLM CANONICAL Q5 MATCH COQCHK PASS'
