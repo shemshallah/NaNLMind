@@ -4523,6 +4523,17 @@ Proof.
   replace 4
     with (length [if sacrificial then 3 else 2] + 3)
     by reflexivity.
+  match goal with
+  | |- _ = ?expected =>
+    change (run (length [if sacrificial then 3 else 2] + 3)
+      (entry_config 0
+        (0 :: 6 :: map q0_stable_control_tag (first :: rest) ++
+         5 :: stored)
+        ([if sacrificial then 3 else 2] ++
+         [q0_stable_control_tag next;
+          q0_stable_control_tag extra] ++
+         source_bit target :: tail))) = expected
+  end.
   rewrite (q0_tagged_control_pair_dispatches_target
     [if sacrificial then 3 else 2]
     (0 :: 6 :: map q0_stable_control_tag (first :: rest) ++
