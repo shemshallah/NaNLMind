@@ -394,7 +394,7 @@ Proof.
           (region ++ 3 :: map source_bit rs ++ record_tail)
           (3 :: processed) (region ++ [3]) rs record_tail tbuffer data).
         -- cbn [app]. reflexivity.
-        -- apply app_cons_singleton.
+        -- symmetry; apply app_cons_singleton.
         -- exact Hlen'.
         -- constructor; [unfold q7_pass; auto 10 | exact Hproc7].
         -- constructor; [unfold q9_pass; auto 10 | exact Hproc9].
@@ -419,7 +419,7 @@ Proof.
           (region ++ 2 :: map source_bit rs ++ record_tail)
           (2 :: processed) (region ++ [2]) rs record_tail tbuffer data).
         -- cbn [app]. reflexivity.
-        -- apply app_cons_singleton.
+        -- symmetry; apply app_cons_singleton.
         -- exact Hlen'.
         -- constructor; [unfold q7_pass; auto 10 | exact Hproc7].
         -- constructor; [unfold q9_pass; auto 10 | exact Hproc9].
