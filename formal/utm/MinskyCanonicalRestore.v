@@ -167,10 +167,7 @@ Corollary canonical_restore_q16_decision :
 Proof.
   intros m marked old prefix bit tail Hm Hmarked.
   replace (rev (marked ++ [m])) with (m :: rev marked).
-  2:{
-    rewrite rev_app_distr. cbn [rev]. rewrite app_nil_r.
-    reflexivity.
-  }
+  2:{ rewrite rev_app_distr. reflexivity. }
   cbn [cfg_ml].
   assert (Hscan : Forall q16_pass (m :: rev marked ++ [4])).
   {
