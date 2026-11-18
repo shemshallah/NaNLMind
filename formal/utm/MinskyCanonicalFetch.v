@@ -81,10 +81,11 @@ Proof.
     apply Forall_match_mark.
     intros b. destruct b; unfold q9_pass, match_mark; auto 10.
   }
-  rewrite dispatch_run_add.
+  rewrite <- Nat.add_assoc.
   rewrite dispatch_run_add.
   rewrite (canonical_q5_match_to_q6 bits tbuffer data
     (map source_bit action_bits ++ source_bit dir :: tail)).
+  rewrite dispatch_run_add.
   rewrite (canonical_q6_copy_all bits
     (4 :: rev (map match_raw bits) ++ 5 :: rev tbuffer ++ 6 :: rev data)
     (map match_mark bits ++ map source_bit action_bits ++
