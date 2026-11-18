@@ -330,6 +330,7 @@ Qed.
 
 Print Assumptions canonical_q6_copy_unfolded.
 
+
 Fixpoint copy_all_clock (bits record_bits : list bool)
     (processed region : list nat) : nat :=
   match bits, record_bits with
@@ -344,7 +345,8 @@ Fixpoint copy_all_clock (bits record_bits : list bool)
   end.
 
 Theorem canonical_q6_copy_all :
-  forall bits record_bits processed region record_tail tbuffer data,
+  forall bits right processed region record_bits record_tail tbuffer data,
+    right = region ++ map source_bit record_bits ++ record_tail ->
     length bits = length record_bits ->
     Forall q7_pass processed ->
     Forall q9_pass processed ->
@@ -354,7 +356,7 @@ Theorem canonical_q6_copy_all :
       (entry_config 6
         (4 :: rev (map source_bit bits) ++ processed ++
          5 :: rev tbuffer ++ 6 :: rev data)
-        (region ++ map source_bit record_bits ++ record_tail)) =
+        right) =
     entry_config 6
       (4 :: rev (map match_mark record_bits) ++ processed ++
        5 :: rev tbuffer ++ 6 :: rev data)
@@ -362,10 +364,10 @@ Theorem canonical_q6_copy_all :
 Proof.
   intros bits.
   induction bits as [|c cs IH];
-    intros record_bits processed region record_tail tbuffer data
-      Hlen Hproc7 Hproc9 Hreg6 Hreg7.
+    intros right processed region record_bits record_tail tbuffer data
+      Hright Hlen Hproc7 Hproc9 Hreg6 Hreg7.
   - destruct record_bits as [|r rs].
-    + cbn [copy_all_clock map]. reflexivity.
+    + cbn [copy_all_clock map]. rewrite Hright. reflexivity.
     + cbn [length] in Hlen. discriminate Hlen.
   - destruct record_bits as [|r rs].
     + cbn [length] in Hlen. discriminate Hlen.
@@ -374,15 +376,13 @@ Proof.
       cbn [copy_all_clock].
       rewrite dispatch_run_add.
       destruct r.
-      * rewrite (canonical_q6_copy_unfolded processed c cs region rs
+      * rewrite Hright. cbn [map].
+        rewrite (canonical_q6_copy_unfolded processed c cs region rs
           record_tail tbuffer data true Hproc7 Hproc9 Hreg6 Hreg7).
-        replace (region ++ 3 :: map source_bit rs ++ record_tail)
-          with ((region ++ [3]) ++ map source_bit rs ++ record_tail)
-          by (symmetry; apply app_cons_singleton).
-        cbn [match_mark map rev app] in IH.
-        cbn [match_mark map rev app].
-        apply (IH rs (3 :: processed) (region ++ [3])
-          record_tail tbuffer data).
+        cbn [match_mark map rev].
+        apply (IH (region ++ 3 :: map source_bit rs ++ record_tail)
+          (3 :: processed) (region ++ [3]) rs record_tail tbuffer data).
+        -- apply app_cons_singleton.
         -- exact Hlen'.
         -- constructor; [unfold q7_pass; auto 10 | exact Hproc7].
         -- constructor; [unfold q9_pass; auto 10 | exact Hproc9].
@@ -390,15 +390,13 @@ Proof.
              [unfold q6_pass; auto 10 | constructor]].
         -- apply Forall_app; split; [exact Hreg7 | constructor;
              [unfold q7_pass; auto 10 | constructor]].
-      * rewrite (canonical_q6_copy_unfolded processed c cs region rs
+      * rewrite Hright. cbn [map].
+        rewrite (canonical_q6_copy_unfolded processed c cs region rs
           record_tail tbuffer data false Hproc7 Hproc9 Hreg6 Hreg7).
-        replace (region ++ 2 :: map source_bit rs ++ record_tail)
-          with ((region ++ [2]) ++ map source_bit rs ++ record_tail)
-          by (symmetry; apply app_cons_singleton).
-        cbn [match_mark map rev app] in IH.
-        cbn [match_mark map rev app].
-        apply (IH rs (2 :: processed) (region ++ [2])
-          record_tail tbuffer data).
+        cbn [match_mark map rev].
+        apply (IH (region ++ 2 :: map source_bit rs ++ record_tail)
+          (2 :: processed) (region ++ [2]) rs record_tail tbuffer data).
+        -- apply app_cons_singleton.
         -- exact Hlen'.
         -- constructor; [unfold q7_pass; auto 10 | exact Hproc7].
         -- constructor; [unfold q9_pass; auto 10 | exact Hproc9].
