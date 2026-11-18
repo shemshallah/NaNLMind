@@ -3738,13 +3738,14 @@ Lemma q0_protected_restore_forward :
     [5; 7; 4] ++ map q16_restore scanned ++
       [6; source_bit next; 0].
 Proof.
-  intros scanned [].
-  unfold protected_q16_backscan.
-  rewrite rev_app_distr.
-  rewrite rev_involutive.
-  repeat rewrite map_app.
-  simpl.
-  reflexivity.
+  intros scanned next.
+  destruct next;
+    unfold protected_q16_backscan;
+    rewrite rev_app_distr;
+    rewrite rev_involutive;
+    repeat rewrite map_app;
+    simpl;
+    reflexivity.
 Qed.
 
 Lemma q0_protected_restored_tape_shape :
