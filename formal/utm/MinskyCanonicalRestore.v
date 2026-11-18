@@ -85,6 +85,65 @@ Proof.
   reflexivity.
 Qed.
 
+(** The direction mark on the right is pure carried data for q12/q13/q14.
+    Keeping it abstract lets the canonical direction capture use q12 with
+    mark 3 and q13 with mark 2, matching the native q9/q10 pairing. *)
+Theorem canonical_q12_restore_to_q15_mark :
+  forall s remaining tbuffer data marked mark record_tail,
+    Forall q12_pass (s :: remaining ++ 5 :: rev tbuffer) ->
+    Forall q14_pass (tbuffer ++ [5] ++ rev remaining ++ [s]) ->
+    run (S (length (s :: remaining ++ 5 :: rev tbuffer)) +
+         S (length (tbuffer ++ [5] ++ rev remaining ++ [s])))
+      (cfg_ml 12 (s :: remaining ++ 5 :: rev tbuffer ++ 6 :: rev data)
+        (4 :: marked ++ mark :: record_tail)) =
+    entry_config 15
+      (4 :: map q14_restore
+        (rev (tbuffer ++ [5] ++ rev remaining ++ [s])) ++ 3 :: rev data)
+      (marked ++ mark :: record_tail).
+Proof.
+  intros s remaining tbuffer data marked mark record_tail H1 H2.
+  rewrite dispatch_run_add.
+  cbn [cfg_ml].
+  replace (remaining ++ 5 :: rev tbuffer ++ 6 :: rev data)
+    with ((remaining ++ 5 :: rev tbuffer) ++ 6 :: rev data)
+    by (repeat rewrite <- app_assoc; reflexivity).
+  rewrite (q12_scan_to_m (remaining ++ 5 :: rev tbuffer) s (rev data)
+    (4 :: marked ++ mark :: record_tail) H1).
+  rewrite rev_restore_scan.
+  rewrite (q14_scan_to_x (tbuffer ++ [5] ++ rev remaining ++ [s])
+    (3 :: rev data) (marked ++ mark :: record_tail) H2).
+  reflexivity.
+Qed.
+
+Theorem canonical_q13_restore_to_q15_mark :
+  forall s remaining tbuffer data marked mark record_tail,
+    Forall q12_pass (s :: remaining ++ 5 :: rev tbuffer) ->
+    Forall q14_pass (tbuffer ++ [5] ++ rev remaining ++ [s]) ->
+    run (S (length (s :: remaining ++ 5 :: rev tbuffer)) +
+         S (length (tbuffer ++ [5] ++ rev remaining ++ [s])))
+      (cfg_ml 13 (s :: remaining ++ 5 :: rev tbuffer ++ 6 :: rev data)
+        (4 :: marked ++ mark :: record_tail)) =
+    entry_config 15
+      (4 :: map q14_restore
+        (rev (tbuffer ++ [5] ++ rev remaining ++ [s])) ++ 2 :: rev data)
+      (marked ++ mark :: record_tail).
+Proof.
+  intros s remaining tbuffer data marked mark record_tail H1 H2.
+  rewrite dispatch_run_add.
+  cbn [cfg_ml].
+  replace (remaining ++ 5 :: rev tbuffer ++ 6 :: rev data)
+    with ((remaining ++ 5 :: rev tbuffer) ++ 6 :: rev data)
+    by (repeat rewrite <- app_assoc; reflexivity).
+  rewrite (q13_scan_to_m (remaining ++ 5 :: rev tbuffer) s (rev data)
+    (4 :: marked ++ mark :: record_tail) H1).
+  rewrite rev_restore_scan.
+  rewrite (q14_scan_to_x (tbuffer ++ [5] ++ rev remaining ++ [s])
+    (2 :: rev data) (marked ++ mark :: record_tail) H2).
+  reflexivity.
+Qed.
+
+Print Assumptions canonical_q12_restore_to_q15_mark.
+Print Assumptions canonical_q13_restore_to_q15_mark.
 Print Assumptions canonical_q12_restore_to_q15.
 Print Assumptions canonical_q13_restore_to_q15.
 
