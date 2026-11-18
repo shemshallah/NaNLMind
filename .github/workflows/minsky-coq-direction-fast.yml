@@ -10,6 +10,7 @@ on:
       - 'formal/utm/MinskyCanonicalMatch.v'
       - 'formal/utm/MinskyCanonicalCopy.v'
       - 'formal/utm/MinskyCanonicalCopyGeneral.v'
+      - 'formal/utm/MinskyCanonicalDirection.v'
 
 permissions:
   contents: read
@@ -139,4 +140,15 @@ jobs:
             exit 1
           fi
           coqchk -Q formal/utm NaNLM formal/utm/MinskyCanonicalCopyGeneral.vo
+          if ! coqc -Q formal/utm NaNLM \
+              -w -notation-overridden,-stdlib-vector \
+              formal/utm/MinskyCanonicalDirection.v \
+              > /tmp/canonical-direction-coq.log 2>&1; then
+            tail -n 100 /tmp/canonical-direction-coq.log
+            while IFS= read -r line; do
+              echo "::error title=Coq canonical direction::$line"
+            done < <(tail -n 100 /tmp/canonical-direction-coq.log)
+            exit 1
+          fi
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyCanonicalDirection.vo
           echo 'NANLM CANONICAL Q5 MATCH COQCHK PASS'
