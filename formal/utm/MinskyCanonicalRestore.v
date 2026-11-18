@@ -16,6 +16,20 @@ From NaNLM Require Import MinskyTable MinskySourceEncoding
   MinskyConcreteEntry MinskyMatchMacro MinskyConcreteDispatch
   MinskyActionMacro MinskyCanonicalCopyGeneral MinskyCanonicalDirection.
 
+Lemma rev_restore_scan :
+  forall s remaining tbuffer,
+    rev (s :: remaining ++ 5 :: rev tbuffer) =
+    tbuffer ++ [5] ++ rev remaining ++ [s].
+Proof.
+  intros s remaining tbuffer.
+  cbn [rev].
+  rewrite rev_app_distr.
+  cbn [rev].
+  rewrite rev_involutive.
+  repeat rewrite app_assoc.
+  reflexivity.
+Qed.
+
 Theorem canonical_q12_restore_to_q15 :
   forall s remaining tbuffer data marked record_tail,
     Forall q12_pass (s :: remaining ++ 5 :: rev tbuffer) ->
@@ -32,12 +46,12 @@ Proof.
   intros s remaining tbuffer data marked record_tail H1 H2.
   rewrite dispatch_run_add.
   cbn [cfg_ml].
-  match goal with |- ?G => idtac "RESTORE GOAL:" G end.
   replace (remaining ++ 5 :: rev tbuffer ++ 6 :: rev data)
     with ((remaining ++ 5 :: rev tbuffer) ++ 6 :: rev data)
     by (repeat rewrite <- app_assoc; reflexivity).
   rewrite (q12_scan_to_m (remaining ++ 5 :: rev tbuffer) s (rev data)
     (4 :: marked ++ 2 :: record_tail) H1).
+  rewrite rev_restore_scan.
   rewrite (q14_scan_to_x (tbuffer ++ [5] ++ rev remaining ++ [s])
     (3 :: rev data) (marked ++ 2 :: record_tail) H2).
   reflexivity.
@@ -64,6 +78,7 @@ Proof.
     by (repeat rewrite <- app_assoc; reflexivity).
   rewrite (q13_scan_to_m (remaining ++ 5 :: rev tbuffer) s (rev data)
     (4 :: marked ++ 3 :: record_tail) H1).
+  rewrite rev_restore_scan.
   rewrite (q14_scan_to_x (tbuffer ++ [5] ++ rev remaining ++ [s])
     (2 :: rev data) (marked ++ 3 :: record_tail) H2).
   reflexivity.
