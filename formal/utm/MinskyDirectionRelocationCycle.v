@@ -4605,7 +4605,10 @@ Proof.
     cbn [map entry_rewrite].
     rewrite map_rev.
     rewrite q5_stable_control_rail_restore_identity.
-    repeat rewrite app_assoc.
+    rewrite (append_singleton_assoc
+      (rev (map q0_stable_control_tag bits) ++ [6]) 2 suffix).
+    rewrite (append_singleton_assoc
+      (rev (map q0_stable_control_tag bits)) 6 (2 :: suffix)).
     reflexivity.
   - constructor.
     + unfold q5_return_pass; auto 12.
