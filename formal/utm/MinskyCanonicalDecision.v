@@ -130,7 +130,8 @@ Corollary canonical_q12_restore_q16_decision_next :
 Proof.
   intros remaining tbuffer data marked b bit tail H12 H14 H15.
   assert (Hmarked15 : Forall q15_pass marked).
-  { apply (proj1 (Forall_app _ _ _ _) H15). }
+  { assert (H15' := H15). rewrite Forall_app in H15'.
+    destruct H15' as [Hm _]. exact Hm. }
   assert (Hmarked16 : Forall q16_pass marked).
   { apply Forall_q15_q16. exact Hmarked15. }
   assert (Hback16 : Forall q16_pass (rev (marked ++ [3]) ++ [4])).
@@ -194,7 +195,8 @@ Corollary canonical_q13_restore_q16_decision_next :
 Proof.
   intros remaining tbuffer data marked b bit tail H13 H14 H15.
   assert (Hmarked15 : Forall q15_pass marked).
-  { apply (proj1 (Forall_app _ _ _ _) H15). }
+  { assert (H15' := H15). rewrite Forall_app in H15'.
+    destruct H15' as [Hm _]. exact Hm. }
   assert (Hmarked16 : Forall q16_pass marked).
   { apply Forall_q15_q16. exact Hmarked15. }
   assert (Hback16 : Forall q16_pass (rev (marked ++ [2]) ++ [4])).
