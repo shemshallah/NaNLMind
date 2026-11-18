@@ -32,6 +32,9 @@ Proof.
   intros s remaining tbuffer data marked record_tail H1 H2.
   rewrite dispatch_run_add.
   cbn [cfg_ml].
+  replace (remaining ++ 5 :: rev tbuffer ++ 6 :: rev data)
+    with ((remaining ++ 5 :: rev tbuffer) ++ 6 :: rev data)
+    by (repeat rewrite <- app_assoc; reflexivity).
   rewrite (q12_scan_to_m (remaining ++ 5 :: rev tbuffer) s (rev data)
     (4 :: marked ++ 2 :: record_tail) H1).
   rewrite (q14_scan_to_x (tbuffer ++ [5] ++ rev remaining ++ [s])
@@ -55,6 +58,9 @@ Proof.
   intros s remaining tbuffer data marked record_tail H1 H2.
   rewrite dispatch_run_add.
   cbn [cfg_ml].
+  replace (remaining ++ 5 :: rev tbuffer ++ 6 :: rev data)
+    with ((remaining ++ 5 :: rev tbuffer) ++ 6 :: rev data)
+    by (repeat rewrite <- app_assoc; reflexivity).
   rewrite (q13_scan_to_m (remaining ++ 5 :: rev tbuffer) s (rev data)
     (4 :: marked ++ 3 :: record_tail) H1).
   rewrite (q14_scan_to_x (tbuffer ++ [5] ++ rev remaining ++ [s])
