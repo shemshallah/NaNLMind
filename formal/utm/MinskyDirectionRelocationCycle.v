@@ -4045,3 +4045,67 @@ Proof.
 Qed.
 
 Print Assumptions q16_native_tagged_backscan_preserves_control_rail.
+
+
+(** Exact adjacent q15/q16 native roundtrip on a tagged control rail.
+    The tagged rail is supplied as the starting configuration; this
+    theorem does not assert that q12 constructs it.  q15 sees the
+    target raw bit at the right end, and q16 reaches the old raw bit
+    on the left without erasing the stable 6/7 control information. *)
+Lemma q15_stable_control_tag_pass :
+  forall b, q15_pass (q0_stable_control_tag b).
+Proof.
+  intros []; unfold q15_pass, q0_stable_control_tag; auto 12.
+Qed.
+
+Lemma q15_stable_control_rail_reverse_safe :
+  forall bits,
+    Forall q15_pass (rev (map q0_stable_control_tag bits)).
+Proof.
+  induction bits as [|b rest IH].
+  - constructor.
+  - cbn [map rev].
+    rewrite Forall_app.
+    split.
+    + exact IH.
+    + constructor.
+      * apply q15_stable_control_tag_pass.
+      * constructor.
+Qed.
+
+Theorem q15_q16_native_tagged_control_rail_roundtrip :
+  forall (first : bool) (rest : list bool)
+         (old target : bool) (left suffix : list nat),
+    run (S (length (rev
+           (map q0_stable_control_tag (first :: rest)))) +
+         S (length
+           (map q0_stable_control_tag (first :: rest))))
+      (entry_config 15 (source_bit old :: left)
+        (rev (map q0_stable_control_tag (first :: rest)) ++
+         source_bit target :: suffix)) =
+    cfg_ml (if old then 22 else 21) left
+      (7 :: rev (map q0_stable_control_tag (first :: rest)) ++
+       source_bit target :: suffix).
+Proof.
+  intros first rest old target left suffix.
+  rewrite writeback_run_add.
+  rewrite (q15_scan_to_raw
+    (rev (map q0_stable_control_tag (first :: rest)))
+    target (source_bit old :: left) suffix).
+  2:{ apply q15_stable_control_rail_reverse_safe. }
+  rewrite rev_involutive.
+  change (run (S (length
+      (q0_stable_control_tag first ::
+       map q0_stable_control_tag rest)))
+    (entry_config 16
+      (map q0_stable_control_tag rest ++
+       source_bit old :: left)
+      (q0_stable_control_tag first ::
+       source_bit target :: suffix)) =
+    cfg_ml (if old then 22 else 21) left
+      (7 :: rev (map q0_stable_control_tag (first :: rest)) ++
+       source_bit target :: suffix)).
+  apply q16_native_tagged_backscan_preserves_control_rail.
+Qed.
+
+Print Assumptions q15_q16_native_tagged_control_rail_roundtrip.
