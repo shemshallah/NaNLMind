@@ -3639,3 +3639,47 @@ Proof.
 Qed.
 
 Print Assumptions q12_sacrificial_five_guard_preserves_program_to_q1.
+
+
+(** The protected five guard returns through q1 by two further native
+    transitions: q1 reads 6, then 2, writes 0 and enters q0.  The
+    stored wide program remains an untouched suffix. *)
+Lemma q1_guarded_return_two_steps_to_q0 :
+  forall (sacrificial : bool) stored suffix,
+    run 2
+      (entry_config 1 (5 :: stored)
+        (6 :: 2 :: (if sacrificial then 3 else 2) :: suffix)) =
+    entry_config 0 (0 :: 6 :: 5 :: stored)
+      ((if sacrificial then 3 else 2) :: suffix).
+Proof.
+  intros sacrificial stored suffix.
+  destruct sacrificial; reflexivity.
+Qed.
+
+Theorem q12_sacrificial_five_guard_reenters_q0 :
+  forall scanned rows next sacrificial target tail,
+    q19_q5_roundtrip_railb scanned = true ->
+    run (8 * length scanned + 60)
+      (entry_config 12
+        ([5; 6] ++
+         6 :: source_bit sacrificial :: 5 ::
+         encode_wide_program rows)
+        (0 :: 4 ::
+          (scanned ++ source_bit next :: 7 ::
+           source_bit false :: source_bit target :: tail))) =
+    entry_config 0 (0 :: 6 :: 5 :: encode_wide_program rows)
+      ((if sacrificial then 3 else 2) ::
+       map q16_restore
+         (rev (protected_q16_backscan scanned next false)) ++
+       source_bit target :: tail).
+Proof.
+  intros scanned rows next sacrificial target tail Hguard.
+  replace (8 * length scanned + 60)
+    with ((8 * length scanned + 58) + 2) by lia.
+  rewrite writeback_run_add.
+  rewrite (q12_sacrificial_five_guard_preserves_program_to_q1
+    scanned rows next sacrificial target tail Hguard).
+  apply q1_guarded_return_two_steps_to_q0.
+Qed.
+
+Print Assumptions q12_sacrificial_five_guard_reenters_q0.
