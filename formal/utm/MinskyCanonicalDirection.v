@@ -150,6 +150,8 @@ Proof.
     unfold xs.
     rewrite rev_app_distr. cbn [rev]. rewrite rev_involutive.
     cbn [app].
+    replace (rev (4 :: rev record_marks)) with (record_marks ++ [4])
+      by (cbn [rev]; rewrite rev_involutive; reflexivity).
     rewrite q8_reversed_frame.
     rewrite (q9_scan_marked_to_q12 record_marks
       (5 :: rev tbuffer ++ 6 :: rev data)
@@ -175,6 +177,8 @@ Proof.
     unfold xs.
     rewrite rev_app_distr. cbn [rev]. rewrite rev_involutive.
     cbn [app].
+    replace (rev (4 :: rev record_marks)) with (record_marks ++ [4])
+      by (cbn [rev]; rewrite rev_involutive; reflexivity).
     rewrite q8_reversed_frame.
     rewrite (q10_scan_marked_to_q13 record_marks
       (5 :: rev tbuffer ++ 6 :: rev data)
