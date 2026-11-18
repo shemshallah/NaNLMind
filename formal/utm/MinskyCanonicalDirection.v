@@ -82,10 +82,13 @@ Lemma q8_reversed_frame :
     ((record_marks ++ [4]) ++ marked) ++ x :: tail =
     record_marks ++ 4 :: marked ++ x :: tail.
 Proof.
-  intros record_marks marked x tail.
-  rewrite (app_cons_singleton record_marks 4 (marked ++ x :: tail)).
-  rewrite app_assoc.
-  reflexivity.
+  intros record_marks.
+  induction record_marks as [|r rs IH]; intros marked x tail.
+  - reflexivity.
+  - change (r :: (((rs ++ [4]) ++ marked) ++ x :: tail) =
+            r :: (rs ++ 4 :: marked ++ x :: tail)).
+    rewrite IH.
+    reflexivity.
 Qed.
 
 Theorem canonical_q6_direction_capture :
