@@ -102,13 +102,13 @@ jobs:
             formal/utm/MinskyCanonicalDirection.v
           coqc -Q formal/utm NaNLM \
             -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyHeadMoveMacro.v
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyCanonicalRestore.v
           coqc -Q formal/utm NaNLM \
             -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyWritebackMacro.v
-          coqc -Q formal/utm NaNLM \
-            -w -notation-overridden,-stdlib-vector \
-            formal/utm/MinskyHeadMoveMacro.v
           coqc -Q formal/utm NaNLM \
             -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyRelocationMacro.v
