@@ -286,3 +286,37 @@ Qed.
 Print Assumptions canonical_q6_copy_zero_general.
 Print Assumptions canonical_q6_copy_one_general.
 
+
+(** Specialized cycle with the exact Fixpoint-unfolded record shape.
+    This is the form needed by the all-condition induction. *)
+Lemma canonical_q6_copy_unfolded :
+  forall processed c cs region rs record_tail tbuffer data (r : bool),
+    Forall q7_pass processed ->
+    Forall q9_pass processed ->
+    Forall q6_pass region ->
+    Forall q7_pass region ->
+    run (S (length region) +
+         (S (length (rev region ++ [4] ++
+             rev (map source_bit (c :: cs)) ++ processed)) +
+          (S (length processed) + S (length cs))))
+      (entry_config 6
+        (4 :: rev (map source_bit (c :: cs)) ++ processed ++
+         5 :: rev tbuffer ++ 6 :: rev data)
+        (region ++ map source_bit (r :: rs) ++ record_tail)) =
+    entry_config 6
+      (4 :: rev (map source_bit cs) ++ match_mark r :: processed ++
+       5 :: rev tbuffer ++ 6 :: rev data)
+      (region ++ match_mark r :: map source_bit rs ++ record_tail).
+Proof.
+  intros processed c cs region rs record_tail tbuffer data r
+    Hproc7 Hproc9 Hreg6 Hreg7.
+  destruct r; cbn [map].
+  - apply (canonical_q6_copy_one_general processed c cs region
+      (map source_bit rs ++ record_tail) tbuffer data
+      Hproc7 Hproc9 Hreg6 Hreg7).
+  - apply (canonical_q6_copy_zero_general processed c cs region
+      (map source_bit rs ++ record_tail) tbuffer data
+      Hproc7 Hproc9 Hreg6 Hreg7).
+Qed.
+
+Print Assumptions canonical_q6_copy_unfolded.
