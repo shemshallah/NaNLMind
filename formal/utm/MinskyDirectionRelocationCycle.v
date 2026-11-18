@@ -4548,3 +4548,26 @@ Proof.
 Qed.
 
 Print Assumptions q5_q1_q0_native_tagged_target_dispatch.
+
+
+(** The q5 entry formats of relocation and the conditional tagged
+    q5→q0 gate are not directly identical.  A nonempty left zipper is
+    exposed by cfg_ml; the immediate successor on the right is the
+    relocated 2/3 marker.  It cannot simultaneously be the required
+    raw gate symbol 6.  This is only an exact interface obstruction,
+    not a global impossibility of alternative layouts or extra phases. *)
+Theorem q5_relocation_mark_cannot_directly_supply_six_gate :
+  forall (head : nat) (target : bool)
+         (left suffix prefix remaining : list nat),
+    cfg_ml 5 (head :: left)
+      ((if target then 3 else 2) :: suffix) <>
+    entry_config 5 prefix (head :: 6 :: remaining).
+Proof.
+  intros head target left suffix prefix remaining Heq.
+  pose proof
+    (f_equal (fun c => t_right (c_tape c)) Heq) as Hright.
+  unfold cfg_ml, entry_config in Hright.
+  destruct target; simpl in Hright; discriminate Hright.
+Qed.
+
+Print Assumptions q5_relocation_mark_cannot_directly_supply_six_gate.
