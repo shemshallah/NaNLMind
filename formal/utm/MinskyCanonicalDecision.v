@@ -15,8 +15,8 @@ Import ListNotations.
 
 From NaNLM Require Import MinskyTable MinskySourceEncoding
   MinskyConcreteEntry MinskyConcreteDispatch MinskyMatchMacro
-  MinskyHeadMoveMacro MinskyDirectionDecision MinskyWritebackMacro
-  MinskyRelocationMacro MinskyCanonicalRestore.
+  MinskyActionMacro MinskyHeadMoveMacro MinskyDirectionDecision
+  MinskyWritebackMacro MinskyRelocationMacro MinskyCanonicalRestore.
 
 Lemma q16_pass_two : q16_pass 2.
 Proof. unfold q16_pass; auto. Qed.
