@@ -4379,3 +4379,95 @@ Proof.
 Qed.
 
 Print Assumptions q5_native_tagged_return_preserves_control_rail.
+
+
+(** q1, too, copies 6/7 tags while moving right.  Hence the tagged
+    rail emitted by the preceding q5 return can be traversed by q1
+    before it encounters the explicit 6,2 return gate. *)
+Definition q1_tagged_pass (symbol : nat) : Prop :=
+  symbol = 6 \/ symbol = 7.
+
+Lemma q1_tagged_pass_step :
+  forall symbol left suffix,
+    q1_tagged_pass symbol ->
+    step (entry_config 1 left (symbol :: suffix)) =
+    entry_config 1 (symbol :: left) suffix.
+Proof.
+  intros symbol left suffix [-> | ->]; reflexivity.
+Qed.
+
+Theorem q1_scan_tagged_rail :
+  forall scanned left suffix,
+    Forall q1_tagged_pass scanned ->
+    run (length scanned)
+      (entry_config 1 left (scanned ++ suffix)) =
+    entry_config 1 (rev scanned ++ left) suffix.
+Proof.
+  induction scanned as [|symbol rest IH];
+    intros left suffix Hsafe.
+  - reflexivity.
+  - inversion Hsafe as [|? ? Hsymbol Hrest]; subst.
+    change (run (length rest)
+      (step (entry_config 1 left
+        (symbol :: rest ++ suffix))) =
+      entry_config 1 (rev (symbol :: rest) ++ left) suffix).
+    rewrite (q1_tagged_pass_step symbol left
+      (rest ++ suffix) Hsymbol).
+    rewrite (IH (symbol :: left) suffix Hrest).
+    cbn [rev].
+    rewrite (append_singleton_assoc (rev rest) symbol left).
+    reflexivity.
+Qed.
+
+Lemma q1_stable_control_tag_pass :
+  forall b, q1_tagged_pass (q0_stable_control_tag b).
+Proof.
+  intros []; unfold q1_tagged_pass, q0_stable_control_tag; auto.
+Qed.
+
+Lemma q1_stable_control_rail_reverse_safe :
+  forall bits,
+    Forall q1_tagged_pass
+      (rev (map q0_stable_control_tag bits)).
+Proof.
+  induction bits as [|b rest IH].
+  - constructor.
+  - cbn [map rev].
+    rewrite Forall_app.
+    split.
+    + exact IH.
+    + constructor.
+      * apply q1_stable_control_tag_pass.
+      * constructor.
+Qed.
+
+Theorem q5_q1_native_tagged_return_reenters_q0 :
+  forall (first : bool) (rest : list bool)
+         (sacrificial : bool) (stored suffix : list nat),
+    run (S (length (map q0_stable_control_tag (first :: rest))) +
+         (length (map q0_stable_control_tag (first :: rest)) + 2))
+      (entry_config 5
+        (map q0_stable_control_tag rest ++ 5 :: stored)
+        (q0_stable_control_tag first ::
+         6 :: 2 :: (if sacrificial then 3 else 2) :: suffix)) =
+    entry_config 0
+      (0 :: 6 :: map q0_stable_control_tag (first :: rest) ++
+       5 :: stored)
+      ((if sacrificial then 3 else 2) :: suffix).
+Proof.
+  intros first rest sacrificial stored suffix.
+  rewrite writeback_run_add.
+  rewrite (q5_native_tagged_return_preserves_control_rail
+    first rest stored
+    (6 :: 2 :: (if sacrificial then 3 else 2) :: suffix)).
+  rewrite writeback_run_add.
+  rewrite (q1_scan_tagged_rail
+    (rev (map q0_stable_control_tag (first :: rest)))
+    (5 :: stored)
+    (6 :: 2 :: (if sacrificial then 3 else 2) :: suffix)).
+  2:{ apply q1_stable_control_rail_reverse_safe. }
+  rewrite rev_involutive.
+  destruct sacrificial; reflexivity.
+Qed.
+
+Print Assumptions q5_q1_native_tagged_return_reenters_q0.
