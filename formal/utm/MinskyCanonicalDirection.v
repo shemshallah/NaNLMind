@@ -82,10 +82,9 @@ Lemma q8_reversed_frame :
     ((record_marks ++ [4]) ++ marked) ++ x :: tail =
     record_marks ++ 4 :: marked ++ x :: tail.
 Proof.
-  intros record_marks marked x tail.
-  repeat rewrite <- app_assoc.
-  cbn [app].
-  reflexivity.
+  induction record_marks as [|r rs IH]; intros marked x tail.
+  - reflexivity.
+  - simpl. rewrite IH. reflexivity.
 Qed.
 
 Theorem canonical_q6_direction_capture :
