@@ -515,3 +515,28 @@ passed `coqc` and `coqchk`.  See
 This is still one cycle, now with the induction-ready invariant.  The
 induction over all condition bits, the write/direction fields, q12-q22
 relocation, halting reflection, and the universality reduction remain open.
+
+## November 18 all-condition canonical copy induction (kernel-checked)
+
+`canonical_q6_copy_all` now closes the induction over the condition bits.
+For condition bits and record bits of equal length it proves
+
+```text
+run (copy_all_clock bits record_bits processed region)
+  (entry_config 6 left right) =
+  entry_config 6
+    (4 :: rev (map match_mark record_bits) ++ processed ++
+     5 :: rev t-buffer ++ 6 :: rev data)
+    (region ++ map match_mark record_bits ++ record_tail)
+```
+
+under the canonical shape premises for `left` and `right`.  Every condition
+bit is consumed, the corresponding record bits are marked and appended to
+`region`, and the result is the fully consumed condition frame.
+
+The proof parameterizes the theorem over the whole left and right tape
+lists, so the recursive IH matches each cycle output by construction; the
+append/snoc witness is `region_snoc_cons`.  This is one source-state-copy
+phase, not a source-step theorem.  The write/direction fields, q12-q22
+relocation, the return to q5, halting reflection, and the universality
+reduction remain open.

@@ -60,69 +60,37 @@ remaining' = bits'.
 - No write/direction phase, relocation, source-row selection, or halting.
 - The raw record bit must exist; the condition must be nonempty.
 
+## All-condition copy induction (checked)
+
+`canonical_q6_copy_all` closes the induction.  For condition bits `bits`
+and record bits `record_bits` of equal length, any tape sides `left`/`right`
+satisfying the canonical shape premises, and any processed prefix / marked
+region satisfying the pass predicates:
+
+```text
+run (copy_all_clock bits record_bits processed region)
+  (entry_config 6 left right) =
+  entry_config 6
+    (4 :: rev (map match_mark record_bits) ++ processed ++
+     5 :: rev t-buffer ++ 6 :: rev data)
+    (region ++ map match_mark record_bits ++ record_tail).
+```
+
+So every condition bit is consumed, the corresponding record bits are
+marked and appended to `region`, and the final frame is the fully consumed
+condition frame.
+
+The proof parameterizes the theorem over the whole left and right tape
+lists, so the recursive IH matches the cycle output by construction.  The
+only genuine append/snoc witness is discharged by `region_snoc_cons`.
+This removed the associativity mismatch described in earlier drafts.
+
 ## Next
 
-Induct over `(condition, record_bits)` of equal length.  The final state
-should have every condition bit left of Y and the corresponding record bits
-appended to `region`.  A first induction attempt hit list-shape/fuel
-matching in the recursive composition and was deferred; the two generalized
-cycles above are the verified input to that induction.  After the induction,
-the write/direction field and the q12-q22 relocation phase can be stated
-from the fully consumed condition frame.
+From the fully consumed condition frame, the remaining canonical phases are:
 
-## Induction proof-engineering blocker
-
-The recursive step is mathematically closed by the two generalized cycles
-above.  The remaining Coq friction is app/map convertibility between the
-Fixpoint-unfolded inner run and the cycle theorem's LHS.  The goal keeps
-
-```text
-right = region ++ map source_bit (r :: rs) ++ record_tail
-```
-
-while the cycle theorem has
-
-```text
-right = region ++ 0/1 :: record_tail'
-```
-
-with `record_tail' = map source_bit rs ++ record_tail`.  These are
-convertible, but `rewrite`/`apply` do not normalize the inner run enough to
-match after the `copy_all_clock` unfolding.
-
-A next attempt should either:
-
-1. use `transitivity` with an explicit intermediate configuration and
-   `set`/`replace` the inner run, or
-2. state a cycle lemma specialized to the exact Fixpoint-unfolded shapes
-   (`map source_bit (r :: rs)`, the exact fuel, and the outer recursive
-   run), so the step is an exact `rewrite`.
-
-## Precise associativity finding
-
-The repeated induction failures are not a missing mathematical step.  They
-come from **propositional, not definitional, associativity of list append**.
-The generalized cycle produces right-associated shapes, while the recursive
-IH with
-
-```text
-processed' = m :: processed
-region'    = region ++ [m]
-```
-
-has left-associated occurrences such as
-
-```text
-(region ++ [m]) ++ map source_bit rs ++ record_tail
-(rev (map match_mark rs) ++ [m]) ++ processed
-```
-
-and the goal has the corresponding right-associated forms.  `change`,
-`apply`, and `rewrite` cannot bridge this because `app_assoc` is a theorem,
-not a conversion rule.
-
-The next refactor must choose one canonical association for the entry,
-result, and IH conclusion (for example, fully right-associated), state both
-the specialized cycle and the induction theorem in that association, and
-use explicit `rewrite app_assoc` only inside the proof.  That removes the
-matching failure without changing the mathematics.
+1. write/direction field handling;
+2. q12-q22 relocation;
+3. return to q5 and the single source-step theorem;
+4. halting reflection;
+5. the universality reduction.
