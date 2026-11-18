@@ -4601,6 +4601,10 @@ Proof.
     (6 :: map q0_stable_control_tag bits)
     2 stored suffix).
   - cbn [rev].
+    repeat rewrite map_app.
+    cbn [map entry_rewrite].
+    rewrite map_rev.
+    rewrite q5_stable_control_rail_restore_identity.
     repeat rewrite app_assoc.
     reflexivity.
   - constructor.
