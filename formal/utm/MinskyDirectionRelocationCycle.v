@@ -4136,7 +4136,9 @@ Proof.
       (q0_stable_control_tag first)
       (map q0_stable_control_tag rest)
       dir_head dir_remaining old target outer suffix).
-    + apply q15_stable_control_rail_reverse_safe.
+    + change (Forall q15_pass
+        (rev (map q0_stable_control_tag (first :: rest)))).
+      apply q15_stable_control_rail_reverse_safe.
     + constructor.
       * apply q16_stable_control_tag_pass.
       * apply q16_stable_control_rail_safe.
@@ -4171,7 +4173,9 @@ Proof.
       (q0_stable_control_tag first)
       (map q0_stable_control_tag rest)
       dir_head dir_remaining old next target outer suffix).
-    + apply q15_stable_control_rail_reverse_safe.
+    + change (Forall q15_pass
+        (rev (map q0_stable_control_tag (first :: rest)))).
+      apply q15_stable_control_rail_reverse_safe.
     + constructor.
       * apply q16_stable_control_tag_pass.
       * apply q16_stable_control_rail_safe.
