@@ -719,3 +719,37 @@ remain open, as do halting reflection and universality.
 Next: generalize the q15 capture so its scan may cross the next record's
 `X=4` and passable prefix, then compose this fetch result with
 `canonical_q12_restore_to_q16_decision`.
+
+## November 18 canonical direction-mark correction and next-record decision
+
+While composing the fetch theorem with the restore/decision phase, the
+native q9/q10 pairing was rechecked against the direction-capture proof:
+direction 1 runs q9 and enters **q12 with right mark 3**; direction 0 runs
+q10 and enters **q13 with right mark 2**.  Earlier canonical restore
+statements paired q12 with 2 and q13 with 3, a valid table layout but not
+the frame produced by direction capture.
+
+Corrections, all kernel-checked:
+
+- `canonical_q12_restore_to_q15_mark` and
+  `canonical_q13_restore_to_q15_mark` keep the carried right-hand mark
+  abstract.
+- `canonical_restore_q12_q15_capture` now scans `marked ++ [3]` (q12),
+  `canonical_restore_q13_q15_capture` scans `marked ++ [2]` (q13).
+- `canonical_q12_restore_to_q16_decision` uses q16 pass mark 3 and
+  trailing marker 3; the q13 version uses mark 2 and trailing 2.
+- `canonical_q12_restore_q16_decision_next` and
+  `canonical_q13_restore_q16_decision_next` extend the q15 scan across
+  the next record's `X=4` to its first raw current bit, then apply q16.
+  The q16 backscan is `4 :: rev (marked ++ [mark]) ++ [4]`, with the
+  next-record `4` as the first scanned cell.
+
+Verification: fast q15-q22 job
+[44423162268](https://github.com/shemshallah/NaNLMind/actions/runs/44423162268)
+on `6c6687e`; full bridge
+[44423793848](https://github.com/shemshallah/NaNLMind/actions/runs/44423793848)
+was dispatched on the corrected commit.
+
+This correction is a frame-pairing fix, not a new negative result.  The
+raw-control ordering obstruction and the tagged 6/7 control channel are
+unchanged.  No source-step, halting, or universality claim is made.
