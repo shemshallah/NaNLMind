@@ -14,8 +14,8 @@ From Coq Require Import List Arith Bool Lia.
 Import ListNotations.
 
 From NaNLM Require Import MinskyTable MinskySourceEncoding
-  MinskyConcreteEntry MinskyMatchMacro MinskyHeadMoveMacro
-  MinskyDirectionDecision MinskyCanonicalRestore.
+  MinskyConcreteEntry MinskyConcreteDispatch MinskyMatchMacro
+  MinskyHeadMoveMacro MinskyDirectionDecision MinskyCanonicalRestore.
 
 (** Marker 3 means right: q21/q22 enters q19. *)
 Theorem canonical_q16_decision_to_q19 :
