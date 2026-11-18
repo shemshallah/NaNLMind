@@ -18,6 +18,12 @@ From NaNLM Require Import MinskyTable MinskySourceEncoding
   MinskyHeadMoveMacro MinskyDirectionDecision MinskyWritebackMacro
   MinskyRelocationMacro MinskyCanonicalRestore.
 
+Lemma q16_pass_two : q16_pass 2.
+Proof. unfold q16_pass; auto. Qed.
+
+Lemma q16_pass_three : q16_pass 3.
+Proof. unfold q16_pass; auto 10. Qed.
+
 (** Marker 3 means right: q21/q22 enters q19. *)
 Theorem canonical_q16_decision_to_q19 :
   forall m marked old dir_head dir_remaining outer bit tail,
@@ -96,7 +102,6 @@ Corollary canonical_q12_restore_to_q16_decision :
     Forall q12_pass (match_mark b :: rest ++ 5 :: rev tbuffer) ->
     Forall q14_pass (tbuffer ++ [5] ++ rev rest ++ [match_mark b]) ->
     Forall q15_pass (marked ++ [2]) ->
-    q16_pass 2 ->
     Forall q16_pass marked ->
     run (S (length (match_mark b :: rest ++ 5 :: rev tbuffer)) +
          S (length (tbuffer ++ [5] ++ rev rest ++ [match_mark b])) +
@@ -110,7 +115,7 @@ Corollary canonical_q12_restore_to_q16_decision :
       (7 :: map q16_restore (rev (2 :: rev marked ++ [4])) ++
        source_bit bit :: tail).
 Proof.
-  intros marked tbuffer data b rest bit tail H12 H14 H15 Hm Hmarked.
+  intros marked tbuffer data b rest bit tail H12 H14 H15 Hmarked.
   rewrite dispatch_run_add.
   rewrite (canonical_restore_q12_q15_capture (match_mark b) rest
     tbuffer data marked bit tail H12 H14 H15).
@@ -127,7 +132,7 @@ Proof.
     by (destruct b; reflexivity).
   apply (canonical_restore_q16_decision 2 marked b
     (map q14_restore (rest ++ 5 :: rev tbuffer) ++ 3 :: rev data)
-    bit tail Hm Hmarked).
+    bit tail q16_pass_two Hmarked).
 Qed.
 
 (** The q13 branch is identical with direction mark 3 and trailing 2. *)
@@ -136,7 +141,6 @@ Corollary canonical_q13_restore_to_q16_decision :
     Forall q12_pass (match_mark b :: rest ++ 5 :: rev tbuffer) ->
     Forall q14_pass (tbuffer ++ [5] ++ rev rest ++ [match_mark b]) ->
     Forall q15_pass (marked ++ [3]) ->
-    q16_pass 3 ->
     Forall q16_pass marked ->
     run (S (length (match_mark b :: rest ++ 5 :: rev tbuffer)) +
          S (length (tbuffer ++ [5] ++ rev rest ++ [match_mark b])) +
@@ -150,7 +154,7 @@ Corollary canonical_q13_restore_to_q16_decision :
       (7 :: map q16_restore (rev (3 :: rev marked ++ [4])) ++
        source_bit bit :: tail).
 Proof.
-  intros marked tbuffer data b rest bit tail H13 H14 H15 Hm Hmarked.
+  intros marked tbuffer data b rest bit tail H13 H14 H15 Hmarked.
   rewrite dispatch_run_add.
   rewrite (canonical_restore_q13_q15_capture (match_mark b) rest
     tbuffer data marked bit tail H13 H14 H15).
@@ -167,7 +171,7 @@ Proof.
     by (destruct b; reflexivity).
   apply (canonical_restore_q16_decision 3 marked b
     (map q14_restore (rest ++ 5 :: rev tbuffer) ++ 2 :: rev data)
-    bit tail Hm Hmarked).
+    bit tail q16_pass_three Hmarked).
 Qed.
 
 Print Assumptions canonical_q12_restore_to_q16_decision.
