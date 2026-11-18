@@ -14,7 +14,8 @@ Import ListNotations.
 
 From NaNLM Require Import MinskyTable MinskySourceEncoding
   MinskyConcreteEntry MinskyMatchMacro MinskyConcreteDispatch
-  MinskyActionMacro MinskyCanonicalCopyGeneral MinskyCanonicalDirection.
+  MinskyActionMacro MinskyHeadMoveMacro MinskyCanonicalCopyGeneral
+  MinskyCanonicalDirection.
 
 Lemma rev_restore_scan :
   forall s remaining tbuffer,
