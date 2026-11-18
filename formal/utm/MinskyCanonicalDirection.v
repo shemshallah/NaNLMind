@@ -136,6 +136,7 @@ Proof.
     unfold xs.
     rewrite rev_app_distr. cbn [rev]. rewrite rev_involutive.
     cbn [app].
+    match goal with |- ?G => idtac "DIR Q9 GOAL:" G end.
     rewrite (q9_scan_marked_to_q12 record_marks
       (5 :: rev tbuffer ++ 6 :: rev data)
       (marked ++ 3 :: record_tail) Hrec9).
