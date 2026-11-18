@@ -376,7 +376,7 @@ Proof.
       cbn [copy_all_clock].
       rewrite dispatch_run_add.
       destruct r.
-      * rewrite Hright. cbn [map].
+      * rewrite Hright.
         rewrite (canonical_q6_copy_unfolded processed c cs region rs
           record_tail tbuffer data true Hproc7 Hproc9 Hreg6 Hreg7).
         cbn [match_mark map rev].
@@ -390,7 +390,7 @@ Proof.
              [unfold q6_pass; auto 10 | constructor]].
         -- apply Forall_app; split; [exact Hreg7 | constructor;
              [unfold q7_pass; auto 10 | constructor]].
-      * rewrite Hright. cbn [map].
+      * rewrite Hright.
         rewrite (canonical_q6_copy_unfolded processed c cs region rs
           record_tail tbuffer data false Hproc7 Hproc9 Hreg6 Hreg7).
         cbn [match_mark map rev].
