@@ -324,7 +324,7 @@ Lemma app_cons_singleton :
     l ++ x :: r = (l ++ [x]) ++ r.
 Proof.
   intros l x r.
-  rewrite app_assoc.
+  rewrite <- app_assoc.
   reflexivity.
 Qed.
 
