@@ -4532,7 +4532,7 @@ Proof.
         ([if sacrificial then 3 else 2] ++
          [q0_stable_control_tag next;
           q0_stable_control_tag extra] ++
-         source_bit target :: tail))) = expected
+         source_bit target :: tail)) = expected)
   end.
   rewrite (q0_tagged_control_pair_dispatches_target
     [if sacrificial then 3 else 2]
