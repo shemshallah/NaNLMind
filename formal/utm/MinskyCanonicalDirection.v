@@ -34,24 +34,17 @@ Lemma q9_scan_marked_to_q12 :
     Forall q9_pass scanned ->
     run (S (length scanned))
       (entry_config 9 left (scanned ++ 4 :: tail)) =
-    entry_config 12 (4 :: rev scanned ++ left) tail.
+    cfg_ml 12 (rev scanned ++ left) (4 :: tail).
 Proof.
   intros scanned.
   induction scanned as [|s rest IH]; intros left tail Hscan.
-  - cbn [length rev app run].
-    vm_compute.
-    match goal with |- ?G => idtac "Q9 BASE:" G end.
-    change ({| c_state := 12;
-               c_tape := {| t_left := 4 :: left; t_right := tail |};
-               c_halted := false |} =
-            {| c_state := 12;
-               c_tape := {| t_left := 4 :: left; t_right := tail |};
-               c_halted := false |}).
+  - cbn [length rev app run step entry_config c_halted c_state c_tape
+         t_left t_right read find_entry Nat.ltb nth_error cfg_ml].
     reflexivity.
   - inversion Hscan as [|? ? Hs Hrest]; subst.
     change (run (S (S (length rest)))
       (entry_config 9 left (s :: (rest ++ 4 :: tail))) =
-      entry_config 12 (4 :: rev (s :: rest) ++ left) tail).
+      cfg_ml 12 (rev (s :: rest) ++ left) (4 :: tail)).
     rewrite entry_run_successor.
     rewrite (q9_pass_step s left (rest ++ 4 :: tail) Hs).
     rewrite (IH (s :: left) tail Hrest).
@@ -65,23 +58,17 @@ Lemma q10_scan_marked_to_q13 :
     Forall q9_pass scanned ->
     run (S (length scanned))
       (entry_config 10 left (scanned ++ 4 :: tail)) =
-    entry_config 13 (4 :: rev scanned ++ left) tail.
+    cfg_ml 13 (rev scanned ++ left) (4 :: tail).
 Proof.
   intros scanned.
   induction scanned as [|s rest IH]; intros left tail Hscan.
-  - cbn [length rev app run].
-    vm_compute.
-    change ({| c_state := 13;
-               c_tape := {| t_left := 4 :: left; t_right := tail |};
-               c_halted := false |} =
-            {| c_state := 13;
-               c_tape := {| t_left := 4 :: left; t_right := tail |};
-               c_halted := false |}).
+  - cbn [length rev app run step entry_config c_halted c_state c_tape
+         t_left t_right read find_entry Nat.ltb nth_error cfg_ml].
     reflexivity.
   - inversion Hscan as [|? ? Hs Hrest]; subst.
     change (run (S (S (length rest)))
       (entry_config 10 left (s :: (rest ++ 4 :: tail))) =
-      entry_config 13 (4 :: rev (s :: rest) ++ left) tail).
+      cfg_ml 13 (rev (s :: rest) ++ left) (4 :: tail)).
     rewrite entry_run_successor.
     rewrite (q10_pass_step s left (rest ++ 4 :: tail) Hs).
     rewrite (IH (s :: left) tail Hrest).
@@ -102,9 +89,9 @@ Theorem canonical_q6_direction_capture :
       (entry_config 6
         (4 :: rev record_marks ++ 5 :: rev tbuffer ++ 6 :: rev data)
         (marked ++ source_bit dir :: record_tail)) =
-    entry_config (if dir then 13 else 12)
-      (4 :: rev record_marks ++ 5 :: rev tbuffer ++ 6 :: rev data)
-      (marked ++ (if dir then 3 else 2) :: record_tail).
+    cfg_ml (if dir then 13 else 12)
+      (rev record_marks ++ 5 :: rev tbuffer ++ 6 :: rev data)
+      (4 :: marked ++ (if dir then 3 else 2) :: record_tail).
 Proof.
   intros marked record_marks record_tail tbuffer data dir
     Hmarked6 Hmarked7 Hrec7 Hrec9.
