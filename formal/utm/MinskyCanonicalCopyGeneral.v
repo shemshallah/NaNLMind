@@ -394,7 +394,7 @@ Proof.
         { cbn [app]. reflexivity. }
         assert (Hright' : (region ++ [3]) ++ map source_bit rs ++ record_tail =
           region ++ 3 :: map source_bit rs ++ record_tail).
-        { apply app_cons_singleton. }
+        { rewrite app_assoc. reflexivity. }
         assert (Hproc7' : Forall q7_pass (3 :: processed)).
         { constructor; [unfold q7_pass; auto 10 | exact Hproc7]. }
         assert (Hproc9' : Forall q9_pass (3 :: processed)).
@@ -430,7 +430,7 @@ Proof.
         { cbn [app]. reflexivity. }
         assert (Hright' : (region ++ [2]) ++ map source_bit rs ++ record_tail =
           region ++ 2 :: map source_bit rs ++ record_tail).
-        { apply app_cons_singleton. }
+        { rewrite app_assoc. reflexivity. }
         assert (Hproc7' : Forall q7_pass (2 :: processed)).
         { constructor; [unfold q7_pass; auto 10 | exact Hproc7]. }
         assert (Hproc9' : Forall q9_pass (2 :: processed)).
