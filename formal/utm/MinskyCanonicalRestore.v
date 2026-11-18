@@ -153,15 +153,15 @@ Corollary canonical_restore_q12_q15_capture :
   forall s remaining tbuffer data marked bit tail,
     Forall q12_pass (s :: remaining ++ 5 :: rev tbuffer) ->
     Forall q14_pass (tbuffer ++ [5] ++ rev remaining ++ [s]) ->
-    Forall q15_pass (marked ++ [2]) ->
+    Forall q15_pass (marked ++ [3]) ->
     run (S (length (s :: remaining ++ 5 :: rev tbuffer)) +
          S (length (tbuffer ++ [5] ++ rev remaining ++ [s])) +
-         S (length (marked ++ [2])))
+         S (length (marked ++ [3])))
       (cfg_ml 12
         (s :: remaining ++ 5 :: rev tbuffer ++ 6 :: rev data)
-        (4 :: marked ++ 2 :: source_bit bit :: tail)) =
+        (4 :: marked ++ 3 :: source_bit bit :: tail)) =
     cfg_ml 16
-      (rev (marked ++ [2]) ++ 4 ::
+      (rev (marked ++ [3]) ++ 4 ::
        map q14_restore
          (rev (tbuffer ++ [5] ++ rev remaining ++ [s])) ++
        3 :: rev data)
@@ -169,29 +169,28 @@ Corollary canonical_restore_q12_q15_capture :
 Proof.
   intros s remaining tbuffer data marked bit tail H12 H14 H15.
   rewrite dispatch_run_add.
-  rewrite (canonical_q12_restore_to_q15 s remaining tbuffer data marked
-    (source_bit bit :: tail) H12 H14).
-  replace (marked ++ 2 :: source_bit bit :: tail)
-    with ((marked ++ [2]) ++ source_bit bit :: tail)
+  rewrite (canonical_q12_restore_to_q15_mark s remaining tbuffer data
+    marked 3 (source_bit bit :: tail) H12 H14).
+  replace (marked ++ 3 :: source_bit bit :: tail)
+    with ((marked ++ [3]) ++ source_bit bit :: tail)
     by (rewrite <- app_assoc; reflexivity).
   apply q15_scan_to_raw.
   exact H15.
 Qed.
 
-(** The q13 restore branch, with direction mark 3 and trailing mark 2. *)
 Corollary canonical_restore_q13_q15_capture :
   forall s remaining tbuffer data marked bit tail,
     Forall q12_pass (s :: remaining ++ 5 :: rev tbuffer) ->
     Forall q14_pass (tbuffer ++ [5] ++ rev remaining ++ [s]) ->
-    Forall q15_pass (marked ++ [3]) ->
+    Forall q15_pass (marked ++ [2]) ->
     run (S (length (s :: remaining ++ 5 :: rev tbuffer)) +
          S (length (tbuffer ++ [5] ++ rev remaining ++ [s])) +
-         S (length (marked ++ [3])))
+         S (length (marked ++ [2])))
       (cfg_ml 13
         (s :: remaining ++ 5 :: rev tbuffer ++ 6 :: rev data)
-        (4 :: marked ++ 3 :: source_bit bit :: tail)) =
+        (4 :: marked ++ 2 :: source_bit bit :: tail)) =
     cfg_ml 16
-      (rev (marked ++ [3]) ++ 4 ::
+      (rev (marked ++ [2]) ++ 4 ::
        map q14_restore
          (rev (tbuffer ++ [5] ++ rev remaining ++ [s])) ++
        2 :: rev data)
@@ -199,10 +198,10 @@ Corollary canonical_restore_q13_q15_capture :
 Proof.
   intros s remaining tbuffer data marked bit tail H13 H14 H15.
   rewrite dispatch_run_add.
-  rewrite (canonical_q13_restore_to_q15 s remaining tbuffer data marked
-    (source_bit bit :: tail) H13 H14).
-  replace (marked ++ 3 :: source_bit bit :: tail)
-    with ((marked ++ [3]) ++ source_bit bit :: tail)
+  rewrite (canonical_q13_restore_to_q15_mark s remaining tbuffer data
+    marked 2 (source_bit bit :: tail) H13 H14).
+  replace (marked ++ 2 :: source_bit bit :: tail)
+    with ((marked ++ [2]) ++ source_bit bit :: tail)
     by (rewrite <- app_assoc; reflexivity).
   apply q15_scan_to_raw.
   exact H15.
