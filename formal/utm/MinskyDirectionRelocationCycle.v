@@ -4235,8 +4235,16 @@ Theorem tagged_rail_right_relocates_to_q5 :
 Proof.
   intros first rest dir_head dir_remaining old target outer between final
     H21 Hdir Hbetween.
-  eapply eq_trans.
-  - apply (q15_q22_right_relocates_to_q5
+  replace
+    (rev (dir_head :: dir_remaining) ++
+     7 :: rev (map q0_stable_control_tag (first :: rest)))
+    with
+    (rev (dir_head :: dir_remaining) ++
+     7 :: map q16_restore
+       (rev (q0_stable_control_tag first ::
+             map q0_stable_control_tag rest))).
+  2:{ rewrite q16_tagged_scan_restore_cons. reflexivity. }
+  apply (q15_q22_right_relocates_to_q5
       (q0_stable_control_tag first)
       (map q0_stable_control_tag rest)
       dir_head dir_remaining old target outer between final).
@@ -4255,8 +4263,6 @@ Proof.
         -- unfold q15_pass; auto 12.
         -- apply q15_stable_control_rail_reverse_safe.
     + exact Hbetween.
-  - rewrite q16_tagged_scan_restore_cons.
-    reflexivity.
 Qed.
 
 Theorem tagged_rail_left_relocates_to_q5 :
