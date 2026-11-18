@@ -86,3 +86,41 @@ Qed.
 
 Print Assumptions canonical_q12_restore_to_q15.
 Print Assumptions canonical_q13_restore_to_q15.
+
+(** A direct q15 corollary from the restore frame: the q15 scan consumes
+    the marked region plus the direction mark and exposes the next raw
+    data bit. *)
+Corollary canonical_restore_q15_capture :
+  forall marked dir left bit tail,
+    Forall q15_pass (marked ++ [dir]) ->
+    run (S (length (marked ++ [dir])))
+      (entry_config 15 left (marked ++ dir :: source_bit bit :: tail)) =
+    cfg_ml 16 (rev (marked ++ [dir]) ++ left) (source_bit bit :: tail).
+Proof.
+  intros marked dir left bit tail Hscan.
+  apply q15_scan_to_raw.
+  exact Hscan.
+Qed.
+
+(** q16 then scans the q15-marked region and X=4, restores it, writes 7 at
+    the previous raw bit, and chooses q21/q22 from that bit. *)
+Corollary canonical_restore_q16_decision :
+  forall marked dir prefix bit_prev bit tail,
+    Forall q16_pass (rev (marked ++ [dir]) ++ [4]) ->
+    run (S (length (rev (marked ++ [dir]) ++ [4])))
+      (cfg_ml 16
+        (rev (marked ++ [dir]) ++ 4 :: source_bit bit_prev :: prefix)
+        (source_bit bit :: tail)) =
+    cfg_ml (if bit_prev then 22 else 21) prefix
+      (7 :: map q16_restore (rev (rev (marked ++ [dir]) ++ [4])) ++
+       source_bit bit :: tail).
+Proof.
+  intros marked dir prefix bit_prev bit tail Hscan.
+  apply (q16_restore_to_raw (tl (rev (marked ++ [dir]) ++ [4]))
+    (hd 2 (rev (marked ++ [dir]) ++ [4])) bit_prev
+    prefix (source_bit bit :: tail)).
+  exact Hscan.
+Qed.
+
+Print Assumptions canonical_restore_q15_capture.
+Print Assumptions canonical_restore_q16_decision.
