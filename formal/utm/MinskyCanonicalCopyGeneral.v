@@ -319,6 +319,16 @@ Proof.
       Hproc7 Hproc9 Hreg6 Hreg7).
 Qed.
 
+Lemma region_snoc_cons :
+  forall (region tail : list nat) (x : nat),
+    (region ++ [x]) ++ tail = region ++ x :: tail.
+Proof.
+  intros region.
+  induction region as [|r rs IH]; intros tail x.
+  - reflexivity.
+  - simpl. rewrite IH. reflexivity.
+Qed.
+
 Lemma app_cons_singleton :
   forall (l : list nat) x r,
     l ++ x :: r = (l ++ [x]) ++ r.
@@ -394,7 +404,7 @@ Proof.
         { cbn [app]. reflexivity. }
         assert (Hright' : (region ++ [3]) ++ map source_bit rs ++ record_tail =
           region ++ 3 :: map source_bit rs ++ record_tail).
-        { rewrite app_assoc. reflexivity. }
+        { apply region_snoc_cons. }
         assert (Hproc7' : Forall q7_pass (3 :: processed)).
         { constructor; [unfold q7_pass; auto 10 | exact Hproc7]. }
         assert (Hproc9' : Forall q9_pass (3 :: processed)).
@@ -430,7 +440,7 @@ Proof.
         { cbn [app]. reflexivity. }
         assert (Hright' : (region ++ [2]) ++ map source_bit rs ++ record_tail =
           region ++ 2 :: map source_bit rs ++ record_tail).
-        { rewrite app_assoc. reflexivity. }
+        { apply region_snoc_cons. }
         assert (Hproc7' : Forall q7_pass (2 :: processed)).
         { constructor; [unfold q7_pass; auto 10 | exact Hproc7]. }
         assert (Hproc9' : Forall q9_pass (2 :: processed)).
