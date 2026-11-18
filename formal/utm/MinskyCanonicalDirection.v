@@ -77,6 +77,16 @@ Proof.
     reflexivity.
 Qed.
 
+Lemma q8_reversed_frame :
+  forall record_marks marked x tail,
+    ((record_marks ++ [4]) ++ marked) ++ x :: tail =
+    record_marks ++ 4 :: marked ++ x :: tail.
+Proof.
+  intros record_marks marked x tail.
+  repeat rewrite app_assoc.
+  reflexivity.
+Qed.
+
 Theorem canonical_q6_direction_capture :
   forall marked record_marks record_tail tbuffer data (dir : bool),
     Forall q6_pass marked ->
@@ -136,9 +146,7 @@ Proof.
     unfold xs.
     rewrite rev_app_distr. cbn [rev]. rewrite rev_involutive.
     cbn [app].
-    replace (((record_marks ++ [4]) ++ marked) ++ 3 :: record_tail)
-      with (record_marks ++ 4 :: marked ++ 3 :: record_tail)
-      by (repeat rewrite app_assoc; cbn [app]; reflexivity).
+    rewrite q8_reversed_frame.
     rewrite (q9_scan_marked_to_q12 record_marks
       (5 :: rev tbuffer ++ 6 :: rev data)
       (marked ++ 3 :: record_tail) Hrec9).
@@ -163,9 +171,7 @@ Proof.
     unfold xs.
     rewrite rev_app_distr. cbn [rev]. rewrite rev_involutive.
     cbn [app].
-    replace (((record_marks ++ [4]) ++ marked) ++ 2 :: record_tail)
-      with (record_marks ++ 4 :: marked ++ 2 :: record_tail)
-      by (repeat rewrite app_assoc; cbn [app]; reflexivity).
+    rewrite q8_reversed_frame.
     rewrite (q10_scan_marked_to_q13 record_marks
       (5 :: rev tbuffer ++ 6 :: rev data)
       (marked ++ 2 :: record_tail) Hrec9).
