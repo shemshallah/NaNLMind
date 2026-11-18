@@ -1,9 +1,10 @@
 # General canonical q6-q11 copy cycle
 
-Status: kernel-checked by the fast q15-q22 Coq job
-([run 44196407526](https://github.com/shemshallah/NaNLMind/actions/runs/44196407526))
+Status: both the zero and one branches are kernel-checked by the fast
+q15-q22 Coq job
+([run 44202204105](https://github.com/shemshallah/NaNLMind/actions/runs/44202204105))
 and by the independent full Minsky bridge
-([run 44196793690](https://github.com/shemshallah/NaNLMind/actions/runs/44196793690)).
+([run 44202554008](https://github.com/shemshallah/NaNLMind/actions/runs/44202554008)).
 
 This module generalizes the single copy cycle to an arbitrary processed
 condition prefix and an arbitrary marked record prefix.  It is one literal
@@ -25,8 +26,9 @@ right = region ++ 0/1 :: record_tail
 
 ## Result
 
-`canonical_q6_copy_zero_general` and the one-bit analogue move the next
-condition bit left of Y and append the copied record mark to the region:
+`canonical_q6_copy_zero_general` and
+`canonical_q6_copy_one_general` move the next condition bit left of Y and
+append the copied record mark to the region:
 
 ```text
 entry_config 6
@@ -60,8 +62,10 @@ remaining' = bits'.
 
 ## Next
 
-Induct this theorem over `(condition, record_bits)` of equal length.  The
-final state should have every condition bit left of Y and the corresponding
-record bits appended to `region`.  After that, the write/direction field and
-the q12-q22 relocation phase can be stated from the fully consumed condition
-frame.
+Induct over `(condition, record_bits)` of equal length.  The final state
+should have every condition bit left of Y and the corresponding record bits
+appended to `region`.  A first induction attempt hit list-shape/fuel
+matching in the recursive composition and was deferred; the two generalized
+cycles above are the verified input to that induction.  After the induction,
+the write/direction field and the q12-q22 relocation phase can be stated
+from the fully consumed condition frame.

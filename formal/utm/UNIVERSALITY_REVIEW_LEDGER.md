@@ -476,3 +476,42 @@ passed `coqc` and `coqchk`.  See
 This is one cycle, not an induction.  Source-row selection, mismatch
 restart, the write/direction fields, q12-q22 relocation, halting reflection,
 and the universality reduction remain open.
+
+## November 17 generalized canonical copy cycles (kernel-checked)
+
+The single-cycle module was generalized to an arbitrary already-processed
+condition prefix and an arbitrary marked record prefix:
+
+- `canonical_q6_copy_zero_general` and
+  `canonical_q6_copy_one_general` consume the next condition bit and the
+  next raw record bit, move the condition bit left of Y, and append the
+  copied record mark to the marked region.
+- The invariant is
+
+  ```text
+  left  = 4 :: rev (map source_bit (c :: bits')) ++ processed ++
+          5 :: rev t-buffer ++ 6 :: rev data
+  right = region ++ 0/1 :: record_tail
+  ```
+
+  with `Forall q7_pass processed`, `Forall q9_pass processed`,
+  `Forall q6_pass region`, and `Forall q7_pass region`.
+- The exact clock is
+
+  ```text
+  S (length region)
+  + S (length (rev region ++ [4] ++ rev (map source_bit (c :: bits')) ++ processed))
+  + S (length processed)
+  + S (length bits').
+  ```
+
+The fast job
+[44202204105](https://github.com/shemshallah/NaNLMind/actions/runs/44202204105)
+and the independent full bridge
+[44202554008](https://github.com/shemshallah/NaNLMind/actions/runs/44202554008)
+passed `coqc` and `coqchk`.  See
+[`CANONICAL_COPY_GENERAL.md`](CANONICAL_COPY_GENERAL.md).
+
+This is still one cycle, now with the induction-ready invariant.  The
+induction over all condition bits, the write/direction fields, q12-q22
+relocation, halting reflection, and the universality reduction remain open.
