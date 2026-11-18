@@ -392,9 +392,9 @@ Proof.
           4 :: rev (map source_bit cs) ++ (3 :: processed) ++
             5 :: rev tbuffer ++ 6 :: rev data).
         { cbn [app]. reflexivity. }
-        assert (Hright' : region ++ 3 :: map source_bit rs ++ record_tail =
-          (region ++ [3]) ++ map source_bit rs ++ record_tail).
-        { symmetry; apply app_cons_singleton. }
+        assert (Hright' : (region ++ [3]) ++ map source_bit rs ++ record_tail =
+          region ++ 3 :: map source_bit rs ++ record_tail).
+        { apply app_cons_singleton. }
         assert (Hproc7' : Forall q7_pass (3 :: processed)).
         { constructor; [unfold q7_pass; auto 10 | exact Hproc7]. }
         assert (Hproc9' : Forall q9_pass (3 :: processed)).
@@ -410,7 +410,7 @@ Proof.
             5 :: rev tbuffer ++ 6 :: rev data)
           (region ++ 3 :: map source_bit rs ++ record_tail)
           (3 :: processed) (region ++ [3]) rs record_tail tbuffer data
-          Hleft' Hright' Hlen' Hproc7' Hproc9' Hreg6' Hreg7').
+          Hleft' (eq_sym Hright') Hlen' Hproc7' Hproc9' Hreg6' Hreg7').
       * rewrite Hleft, Hright.
         rewrite (canonical_q6_copy_unfolded processed c cs region rs
           record_tail tbuffer data false Hproc7 Hproc9 Hreg6 Hreg7).
@@ -428,9 +428,9 @@ Proof.
           4 :: rev (map source_bit cs) ++ (2 :: processed) ++
             5 :: rev tbuffer ++ 6 :: rev data).
         { cbn [app]. reflexivity. }
-        assert (Hright' : region ++ 2 :: map source_bit rs ++ record_tail =
-          (region ++ [2]) ++ map source_bit rs ++ record_tail).
-        { symmetry; apply app_cons_singleton. }
+        assert (Hright' : (region ++ [2]) ++ map source_bit rs ++ record_tail =
+          region ++ 2 :: map source_bit rs ++ record_tail).
+        { apply app_cons_singleton. }
         assert (Hproc7' : Forall q7_pass (2 :: processed)).
         { constructor; [unfold q7_pass; auto 10 | exact Hproc7]. }
         assert (Hproc9' : Forall q9_pass (2 :: processed)).
@@ -446,7 +446,7 @@ Proof.
             5 :: rev tbuffer ++ 6 :: rev data)
           (region ++ 2 :: map source_bit rs ++ record_tail)
           (2 :: processed) (region ++ [2]) rs record_tail tbuffer data
-          Hleft' Hright' Hlen' Hproc7' Hproc9' Hreg6' Hreg7').
+          Hleft' (eq_sym Hright') Hlen' Hproc7' Hproc9' Hreg6' Hreg7').
 Qed.
 
 Print Assumptions canonical_q6_copy_all.
