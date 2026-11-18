@@ -4034,8 +4034,10 @@ Proof.
     (map q0_stable_control_tag rest)
     (q0_stable_control_tag first)
     old left suffix).
-  - rewrite (q16_stable_control_rail_reverse_restore
-      (first :: rest)).
+  - rewrite map_rev.
+    cbn [map].
+    rewrite q16_stable_control_tag_restore.
+    rewrite q16_stable_control_rail_restore_identity.
     reflexivity.
   - apply q16_stable_control_rail_safe.
 Qed.
