@@ -378,7 +378,7 @@ Proof.
           record_tail tbuffer data true Hproc7 Hproc9 Hreg6 Hreg7).
         replace (region ++ 3 :: map source_bit rs ++ record_tail)
           with ((region ++ [3]) ++ map source_bit rs ++ record_tail)
-          by (apply app_cons_singleton).
+          by (symmetry; apply app_cons_singleton).
         cbn [match_mark map rev app] in IH.
         cbn [match_mark map rev app].
         apply (IH rs (3 :: processed) (region ++ [3])
@@ -394,7 +394,7 @@ Proof.
           record_tail tbuffer data false Hproc7 Hproc9 Hreg6 Hreg7).
         replace (region ++ 2 :: map source_bit rs ++ record_tail)
           with ((region ++ [2]) ++ map source_bit rs ++ record_tail)
-          by (apply app_cons_singleton).
+          by (symmetry; apply app_cons_singleton).
         cbn [match_mark map rev app] in IH.
         cbn [match_mark map rev app].
         apply (IH rs (2 :: processed) (region ++ [2])
