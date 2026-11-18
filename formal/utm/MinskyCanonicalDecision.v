@@ -134,14 +134,10 @@ Proof.
     destruct H15' as [Hm _]. exact Hm. }
   assert (Hmarked16 : Forall q16_pass marked).
   { apply Forall_q15_q16. exact Hmarked15. }
-  assert (Hback16 : Forall q16_pass (rev (marked ++ [3]) ++ [4])).
+  assert (Hback16 : Forall q16_pass (marked ++ [3])).
   {
     rewrite Forall_app. split.
-    - apply Forall_rev. rewrite Forall_app. split.
-      + exact Hmarked16.
-      + constructor.
-        * unfold q16_pass; auto 10.
-        * constructor.
+    - exact Hmarked16.
     - constructor.
       * unfold q16_pass; auto 10.
       * constructor.
@@ -198,14 +194,10 @@ Proof.
     destruct H15' as [Hm _]. exact Hm. }
   assert (Hmarked16 : Forall q16_pass marked).
   { apply Forall_q15_q16. exact Hmarked15. }
-  assert (Hback16 : Forall q16_pass (rev (marked ++ [2]) ++ [4])).
+  assert (Hback16 : Forall q16_pass (marked ++ [2])).
   {
     rewrite Forall_app. split.
-    - apply Forall_rev. rewrite Forall_app. split.
-      + exact Hmarked16.
-      + constructor.
-        * unfold q16_pass; auto 10.
-        * constructor.
+    - exact Hmarked16.
     - constructor.
       * unfold q16_pass; auto 10.
       * constructor.
