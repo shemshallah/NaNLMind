@@ -4039,7 +4039,9 @@ Proof.
     rewrite q16_stable_control_tag_restore.
     rewrite q16_stable_control_rail_restore_identity.
     reflexivity.
-  - apply q16_stable_control_rail_safe.
+  - constructor.
+    + apply q16_stable_control_tag_pass.
+    + apply q16_stable_control_rail_safe.
 Qed.
 
 Print Assumptions q16_native_tagged_backscan_preserves_control_rail.
