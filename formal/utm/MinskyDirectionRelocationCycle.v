@@ -3923,7 +3923,7 @@ Proof.
        [q0_stable_control_tag next;
         q0_stable_control_tag extra]))).
   2:{ rewrite app_length. cbn [length]. lia. }
-  rewrite <- app_assoc.
+  rewrite app_assoc.
   destruct target.
   - apply q0_scan_one; exact Htagged.
   - apply q0_scan_zero; exact Htagged.
