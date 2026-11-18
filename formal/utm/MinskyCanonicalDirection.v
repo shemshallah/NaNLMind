@@ -103,7 +103,7 @@ Theorem canonical_q6_direction_capture :
       (entry_config 6
         (4 :: rev record_marks ++ 5 :: rev tbuffer ++ 6 :: rev data)
         (marked ++ source_bit dir :: record_tail)) =
-    cfg_ml (if dir then 13 else 12)
+    cfg_ml (if dir then 12 else 13)
       (rev record_marks ++ 5 :: rev tbuffer ++ 6 :: rev data)
       (4 :: marked ++ (if dir then 3 else 2) :: record_tail).
 Proof.
