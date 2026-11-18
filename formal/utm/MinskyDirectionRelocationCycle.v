@@ -3749,7 +3749,8 @@ Proof.
 Qed.
 
 Lemma q0_protected_restored_tape_shape :
-  forall scanned next sacrificial target tail,
+  forall (scanned : list nat) (next sacrificial target : bool)
+         (tail : list nat),
     (if sacrificial then 3 else 2) ::
       map q16_restore
         (rev (protected_q16_backscan scanned next false)) ++
