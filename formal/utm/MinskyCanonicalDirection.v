@@ -116,7 +116,7 @@ Proof.
     with (S (length marked) + (S (length xs) + S (length record_marks)))
     by reflexivity.
   rewrite dispatch_run_add.
-  destruct dir.
+  destruct dir; cbn [source_bit].
   - rewrite (q6_scan_one marked
       (4 :: rev record_marks ++ 5 :: rev tbuffer ++ 6 :: rev data)
       record_tail Hmarked6).
