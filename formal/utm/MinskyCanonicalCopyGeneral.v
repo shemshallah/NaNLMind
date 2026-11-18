@@ -367,7 +367,7 @@ Proof.
       destruct r.
       * rewrite (canonical_q6_copy_unfolded processed c cs region rs
           record_tail tbuffer data true Hproc7 Hproc9 Hreg6 Hreg7).
-        cbn [rev app].
+        cbn [match_mark rev app].
         replace (region ++ 3 :: map source_bit rs ++ record_tail)
           with ((region ++ [3]) ++ map source_bit rs ++ record_tail)
           by (repeat rewrite <- app_assoc; cbn [app]; reflexivity).
@@ -385,7 +385,7 @@ Proof.
              [unfold q7_pass; auto 10 | constructor]].
       * rewrite (canonical_q6_copy_unfolded processed c cs region rs
           record_tail tbuffer data false Hproc7 Hproc9 Hreg6 Hreg7).
-        cbn [rev app].
+        cbn [match_mark rev app].
         replace (region ++ 2 :: map source_bit rs ++ record_tail)
           with ((region ++ [2]) ++ map source_bit rs ++ record_tail)
           by (repeat rewrite <- app_assoc; cbn [app]; reflexivity).
