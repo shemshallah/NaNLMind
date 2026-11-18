@@ -709,7 +709,7 @@ Verification: fast q15-q22 job
 [44417282186](https://github.com/shemshallah/NaNLMind/actions/runs/44417282186)
 on `ea2ae34`; full bridge
 [44417941360](https://github.com/shemshallah/NaNLMind/actions/runs/44417941360)
-was dispatched on the same commit.
+passed on the same commit.
 
 Scope: one record fetch/decode/capture.  It stops at q12/q13 before
 restore, q15/q16, q21/q22, writeback, relocation or any source step.

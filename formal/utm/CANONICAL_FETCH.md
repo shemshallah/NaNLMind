@@ -3,7 +3,8 @@
 Status: kernel-checked by the fast q15-q22 Coq job
 ([run 44417282186](https://github.com/shemshallah/NaNLMind/actions/runs/44417282186)).
 Full bridge:
-[run 44417941360](https://github.com/shemshallah/NaNLMind/actions/runs/44417941360).
+[run 44417941360](https://github.com/shemshallah/NaNLMind/actions/runs/44417941360),
+SUCCESS on `ea2ae34`.
 
 `formal/utm/MinskyCanonicalFetch.v` is the first theorem that joins three
 canonical phases end to end:
