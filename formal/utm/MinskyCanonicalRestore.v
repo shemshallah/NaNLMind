@@ -114,7 +114,7 @@ Proof.
     (source_bit bit :: tail) H12 H14).
   replace (marked ++ 2 :: source_bit bit :: tail)
     with ((marked ++ [2]) ++ source_bit bit :: tail)
-    by (rewrite app_assoc; reflexivity).
+    by (rewrite <- app_assoc; reflexivity).
   apply q15_scan_to_raw.
   exact H15.
 Qed.
@@ -144,7 +144,7 @@ Proof.
     (source_bit bit :: tail) H13 H14).
   replace (marked ++ 3 :: source_bit bit :: tail)
     with ((marked ++ [3]) ++ source_bit bit :: tail)
-    by (rewrite app_assoc; reflexivity).
+    by (rewrite <- app_assoc; reflexivity).
   apply q15_scan_to_raw.
   exact H15.
 Qed.
@@ -185,7 +185,7 @@ Proof.
   assert (Hframe :
     rev marked ++ 4 :: source_bit old :: prefix =
     (rev marked ++ [4]) ++ source_bit old :: prefix)
-    by (rewrite app_assoc; reflexivity).
+    by (rewrite <- app_assoc; reflexivity).
   rewrite Hframe.
   apply (q16_restore_to_raw (rev marked ++ [4]) m old prefix
     (source_bit bit :: tail) Hscan).
