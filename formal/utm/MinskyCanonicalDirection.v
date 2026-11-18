@@ -33,8 +33,8 @@ Lemma q9_scan_marked_to_q12 :
   forall scanned left tail,
     Forall q9_pass scanned ->
     run (S (length scanned))
-      (entry_config 9 left (scanned ++ 4 :: tail)) =
-    cfg_ml 12 (rev scanned ++ left) (4 :: tail).
+      (entry_config 9 left (scanned ++ [4] ++ tail)) =
+    cfg_ml 12 (rev scanned ++ left) ([4] ++ tail).
 Proof.
   intros scanned.
   induction scanned as [|s rest IH]; intros left tail Hscan.
@@ -43,8 +43,8 @@ Proof.
     destruct left as [|x xs]; reflexivity.
   - inversion Hscan as [|? ? Hs Hrest]; subst.
     change (run (S (S (length rest)))
-      (entry_config 9 left (s :: (rest ++ 4 :: tail))) =
-      cfg_ml 12 (rev (s :: rest) ++ left) (4 :: tail)).
+      (entry_config 9 left (s :: (rest ++ [4] ++ tail))) =
+      cfg_ml 12 (rev (s :: rest) ++ left) ([4] ++ tail)).
     rewrite entry_run_successor.
     rewrite (q9_pass_step s left (rest ++ 4 :: tail) Hs).
     rewrite (IH (s :: left) tail Hrest).
@@ -57,8 +57,8 @@ Lemma q10_scan_marked_to_q13 :
   forall scanned left tail,
     Forall q9_pass scanned ->
     run (S (length scanned))
-      (entry_config 10 left (scanned ++ 4 :: tail)) =
-    cfg_ml 13 (rev scanned ++ left) (4 :: tail).
+      (entry_config 10 left (scanned ++ [4] ++ tail)) =
+    cfg_ml 13 (rev scanned ++ left) ([4] ++ tail).
 Proof.
   intros scanned.
   induction scanned as [|s rest IH]; intros left tail Hscan.
@@ -67,8 +67,8 @@ Proof.
     destruct left as [|x xs]; reflexivity.
   - inversion Hscan as [|? ? Hs Hrest]; subst.
     change (run (S (S (length rest)))
-      (entry_config 10 left (s :: (rest ++ 4 :: tail))) =
-      cfg_ml 13 (rev (s :: rest) ++ left) (4 :: tail)).
+      (entry_config 10 left (s :: (rest ++ [4] ++ tail))) =
+      cfg_ml 13 (rev (s :: rest) ++ left) ([4] ++ tail)).
     rewrite entry_run_successor.
     rewrite (q10_pass_step s left (rest ++ 4 :: tail) Hs).
     rewrite (IH (s :: left) tail Hrest).
