@@ -147,7 +147,6 @@ Proof.
       * constructor.
   }
   rewrite <- Nat.add_assoc.
-  rewrite <- Nat.add_assoc.
   rewrite dispatch_run_add.
   rewrite (canonical_q12_restore_to_q15_mark (match_mark b) remaining
     tbuffer data marked 3 (4 :: source_bit bit :: tail) H12 H14).
@@ -211,7 +210,6 @@ Proof.
       * unfold q16_pass; auto 10.
       * constructor.
   }
-  rewrite <- Nat.add_assoc.
   rewrite <- Nat.add_assoc.
   rewrite dispatch_run_add.
   rewrite (canonical_q13_restore_to_q15_mark (match_mark b) remaining
