@@ -152,3 +152,30 @@ For any nonempty finite sequence of encoded Boolean control tags, an explicit na
 The two positive local theorems do not yet compose into a complete q12-to-q0 return. The old q12 phase begins with raw controls and q16 normally restores 2/3 marks to raw 0/1, giving the proved premature next-bit capture. The new proofs show what would work once both controls are represented by stable 6/7 tags, but the actual frozen-machine construction of that representation from the canonical q12 frame remains unproved.
 
 The next research obligation is an exact native q12-to-tagged-q16 configuration theorem, with source-bit recoverability, preserved encoded program, and both directions. No whole-instruction simulation, halting equivalence, or universality claim is made by these local repairs.
+
+
+## Certified tagged-rail q15→q5 directional package (2026-11-18)
+
+The hypothetical 6/7-tagged control representation is now certified across a larger native-table macro. These theorems are generic over a **nonempty finite tagged rail**, arbitrary Boolean controls, and arbitrary surrounding suffixes. No transition-table entry was altered.
+
+The two control-tag values are `6` for false and `7` for true. Their q15 passability, q16 restoration identity, and q19 passability permit one explicit tagged rail to cross several native phases without first being restored into an early raw 0/1 control.
+
+| Coq theorem | Exact native phase | Certified scope |
+| --- | --- | --- |
+| `q15_q16_native_tagged_control_rail_roundtrip` | q15→q16→q21/q22; `2 × (rail length + 1)` steps | q15 scans to raw target; q16 returns to the separate raw old delimiter, preserving each tag and leaving target untouched. |
+| `tagged_rail_q15_q22_right_to_q19` | q15→q16→q21/q22→q19 | Right-direction decision leaves the tagged rail intact, conditioned on a q21-safe direction scan. |
+| `tagged_rail_q15_q22_left_to_q20` | q15→q16→q21/q22→q20 | Left-direction decision leaves the tagged rail intact, conditioned on a q21-safe direction scan. |
+| `tagged_rail_right_relocates_to_q5` | q15→q16→q21/q22→q19→q17/q18→q5 | Right relocation ends in q5, with exact length-dependent fuel; additionally requires a q19-safe direction rail and a q17-safe forward scan. |
+| `tagged_rail_left_relocates_to_q5` | q15→q16→q21/q22→q20→q17/q18→q5 | Left relocation ends in q5, with exact length-dependent fuel; additionally requires a q17-safe reverse direction rail. |
+
+The source uses explicit `Forall` hypotheses; q21-safe alone is **not** enough for the right q19 scan, because q21 accepts raw 0/1 symbols that q19 would consume prematurely.
+
+Authoritative source: `formal/utm/MinskyDirectionRelocationCycle.v`.
+
+- [Initial q15/q16 composition commit be24daf](https://github.com/shemshallah/NaNLMind/commit/be24daf7f15616d2a47fe482ac47fdac802839f3) — [fast cycle](https://github.com/shemshallah/NaNLMind/actions/runs/44235201045), [independent full proof](https://github.com/shemshallah/NaNLMind/actions/runs/44235200989), [representation bridge](https://github.com/shemshallah/NaNLMind/actions/runs/44235201091), and [CI](https://github.com/shemshallah/NaNLMind/actions/runs/44235200920): all SUCCESS.
+- [Both direction branches commit fa0524a](https://github.com/shemshallah/NaNLMind/commit/fa0524af587175e7c3603d475ecb4c783cdc72bb) — [fast cycle and canonical-match check](https://github.com/shemshallah/NaNLMind/actions/runs/44355420511): SUCCESS.
+- [Full q5 relocation commit 9ef641c](https://github.com/shemshallah/NaNLMind/commit/9ef641c04c0c37e844131356ccd6b48d9103934d) — [fast cycle](https://github.com/shemshallah/NaNLMind/actions/runs/44357304129), [independent full Minsky/UTM](https://github.com/shemshallah/NaNLMind/actions/runs/44357304246), [representation bridge](https://github.com/shemshallah/NaNLMind/actions/runs/44357304188), and [CI](https://github.com/shemshallah/NaNLMind/actions/runs/44357304093): all SUCCESS.
+
+**Remaining major gap:** these are genuine native transition theorems for supplied starting configurations, not proofs of their reachability from the canonical encoded source machine. In particular, the earlier q12 cycle restores raw temporary controls and provably dispatches the wrong raw bit on the guarded repaired layout. Establishing an exact q12-to-tagged-rail construction, preserving the source program and both direction semantics, is still open. So are all-instruction simulation, halt equivalence, and a universality theorem for the literal 23×8 table.
+
+**Research status:** a strengthened, reproducible, kernel-certified partial theorem package is available. A major/open-problem closure is **not** claimed.
