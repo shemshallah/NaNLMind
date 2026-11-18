@@ -97,3 +97,32 @@ A next attempt should either:
 2. state a cycle lemma specialized to the exact Fixpoint-unfolded shapes
    (`map source_bit (r :: rs)`, the exact fuel, and the outer recursive
    run), so the step is an exact `rewrite`.
+
+## Precise associativity finding
+
+The repeated induction failures are not a missing mathematical step.  They
+come from **propositional, not definitional, associativity of list append**.
+The generalized cycle produces right-associated shapes, while the recursive
+IH with
+
+```text
+processed' = m :: processed
+region'    = region ++ [m]
+```
+
+has left-associated occurrences such as
+
+```text
+(region ++ [m]) ++ map source_bit rs ++ record_tail
+(rev (map match_mark rs) ++ [m]) ++ processed
+```
+
+and the goal has the corresponding right-associated forms.  `change`,
+`apply`, and `rewrite` cannot bridge this because `app_assoc` is a theorem,
+not a conversion rule.
+
+The next refactor must choose one canonical association for the entry,
+result, and IH conclusion (for example, fully right-associated), state both
+the specialized cycle and the induction theorem in that association, and
+use explicit `rewrite app_assoc` only inside the proof.  That removes the
+matching failure without changing the mathematics.
