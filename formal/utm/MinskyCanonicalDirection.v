@@ -40,6 +40,7 @@ Proof.
   induction scanned as [|s rest IH]; intros left tail Hscan.
   - cbn [length rev app run].
     vm_compute.
+    match goal with |- ?G => idtac "Q9 BASE:" G end.
     change ({| c_state := 12;
                c_tape := {| t_left := 4 :: left; t_right := tail |};
                c_halted := false |} =
