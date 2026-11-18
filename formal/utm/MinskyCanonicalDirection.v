@@ -38,7 +38,7 @@ Lemma q9_scan_marked_to_q12 :
 Proof.
   intros scanned.
   induction scanned as [|s rest IH]; intros left tail Hscan.
-  - reflexivity.
+  - cbn [length rev app]. reflexivity.
   - inversion Hscan as [|? ? Hs Hrest]; subst.
     change (run (S (S (length rest)))
       (entry_config 9 left (s :: (rest ++ 4 :: tail))) =
@@ -60,7 +60,7 @@ Lemma q10_scan_marked_to_q13 :
 Proof.
   intros scanned.
   induction scanned as [|s rest IH]; intros left tail Hscan.
-  - reflexivity.
+  - cbn [length rev app]. reflexivity.
   - inversion Hscan as [|? ? Hs Hrest]; subst.
     change (run (S (S (length rest)))
       (entry_config 10 left (s :: (rest ++ 4 :: tail))) =
