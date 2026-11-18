@@ -91,7 +91,7 @@ Proof.
     (map match_mark bits ++ map source_bit action_bits ++
      source_bit dir :: tail)
     [] (map match_mark bits) action_bits (source_bit dir :: tail)
-    tbuffer data eq_refl eq_refl Hlen
+    tbuffer data eq_refl eq_refl (eq_sym Hlen)
     (Forall_nil q7_pass) (Forall_nil q9_pass) Hreg6 Hreg7).
   rewrite app_nil_r.
   rewrite (canonical_q6_direction_capture
