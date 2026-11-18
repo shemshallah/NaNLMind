@@ -136,7 +136,7 @@ Proof.
     unfold xs.
     rewrite rev_app_distr. cbn [rev]. rewrite rev_involutive.
     cbn [app].
-    replace ((rev (4 :: rev record_marks) ++ marked) ++ 3 :: record_tail)
+    replace (((record_marks ++ [4]) ++ marked) ++ 3 :: record_tail)
       with (record_marks ++ 4 :: marked ++ 3 :: record_tail)
       by (cbn [rev]; rewrite rev_involutive; repeat rewrite app_assoc;
           cbn [app]; reflexivity).
@@ -164,7 +164,7 @@ Proof.
     unfold xs.
     rewrite rev_app_distr. cbn [rev]. rewrite rev_involutive.
     cbn [app].
-    replace ((rev (4 :: rev record_marks) ++ marked) ++ 2 :: record_tail)
+    replace (((record_marks ++ [4]) ++ marked) ++ 2 :: record_tail)
       with (record_marks ++ 4 :: marked ++ 2 :: record_tail)
       by (cbn [rev]; rewrite rev_involutive; repeat rewrite app_assoc;
           cbn [app]; reflexivity).
