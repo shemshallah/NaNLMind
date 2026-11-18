@@ -69,3 +69,31 @@ matching in the recursive composition and was deferred; the two generalized
 cycles above are the verified input to that induction.  After the induction,
 the write/direction field and the q12-q22 relocation phase can be stated
 from the fully consumed condition frame.
+
+## Induction proof-engineering blocker
+
+The recursive step is mathematically closed by the two generalized cycles
+above.  The remaining Coq friction is app/map convertibility between the
+Fixpoint-unfolded inner run and the cycle theorem's LHS.  The goal keeps
+
+```text
+right = region ++ map source_bit (r :: rs) ++ record_tail
+```
+
+while the cycle theorem has
+
+```text
+right = region ++ 0/1 :: record_tail'
+```
+
+with `record_tail' = map source_bit rs ++ record_tail`.  These are
+convertible, but `rewrite`/`apply` do not normalize the inner run enough to
+match after the `copy_all_clock` unfolding.
+
+A next attempt should either:
+
+1. use `transitivity` with an explicit intermediate configuration and
+   `set`/`replace` the inner run, or
+2. state a cycle lemma specialized to the exact Fixpoint-unfolded shapes
+   (`map source_bit (r :: rs)`, the exact fuel, and the outer recursive
+   run), so the step is an exact `rewrite`.
