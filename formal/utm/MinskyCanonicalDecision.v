@@ -24,6 +24,21 @@ Proof. unfold q16_pass; auto. Qed.
 Lemma q16_pass_three : q16_pass 3.
 Proof. unfold q16_pass; auto 10. Qed.
 
+Lemma q16_pass_four : q16_pass 4.
+Proof. unfold q16_pass; auto 10. Qed.
+
+Lemma Forall_q15_q16 :
+  forall l, Forall q15_pass l -> Forall q16_pass l.
+Proof.
+  induction l as [|s rest IH]; intros H.
+  - constructor.
+  - inversion H as [|? ? Hs Hrest]; subst.
+    constructor.
+    + destruct Hs as [-> | [-> | [-> | [-> | [-> | ->]]]]];
+        unfold q16_pass; auto 10.
+    + apply IH. exact Hrest.
+Qed.
+
 (** Marker 3 means right: q21/q22 enters q19. *)
 Theorem canonical_q16_decision_to_q19 :
   forall m marked old dir_head dir_remaining outer bit tail,
@@ -92,6 +107,139 @@ Qed.
 
 Print Assumptions canonical_q16_decision_to_q19.
 Print Assumptions canonical_q16_decision_to_q20.
+
+(** q15 continues past the direction mark and the next record's X=4,
+    reaching the first raw current bit of that next record.  q16 then
+    decides from the restored last action bit of the current record. *)
+Corollary canonical_q12_restore_q16_decision_next :
+  forall remaining tbuffer data marked b bit tail,
+    Forall q12_pass (match_mark b :: remaining ++ 5 :: rev tbuffer) ->
+    Forall q14_pass (tbuffer ++ [5] ++ rev remaining ++ [match_mark b]) ->
+    Forall q15_pass (marked ++ [2] ++ [4]) ->
+    run (S (length (match_mark b :: remaining ++ 5 :: rev tbuffer)) +
+         S (length (tbuffer ++ [5] ++ rev remaining ++ [match_mark b])) +
+         S (length (marked ++ [2] ++ [4])) +
+         S (length (4 :: rev (marked ++ [2]) ++ [4])))
+      (cfg_ml 12
+        (match_mark b :: remaining ++ 5 :: rev tbuffer ++ 6 :: rev data)
+        (4 :: marked ++ 2 :: 4 :: source_bit bit :: tail)) =
+    cfg_ml (if b then 22 else 21)
+      (map q14_restore (remaining ++ 5 :: rev tbuffer) ++ 3 :: rev data)
+      (7 :: map q16_restore (rev (4 :: rev (marked ++ [2]) ++ [4])) ++
+       source_bit bit :: tail).
+Proof.
+  intros remaining tbuffer data marked b bit tail H12 H14 H15.
+  assert (Hmarked15 : Forall q15_pass marked).
+  { apply (proj1 (Forall_app _ _ _ _) H15). }
+  assert (Hmarked16 : Forall q16_pass marked).
+  { apply Forall_q15_q16. exact Hmarked15. }
+  assert (Hback16 : Forall q16_pass (rev (marked ++ [2]) ++ [4])).
+  {
+    rewrite Forall_app. split.
+    - apply Forall_rev. rewrite Forall_app. split.
+      + exact Hmarked16.
+      + constructor.
+        * unfold q16_pass; auto 10.
+        * constructor.
+    - constructor.
+      * unfold q16_pass; auto 10.
+      * constructor.
+  }
+  rewrite <- Nat.add_assoc.
+  rewrite <- Nat.add_assoc.
+  rewrite dispatch_run_add.
+  rewrite (canonical_q12_restore_to_q15 (match_mark b) remaining
+    tbuffer data marked (4 :: source_bit bit :: tail) H12 H14).
+  rewrite dispatch_run_add.
+  replace (marked ++ 2 :: 4 :: source_bit bit :: tail)
+    with ((marked ++ [2] ++ [4]) ++ source_bit bit :: tail)
+    by (repeat rewrite <- app_assoc; reflexivity).
+  rewrite (q15_scan_to_raw (marked ++ [2] ++ [4]) bit
+    (4 :: map q14_restore
+      (rev (tbuffer ++ [5] ++ rev remaining ++ [match_mark b])) ++
+     3 :: rev data) tail H15).
+  assert (Htop : map q14_restore
+      (rev (tbuffer ++ [5] ++ rev remaining ++ [match_mark b])) =
+      source_bit b ::
+      map q14_restore (remaining ++ 5 :: rev tbuffer)).
+  { rewrite <- (rev_restore_scan (match_mark b) remaining tbuffer).
+    rewrite rev_involutive.
+    destruct b; reflexivity. }
+  rewrite Htop.
+  replace (rev (marked ++ [2] ++ [4]))
+    with (rev ((marked ++ [2]) ++ [4]))
+    by (rewrite <- app_assoc; reflexivity).
+  apply (canonical_restore_q16_decision 4 (marked ++ [2]) b
+    (map q14_restore (remaining ++ 5 :: rev tbuffer) ++ 3 :: rev data)
+    bit tail q16_pass_four Hback16).
+Qed.
+
+(** The q13 branch: direction mark 3, trailing marker 2. *)
+Corollary canonical_q13_restore_q16_decision_next :
+  forall remaining tbuffer data marked b bit tail,
+    Forall q12_pass (match_mark b :: remaining ++ 5 :: rev tbuffer) ->
+    Forall q14_pass (tbuffer ++ [5] ++ rev remaining ++ [match_mark b]) ->
+    Forall q15_pass (marked ++ [3] ++ [4]) ->
+    run (S (length (match_mark b :: remaining ++ 5 :: rev tbuffer)) +
+         S (length (tbuffer ++ [5] ++ rev remaining ++ [match_mark b])) +
+         S (length (marked ++ [3] ++ [4])) +
+         S (length (4 :: rev (marked ++ [3]) ++ [4])))
+      (cfg_ml 13
+        (match_mark b :: remaining ++ 5 :: rev tbuffer ++ 6 :: rev data)
+        (4 :: marked ++ 3 :: 4 :: source_bit bit :: tail)) =
+    cfg_ml (if b then 22 else 21)
+      (map q14_restore (remaining ++ 5 :: rev tbuffer) ++ 2 :: rev data)
+      (7 :: map q16_restore (rev (4 :: rev (marked ++ [3]) ++ [4])) ++
+       source_bit bit :: tail).
+Proof.
+  intros remaining tbuffer data marked b bit tail H13 H14 H15.
+  assert (Hmarked15 : Forall q15_pass marked).
+  { apply (proj1 (Forall_app _ _ _ _) H15). }
+  assert (Hmarked16 : Forall q16_pass marked).
+  { apply Forall_q15_q16. exact Hmarked15. }
+  assert (Hback16 : Forall q16_pass (rev (marked ++ [3]) ++ [4])).
+  {
+    rewrite Forall_app. split.
+    - apply Forall_rev. rewrite Forall_app. split.
+      + exact Hmarked16.
+      + constructor.
+        * unfold q16_pass; auto 10.
+        * constructor.
+    - constructor.
+      * unfold q16_pass; auto 10.
+      * constructor.
+  }
+  rewrite <- Nat.add_assoc.
+  rewrite <- Nat.add_assoc.
+  rewrite dispatch_run_add.
+  rewrite (canonical_q13_restore_to_q15 (match_mark b) remaining
+    tbuffer data marked (4 :: source_bit bit :: tail) H13 H14).
+  rewrite dispatch_run_add.
+  replace (marked ++ 3 :: 4 :: source_bit bit :: tail)
+    with ((marked ++ [3] ++ [4]) ++ source_bit bit :: tail)
+    by (repeat rewrite <- app_assoc; reflexivity).
+  rewrite (q15_scan_to_raw (marked ++ [3] ++ [4]) bit
+    (4 :: map q14_restore
+      (rev (tbuffer ++ [5] ++ rev remaining ++ [match_mark b])) ++
+     2 :: rev data) tail H15).
+  assert (Htop : map q14_restore
+      (rev (tbuffer ++ [5] ++ rev remaining ++ [match_mark b])) =
+      source_bit b ::
+      map q14_restore (remaining ++ 5 :: rev tbuffer)).
+  { rewrite <- (rev_restore_scan (match_mark b) remaining tbuffer).
+    rewrite rev_involutive.
+    destruct b; reflexivity. }
+  rewrite Htop.
+  replace (rev (marked ++ [3] ++ [4]))
+    with (rev ((marked ++ [3]) ++ [4]))
+    by (rewrite <- app_assoc; reflexivity).
+  apply (canonical_restore_q16_decision 4 (marked ++ [3]) b
+    (map q14_restore (remaining ++ 5 :: rev tbuffer) ++ 2 :: rev data)
+    bit tail q16_pass_four Hback16).
+Qed.
+
+Print Assumptions canonical_q12_restore_q16_decision_next.
+Print Assumptions canonical_q13_restore_q16_decision_next.
 
 (** The restore frame's last record mark is [match_mark b]; q14 restores
     it to the raw bit [source_bit b], which is exactly the decision bit q16
