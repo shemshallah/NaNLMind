@@ -3683,3 +3683,147 @@ Proof.
 Qed.
 
 Print Assumptions q12_sacrificial_five_guard_reenters_q0.
+
+
+(** The backscan restores a forward rail whose NEXT control bit occurs
+    before the TARGET source bit.  The following proof identifies exactly
+    where the native q0 matcher actually branches; it keeps both q0
+    outcomes and the untouched stored-program suffix explicit. *)
+Definition q0_protected_prefix (scanned : list nat)
+    (sacrificial : bool) : list nat :=
+  [if sacrificial then 3 else 2; 5; 7; 4] ++
+  map q16_restore scanned ++ [6].
+
+Lemma q0_protected_prefix_length :
+  forall scanned sacrificial,
+    length (q0_protected_prefix scanned sacrificial) =
+      length scanned + 5.
+Proof.
+  intros scanned sacrificial.
+  unfold q0_protected_prefix.
+  repeat rewrite app_length.
+  rewrite map_length.
+  cbn [length].
+  lia.
+Qed.
+
+Lemma q0_protected_prefix_safe :
+  forall scanned sacrificial,
+    q19_q5_roundtrip_railb scanned = true ->
+    Forall q0_pass (q0_protected_prefix scanned sacrificial).
+Proof.
+  intros scanned sacrificial Hguard.
+  unfold q0_protected_prefix.
+  repeat rewrite Forall_app.
+  split.
+  - destruct sacrificial;
+      repeat (constructor; try (unfold q0_pass; auto 12)).
+  - split.
+    + apply q19_q5_roundtrip_railb_spec in Hguard.
+      induction Hguard as [|symbol rest Hsymbol Hrest IH].
+      * constructor.
+      * constructor.
+        -- destruct Hsymbol as [-> | [-> | ->]];
+             unfold q0_pass, q16_restore; auto 12.
+        -- exact IH.
+    + constructor.
+      * unfold q0_pass; auto 12.
+      * constructor.
+Qed.
+
+Lemma q0_protected_restore_forward :
+  forall scanned next,
+    map q16_restore
+      (rev (protected_q16_backscan scanned next false)) =
+    [5; 7; 4] ++ map q16_restore scanned ++
+      [6; source_bit next; 0].
+Proof.
+  intros scanned [].
+  unfold protected_q16_backscan.
+  rewrite rev_app_distr.
+  rewrite rev_involutive.
+  repeat rewrite map_app.
+  simpl.
+  reflexivity.
+Qed.
+
+Lemma q0_protected_restored_tape_shape :
+  forall scanned next sacrificial target tail,
+    (if sacrificial then 3 else 2) ::
+      map q16_restore
+        (rev (protected_q16_backscan scanned next false)) ++
+      source_bit target :: tail =
+    q0_protected_prefix scanned sacrificial ++
+      source_bit next :: 0 :: source_bit target :: tail.
+Proof.
+  intros scanned next sacrificial target tail.
+  rewrite q0_protected_restore_forward.
+  unfold q0_protected_prefix.
+  simpl.
+  repeat rewrite <- app_assoc.
+  reflexivity.
+Qed.
+
+Theorem q0_protected_dispatches_next_before_target :
+  forall scanned next sacrificial stored target tail,
+    q19_q5_roundtrip_railb scanned = true ->
+    run (length scanned + 6)
+      (entry_config 0 (0 :: 6 :: 5 :: stored)
+        (q0_protected_prefix scanned sacrificial ++
+         source_bit next :: 0 :: source_bit target :: tail)) =
+    if next
+    then entry_config 3
+      (3 :: rev (q0_protected_prefix scanned sacrificial) ++
+       0 :: 6 :: 5 :: stored)
+      (0 :: source_bit target :: tail)
+    else cfg_ml 2
+      (rev (q0_protected_prefix scanned sacrificial) ++
+       0 :: 6 :: 5 :: stored)
+      (2 :: 0 :: source_bit target :: tail).
+Proof.
+  intros scanned next sacrificial stored target tail Hguard.
+  replace (length scanned + 6)
+    with (S (length (q0_protected_prefix scanned sacrificial))).
+  2:{ rewrite q0_protected_prefix_length; lia. }
+  destruct next.
+  - apply q0_scan_one.
+    apply q0_protected_prefix_safe; exact Hguard.
+  - apply q0_scan_zero.
+    apply q0_protected_prefix_safe; exact Hguard.
+Qed.
+
+Theorem q12_sacrificial_guard_dispatches_early_next :
+  forall scanned rows next sacrificial target tail,
+    q19_q5_roundtrip_railb scanned = true ->
+    run (9 * length scanned + 66)
+      (entry_config 12
+        ([5; 6] ++
+         6 :: source_bit sacrificial :: 5 ::
+         encode_wide_program rows)
+        (0 :: 4 ::
+          (scanned ++ source_bit next :: 7 ::
+           source_bit false :: source_bit target :: tail))) =
+    if next
+    then entry_config 3
+      (3 :: rev (q0_protected_prefix scanned sacrificial) ++
+       0 :: 6 :: 5 :: encode_wide_program rows)
+      (0 :: source_bit target :: tail)
+    else cfg_ml 2
+      (rev (q0_protected_prefix scanned sacrificial) ++
+       0 :: 6 :: 5 :: encode_wide_program rows)
+      (2 :: 0 :: source_bit target :: tail).
+Proof.
+  intros scanned rows next sacrificial target tail Hguard.
+  replace (9 * length scanned + 66)
+    with ((8 * length scanned + 60) + (length scanned + 6))
+    by lia.
+  rewrite writeback_run_add.
+  rewrite (q12_sacrificial_five_guard_reenters_q0
+    scanned rows next sacrificial target tail Hguard).
+  rewrite (q0_protected_restored_tape_shape
+    scanned next sacrificial target tail).
+  apply q0_protected_dispatches_next_before_target.
+  exact Hguard.
+Qed.
+
+Print Assumptions q12_sacrificial_guard_dispatches_early_next.
