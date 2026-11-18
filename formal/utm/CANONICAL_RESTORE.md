@@ -56,3 +56,34 @@ so `cfg_ml` exposes the head `s`.
 Compose q15/q16 with the q21/q22 and q19/q20 relocation macros from this
 q15 entry, then the q17/q18 return to q5 and the single-source-step
 theorem.
+
+## Restore corollaries
+
+Added after the q12/q13-to-q15 theorems (fast job
+[44400890924](https://github.com/shemshallah/NaNLMind/actions/runs/44400890924),
+full bridge
+[44402415039](https://github.com/shemshallah/NaNLMind/actions/runs/44402415039)):
+
+- `canonical_restore_q12_q15_capture` and
+  `canonical_restore_q13_q15_capture` compose the restore with the q15
+  scan over `marked ++ [2]` / `marked ++ [3]`, reaching q16 with
+
+  ```text
+  cfg_ml 16
+    (rev (marked ++ [m]) ++ 4 ::
+     map q14_restore (rev T) ++ 3/2 :: rev data)
+    (source_bit bit :: tail).
+  ```
+
+- `canonical_restore_q16_decision` continues q16 across the backscan and
+  X=4, restores `2->0` / `3->1`, writes 7 at the raw cell behind X=4 and
+  selects q21/q22:
+
+  ```text
+  cfg_ml (if old then 22 else 21) prefix
+    (7 :: map q16_restore (rev (m :: rev marked ++ [4])) ++
+     source_bit bit :: tail).
+  ```
+
+The subsequent q21/q22 and q19/q20 relocation phases are in
+`MinskyCanonicalDecision.v` and `CANONICAL_DECISION.md`.
