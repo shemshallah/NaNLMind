@@ -518,6 +518,14 @@ relocation, halting reflection, and the universality reduction remain open.
 
 ## November 18 all-condition canonical copy induction (kernel-checked)
 
+Accepted on `main` at `2fe2425` by the fast q15-q22 job
+[44234713900](https://github.com/shemshallah/NaNLMind/actions/runs/44234713900),
+the independent full Minsky bridge
+[44234713887](https://github.com/shemshallah/NaNLMind/actions/runs/44234713887),
+the mechanized UTM job
+[44234714060](https://github.com/shemshallah/NaNLMind/actions/runs/44234714060),
+and `ci`.
+
 `canonical_q6_copy_all` now closes the induction over the condition bits.
 For condition bits and record bits of equal length it proves
 

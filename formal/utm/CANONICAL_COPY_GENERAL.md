@@ -62,6 +62,13 @@ remaining' = bits'.
 
 ## All-condition copy induction (checked)
 
+Accepted on `main` at `2fe2425` by the fast q15-q22 job
+([44234713900](https://github.com/shemshallah/NaNLMind/actions/runs/44234713900)),
+the independent full Minsky bridge
+([44234713887](https://github.com/shemshallah/NaNLMind/actions/runs/44234713887)),
+and the mechanized UTM job
+([44234714060](https://github.com/shemshallah/NaNLMind/actions/runs/44234714060)).
+
 `canonical_q6_copy_all` closes the induction.  For condition bits `bits`
 and record bits `record_bits` of equal length, any tape sides `left`/`right`
 satisfying the canonical shape premises, and any processed prefix / marked
