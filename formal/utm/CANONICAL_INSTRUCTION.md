@@ -169,3 +169,27 @@ The premise is immediate when `action_init` is nonempty, because
 `rev D` ends with the nonempty raw list `map source_bit action_init`.
 It is not automatic for a one-cell action whose only action mark was
 split off as the decision bit.
+
+## Unconditional q19 collision for nonempty action prefixes
+
+`canonical_q5_instruction_q19_hits_restored_raw_nonempty` discharges the
+raw-cell premise when `action_init <> []`:
+
+```text
+action_init <> [] ->
+length (action_init ++ [b]) = length bits ->
+Forall q12_pass t-buffer ->
+Forall q14_pass t-buffer ->
+exists pre hit post,
+  rev D = pre ++ source_bit hit :: post /\
+  Forall q15_pass pre /\
+  run (instruction_q19_clock + S |pre|) ...
+    = entry_config (if hit then 18 else 17)
+        (6 :: rev pre ++ source_bit b :: rev data)
+        (post ++ 7 :: q16-backscan ++ source_bit bit :: tail).
+```
+
+`rev_restored_action_block_has_raw` supplies the witness: the restored
+block ends with `map source_bit action_init`, a nonempty raw list.
+For any source state width `p >= 1`, the action field has `p+1 >= 2`
+bits, so `action_init` is nonempty and the collision is unavoidable.

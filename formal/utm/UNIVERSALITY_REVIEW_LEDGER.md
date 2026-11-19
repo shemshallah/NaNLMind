@@ -880,3 +880,15 @@ A later bridge run on `main` (`44451499362`) failed inside the
 concurrently edited `MinskyDirectionRelocationCycle.v`; the canonical
 instruction module compiled successfully before that point and its own
 fast job passed.
+
+### Unconditional form for nonempty action prefixes
+
+`canonical_q5_instruction_q19_hits_restored_raw_nonempty` removes the
+explicit raw-cell premise when `action_init <> []`, using
+`rev_restored_action_block_has_raw`.  For state width `p >= 1`, the
+action field has at least two bits, so `action_init` is nonempty and the
+q19 collision is unconditional.  Verified by the fast job
+[44457362683](https://github.com/shemshallah/NaNLMind/actions/runs/44457362683);
+clean-branch bridge
+[44457825847](https://github.com/shemshallah/NaNLMind/actions/runs/44457825847)
+was dispatched on the same commit.
