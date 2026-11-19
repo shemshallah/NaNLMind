@@ -165,6 +165,7 @@ Proof.
     rewrite (canonical_q5_match_copy_direction bits (action_init ++ [b])
       tbuffer data true (4 :: source_bit bit :: tail) Hlen).
     rewrite rev_match_mark_snoc.
+    match goal with |- ?G => idtac "INSTRGOAL:" G end.
     rewrite (canonical_q12_restore_q16_decision_next
       (rev (map match_mark action_init)) tbuffer data
       (map match_mark bits ++ map match_mark (action_init ++ [b]))
