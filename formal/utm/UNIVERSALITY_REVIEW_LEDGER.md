@@ -914,4 +914,6 @@ both directions.
 Fast job [44564743286](https://github.com/shemshallah/NaNLMind/actions/runs/44564743286);
 clean-branch bridge
 [44565693705](https://github.com/shemshallah/NaNLMind/actions/runs/44565693705)
-was dispatched on the same commit.
+passed on the same commit; main
+[700e702](https://github.com/shemshallah/NaNLMind/commit/700e702) passed
+the full bridge, mechanized UTM and CI jobs.
