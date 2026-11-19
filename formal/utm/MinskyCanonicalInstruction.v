@@ -873,3 +873,13 @@ Qed.
 
 Print Assumptions q15_q16_four_prefix_right_direction.
 Print Assumptions q15_q16_four_prefix_left_direction.
+
+(** The 4-prefix is the natural next-instruction entry: q1 crosses X=4
+    into q6, exactly the canonical action-copy entry. *)
+Lemma q1_four_to_q6 :
+  forall left tail,
+    step (entry_config 1 left (4 :: tail)) =
+    entry_config 6 (4 :: left) tail.
+Proof. intros left tail. reflexivity. Qed.
+
+Print Assumptions q1_four_to_q6.
