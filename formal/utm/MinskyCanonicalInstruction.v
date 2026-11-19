@@ -230,11 +230,10 @@ Theorem canonical_q5_instruction_to_q19 :
        source_bit bit :: tail).
 Proof.
   intros bits action_init tbuffer data b bit tail Hlen H12t H14t.
-  remember (map q14_restore
-    (rev (map match_mark action_init) ++ 5 :: rev tbuffer)) as D eqn:HD.
-  assert (Hq21D : Forall q21_pass D).
+  assert (Hq21D : Forall q21_pass
+      (map q14_restore
+        (rev (map match_mark action_init) ++ 5 :: rev tbuffer))).
   {
-    rewrite <- HD.
     rewrite Forall_app. split.
     - apply Forall_q14_restore_q21. apply Forall_rev.
       apply Forall_match_mark.
@@ -251,8 +250,9 @@ Proof.
   rewrite dispatch_run_add.
   rewrite (canonical_q5_fetch_to_q16_decision bits action_init tbuffer
     data b true bit tail Hlen H12t H14t).
-  rewrite HD.
-  destruct D as [|s D'] eqn:HD2.
+  destruct (map q14_restore
+    (rev (map match_mark action_init) ++ 5 :: rev tbuffer))
+    as [|s D'] eqn:HD2.
   - rewrite HD2 in Hq21D. cbn [length].
     change (step
       (entry_config (if b then 22 else 21) (rev data)
@@ -326,11 +326,10 @@ Theorem canonical_q5_instruction_to_q20 :
        source_bit bit :: tail).
 Proof.
   intros bits action_init tbuffer data b bit tail Hlen H12t H14t.
-  remember (map q14_restore
-    (rev (map match_mark action_init) ++ 5 :: rev tbuffer)) as D eqn:HD.
-  assert (Hq21D : Forall q21_pass D).
+  assert (Hq21D : Forall q21_pass
+      (map q14_restore
+        (rev (map match_mark action_init) ++ 5 :: rev tbuffer))).
   {
-    rewrite <- HD.
     rewrite Forall_app. split.
     - apply Forall_q14_restore_q21. apply Forall_rev.
       apply Forall_match_mark.
@@ -347,8 +346,9 @@ Proof.
   rewrite dispatch_run_add.
   rewrite (canonical_q5_fetch_to_q16_decision bits action_init tbuffer
     data b false bit tail Hlen H12t H14t).
-  rewrite HD.
-  destruct D as [|s D'] eqn:HD2.
+  destruct (map q14_restore
+    (rev (map match_mark action_init) ++ 5 :: rev tbuffer))
+    as [|s D'] eqn:HD2.
   - rewrite HD2 in Hq21D. cbn [length].
     change (step
       (entry_config (if b then 22 else 21) (rev data)
