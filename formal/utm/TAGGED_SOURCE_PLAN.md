@@ -127,3 +127,18 @@ cycle sees the same tagged interface.
 No axiom, admitted lemma, or opaque hypothesis may be used to assert
 universality.  Each item above must pass `coqc` and `coqchk` in the
 repository workflows before the claim flag is changed.
+
+## Native halt macro (done)
+
+The table has exactly one halting row: state 3 reading Y=5.
+
+- `q3_scan_to_five_halts`: q3 scans any `q3_halt_pass` list
+  (`0,1,2,3,6,7`) to `5` and halts.
+- `q15_left_false_guard_halt`: from the tagged left q15 entry with
+  `target = true`, a passable tail followed by `5` halts in
+  `21 + |tail|` native steps.
+
+So the source-halt path is concrete: encode the end marker after the
+program, dispatch `target = true`, and let q3 reach `5`.  The remaining
+halt obligation is to prove the encoder selects this path exactly when
+`source_lookup` fails.

@@ -977,3 +977,34 @@ is a concrete layout obligation for the source encoder.  Fast job
 passed; clean-branch bridge
 [44573000067](https://github.com/shemshallah/NaNLMind/actions/runs/44573000067)
 was dispatched on the same commit.  No universality claim is made.
+
+## November 19 tagged halt macro (kernel-checked)
+
+The frozen table has a single halting transition: q3 on Y=5.
+`MinskyTaggedHalt.v` proves the native halt macro from the tagged left
+cycle:
+
+- `q3_scan_to_five_halts`: q3 scans any `q3_halt_pass` list
+  (`0,1,2,3,6,7`) to `5` and halts.
+- `q15_left_false_guard_halt`: from
+
+  ```text
+  entry_config 15
+    (source_bit old :: 6 :: 5 :: 2 :: source_bit false :: outer)
+    (tag next :: tag extra :: source_bit true ::
+     scanned ++ 5 :: tail)
+  ```
+
+  with `Forall q3_halt_pass scanned`, the machine halts in
+  `21 + S |scanned|` native steps.
+
+Verification: fast q15-q22 job
+[44587415568](https://github.com/shemshallah/NaNLMind/actions/runs/44587415568)
+on `49f629f`; clean-branch bridge
+[44588286392](https://github.com/shemshallah/NaNLMind/actions/runs/44588286392)
+was dispatched on the same commit.
+
+This is a halt macro, not yet source halting reflection: the encoder must
+select this target=true/end-marker path exactly when the source lookup
+fails.  The match/copy integration, source encoder, tape invariant and
+universality reduction remain open.
