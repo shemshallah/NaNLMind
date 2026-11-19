@@ -187,3 +187,74 @@ Proof.
 Qed.
 
 Print Assumptions q15_q22_right_four_prefix_to_q19.
+
+(** Full right return with the canonical 4-prefix: q15 -> q16 ->
+    q21/q22 -> q19 -> q17/q18 -> q5.  The 4-prefix travels in the
+    restored rail and does not stop q19. *)
+Theorem q15_q22_right_four_prefix_relocates_to_q5 :
+  forall (first : bool) (rest : list bool)
+         dir_head dir_remaining old target outer between tail,
+    Forall q21_pass (dir_head :: dir_remaining) ->
+    Forall q15_pass (rev (dir_head :: dir_remaining)) ->
+    Forall q17_pass between ->
+    run ((S (length (rev (map q0_stable_control_tag (first :: rest)))) +
+          S (length
+            (map q0_stable_control_tag (first :: rest) ++ [4])) +
+          S (length (dir_head :: dir_remaining))) +
+         (S (length
+           (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
+            map q16_restore
+              (rev (map q0_stable_control_tag (first :: rest))))) +
+          S (length between)))
+      (entry_config 15
+        (4 :: source_bit old :: dir_head :: dir_remaining ++
+         3 :: outer)
+        (rev (map q0_stable_control_tag (first :: rest)) ++
+         source_bit target :: between ++ 7 :: tail)) =
+    cfg_ml 5
+      (rev between ++ 6 ::
+       rev (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
+            map q16_restore
+              (rev (map q0_stable_control_tag (first :: rest)))) ++
+       source_bit old :: outer)
+      ((if target then 3 else 2) :: tail).
+Proof.
+  intros first rest dir_head dir_remaining old target outer between tail
+    H21 Hdir15 Hbetween.
+  assert (Hscan : Forall q15_pass
+      (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
+       map q16_restore
+         (rev (map q0_stable_control_tag (first :: rest))))).
+  {
+    rewrite Forall_app. split.
+    - exact Hdir15.
+    - rewrite Forall_app. split.
+      + constructor.
+        * unfold q15_pass; auto 12.
+        * constructor.
+          -- unfold q15_pass; auto 12.
+          -- rewrite map_rev.
+             rewrite q16_stable_control_rail_restore_identity.
+             apply q15_stable_control_rail_reverse_safe.
+  }
+  rewrite dispatch_run_add.
+  rewrite (q15_q22_right_four_prefix_to_q19 first rest
+    dir_head dir_remaining old target outer (between ++ 7 :: tail) H21).
+  replace (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
+           map q16_restore
+             (rev (map q0_stable_control_tag (first :: rest))) ++
+           source_bit target :: between ++ 7 :: tail)
+    with ((rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
+           map q16_restore
+             (rev (map q0_stable_control_tag (first :: rest)))) ++
+          source_bit target :: between ++ 7 :: tail)
+    by (repeat rewrite <- app_assoc; reflexivity).
+  rewrite (q19_to_q5_relocation
+    (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
+     map q16_restore
+       (rev (map q0_stable_control_tag (first :: rest))))
+    between target (source_bit old :: outer) tail Hscan Hbetween).
+  reflexivity.
+Qed.
+
+Print Assumptions q15_q22_right_four_prefix_relocates_to_q5.
