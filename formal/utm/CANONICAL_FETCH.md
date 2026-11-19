@@ -66,6 +66,6 @@ being `2/3`.  No extra passability hypothesis is required for this phase.
 
 ## Next
 
-Generalize the q15 capture so that the scan may cross the next record's
-`X=4` and passable prefix before the first raw cell, then compose this
-fetch result with `canonical_q12_restore_to_q16_decision`.
+Done in `MinskyCanonicalInstruction.v` (`canonical_q5_fetch_to_q16_decision`):
+the q15 scan crosses the next record's `X=4` and the composition reaches
+the q21/q22 decision.  See `CANONICAL_INSTRUCTION.md`.

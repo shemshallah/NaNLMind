@@ -3,7 +3,8 @@
 Status: kernel-checked by the fast q15-q22 Coq job
 ([run 44429121196](https://github.com/shemshallah/NaNLMind/actions/runs/44429121196)).
 Full bridge:
-[run 44429619546](https://github.com/shemshallah/NaNLMind/actions/runs/44429619546).
+[run 44429619546](https://github.com/shemshallah/NaNLMind/actions/runs/44429619546),
+SUCCESS on `1bfeb07`.
 
 `formal/utm/MinskyCanonicalInstruction.v` composes the canonical phases
 into one literal native run:

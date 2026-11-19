@@ -791,7 +791,7 @@ Verification: fast q15-q22 job
 [44429121196](https://github.com/shemshallah/NaNLMind/actions/runs/44429121196)
 on `1bfeb07`; full bridge
 [44429619546](https://github.com/shemshallah/NaNLMind/actions/runs/44429619546)
-was dispatched on the same commit.
+passed on the same commit.
 
 Scope: one instruction fetch/decode/action-copy/direction/restore/decision
 macro.  q19/q20 relocation, q17/q18 return, the whole-source invariant,
