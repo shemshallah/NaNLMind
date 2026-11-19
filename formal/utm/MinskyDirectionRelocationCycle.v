@@ -4720,3 +4720,26 @@ Proof.
 Qed.
 
 Print Assumptions q5_q1_q0_buffered_tagged_target_dispatch.
+
+
+(** The right-moving q19/q17 arrival has a native, one-cell q5
+    buffer, a six-gate cell, a stable tagged rail, and its stopping 5.
+    The final 7 is simply the stable [true] tag, not a new symbol. *)
+Lemma q15_right_tagged_return_buffer_layout :
+  forall (bits : list bool) (old : bool) (outer : list nat),
+    rev (rev [5] ++ 7 :: rev (map q0_stable_control_tag bits)) ++
+      source_bit old :: outer =
+    map q0_stable_control_tag (bits ++ [true]) ++
+      5 :: source_bit old :: outer.
+Proof.
+  intros bits old outer.
+  rewrite rev_app_distr.
+  cbn [rev].
+  rewrite rev_involutive.
+  rewrite map_app.
+  cbn [map q0_stable_control_tag].
+  repeat rewrite app_assoc.
+  reflexivity.
+Qed.
+
+Print Assumptions q15_right_tagged_return_buffer_layout.
