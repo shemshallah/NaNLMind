@@ -89,3 +89,45 @@ with `mark = if dir then 3 else 2`.
 Connect the q16 decision to the q19/q20 relocation under an explicit
 representation invariant (or the tagged 6/7 control channel), then state
 the single source step and halting reflection.
+
+## Instruction to q19/q20
+
+Two corollaries run q21/q22 from the instruction result:
+
+- `canonical_q5_instruction_to_q19` (direction true, marker 3):
+
+  ```text
+  entry_config 19 (source_bit b :: rev data)
+    (rev D ++
+     7 :: map q16_restore (next-X backscan) ++
+     source_bit bit :: tail)
+  ```
+
+- `canonical_q5_instruction_to_q20` (direction false, marker 2):
+
+  ```text
+  cfg_ml 20 (rev data)
+    (source_bit b :: rev D ++
+     7 :: map q16_restore (next-X backscan) ++
+     source_bit bit :: tail)
+  ```
+
+Here
+
+```text
+D = map q14_restore
+      (rev (map match_mark action_init) ++ 5 :: rev t-buffer)
+```
+
+is the restored action block.  The q21/q22 scan adds exactly
+`S |D|` transitions.  The pass hypothesis `Forall q21_pass D` is derived
+from `Forall q14_pass t-buffer`; q14 restores `2/3` to `0/1`, both of
+which q21 accepts.
+
+**Important limitation.**  The q19 right tape begins with `rev D`,
+which normally contains restored `0/1` cells.  q19 stops at the first
+such raw cell, so the next relocation target is a restored control bit
+rather than the intended source bit.  This is exactly the documented
+premature-raw-capture obstruction.  The q5 -> q19/q20 theorems therefore
+certify the native path to the relocation phase, not a correct source
+head move.  The tagged 6/7 control channel remains the repair path.

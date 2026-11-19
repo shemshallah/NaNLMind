@@ -797,3 +797,34 @@ Scope: one instruction fetch/decode/action-copy/direction/restore/decision
 macro.  q19/q20 relocation, q17/q18 return, the whole-source invariant,
 the raw-control ordering fix, halting reflection and universality remain
 open.  The documented premature-raw-capture obstruction is unchanged.
+
+## November 19 canonical instruction to q19/q20
+
+Two corollaries extend `canonical_q5_fetch_to_q16_decision` through the
+q21/q22 decision:
+
+- `canonical_q5_instruction_to_q19` (direction true, marker 3) ends at
+  `entry_config 19 (source_bit b :: rev data)` with right tape
+  `rev D ++ 7 :: map q16_restore (...next X=4...) ++ source_bit bit :: tail`.
+- `canonical_q5_instruction_to_q20` (direction false, marker 2) ends at
+  the corresponding `cfg_ml 20 (rev data)` frame.
+
+Here `D` is the restored action block
+`map q14_restore (rev action_marks ++ 5 :: rev t-buffer)`.  The q21/q22
+scan costs exactly `S |D|`; `Forall q21_pass D` is derived from
+`Forall q14_pass t-buffer`.
+
+Verification: fast q15-q22 job
+[44444802328](https://github.com/shemshallah/NaNLMind/actions/runs/44444802328)
+on `6da196c`; full bridge
+[44445252575](https://github.com/shemshallah/NaNLMind/actions/runs/44445252575)
+was dispatched on the same commit.
+
+Critical scope: the q19 right tape begins with the restored action block
+`rev D`, which normally contains restored `0/1` cells.  The native q19
+scan therefore captures the first restored control bit, not the intended
+target.  This is the same premature-raw-capture obstruction documented
+for the wide layout.  These theorems certify reachability of the
+relocation phase; they do not certify a correct source head move.  The
+tagged 6/7 control channel, whole-source invariant, halting reflection
+and universality remain open.
