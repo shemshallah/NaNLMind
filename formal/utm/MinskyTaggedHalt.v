@@ -309,7 +309,7 @@ Proof.
     [source_bit old]).
   assert (Hnonempty : scanned <> []).
   {
-    unfold scanned. intro H.
+    intro H.
     assert (Hl : length scanned = 0) by (rewrite H; reflexivity).
     unfold scanned in Hl. rewrite app_length in Hl.
     cbn [length] in Hl. lia.
