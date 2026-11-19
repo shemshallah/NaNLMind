@@ -608,3 +608,42 @@ Proof.
 Qed.
 
 Print Assumptions canonical_q5_instruction_q19_hits_restored_raw_nonempty.
+
+(** In the raw canonical frame the q20 head is the current source cell.
+    Since `q15_pass` excludes raw 0/1, q20 does not scan left; it applies
+    its raw-step immediately and writes 6 on the current cell. *)
+Theorem canonical_q5_instruction_left_branch_hits_current_cell :
+  forall bits action_init tbuffer data data' b bit tail (d : bool),
+    length (action_init ++ [b]) = length bits ->
+    Forall q12_pass tbuffer ->
+    Forall q14_pass tbuffer ->
+    rev data = source_bit d :: rev data' ->
+    run (instruction_q20_clock bits action_init tbuffer b + 1)
+      (entry_config 5
+        (rev (map source_bit bits) ++ 5 :: rev tbuffer ++ 6 :: rev data)
+        (4 :: map source_bit bits ++
+         map source_bit (action_init ++ [b]) ++
+         source_bit false :: 4 :: source_bit bit :: tail)) =
+    entry_config (if d then 18 else 17)
+      (6 :: rev data')
+      (source_bit b ::
+       rev (map q14_restore
+         (rev (map match_mark action_init) ++ 5 :: rev tbuffer)) ++
+       7 :: map q16_restore
+              (rev (4 :: rev
+                (instruction_marked bits (action_init ++ [b]) ++ [2]) ++
+               [4])) ++
+       source_bit bit :: tail).
+Proof.
+  intros bits action_init tbuffer data data' b bit tail d
+    Hlen H12t H14t Hdata.
+  rewrite dispatch_run_add.
+  unfold instruction_q20_clock.
+  rewrite (canonical_q5_instruction_to_q20 bits action_init tbuffer
+    data b bit tail Hlen H12t H14t).
+  rewrite Hdata.
+  cbn [run cfg_ml].
+  apply q20_raw_to_m.
+Qed.
+
+Print Assumptions canonical_q5_instruction_left_branch_hits_current_cell.
