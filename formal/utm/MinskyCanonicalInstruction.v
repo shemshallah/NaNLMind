@@ -609,6 +609,23 @@ Qed.
 
 Print Assumptions canonical_q5_instruction_q19_hits_restored_raw_nonempty.
 
+Definition instruction_q20_clock
+    (bits action_init : list bool) (tbuffer : list nat) (b : bool) : nat :=
+  ((fetch_clock bits (action_init ++ [b]) +
+    direction_clock
+      (instruction_marked bits (action_init ++ [b]))
+      (map match_mark (action_init ++ [b]))) +
+   ((restore_clock (match_mark b)
+       (rev (map match_mark action_init)) tbuffer +
+     S (length
+       (instruction_marked bits (action_init ++ [b]) ++ [2] ++ [4]))) +
+    S (length
+      (4 :: rev
+        (instruction_marked bits (action_init ++ [b]) ++ [2]) ++ [4])))) +
+  S (length
+    (map q14_restore
+      (rev (map match_mark action_init) ++ 5 :: rev tbuffer))).
+
 (** In the raw canonical frame the q20 head is the current source cell.
     Since `q15_pass` excludes raw 0/1, q20 does not scan left; it applies
     its raw-step immediately and writes 6 on the current cell. *)
