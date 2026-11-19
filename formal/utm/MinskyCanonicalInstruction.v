@@ -252,7 +252,7 @@ Proof.
   destruct (map q14_restore
     (rev (map match_mark action_init) ++ 5 :: rev tbuffer))
     as [|s D'] eqn:HD2.
-  - rewrite HD2 in Hq21D. cbn [length].
+  - cbn [length].
     change (step
       (entry_config (if b then 22 else 21) (rev data)
         (3 :: 7 :: map q16_restore
@@ -347,7 +347,7 @@ Proof.
   destruct (map q14_restore
     (rev (map match_mark action_init) ++ 5 :: rev tbuffer))
     as [|s D'] eqn:HD2.
-  - rewrite HD2 in Hq21D. cbn [length].
+  - cbn [length].
     change (step
       (entry_config (if b then 22 else 21) (rev data)
         (2 :: 7 :: map q16_restore
