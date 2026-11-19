@@ -55,6 +55,20 @@ left relocation theorem ends at a q5 frame whose immediate successor is
 the relocated 2/3 marker, so it does not directly match the buffered q5
 gate; the buffered left layout must be constructed explicitly.
 
+The literal table fixes the left-gate constraint
+(`canonical_left_gate_branches_on_old_bit`):
+
+```text
+q1 reads entry_rewrite (source_bit old):
+  old = false  -> mark 2 -> q0   (intended gate)
+  old = true   -> mark 3 -> q4   (mismatch path)
+```
+
+So a correct left buffered cycle needs a **controlled sacrificial false
+bit** at the q1 stopper, not the arbitrary raw old delimiter.  The source
+encoding must place or write that false guard; otherwise the left move
+silently becomes the q4 mismatch path.
+
 ## Encoding intent
 
 Use the tagged buffer as a machine-internal representation of one source

@@ -947,4 +947,21 @@ arrival.
 The documented repair direction is the sacrificial raw bit plus protected
 `5` delimiter from the obstruction package.  Constructing that native
 left cycle, its buffer-normalization lemma, and the source encoding is
-the remaining work.  No universality claim is made.
+the remaining work.
+
+A literal table check pins the left gate:
+`canonical_left_gate_branches_on_old_bit` proves
+
+```text
+q1 on entry_rewrite (source_bit old):
+  old = false -> q0 (mark 2)
+  old = true  -> q4 (mark 3).
+```
+
+Thus the left buffered cycle must route a controlled sacrificial **false**
+bit into the q1 stopper; the raw old delimiter cannot be arbitrary.  This
+is a concrete layout obligation for the source encoder.  Fast job
+[44572270162](https://github.com/shemshallah/NaNLMind/actions/runs/44572270162)
+passed; clean-branch bridge
+[44573000067](https://github.com/shemshallah/NaNLMind/actions/runs/44573000067)
+was dispatched on the same commit.  No universality claim is made.
