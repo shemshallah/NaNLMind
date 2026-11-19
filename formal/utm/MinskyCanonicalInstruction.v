@@ -36,6 +36,9 @@ Definition restore_clock
   S (length (s :: remaining ++ 5 :: rev tbuffer)) +
   S (length (tbuffer ++ [5] ++ rev remaining ++ [s])).
 
+Definition instruction_marked (bits action_bits : list bool) : list nat :=
+  map match_mark bits ++ map match_mark action_bits.
+
 Lemma q12_mark : forall b, q12_pass (match_mark b).
 Proof.
   intros b. destruct b; unfold q12_pass, match_mark; auto 10.
@@ -68,16 +71,16 @@ Theorem canonical_q5_fetch_to_q16_decision :
     Forall q14_pass tbuffer ->
     run ((fetch_clock bits (action_init ++ [b]) +
           direction_clock
-            (map match_mark bits ++ map match_mark (action_init ++ [b]))
+            (instruction_marked bits (action_init ++ [b]))
             (map match_mark (action_init ++ [b]))) +
          ((restore_clock (match_mark b)
              (rev (map match_mark action_init)) tbuffer +
            S (length
-             (map match_mark bits ++ map match_mark (action_init ++ [b]) ++
+             (instruction_marked bits (action_init ++ [b]) ++
               [(if dir then 3 else 2)] ++ [4]))) +
           S (length
             (4 :: rev
-              (map match_mark bits ++ map match_mark (action_init ++ [b]) ++
+              (instruction_marked bits (action_init ++ [b]) ++
                [(if dir then 3 else 2)]) ++ [4]))))
       (entry_config 5
         (rev (map source_bit bits) ++ 5 :: rev tbuffer ++ 6 :: rev data)
@@ -91,7 +94,7 @@ Theorem canonical_q5_fetch_to_q16_decision :
       (7 :: map q16_restore
         (rev
           (4 :: rev
-            (map match_mark bits ++ map match_mark (action_init ++ [b]) ++
+            (instruction_marked bits (action_init ++ [b]) ++
              [(if dir then 3 else 2)]) ++ [4])) ++
        source_bit bit :: tail).
 Proof.
@@ -125,9 +128,9 @@ Proof.
       - constructor. }
   }
   assert (H15_3 : Forall q15_pass
-      ((map match_mark bits ++ map match_mark (action_init ++ [b])) ++
-       [3] ++ [4])).
+      (instruction_marked bits (action_init ++ [b]) ++ [3] ++ [4])).
   {
+    unfold instruction_marked.
     rewrite Forall_app. split.
     { rewrite Forall_app. split.
       + apply Forall_match_mark. intros x. apply q15_mark.
@@ -141,9 +144,9 @@ Proof.
       - constructor. }
   }
   assert (H15_2 : Forall q15_pass
-      ((map match_mark bits ++ map match_mark (action_init ++ [b])) ++
-       [2] ++ [4])).
+      (instruction_marked bits (action_init ++ [b]) ++ [2] ++ [4])).
   {
+    unfold instruction_marked.
     rewrite Forall_app. split.
     { rewrite Forall_app. split.
       + apply Forall_match_mark. intros x. apply q15_mark.
@@ -158,7 +161,7 @@ Proof.
   }
   destruct dir.
   - rewrite dispatch_run_add.
-    unfold fetch_clock, direction_clock, restore_clock.
+    unfold fetch_clock, direction_clock, restore_clock, instruction_marked.
     rewrite (canonical_q5_match_copy_direction bits (action_init ++ [b])
       tbuffer data true (4 :: source_bit bit :: tail) Hlen).
     rewrite rev_match_mark_snoc.
@@ -168,7 +171,7 @@ Proof.
       b bit tail H12 H14 H15_3).
     reflexivity.
   - rewrite dispatch_run_add.
-    unfold fetch_clock, direction_clock, restore_clock.
+    unfold fetch_clock, direction_clock, restore_clock, instruction_marked.
     rewrite (canonical_q5_match_copy_direction bits (action_init ++ [b])
       tbuffer data false (4 :: source_bit bit :: tail) Hlen).
     rewrite rev_match_mark_snoc.
