@@ -4652,3 +4652,71 @@ Proof.
 Qed.
 
 Print Assumptions q5_q1_buffered_tagged_rail_reenters_q0.
+
+
+(** Full conditional dispatch from the buffered q5 interface.  Unlike
+    the older q5 dispatch theorem, the gate [6;2] arises on the left
+    zipper and is placed into the right rail by actual q5 writes. *)
+Theorem q5_q1_q0_buffered_tagged_target_dispatch :
+  forall (bits : list bool)
+         (sacrificial next extra target : bool)
+         (stored tail : list nat),
+    run ((S (length (2 :: 6 ::
+            map q0_stable_control_tag bits)) +
+          (length (map q0_stable_control_tag bits) + 2)) + 4)
+      (entry_config 5
+        (6 :: map q0_stable_control_tag bits ++ 5 :: stored)
+        (2 :: (if sacrificial then 3 else 2) ::
+         q0_stable_control_tag next ::
+         q0_stable_control_tag extra ::
+         source_bit target :: tail)) =
+    if target
+    then entry_config 3
+      (3 :: rev
+        ([if sacrificial then 3 else 2] ++
+         [q0_stable_control_tag next;
+          q0_stable_control_tag extra]) ++
+       0 :: 6 :: map q0_stable_control_tag bits ++ 5 :: stored)
+      tail
+    else cfg_ml 2
+      (rev
+        ([if sacrificial then 3 else 2] ++
+         [q0_stable_control_tag next;
+          q0_stable_control_tag extra]) ++
+       0 :: 6 :: map q0_stable_control_tag bits ++ 5 :: stored)
+      (2 :: tail).
+Proof.
+  intros bits sacrificial next extra target stored tail.
+  rewrite writeback_run_add.
+  rewrite (q5_q1_buffered_tagged_rail_reenters_q0
+    bits stored
+    ((if sacrificial then 3 else 2) ::
+     q0_stable_control_tag next ::
+     q0_stable_control_tag extra ::
+     source_bit target :: tail)).
+  replace 4
+    with (length [if sacrificial then 3 else 2] + 3)
+    by reflexivity.
+  match goal with
+  | |- _ = ?expected =>
+    change (run (length [if sacrificial then 3 else 2] + 3)
+      (entry_config 0
+        (0 :: 6 :: map q0_stable_control_tag bits ++ 5 :: stored)
+        ([if sacrificial then 3 else 2] ++
+         [q0_stable_control_tag next;
+          q0_stable_control_tag extra] ++
+         source_bit target :: tail)) = expected)
+  end.
+  rewrite (q0_tagged_control_pair_dispatches_target
+    [if sacrificial then 3 else 2]
+    (0 :: 6 :: map q0_stable_control_tag bits ++ 5 :: stored)
+    tail next extra target).
+  2:{
+    constructor.
+    - destruct sacrificial; unfold q0_pass; auto 12.
+    - constructor.
+  }
+  reflexivity.
+Qed.
+
+Print Assumptions q5_q1_q0_buffered_tagged_target_dispatch.
