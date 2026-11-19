@@ -279,7 +279,7 @@ Proof.
                  (instruction_marked bits (action_init ++ [b]) ++ [3]) ++
                 [4])) ++ source_bit bit :: tail)).
     assert (Hscan : Forall q21_pass (s :: D')).
-    { rewrite HD2 in Hq21D. exact Hq21D. }
+    { exact Hq21D. }
     rewrite (q21_scan_to_right_direction D' s
       (if b then 22 else 21) (rev data)
       (7 :: map q16_restore
@@ -375,7 +375,7 @@ Proof.
                  (instruction_marked bits (action_init ++ [b]) ++ [2]) ++
                 [4])) ++ source_bit bit :: tail)).
     assert (Hscan : Forall q21_pass (s :: D')).
-    { rewrite HD2 in Hq21D. exact Hq21D. }
+    { exact Hq21D. }
     rewrite (q21_scan_to_left_direction D' s
       (if b then 22 else 21) (rev data)
       (7 :: map q16_restore
