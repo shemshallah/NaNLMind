@@ -4811,6 +4811,29 @@ Proof.
     - constructor.
   }
   rewrite writeback_run_add.
+  match goal with
+  | |- _ = ?expected =>
+    change (run
+      ((S (length (2 :: 6 ::
+           map q0_stable_control_tag
+             ((first :: rest) ++ [true]))) +
+        (length (map q0_stable_control_tag
+           ((first :: rest) ++ [true])) + 2)) + 4)
+      (run
+        (direction_phase_cost
+           (map q0_stable_control_tag (first :: rest)) [5] +
+         (S (length
+           (rev [5] ++ 7 ::
+            rev (map q0_stable_control_tag (first :: rest)))) +
+          S (length [2])))
+        (entry_config 15
+          (source_bit old :: 5 :: [] ++ 3 :: outer)
+          (rev (map q0_stable_control_tag (first :: rest)) ++
+           source_bit sacrificial :: [2] ++
+           7 :: q0_stable_control_tag next ::
+           q0_stable_control_tag extra ::
+           source_bit target :: tail))) = expected)
+  end.
   rewrite (tagged_rail_right_relocates_to_q5
     first rest 5 [] old sacrificial outer [2]
     (q0_stable_control_tag next ::
