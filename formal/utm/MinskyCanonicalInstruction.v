@@ -554,3 +554,57 @@ Proof.
 Qed.
 
 Print Assumptions canonical_q5_instruction_q19_hits_restored_raw.
+
+Lemma rev_restored_action_block_has_raw :
+  forall (action : list bool) (tbuffer : list nat),
+    action <> [] ->
+    exists x,
+      In x (rev (map q14_restore
+        (rev (map match_mark action) ++ 5 :: rev tbuffer))) /\
+      (x = 0 \/ x = 1).
+Proof.
+  intros action tbuffer Hne.
+  rewrite rev_restored_action_block.
+  destruct action as [|a rest].
+  - contradiction.
+  - exists (source_bit a). split.
+    + apply in_or_app. right. apply in_or_app. right.
+      simpl. auto.
+    + destruct a; simpl; auto.
+Qed.
+
+(** For any nonempty action prefix, the canonical q19 collision is
+    unconditional: q19 captures a restored action cell before the 7. *)
+Corollary canonical_q5_instruction_q19_hits_restored_raw_nonempty :
+  forall bits action_init tbuffer data b bit tail,
+    action_init <> [] ->
+    length (action_init ++ [b]) = length bits ->
+    Forall q12_pass tbuffer ->
+    Forall q14_pass tbuffer ->
+    exists pre (hit : bool) post,
+      rev (map q14_restore
+        (rev (map match_mark action_init) ++ 5 :: rev tbuffer)) =
+        pre ++ source_bit hit :: post /\
+      Forall q15_pass pre /\
+      run (instruction_q19_clock bits action_init tbuffer b +
+           S (length pre))
+        (entry_config 5
+          (rev (map source_bit bits) ++ 5 :: rev tbuffer ++ 6 :: rev data)
+          (4 :: map source_bit bits ++
+           map source_bit (action_init ++ [b]) ++
+           source_bit true :: 4 :: source_bit bit :: tail)) =
+      entry_config (if hit then 18 else 17)
+        (6 :: rev pre ++ source_bit b :: rev data)
+        (post ++
+         7 :: map q16_restore
+                (rev (4 :: rev
+                  (instruction_marked bits (action_init ++ [b]) ++ [3]) ++
+                 [4])) ++
+         source_bit bit :: tail).
+Proof.
+  intros bits action_init tbuffer data b bit tail Hne Hlen H12t H14t.
+  apply canonical_q5_instruction_q19_hits_restored_raw; auto.
+  apply rev_restored_action_block_has_raw. exact Hne.
+Qed.
+
+Print Assumptions canonical_q5_instruction_q19_hits_restored_raw_nonempty.
