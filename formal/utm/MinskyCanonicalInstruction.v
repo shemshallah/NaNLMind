@@ -252,19 +252,11 @@ Proof.
   destruct (map q14_restore
     (rev (map match_mark action_init) ++ 5 :: rev tbuffer))
     as [|s D'] eqn:HD2.
-  - cbn [length].
-    change (step
-      (entry_config (if b then 22 else 21) (rev data)
-        (3 :: 7 :: map q16_restore
-               (rev (4 :: rev
-                 (instruction_marked bits (action_init ++ [b]) ++ [3]) ++
-                [4])) ++ source_bit bit :: tail)) =
-      entry_config 19 (source_bit b :: rev data)
-        (7 :: map q16_restore
-               (rev (4 :: rev
-                 (instruction_marked bits (action_init ++ [b]) ++ [3]) ++
-                [4])) ++ source_bit bit :: tail)).
-    apply q21_cross_right. exact Hq.
+  - destruct b.
+    + cbn [length run cfg_ml].
+      apply q21_cross_right. auto.
+    + cbn [length run cfg_ml].
+      apply q21_cross_right. auto.
   - cbn [length].
     change (run (S (length (s :: D')))
       (entry_config (if b then 22 else 21) (D' ++ 3 :: rev data)
@@ -347,20 +339,11 @@ Proof.
   destruct (map q14_restore
     (rev (map match_mark action_init) ++ 5 :: rev tbuffer))
     as [|s D'] eqn:HD2.
-  - cbn [length].
-    change (step
-      (entry_config (if b then 22 else 21) (rev data)
-        (2 :: 7 :: map q16_restore
-               (rev (4 :: rev
-                 (instruction_marked bits (action_init ++ [b]) ++ [2]) ++
-                [4])) ++ source_bit bit :: tail)) =
-      cfg_ml 20 (rev data)
-        (source_bit b ::
-         7 :: map q16_restore
-                (rev (4 :: rev
-                  (instruction_marked bits (action_init ++ [b]) ++ [2]) ++
-                 [4])) ++ source_bit bit :: tail)).
-    apply q21_cross_left. exact Hq.
+  - destruct b.
+    + cbn [length run cfg_ml].
+      apply q21_cross_left. auto.
+    + cbn [length run cfg_ml].
+      apply q21_cross_left. auto.
   - cbn [length].
     change (run (S (length (s :: D')))
       (entry_config (if b then 22 else 21) (D' ++ 2 :: rev data)
