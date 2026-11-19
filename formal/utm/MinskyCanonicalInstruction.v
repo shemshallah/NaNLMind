@@ -444,7 +444,7 @@ Proof.
   rewrite rev_map.
   rewrite rev_app_distr.
   cbn [rev].
-  rewrite rev_involutive.
+  repeat rewrite rev_involutive.
   rewrite map_app.
   cbn [map].
   rewrite map_app.
@@ -511,10 +511,13 @@ Proof.
     rewrite rev_restored_action_block.
     repeat rewrite Forall_app. repeat split.
     - apply Forall_map_q14_restore_raw. exact H14t.
-    - unfold raw_or_pass, q15_pass; auto 10.
+    - constructor.
+      + unfold raw_or_pass, q15_pass; auto 10.
+      + constructor.
     - apply Forall_map_source_bit_raw.
     - constructor.
-      destruct b; unfold raw_or_pass, source_bit; auto.
+      + destruct b; unfold raw_or_pass, source_bit; auto.
+      + constructor.
   }
   assert (Hin : In (source_bit b)
       (rev (map q14_restore
