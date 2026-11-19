@@ -125,13 +125,13 @@ Proof.
       - constructor. }
   }
   assert (H15_3 : Forall q15_pass
-      (map match_mark bits ++ map match_mark (action_init ++ [b]) ++
+      ((map match_mark bits ++ map match_mark (action_init ++ [b])) ++
        [3] ++ [4])).
   {
     rewrite Forall_app. split.
-    { apply Forall_match_mark. intros x. apply q15_mark. }
-    rewrite Forall_app. split.
-    { apply Forall_match_mark. intros x. apply q15_mark. }
+    { rewrite Forall_app. split.
+      + apply Forall_match_mark. intros x. apply q15_mark.
+      + apply Forall_match_mark. intros x. apply q15_mark. }
     rewrite Forall_app. split.
     { constructor.
       - unfold q15_pass; auto 10.
@@ -141,13 +141,13 @@ Proof.
       - constructor. }
   }
   assert (H15_2 : Forall q15_pass
-      (map match_mark bits ++ map match_mark (action_init ++ [b]) ++
+      ((map match_mark bits ++ map match_mark (action_init ++ [b])) ++
        [2] ++ [4])).
   {
     rewrite Forall_app. split.
-    { apply Forall_match_mark. intros x. apply q15_mark. }
-    rewrite Forall_app. split.
-    { apply Forall_match_mark. intros x. apply q15_mark. }
+    { rewrite Forall_app. split.
+      + apply Forall_match_mark. intros x. apply q15_mark.
+      + apply Forall_match_mark. intros x. apply q15_mark. }
     rewrite Forall_app. split.
     { constructor.
       - unfold q15_pass; auto 10.
