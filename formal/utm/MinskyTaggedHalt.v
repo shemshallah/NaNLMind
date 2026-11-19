@@ -78,3 +78,111 @@ Qed.
 
 Print Assumptions q3_scan_to_five_halts.
 Print Assumptions q15_left_false_guard_halt.
+
+
+(** Local copy of the 4-prefix bridge, kept here so this module only
+    depends on the tagged cycle file. *)
+Theorem q15_q16_four_prefix_roundtrip_local :
+  forall (old target : bool) (tags left suffix : list nat),
+    Forall q15_pass (rev tags) ->
+    Forall q16_pass (rev tags ++ [4]) ->
+    run (S (length (rev tags)) + S (length (rev tags ++ [4])))
+      (entry_config 15 (4 :: source_bit old :: left)
+        (rev tags ++ source_bit target :: suffix)) =
+    cfg_ml (if old then 22 else 21) left
+      (7 :: map q16_restore (rev (rev tags ++ [4])) ++
+       source_bit target :: suffix).
+Proof.
+  intros old target tags left suffix H15 H16.
+  rewrite dispatch_run_add.
+  rewrite (q15_scan_to_raw (rev tags) target
+    (4 :: source_bit old :: left) suffix H15).
+  replace (rev tags ++ 4 :: source_bit old :: left)
+    with ((rev tags ++ [4]) ++ source_bit old :: left)
+    by (rewrite <- app_assoc; reflexivity).
+  destruct (rev tags ++ [4]) as [|s remaining] eqn:H.
+  - assert (Hlen : length (rev tags ++ [4]) = 0)
+      by (rewrite H; reflexivity).
+    rewrite length_app in Hlen. cbn [length] in Hlen. lia.
+  - assert (H16' : Forall q16_pass (s :: remaining)) by exact H16.
+    cbn [app cfg_ml].
+    rewrite (q16_restore_to_raw remaining s old left
+      (source_bit target :: suffix) H16').
+    rewrite H. reflexivity.
+Qed.
+
+Lemma map_q16_restore_four_prefix :
+  forall tags,
+    map q16_restore (rev (rev tags ++ [4])) =
+    4 :: map q16_restore tags.
+Proof.
+  intros tags.
+  rewrite rev_app_distr. cbn [rev]. rewrite rev_involutive.
+  reflexivity.
+Qed.
+
+Theorem q15_q22_right_four_prefix_to_q19 :
+  forall (first : bool) (rest : list bool)
+         dir_head dir_remaining old target outer suffix,
+    Forall q21_pass (dir_head :: dir_remaining) ->
+    run (S (length (rev (map q0_stable_control_tag (first :: rest)))) +
+         S (length
+           (rev (map q0_stable_control_tag (first :: rest)) ++ [4])) +
+         S (length (dir_head :: dir_remaining)))
+      (entry_config 15
+        (4 :: source_bit old :: dir_head :: dir_remaining ++
+         3 :: outer)
+        (rev (map q0_stable_control_tag (first :: rest)) ++
+         source_bit target :: suffix)) =
+    entry_config 19 (source_bit old :: outer)
+      (rev (dir_head :: dir_remaining) ++
+       7 :: 4 ::
+       map q16_restore
+         (rev (map q0_stable_control_tag (first :: rest))) ++
+       source_bit target :: suffix).
+Proof.
+  intros first rest dir_head dir_remaining old target outer suffix H21.
+  assert (H15 : Forall q15_pass
+      (rev (map q0_stable_control_tag (first :: rest)))).
+  { apply q15_stable_control_rail_reverse_safe. }
+  assert (H16 : Forall q16_pass
+      (rev (map q0_stable_control_tag (first :: rest)) ++ [4])).
+  {
+    rewrite Forall_app. split.
+    - apply Forall_rev. apply q16_stable_control_rail_safe.
+    - constructor.
+      + unfold q16_pass; auto 12.
+      + constructor.
+  }
+  assert (Hq : (if old then 22 else 21) = 21 \/
+               (if old then 22 else 21) = 22)
+    by (destruct old; simpl; auto).
+  rewrite dispatch_run_add.
+  rewrite (q15_q16_four_prefix_roundtrip_local old target
+    (map q0_stable_control_tag (first :: rest))
+    (dir_head :: dir_remaining ++ 3 :: outer) suffix H15 H16).
+  rewrite map_q16_restore_four_prefix.
+  change (run (S (length (dir_head :: dir_remaining)))
+    (entry_config (if old then 22 else 21)
+      (dir_remaining ++ 3 :: outer)
+      (dir_head ::
+       7 :: 4 ::
+       map q16_restore
+         (rev (map q0_stable_control_tag (first :: rest))) ++
+       source_bit target :: suffix)) =
+    entry_config 19 (source_bit old :: outer)
+      (rev (dir_head :: dir_remaining) ++
+       7 :: 4 ::
+       map q16_restore
+         (rev (map q0_stable_control_tag (first :: rest))) ++
+       source_bit target :: suffix)).
+  rewrite (q21_scan_to_right_direction dir_remaining dir_head
+    (if old then 22 else 21) outer
+    (7 :: 4 ::
+     map q16_restore
+       (rev (map q0_stable_control_tag (first :: rest))) ++
+     source_bit target :: suffix) Hq H21).
+  destruct old; reflexivity.
+Qed.
+
+Print Assumptions q15_q22_right_four_prefix_to_q19.
