@@ -4863,3 +4863,183 @@ Proof.
 Qed.
 
 Print Assumptions q15_right_buffered_native_tagged_target_dispatch.
+
+
+(** The leftward return has a different native interface.  The q21
+    direction scan cannot pass a 2 (that is the direction command),
+    and the q17/q18 return cannot pass a 7 (that is its stop marker).
+    An ordinary 6,5 direction buffer satisfies both scanners.  The
+    cell displaced by q20 must be a *sacrificial false bit*: its 2
+    mark becomes q1's actual exit gate after q5 crosses the 6,5
+    buffer.  In particular this guard is not the arbitrary old bit.
+
+    The following is a native seven-step q5 -> q1 -> q0 -> q2/q3
+    theorem.  The arbitrary stored suffix beyond the stopping 5 is
+    untouched, and both 6/7 controls survive to q0's read phase. *)
+Theorem q5_left_false_gate_tagged_target_dispatch :
+  forall (old next extra target : bool) (outer tail : list nat),
+    run 7
+      (entry_config 5 (5 :: source_bit old :: 6 :: outer)
+        (6 :: 2 :: q0_stable_control_tag next ::
+         q0_stable_control_tag extra :: source_bit target :: tail)) =
+    if target
+    then entry_config 3
+      (3 :: rev [q0_stable_control_tag next;
+                 q0_stable_control_tag extra] ++
+       0 :: 6 :: 5 :: source_bit old :: 6 :: outer) tail
+    else cfg_ml 2
+      (rev [q0_stable_control_tag next;
+            q0_stable_control_tag extra] ++
+       0 :: 6 :: 5 :: source_bit old :: 6 :: outer) (2 :: tail).
+Proof.
+  intros old [] [] [] outer tail; reflexivity.
+Qed.
+
+(** The full LEFT relocation now composes with the seven-step return:
+       q15 -> q16 -> q21/q22 -> q20 -> q17 -> q5 -> q1 -> q0 -> q2/q3.
+    Every one of the 21 transitions is a literal MinskyTable.run
+    step.  All four live Boolean inputs, arbitrary outer tape, and
+    arbitrary right suffix are quantified; the false guard is an
+    explicit encoding obligation, not a statement of q12 reachability. *)
+Theorem q15_left_false_guard_native_tagged_target_dispatch :
+  forall (old next extra target : bool) (outer tail : list nat),
+    run 21
+      (entry_config 15
+        (source_bit old :: 6 :: 5 :: 2 :: source_bit false :: outer)
+        (q0_stable_control_tag next ::
+         q0_stable_control_tag extra :: source_bit target :: tail)) =
+    if target
+    then entry_config 3
+      (3 :: rev [q0_stable_control_tag next;
+                 q0_stable_control_tag extra] ++
+       0 :: 6 :: 5 :: source_bit old :: 6 :: outer) tail
+    else cfg_ml 2
+      (rev [q0_stable_control_tag next;
+            q0_stable_control_tag extra] ++
+       0 :: 6 :: 5 :: source_bit old :: 6 :: outer) (2 :: tail).
+Proof.
+  intros old next extra target outer tail.
+  assert (H21 : Forall q21_pass [6; 5]).
+  { repeat (constructor; try (unfold q21_pass; auto 12)). }
+  assert (H17 : Forall q17_pass (rev [6; 5])).
+  { repeat (constructor; try (unfold q17_pass; auto 12)). }
+  replace 21 with
+    ((direction_phase_cost
+        (map q0_stable_control_tag (extra :: [next])) [6; 5] +
+       (1 + S (length (source_bit old :: rev [6; 5])))) + 7)
+    by reflexivity.
+  rewrite writeback_run_add.
+  match goal with
+  | |- _ = ?expected =>
+    change (run 7
+      (run (direction_phase_cost
+              (map q0_stable_control_tag (extra :: [next]))
+              (6 :: [5]) +
+            (1 + S (length (source_bit old :: rev (6 :: [5])))))
+        (entry_config 15
+          (source_bit old :: 6 :: [5] ++
+           2 :: source_bit false :: outer)
+          (rev (map q0_stable_control_tag (extra :: [next])) ++
+           source_bit target :: tail))) = expected)
+  end.
+  rewrite (tagged_rail_left_relocates_to_q5
+    extra [next] 6 [5] old target false outer tail H21 H17).
+  change (run 7
+    (entry_config 5 (5 :: source_bit old :: 6 :: outer)
+      (6 :: 2 :: q0_stable_control_tag next ::
+       q0_stable_control_tag extra :: source_bit target :: tail)) =
+    if target
+    then entry_config 3
+      (3 :: rev [q0_stable_control_tag next;
+                 q0_stable_control_tag extra] ++
+       0 :: 6 :: 5 :: source_bit old :: 6 :: outer) tail
+    else cfg_ml 2
+      (rev [q0_stable_control_tag next;
+            q0_stable_control_tag extra] ++
+       0 :: 6 :: 5 :: source_bit old :: 6 :: outer) (2 :: tail)).
+  apply q5_left_false_gate_tagged_target_dispatch.
+Qed.
+
+Print Assumptions q5_left_false_gate_tagged_target_dispatch.
+Print Assumptions q15_left_false_guard_native_tagged_target_dispatch.
+
+(** Negative control: the other value of the sacrificial cell leaves a
+    3 at q1's gate.  q1 enters q4, whose raw-bit dispatch reverses the
+    expected q2/q3 state.  The quantification includes both targets,
+    both tagged controls, and arbitrary surrounding tape. *)
+Theorem q5_left_true_gate_reverses_target_dispatch :
+  forall (old next extra target : bool) (outer tail : list nat),
+    c_state (run 7
+      (entry_config 5 (5 :: source_bit old :: 6 :: outer)
+        (6 :: 3 :: q0_stable_control_tag next ::
+         q0_stable_control_tag extra :: source_bit target :: tail))) =
+    if target then 2 else 3.
+Proof.
+  intros old [] [] [] outer tail; reflexivity.
+Qed.
+
+Theorem q15_left_true_guard_reverses_target_dispatch :
+  forall (old next extra target : bool) (outer tail : list nat),
+    c_state (run 21
+      (entry_config 15
+        (source_bit old :: 6 :: 5 :: 2 :: source_bit true :: outer)
+        (q0_stable_control_tag next ::
+         q0_stable_control_tag extra :: source_bit target :: tail))) =
+    if target then 2 else 3.
+Proof.
+  intros old next extra target outer tail.
+  assert (H21 : Forall q21_pass [6; 5]).
+  { repeat (constructor; try (unfold q21_pass; auto 12)). }
+  assert (H17 : Forall q17_pass (rev [6; 5])).
+  { repeat (constructor; try (unfold q17_pass; auto 12)). }
+  replace 21 with
+    ((direction_phase_cost
+        (map q0_stable_control_tag (extra :: [next])) [6; 5] +
+       (1 + S (length (source_bit old :: rev [6; 5])))) + 7)
+    by reflexivity.
+  rewrite writeback_run_add.
+  match goal with
+  | |- _ = ?expected =>
+    change (c_state (run 7
+      (run (direction_phase_cost
+              (map q0_stable_control_tag (extra :: [next]))
+              (6 :: [5]) +
+            (1 + S (length (source_bit old :: rev (6 :: [5])))))
+        (entry_config 15
+          (source_bit old :: 6 :: [5] ++
+           2 :: source_bit true :: outer)
+          (rev (map q0_stable_control_tag (extra :: [next])) ++
+           source_bit target :: tail)))) = expected)
+  end.
+  rewrite (tagged_rail_left_relocates_to_q5
+    extra [next] 6 [5] old target true outer tail H21 H17).
+  change (c_state (run 7
+    (entry_config 5 (5 :: source_bit old :: 6 :: outer)
+      (6 :: 3 :: q0_stable_control_tag next ::
+       q0_stable_control_tag extra :: source_bit target :: tail))) =
+    if target then 2 else 3).
+  apply q5_left_true_gate_reverses_target_dispatch.
+Qed.
+
+(** In this explicit q15 left-buffer layout, a false guard is both
+    sufficient and necessary for the correct final q2/q3 state.  This
+    is a layout-specific iff, not a restriction on all encodings. *)
+Theorem q15_left_buffer_guard_correct_iff_false :
+  forall (old guard next extra target : bool) (outer tail : list nat),
+    (c_state (run 21
+      (entry_config 15
+        (source_bit old :: 6 :: 5 :: 2 :: source_bit guard :: outer)
+        (q0_stable_control_tag next ::
+         q0_stable_control_tag extra :: source_bit target :: tail))) =
+      if target then 3 else 2) <-> guard = false.
+Proof.
+  intros old [] next extra target outer tail.
+  - rewrite q15_left_true_guard_reverses_target_dispatch.
+    destruct target; simpl; split; intro H; discriminate H.
+  - rewrite q15_left_false_guard_native_tagged_target_dispatch.
+    destruct target; simpl; split; intro H; reflexivity.
+Qed.
+
+Print Assumptions q5_left_true_gate_reverses_target_dispatch.
+Print Assumptions q15_left_true_guard_reverses_target_dispatch.
+Print Assumptions q15_left_buffer_guard_correct_iff_false.

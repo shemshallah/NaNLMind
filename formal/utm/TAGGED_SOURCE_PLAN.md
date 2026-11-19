@@ -50,10 +50,22 @@ entry_config 15
 and ends at q3/q2 with the rail extended by `[true]` and the written
 mark `[if sacrificial then 3 else 2]`.
 
-The left branch needs the analogous buffered layout.  The existing
-left relocation theorem ends at a q5 frame whose immediate successor is
-the relocated 2/3 marker, so it does not directly match the buffered q5
-gate; the buffered left layout must be constructed explicitly.
+The left branch now has a **conditional, different** native buffered
+interface.  `q15_left_false_guard_native_tagged_target_dispatch` runs
+exactly 21 table steps from the supplied q15 zipper through q16,
+q21/q22, q20, q17, q5, q1 and q0 to q2/q3.  The input's left rail is
+`source_bit old :: [6;5;2;0] ++ outer`; its right rail consists of two
+6/7-tagged controls and a raw target.  The 0 is a **controlled
+sacrificial false guard** consumed by q20, not the arbitrary old bit.
+For any old, controls, target and stored suffix, q0 branches on the
+intended target with the stored suffix behind the 5 delimiter intact.
+
+The companion theorem `q15_left_true_guard_reverses_target_dispatch`
+proves that replacing the sacrificial 0 by 1 makes q1 take q4 and
+reverses the q2/q3 state.  The combined theorem
+`q15_left_buffer_guard_correct_iff_false` states the exact necessary
+and sufficient guard condition for **this** left frame.  These results
+are not claims of entry reachability or a universal encoding.
 
 The literal table fixes the left-gate constraint
 (`canonical_left_gate_branches_on_old_bit`):
@@ -88,9 +100,12 @@ cycle sees the same tagged interface.
 
 ## Proof obligations
 
-1. **Left buffered cycle.**  Construct the left analogue of
-   `q15_right_buffered_native_tagged_target_dispatch`, including its
-   buffer-layout lemma and q5 gate match.
+1. **Left buffered cycle (conditional native macro complete).**
+   The 21-step false-guard q15→q2/q3 theorem closes the local left
+   interface.  Still prove that the canonical q12 encoding can
+   *construct* its `6;5;2;0` left rail and preserve the guard across
+   successive instructions.  Also align its endpoint with the right
+   macro's endpoint under a shared normalization map.
 2. **Normalization.**  Define `normalize : Config -> Config` and prove it
    maps the q3/q2 outputs of both buffered cycles to the same tagged q15
    interface used by `encode`.
