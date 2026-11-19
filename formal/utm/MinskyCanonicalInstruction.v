@@ -664,3 +664,20 @@ Proof.
 Qed.
 
 Print Assumptions canonical_q5_instruction_left_branch_hits_current_cell.
+
+(** The left q5/q1 gate is deterministic only for a sacrificial false
+    bit.  q1 rewrites the returned old-bit mark and branches:
+    2 -> q0 (the intended gate), 3 -> q4 (mismatch path). *)
+Theorem canonical_left_gate_branches_on_old_bit :
+  forall (old : bool) (left tail : list nat),
+    step (entry_config 1 left
+      (entry_rewrite (source_bit old) :: tail)) =
+    if old
+    then entry_config 4 (1 :: left) tail
+    else entry_config 0 (0 :: left) tail.
+Proof.
+  intros old left tail.
+  destruct old; reflexivity.
+Qed.
+
+Print Assumptions canonical_left_gate_branches_on_old_bit.
