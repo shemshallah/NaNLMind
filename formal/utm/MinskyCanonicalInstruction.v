@@ -608,3 +608,119 @@ Proof.
 Qed.
 
 Print Assumptions canonical_q5_instruction_q19_hits_restored_raw_nonempty.
+
+Definition instruction_q20_clock
+    (bits action_init : list bool) (tbuffer : list nat) (b : bool) : nat :=
+  ((fetch_clock bits (action_init ++ [b]) +
+    direction_clock
+      (instruction_marked bits (action_init ++ [b]))
+      (map match_mark (action_init ++ [b]))) +
+   ((restore_clock (match_mark b)
+       (rev (map match_mark action_init)) tbuffer +
+     S (length
+       (instruction_marked bits (action_init ++ [b]) ++ [2] ++ [4]))) +
+    S (length
+      (4 :: rev
+        (instruction_marked bits (action_init ++ [b]) ++ [2]) ++ [4])))) +
+  S (length
+    (map q14_restore
+      (rev (map match_mark action_init) ++ 5 :: rev tbuffer))).
+
+(** Canonical left move: q20 steps onto the first raw cell to the left,
+    then q17/q18 return to the 7 left by q16.  The result is a q5 frame
+    with the source head moved one raw cell left. *)
+Theorem canonical_q5_instruction_left_move_to_q5 :
+  forall bits action_init tbuffer data b bit tail
+         s remaining target prefix,
+    length (action_init ++ [b]) = length bits ->
+    Forall q12_pass tbuffer ->
+    Forall q14_pass tbuffer ->
+    rev data = s :: (remaining ++ source_bit target :: prefix) ->
+    Forall q17_pass
+      (rev (s :: remaining) ++ source_bit b ::
+       rev (map q14_restore
+         (rev (map match_mark action_init) ++ 5 :: rev tbuffer))) ->
+    run (instruction_q20_clock bits action_init tbuffer b +
+         S (length (s :: remaining)) +
+         S (length
+           (rev (s :: remaining) ++ source_bit b ::
+            rev (map q14_restore
+              (rev (map match_mark action_init) ++ 5 :: rev tbuffer)))))
+      (entry_config 5
+        (rev (map source_bit bits) ++ 5 :: rev tbuffer ++ 6 :: rev data)
+        (4 :: map source_bit bits ++
+         map source_bit (action_init ++ [b]) ++
+         source_bit false :: 4 :: source_bit bit :: tail)) =
+    cfg_ml 5
+      (rev
+        (rev (s :: remaining) ++ source_bit b ::
+         rev (map q14_restore
+           (rev (map match_mark action_init) ++ 5 :: rev tbuffer))) ++
+       6 :: prefix)
+      ((if target then 3 else 2) ::
+       map q16_restore
+         (rev (4 :: rev
+           (instruction_marked bits (action_init ++ [b]) ++ [2]) ++ [4])) ++
+       source_bit bit :: tail).
+Proof.
+  intros bits action_init tbuffer data b bit tail
+    s remaining target prefix Hlen H12t H14t Hdata Hscan.
+  rewrite dispatch_run_add.
+  rewrite dispatch_run_add.
+  unfold instruction_q20_clock.
+  rewrite (canonical_q5_instruction_to_q20 bits action_init tbuffer
+    data b bit tail Hlen H12t H14t).
+  rewrite Hdata.
+  change (run (S (length (s :: remaining)))
+    (entry_config 20 (remaining ++ source_bit target :: prefix)
+      (s :: source_bit b :: rev (map q14_restore
+             (rev (map match_mark action_init) ++ 5 :: rev tbuffer)) ++
+           7 :: map q16_restore
+                  (rev (4 :: rev
+                    (instruction_marked bits (action_init ++ [b]) ++ [2]) ++
+                   [4])) ++
+           source_bit bit :: tail)) =
+    cfg_ml 5
+      (rev
+        (rev (s :: remaining) ++ source_bit b ::
+         rev (map q14_restore
+           (rev (map match_mark action_init) ++ 5 :: rev tbuffer))) ++
+       6 :: prefix)
+      ((if target then 3 else 2) ::
+       map q16_restore
+         (rev (4 :: rev
+           (instruction_marked bits (action_init ++ [b]) ++ [2]) ++ [4])) ++
+       source_bit bit :: tail)).
+  rewrite (q20_scan_to_m remaining s target prefix
+    (source_bit b :: rev (map q14_restore
+       (rev (map match_mark action_init) ++ 5 :: rev tbuffer)) ++
+     7 :: map q16_restore
+            (rev (4 :: rev
+              (instruction_marked bits (action_init ++ [b]) ++ [2]) ++
+             [4])) ++
+     source_bit bit :: tail)).
+  2:{ exact Hscan. }
+  destruct target.
+  - apply (q18_scan_to_marker
+      (rev (s :: remaining) ++ source_bit b ::
+       rev (map q14_restore
+         (rev (map match_mark action_init) ++ 5 :: rev tbuffer)))
+      (6 :: prefix)
+      (map q16_restore
+         (rev (4 :: rev
+           (instruction_marked bits (action_init ++ [b]) ++ [2]) ++ [4])) ++
+       source_bit bit :: tail)).
+    exact Hscan.
+  - apply (q17_scan_to_marker
+      (rev (s :: remaining) ++ source_bit b ::
+       rev (map q14_restore
+         (rev (map match_mark action_init) ++ 5 :: rev tbuffer)))
+      (6 :: prefix)
+      (map q16_restore
+         (rev (4 :: rev
+           (instruction_marked bits (action_init ++ [b]) ++ [2]) ++ [4])) ++
+       source_bit bit :: tail)).
+    exact Hscan.
+Qed.
+
+Print Assumptions canonical_q5_instruction_left_move_to_q5.
