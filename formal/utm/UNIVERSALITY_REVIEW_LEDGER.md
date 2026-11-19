@@ -917,3 +917,34 @@ clean-branch bridge
 passed on the same commit; main
 [700e702](https://github.com/shemshallah/NaNLMind/commit/700e702) passed
 the full bridge, mechanized UTM and CI jobs.
+
+## November 19 tagged-source plan and left-buffer interface gap
+
+`TAGGED_SOURCE_PLAN.md` fixes the remaining construction:
+
+1. left buffered tagged cycle (analogue of the verified right one),
+2. normalization of q3/q2 outputs back to the tagged q15 interface,
+3. source-step correspondence and halt reflection,
+4. tape invariant via the address-space bisimulation.
+
+The left analogue is blocked by an exact interface fact.  The left
+relocation result is
+
+```text
+cfg_ml 5
+  (dirs ++ source_bit old :: 6 :: outer)
+  ((if target then 3 else 2) :: rev tags ++ source_bit next :: suffix).
+```
+
+After `cfg_ml`, if the left head is the required `6`, the immediate right
+head is the raw delimiter `source_bit old` (0/1), not the buffered gate
+symbol `2`.  If the raw delimiter is kept in the left tape instead, it
+sits between the gate `6` and the tag rail and breaks the
+`6 :: map tag rail` shape.  This is the same class of obstruction as
+`q5_relocation_mark_cannot_directly_supply_six_gate`, now on the left
+arrival.
+
+The documented repair direction is the sacrificial raw bit plus protected
+`5` delimiter from the obstruction package.  Constructing that native
+left cycle, its buffer-normalization lemma, and the source encoding is
+the remaining work.  No universality claim is made.
