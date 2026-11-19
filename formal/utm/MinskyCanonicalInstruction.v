@@ -16,7 +16,8 @@ Import ListNotations.
 
 From NaNLM Require Import MinskyTable MinskySourceEncoding
   MinskyConcreteEntry MinskyConcreteDispatch MinskyMatchMacro
-  MinskyActionMacro MinskyHeadMoveMacro MinskyCanonicalMatch
+  MinskyActionMacro MinskyHeadMoveMacro MinskyDirectionDecision
+  MinskyCanonicalMatch
   MinskyCanonicalCopy MinskyCanonicalCopyGeneral MinskyCanonicalDirection
   MinskyCanonicalRestore MinskyCanonicalDecision MinskyCanonicalFetch.
 
