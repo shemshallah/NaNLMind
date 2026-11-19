@@ -945,9 +945,21 @@ sits between the gate `6` and the tag rail and breaks the
 arrival.
 
 The documented repair direction is the sacrificial raw bit plus protected
-`5` delimiter from the obstruction package.  Constructing that native
-left cycle, its buffer-normalization lemma, and the source encoding is
-the remaining work.
+`5` delimiter from the obstruction package.  The left cycle is now
+implemented:
+
+- `q15_left_false_guard_native_tagged_target_dispatch` (21 literal
+  steps, q15 -> q2/q3),
+- `q15_left_buffer_guard_correct_iff_false` (the false guard is
+  necessary and sufficient),
+- `q15_left_true_guard_reverses_target_dispatch` (the true guard sends
+  the dispatch to the opposite q2/q3 state).
+
+Reentry and halt hooks are literal table facts:
+`q3_at_marker_step` (q3 on X=4 enters q5) and `q3_five_halts`
+(q3 on Y=5 halts, kernel-checked as a c_halted consequence).
+The remaining work is the source encoder, the q2/q3 match reentry, the
+tape invariant, and macro-step/halt instantiation.
 
 A literal table check pins the left gate:
 `canonical_left_gate_branches_on_old_bit` proves
