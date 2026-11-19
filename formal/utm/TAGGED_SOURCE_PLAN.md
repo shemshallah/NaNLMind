@@ -206,3 +206,32 @@ run (S |rev tags| + S |tags ++ [4]|)
     (7 :: map q16_restore (rev (tags ++ [4])) ++
      source_bit target :: suffix).
 ```
+
+## 4-prefix checkpoint: proved
+
+`q15_q16_four_prefix_roundtrip` is kernel-checked:
+
+```text
+run (S |rev tags| + S |rev tags ++ [4]|)
+  (entry_config 15 (4 :: source_bit old :: left)
+    (rev tags ++ source_bit target :: suffix))
+= cfg_ml (if old then 22 else 21) left
+    (7 :: map q16_restore (rev (rev tags ++ [4])) ++
+     source_bit target :: suffix).
+```
+
+The canonical `4` is absorbed as a q16-scanned cell and appears in the
+restored map as `4 :: ...`.
+
+`q1_four_to_q6` proves the loop-closing interpretation:
+
+```text
+step (entry_config 1 left (4 :: tail)) =
+  entry_config 6 (4 :: left) tail
+```
+
+q1 crosses X=4 into q6, the canonical action-copy entry.  So the
+4-prefix can be the next instruction's X marker, not an obstacle.
+
+Next: thread the 4-prefix through q21/q22, q19/q20, q17/q18 and the
+q5/q1 rail, then use q1_four_to_q6 as the reentry.

@@ -1039,3 +1039,34 @@ generalize the tagged roundtrip with a q16-pass prefix.  The prefix may
 also serve as the natural X=4 reentry to q6 for the next instruction.
 No theorem is claimed yet; the checkpoint statement is recorded in
 `TAGGED_SOURCE_PLAN.md`.
+
+## November 19 4-prefix bridge checkpoint (kernel-checked)
+
+`q15_q16_four_prefix_roundtrip` proves that the canonical q14 leading
+`4` can be absorbed by the q16 backscan:
+
+```text
+run (S |rev tags| + S |rev tags ++ [4]|)
+  (entry_config 15 (4 :: source_bit old :: left)
+    (rev tags ++ source_bit target :: suffix))
+= cfg_ml (if old then 22 else 21) left
+    (7 :: map q16_restore (rev (rev tags ++ [4])) ++
+     source_bit target :: suffix).
+```
+
+`q1_four_to_q6` shows the loop-closing role of that `4`:
+
+```text
+step (entry_config 1 left (4 :: tail)) =
+  entry_config 6 (4 :: left) tail.
+```
+
+q1 crosses X=4 into q6, the canonical action-copy entry, so the prefix
+can be the next instruction's X marker rather than a gate failure.
+
+Verification: fast q15-q22 job
+[44603700043](https://github.com/shemshallah/NaNLMind/actions/runs/44603700043)
+for the checkpoint and
+[44606126358](https://github.com/shemshallah/NaNLMind/actions/runs/44606126358)
+for `q1_four_to_q6`; clean-branch bridge
+[44606044164](https://github.com/shemshallah/NaNLMind/actions/runs/44606044164).
