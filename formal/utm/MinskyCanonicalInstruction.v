@@ -749,3 +749,39 @@ Proof. intros left tail. reflexivity. Qed.
 
 Print Assumptions q12_six_exits_to_q14.
 Print Assumptions q13_six_exits_to_q14.
+
+(** The canonical q14 frame has a leading 4 before the tagged delimiter.
+    q16 can absorb that 4 as an extra scanned cell and still stop at the
+    raw old delimiter.  This is the checkpoint bridge between the
+    canonical restore frame and the tagged movement frame. *)
+Theorem q15_q16_four_prefix_roundtrip :
+  forall (old target : bool) (tags left suffix : list nat),
+    Forall q15_pass (rev tags) ->
+    Forall q16_pass (rev tags ++ [4]) ->
+    run (S (length (rev tags)) + S (length (rev tags ++ [4])))
+      (entry_config 15 (4 :: source_bit old :: left)
+        (rev tags ++ source_bit target :: suffix)) =
+    cfg_ml (if old then 22 else 21) left
+      (7 :: map q16_restore (rev (rev tags ++ [4])) ++
+       source_bit target :: suffix).
+Proof.
+  intros old target tags left suffix H15 H16.
+  rewrite dispatch_run_add.
+  rewrite (q15_scan_to_raw (rev tags) target
+    (4 :: source_bit old :: left) suffix H15).
+  replace (rev tags ++ 4 :: source_bit old :: left)
+    with ((rev tags ++ [4]) ++ source_bit old :: left)
+    by (rewrite <- app_assoc; reflexivity).
+  destruct (rev tags ++ [4]) as [|s remaining] eqn:H.
+  - assert (Hlen : length ([] : list nat) = length (rev tags ++ [4]))
+      by (rewrite H; reflexivity).
+    rewrite app_length in Hlen. cbn [length] in Hlen. lia.
+  - assert (H16' : Forall q16_pass (s :: remaining)).
+    { rewrite <- H. exact H16. }
+    cbn [cfg_ml].
+    rewrite (q16_restore_to_raw remaining s old left
+      (source_bit target :: suffix) H16').
+    rewrite H. reflexivity.
+Qed.
+
+Print Assumptions q15_q16_four_prefix_roundtrip.
