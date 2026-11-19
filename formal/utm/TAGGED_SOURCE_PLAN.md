@@ -160,3 +160,42 @@ encoding that pre-loads a 6/7 rail before q12 is incompatible with the
 literal table.
 
 Lemmas: `q12_six_exits_to_q14`, `q13_six_exits_to_q14`.
+
+## 4-prefix bridge candidate
+
+The canonical q14 output always starts its left tape with the X marker
+`4`.  The tagged q15 entry starts with a raw delimiter:
+
+```text
+tagged:    source_bit old :: left
+canonical: 4 :: source_bit old :: left
+```
+
+These differ only by a leading `4`, which is q15/q16/q19/q21 passable
+and q16_restore identity.  The q16 backscan can treat the `4` as part of
+its scanned prefix:
+
+```text
+remaining = rev tags ++ [4],  raw stopper = source_bit old.
+```
+
+So a generalized tagged cycle with a q16-passable prefix can absorb the
+canonical `4` and place it in the q16-restored map, where later scans
+pass it.  This is the most plausible bridge between the canonical
+restore frame and the tagged movement frame.
+
+Open: prove the generalized q15/q16 roundtrip and thread the prefix
+through q21/q22, q19/q20, q17/q18, q5/q1/q0.  The prefix may also be the
+natural X=4 reentry to q6 for the next instruction, which would close the
+loop rather than break the q1 gate.
+
+A minimal checkpoint theorem to prove first:
+
+```text
+run (S |rev tags| + S |rev tags ++ [4]|)
+  (entry_config 15 (4 :: source_bit old :: left)
+    (rev tags ++ source_bit target :: suffix))
+= cfg_ml (if old then 22 else 21) left
+    (7 :: map q16_restore (rev (rev tags ++ [4])) ++
+     source_bit target :: suffix).
+```

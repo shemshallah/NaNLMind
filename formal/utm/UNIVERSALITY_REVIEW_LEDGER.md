@@ -1028,3 +1028,14 @@ Verification: fast q15-q22 job
 on `096c55e`; clean-branch bridge
 [44591572127](https://github.com/shemshallah/NaNLMind/actions/runs/44591572127)
 was dispatched on the same commit.
+
+### 4-prefix bridge candidate
+
+The canonical q14 frame and the tagged q15 frame differ by a leading
+`4` on the left tape.  Because 4 is passable in q15/q16/q19/q21 and is
+fixed by q16_restore, the q16 backscan can absorb it as an extra scanned
+cell before the raw delimiter.  This gives a concrete bridge direction:
+generalize the tagged roundtrip with a q16-pass prefix.  The prefix may
+also serve as the natural X=4 reentry to q6 for the next instruction.
+No theorem is claimed yet; the checkpoint statement is recorded in
+`TAGGED_SOURCE_PLAN.md`.
