@@ -128,7 +128,7 @@ Theorem q15_q22_right_four_prefix_to_q19 :
     Forall q21_pass (dir_head :: dir_remaining) ->
     run (S (length (rev (map q0_stable_control_tag (first :: rest)))) +
          S (length
-           (rev (map q0_stable_control_tag (first :: rest)) ++ [4])) +
+           (map q0_stable_control_tag (first :: rest) ++ [4])) +
          S (length (dir_head :: dir_remaining)))
       (entry_config 15
         (4 :: source_bit old :: dir_head :: dir_remaining ++
@@ -159,7 +159,6 @@ Proof.
                (if old then 22 else 21) = 22)
     by (destruct old; simpl; auto).
   rewrite dispatch_run_add.
-  match goal with |- ?G => idtac "Q19PREFIX:" G end.
   rewrite (q15_q16_four_prefix_roundtrip_local old target
     (map q0_stable_control_tag (first :: rest))
     (dir_head :: dir_remaining ++ 3 :: outer) suffix H15 H16).
