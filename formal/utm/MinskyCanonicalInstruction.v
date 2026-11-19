@@ -234,14 +234,13 @@ Proof.
       (map q14_restore
         (rev (map match_mark action_init) ++ 5 :: rev tbuffer))).
   {
+    rewrite map_app.
     rewrite Forall_app. split.
     - apply Forall_q14_restore_q21. apply Forall_rev.
       apply Forall_match_mark.
       intros x. destruct x; unfold q14_pass, match_mark; auto 10.
-    - rewrite Forall_app. split.
-      + constructor.
-        * unfold q21_pass; auto 10.
-        * constructor.
+    - cbn [map]. constructor.
+      + unfold q21_pass; auto 10.
       + apply Forall_q14_restore_q21. apply Forall_rev. exact H14t.
   }
   assert (Hq : (if b then 22 else 21) = 21 \/
@@ -330,14 +329,13 @@ Proof.
       (map q14_restore
         (rev (map match_mark action_init) ++ 5 :: rev tbuffer))).
   {
+    rewrite map_app.
     rewrite Forall_app. split.
     - apply Forall_q14_restore_q21. apply Forall_rev.
       apply Forall_match_mark.
       intros x. destruct x; unfold q14_pass, match_mark; auto 10.
-    - rewrite Forall_app. split.
-      + constructor.
-        * unfold q21_pass; auto 10.
-        * constructor.
+    - cbn [map]. constructor.
+      + unfold q21_pass; auto 10.
       + apply Forall_q14_restore_q21. apply Forall_rev. exact H14t.
   }
   assert (Hq : (if b then 22 else 21) = 21 \/
