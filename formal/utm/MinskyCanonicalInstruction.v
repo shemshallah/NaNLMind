@@ -731,3 +731,21 @@ Proof.
 Qed.
 
 Print Assumptions q3_scan_to_five_halts.
+
+(** Symbol collision for pre-existing tags: 6 is the q12/q13 M
+    delimiter, not a passable control tag.  A 6 in the q12/q13 scan
+    immediately writes the restored X bit and enters q14. *)
+Lemma q12_six_exits_to_q14 :
+  forall left tail,
+    step (entry_config 12 left (6 :: tail)) =
+    entry_config 14 (3 :: left) tail.
+Proof. intros left tail. reflexivity. Qed.
+
+Lemma q13_six_exits_to_q14 :
+  forall left tail,
+    step (entry_config 13 left (6 :: tail)) =
+    entry_config 14 (2 :: left) tail.
+Proof. intros left tail. reflexivity. Qed.
+
+Print Assumptions q12_six_exits_to_q14.
+Print Assumptions q13_six_exits_to_q14.
