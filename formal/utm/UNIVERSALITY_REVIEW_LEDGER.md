@@ -753,3 +753,47 @@ was dispatched on the corrected commit.
 This correction is a frame-pairing fix, not a new negative result.  The
 raw-control ordering obstruction and the tagged 6/7 control channel are
 unchanged.  No source-step, halting, or universality claim is made.
+
+## November 19 canonical instruction: q5 through q16 decision
+
+`MinskyCanonicalInstruction.v` composes the canonical phases into one
+exact native run:
+
+```text
+q5 match -> q6 action copy -> q9/q10 direction capture
+-> q12/q13 restore -> q15 across the next X=4 -> q16 decision.
+```
+
+Entry: condition `bits`, action `action_init ++ [b]`, direction `dir`,
+next record `X=4` and first raw bit.  Hypotheses are the action/condition
+length equality and `Forall q12_pass`/`Forall q14_pass` on the t-buffer.
+
+`canonical_q5_fetch_to_q16_decision` ends at
+
+```text
+cfg_ml (if b then 22 else 21)
+  (map q14_restore
+    (rev (map match_mark action_init) ++ 5 :: rev t-buffer) ++
+   (if dir then 3 else 2) :: rev data)
+  (7 :: map q16_restore
+    (rev (4 :: rev
+      (instruction_marked bits (action_init ++ [b]) ++
+       [(if dir then 3 else 2)]) ++ [4])) ++
+   source_bit bit :: tail).
+```
+
+The clock is the literal sum of `fetch_clock`, `direction_clock`,
+`restore_clock`, the q15 scan across the next `X=4`, and the q16
+backscan.  The direction pairing is now the native one: q12 with mark 3
+(right) and q13 with mark 2 (left).
+
+Verification: fast q15-q22 job
+[44429121196](https://github.com/shemshallah/NaNLMind/actions/runs/44429121196)
+on `1bfeb07`; full bridge
+[44429619546](https://github.com/shemshallah/NaNLMind/actions/runs/44429619546)
+was dispatched on the same commit.
+
+Scope: one instruction fetch/decode/action-copy/direction/restore/decision
+macro.  q19/q20 relocation, q17/q18 return, the whole-source invariant,
+the raw-control ordering fix, halting reflection and universality remain
+open.  The documented premature-raw-capture obstruction is unchanged.
