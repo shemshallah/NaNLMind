@@ -777,7 +777,7 @@ Proof.
       by (rewrite H; reflexivity).
     rewrite app_length in Hlen. cbn [length] in Hlen. lia.
   - assert (H16' : Forall q16_pass (s :: remaining)) by exact H16.
-    cbn [cfg_ml].
+    cbn [app cfg_ml].
     rewrite (q16_restore_to_raw remaining s old left
       (source_bit target :: suffix) H16').
     reflexivity.
