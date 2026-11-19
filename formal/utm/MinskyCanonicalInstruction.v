@@ -681,3 +681,15 @@ Proof.
 Qed.
 
 Print Assumptions canonical_left_gate_branches_on_old_bit.
+
+(** q3's two reentry/halt exits: on X=4 it enters q5 (already
+    `q3_at_marker_step`), and on Y=5 it halts.  This is the native halt
+    hook for a source-program end marker. *)
+Lemma q3_five_halts :
+  forall left tail,
+    c_halted (step (entry_config 3 left (5 :: tail))) = true.
+Proof.
+  intros left tail. reflexivity.
+Qed.
+
+Print Assumptions q3_five_halts.
