@@ -28,7 +28,7 @@ Lemma q1_two_to_q0 :
 Proof. intros left tail. reflexivity. Qed.
 
 Lemma q5_left_buffer_pass :
-  Forall q5_return_pass (6 :: source_bit false :: 6).
+  Forall q5_return_pass (6 :: source_bit false :: [6]).
 Proof.
   constructor.
   - unfold q5_return_pass; auto 12.
@@ -57,7 +57,7 @@ Theorem tagged_rail_left_buffered_native_tagged_target_dispatch :
       ((direction_phase_cost
           (map q0_stable_control_tag (first :: rest)) [6] +
         (1 + S (length (source_bit false :: rev [6])))) +
-       (S (length (6 :: source_bit false :: 6)) +
+       (S (length (6 :: source_bit false :: [6])) +
         (1 + (1 + (length pre + 5)))))
       (entry_config 15
         (source_bit false :: 6 :: 2 :: source_bit target :: 5 :: stored)
@@ -96,7 +96,7 @@ Proof.
     target (5 :: stored) tail H21 H17).
   cbn [rev source_bit].
   change (run
-    (S (length (6 :: 0 :: 6)) + (1 + (1 + (length pre + 5))))
+    (S (length (6 :: 0 :: [6])) + (1 + (1 + (length pre + 5))))
     (entry_config 5 (0 :: 6 :: 5 :: stored)
       (6 :: (if target then 3 else 2) ::
        rev (map q0_stable_control_tag (first :: rest)) ++
