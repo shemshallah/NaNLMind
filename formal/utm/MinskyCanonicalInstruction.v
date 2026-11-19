@@ -441,7 +441,7 @@ Lemma rev_restored_action_block :
       map source_bit action_init ++ [source_bit b].
 Proof.
   intros action_init tbuffer b.
-  rewrite rev_map.
+  rewrite map_rev.
   rewrite rev_app_distr.
   cbn [rev].
   repeat rewrite rev_involutive.
