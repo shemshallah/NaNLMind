@@ -1070,3 +1070,24 @@ for the checkpoint and
 [44606126358](https://github.com/shemshallah/NaNLMind/actions/runs/44606126358)
 for `q1_four_to_q6`; clean-branch bridge
 [44606044164](https://github.com/shemshallah/NaNLMind/actions/runs/44606044164).
+
+### 4-prefix through q22 to q19 (kernel-checked)
+
+`q15_q22_right_four_prefix_to_q19` composes the 4-prefix q15/q16 bridge
+with the q21/q22 direction decision.  The result is
+
+```text
+entry_config 19 (source_bit old :: outer)
+  (rev dirs ++ 7 :: 4 ::
+   map q16_restore (rev tags) ++ source_bit target :: suffix).
+```
+
+The leading `4` is now inside the q16-restored map, after the `7` marker,
+and is q19-passable.  It no longer prevents the relocation scan from
+reaching the raw target.
+
+Fast job
+[44611737278](https://github.com/shemshallah/NaNLMind/actions/runs/44611737278)
+on `c589061`; clean-branch bridge
+[44612400386](https://github.com/shemshallah/NaNLMind/actions/runs/44612400386)
+was dispatched on the same commit.

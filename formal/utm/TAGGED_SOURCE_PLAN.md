@@ -235,3 +235,26 @@ q1 crosses X=4 into q6, the canonical action-copy entry.  So the
 
 Next: thread the 4-prefix through q21/q22, q19/q20, q17/q18 and the
 q5/q1 rail, then use q1_four_to_q6 as the reentry.
+
+## 4-prefix through q22 to q19 (proved)
+
+`q15_q22_right_four_prefix_to_q19` threads the prefix through the
+direction decision:
+
+```text
+run (S |rev tags| + S |tags ++ [4]| + S |dirs|)
+  (entry_config 15
+    (4 :: source_bit old :: dirs ++ 3 :: outer)
+    (rev tags ++ source_bit target :: suffix))
+= entry_config 19 (source_bit old :: outer)
+    (rev dirs ++ 7 :: 4 ::
+     map q16_restore (rev tags) ++ source_bit target :: suffix).
+```
+
+The `4` sits between the q16 marker `7` and the restored tag rail.  It is
+q19-passable, so it does not stop the relocation scan; the scan still
+reaches the intended raw target.  This removes the leading-4 mismatch as
+an obstacle for the right branch.
+
+Next: thread the same prefix through q19/q20, q17/q18, and the q5/q1
+rail, then use `q1_four_to_q6` as the next-instruction reentry.
