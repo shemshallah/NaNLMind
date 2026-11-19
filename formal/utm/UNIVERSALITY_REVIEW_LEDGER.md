@@ -865,10 +865,18 @@ Supporting lemmas: `raw_or_pass`, `q14_restore_raw_or_pass`,
 Verification: fast q15-q22 job
 [44451052559](https://github.com/shemshallah/NaNLMind/actions/runs/44451052559)
 on `9e4b846`; full bridge
-[44451499362](https://github.com/shemshallah/NaNLMind/actions/runs/44451499362)
-was dispatched on the same commit.
+[44453858351](https://github.com/shemshallah/NaNLMind/actions/runs/44453858351)
+passed on the clean branch `proof/canonical-collision` at the same commit.
 
 This is a negative result for the raw canonical layout.  It does not
 prove non-universality of the frozen table; the tagged 6/7 control
 channel remains the repair path.  Whole-source invariants, halting
 reflection and universality remain open.
+
+Bridge note: the clean branch `proof/canonical-collision` at `9e4b846`
+passed the full rebuild in
+[44453858351](https://github.com/shemshallah/NaNLMind/actions/runs/44453858351).
+A later bridge run on `main` (`44451499362`) failed inside the
+concurrently edited `MinskyDirectionRelocationCycle.v`; the canonical
+instruction module compiled successfully before that point and its own
+fast job passed.
