@@ -4743,3 +4743,98 @@ Proof.
 Qed.
 
 Print Assumptions q15_right_tagged_return_buffer_layout.
+
+
+(** Native right-moving direction, relocation, return, and branch dispatch:
+    q15 -> q16 -> q22 -> q19 -> q17/q18 -> q5 -> q1 -> q0 -> q2/q3.
+    The one-cell [2] buffer, direction cell [5], and auxiliary [7]
+    are present on the INPUT tape, and no symbolic source executor is
+    used.  This theorem starts at its stated q15 configuration; it does
+    not prove canonical q12 reachability or a whole instruction cycle. *)
+Theorem q15_right_buffered_native_tagged_target_dispatch :
+  forall (first : bool) (rest : list bool)
+         (old sacrificial next extra target : bool)
+         (outer tail : list nat),
+    run
+      ((direction_phase_cost
+          (map q0_stable_control_tag (first :: rest)) [5] +
+        (S (length
+          ([5] ++ 7 :: rev
+            (map q0_stable_control_tag (first :: rest)))) +
+         S (length [2]))) +
+       ((S (length (2 :: 6 ::
+           map q0_stable_control_tag
+             ((first :: rest) ++ [true]))) +
+         (length (map q0_stable_control_tag
+           ((first :: rest) ++ [true])) + 2)) + 4))
+      (entry_config 15
+        (source_bit old :: 5 :: 3 :: outer)
+        (rev (map q0_stable_control_tag (first :: rest)) ++
+         source_bit sacrificial :: 2 :: 7 ::
+         q0_stable_control_tag next ::
+         q0_stable_control_tag extra ::
+         source_bit target :: tail)) =
+    if target
+    then entry_config 3
+      (3 :: rev
+        ([if sacrificial then 3 else 2] ++
+         [q0_stable_control_tag next;
+          q0_stable_control_tag extra]) ++
+       0 :: 6 :: map q0_stable_control_tag
+         ((first :: rest) ++ [true]) ++
+       5 :: source_bit old :: outer) tail
+    else cfg_ml 2
+      (rev
+        ([if sacrificial then 3 else 2] ++
+         [q0_stable_control_tag next;
+          q0_stable_control_tag extra]) ++
+       0 :: 6 :: map q0_stable_control_tag
+         ((first :: rest) ++ [true]) ++
+       5 :: source_bit old :: outer) (2 :: tail).
+Proof.
+  intros first rest old sacrificial next extra target outer tail.
+  assert (H21 : Forall q21_pass [5]).
+  { constructor.
+    - unfold q21_pass; auto 12.
+    - constructor.
+  }
+  assert (H15 : Forall q15_pass (rev [5])).
+  { constructor.
+    - unfold q15_pass; auto 12.
+    - constructor.
+  }
+  assert (H17 : Forall q17_pass [2]).
+  { constructor.
+    - unfold q17_pass; auto 12.
+    - constructor.
+  }
+  rewrite writeback_run_add.
+  rewrite (tagged_rail_right_relocates_to_q5
+    first rest 5 [] old sacrificial outer [2]
+    (q0_stable_control_tag next ::
+     q0_stable_control_tag extra ::
+     source_bit target :: tail) H21 H15 H17).
+  match goal with
+  | |- _ = ?expected =>
+    change (run
+      ((S (length (2 :: 6 ::
+           map q0_stable_control_tag
+             ((first :: rest) ++ [true]))) +
+        (length (map q0_stable_control_tag
+           ((first :: rest) ++ [true])) + 2)) + 4)
+      (entry_config 5
+        (6 ::
+         (rev (rev [5] ++ 7 ::
+            rev (map q0_stable_control_tag (first :: rest))) ++
+          source_bit old :: outer))
+        (2 :: (if sacrificial then 3 else 2) ::
+         q0_stable_control_tag next ::
+         q0_stable_control_tag extra ::
+         source_bit target :: tail)) = expected)
+  end.
+  rewrite (q15_right_tagged_return_buffer_layout
+    (first :: rest) old outer).
+  apply q5_q1_q0_buffered_tagged_target_dispatch.
+Qed.
+
+Print Assumptions q15_right_buffered_native_tagged_target_dispatch.
