@@ -85,39 +85,40 @@ Print Assumptions q15_left_false_guard_halt.
 Theorem q15_q16_four_prefix_roundtrip_local :
   forall (old target : bool) (tags left suffix : list nat),
     Forall q15_pass (rev tags) ->
-    Forall q16_pass (rev tags ++ [4]) ->
-    run (S (length (rev tags)) + S (length (rev tags ++ [4])))
+    Forall q16_pass (tags ++ [4]) ->
+    run (S (length (rev tags)) + S (length (tags ++ [4])))
       (entry_config 15 (4 :: source_bit old :: left)
         (rev tags ++ source_bit target :: suffix)) =
     cfg_ml (if old then 22 else 21) left
-      (7 :: map q16_restore (rev (rev tags ++ [4])) ++
+      (7 :: map q16_restore (rev (tags ++ [4])) ++
        source_bit target :: suffix).
 Proof.
   intros old target tags left suffix H15 H16.
   rewrite dispatch_run_add.
   rewrite (q15_scan_to_raw (rev tags) target
     (4 :: source_bit old :: left) suffix H15).
-  replace (rev tags ++ 4 :: source_bit old :: left)
-    with ((rev tags ++ [4]) ++ source_bit old :: left)
+  rewrite rev_involutive.
+  replace (tags ++ 4 :: source_bit old :: left)
+    with ((tags ++ [4]) ++ source_bit old :: left)
     by (rewrite <- app_assoc; reflexivity).
-  destruct (rev tags ++ [4]) as [|s remaining] eqn:H.
-  - assert (Hlen : length (rev tags ++ [4]) = 0)
+  destruct (tags ++ [4]) as [|s remaining] eqn:H.
+  - assert (Hlen : length (tags ++ [4]) = 0)
       by (rewrite H; reflexivity).
     rewrite length_app in Hlen. cbn [length] in Hlen. lia.
   - assert (H16' : Forall q16_pass (s :: remaining)) by exact H16.
     cbn [app cfg_ml].
     rewrite (q16_restore_to_raw remaining s old left
       (source_bit target :: suffix) H16').
-    rewrite H. reflexivity.
+    reflexivity.
 Qed.
 
 Lemma map_q16_restore_four_prefix :
   forall tags,
-    map q16_restore (rev (rev tags ++ [4])) =
-    4 :: map q16_restore tags.
+    map q16_restore (rev (tags ++ [4])) =
+    4 :: map q16_restore (rev tags).
 Proof.
   intros tags.
-  rewrite rev_app_distr. cbn [rev]. rewrite rev_involutive.
+  rewrite rev_app_distr. cbn [rev].
   reflexivity.
 Qed.
 
@@ -146,10 +147,10 @@ Proof.
       (rev (map q0_stable_control_tag (first :: rest)))).
   { apply q15_stable_control_rail_reverse_safe. }
   assert (H16 : Forall q16_pass
-      (rev (map q0_stable_control_tag (first :: rest)) ++ [4])).
+      (map q0_stable_control_tag (first :: rest) ++ [4])).
   {
     rewrite Forall_app. split.
-    - apply Forall_rev. apply q16_stable_control_rail_safe.
+    - apply q16_stable_control_rail_safe.
     - constructor.
       + unfold q16_pass; auto 12.
       + constructor.
