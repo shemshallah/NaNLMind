@@ -434,26 +434,22 @@ Proof.
 Qed.
 
 Lemma rev_restored_action_block :
-  forall (action_init : list bool) (tbuffer : list nat) b,
+  forall (action : list bool) (tbuffer : list nat),
     rev (map q14_restore
-      (rev (map match_mark (action_init ++ [b])) ++ 5 :: rev tbuffer)) =
-    map q14_restore tbuffer ++ [5] ++
-      map source_bit action_init ++ [source_bit b].
+      (rev (map match_mark action) ++ 5 :: rev tbuffer)) =
+    map q14_restore tbuffer ++ [5] ++ map source_bit action.
 Proof.
-  intros action_init tbuffer b.
+  intros action tbuffer.
   rewrite <- map_rev.
   rewrite rev_app_distr.
   cbn [rev].
   repeat rewrite rev_involutive.
-  rewrite map_app.
-  cbn [map].
+  rewrite map_app. cbn [map].
   rewrite map_app.
   rewrite map_map.
-  replace (map (fun x => q14_restore (match_mark x))
-             (action_init ++ [b]))
-    with (map source_bit (action_init ++ [b]))
+  replace (map (fun x => q14_restore (match_mark x)) action)
+    with (map source_bit action)
     by (apply map_ext; intro x; destruct x; reflexivity).
-  rewrite map_app. cbn [map].
   repeat rewrite <- app_assoc.
   reflexivity.
 Qed.
@@ -475,13 +471,17 @@ Definition instruction_q19_clock
     (map q14_restore
       (rev (map match_mark action_init) ++ 5 :: rev tbuffer))).
 
-(** q19's first raw cell lies inside the restored action block, before the
-    7 written by q16.  This is the canonical premature-raw capture. *)
+(** If the restored action block contains a raw 0/1 cell, q19's first
+    relocation target is that cell, before the 7 written by q16. *)
 Theorem canonical_q5_instruction_q19_hits_restored_raw :
   forall bits action_init tbuffer data b bit tail,
     length (action_init ++ [b]) = length bits ->
     Forall q12_pass tbuffer ->
     Forall q14_pass tbuffer ->
+    (exists x,
+      In x (rev (map q14_restore
+        (rev (map match_mark action_init) ++ 5 :: rev tbuffer))) /\
+      (x = 0 \/ x = 1)) ->
     exists pre (hit : bool) post,
       rev (map q14_restore
         (rev (map match_mark action_init) ++ 5 :: rev tbuffer)) =
@@ -503,7 +503,7 @@ Theorem canonical_q5_instruction_q19_hits_restored_raw :
                  [4])) ++
          source_bit bit :: tail).
 Proof.
-  intros bits action_init tbuffer data b bit tail Hlen H12t H14t.
+  intros bits action_init tbuffer data b bit tail Hlen H12t H14t HrawIn.
   assert (Hraw : Forall raw_or_pass
       (rev (map q14_restore
         (rev (map match_mark action_init) ++ 5 :: rev tbuffer)))).
@@ -515,29 +515,11 @@ Proof.
       + unfold raw_or_pass, q15_pass; auto 10.
       + constructor.
     - apply Forall_map_source_bit_raw.
-    - constructor.
-      + destruct b; unfold raw_or_pass, source_bit; auto.
-      + constructor.
   }
-  assert (Hin : In (source_bit b)
-      (rev (map q14_restore
-        (rev (map match_mark action_init) ++ 5 :: rev tbuffer)))).
-  {
-    rewrite rev_restored_action_block.
-    apply in_or_app. right. apply in_or_app. right.
-    apply in_or_app. right. simpl. auto.
-  }
-  assert (Hsome : exists x,
-      In x (rev (map q14_restore
-        (rev (map match_mark action_init) ++ 5 :: rev tbuffer))) /\
-      (x = 0 \/ x = 1)).
-  { exists (source_bit b). split.
-    - exact Hin.
-    - destruct b; simpl; auto. }
   destruct (first_raw_decomp
     (rev (map q14_restore
       (rev (map match_mark action_init) ++ 5 :: rev tbuffer)))
-    Hraw Hsome) as [pre [hit [post [Heq Hpre]]]].
+    Hraw HrawIn) as [pre [hit [post [Heq Hpre]]]].
   exists pre, hit, post. split.
   { exact Heq. }
   split.
