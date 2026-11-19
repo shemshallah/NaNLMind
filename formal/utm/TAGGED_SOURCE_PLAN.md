@@ -176,7 +176,7 @@ and q16_restore identity.  The q16 backscan can treat the `4` as part of
 its scanned prefix:
 
 ```text
-remaining = rev tags ++ [4],  raw stopper = source_bit old.
+remaining = tags ++ [4],  raw stopper = source_bit old.
 ```
 
 So a generalized tagged cycle with a q16-passable prefix can absorb the
@@ -184,18 +184,25 @@ canonical `4` and place it in the q16-restored map, where later scans
 pass it.  This is the most plausible bridge between the canonical
 restore frame and the tagged movement frame.
 
-Open: prove the generalized q15/q16 roundtrip and thread the prefix
-through q21/q22, q19/q20, q17/q18, q5/q1/q0.  The prefix may also be the
+The generalized q15/q16 bridge and both q21/q22 directional continuations
+are now formalized in `MinskyCanonicalInstruction.v` (pending the relevant
+`coqc`/`coqchk` acceptance run).  These track the actual reversal: q15 scans
+`rev tags`, pushes `tags` onto the left zipper, and q16 restores
+`tags ++ [4]`, leaving the ordered right-hand fragment
+`7 :: map q16_restore (rev (tags ++ [4]))`.  A separate table-driven checker
+exhausts 43,200 two-direction finite traces, including non-palindromic tags.
+
+Open: thread this bridge through q19/q20, q17/q18, q5/q1/q0.  The prefix may also be the
 natural X=4 reentry to q6 for the next instruction, which would close the
 loop rather than break the q1 gate.
 
 A minimal checkpoint theorem to prove first:
 
 ```text
-run (S |rev tags| + S |rev tags ++ [4]|)
+run (S |rev tags| + S |tags ++ [4]|)
   (entry_config 15 (4 :: source_bit old :: left)
     (rev tags ++ source_bit target :: suffix))
 = cfg_ml (if old then 22 else 21) left
-    (7 :: map q16_restore (rev (rev tags ++ [4])) ++
+    (7 :: map q16_restore (rev (tags ++ [4])) ++
      source_bit target :: suffix).
 ```

@@ -8,6 +8,7 @@ on:
       - '.github/workflows/minsky-coq-direction-fast.yml'
       - 'formal/utm/MinskyDirectionRelocationCycle.v'
       - 'formal/utm/check_minsky_left_tagged_dispatch.py'
+      - 'formal/utm/check_minsky_four_prefix_direction.py'
       - 'formal/utm/MinskyCanonicalMatch.v'
       - 'formal/utm/MinskyCanonicalCopy.v'
       - 'formal/utm/MinskyCanonicalCopyGeneral.v'
@@ -96,6 +97,7 @@ jobs:
           set -euo pipefail
           python3 formal/utm/check_minsky_table.py
           python3 formal/utm/check_minsky_left_tagged_dispatch.py
+          python3 formal/utm/check_minsky_four_prefix_direction.py
 
   canonical-match:
     runs-on: ubuntu-latest

@@ -757,23 +757,24 @@ Print Assumptions q13_six_exits_to_q14.
 Theorem q15_q16_four_prefix_roundtrip :
   forall (old target : bool) (tags left suffix : list nat),
     Forall q15_pass (rev tags) ->
-    Forall q16_pass (rev tags ++ [4]) ->
-    run (S (length (rev tags)) + S (length (rev tags ++ [4])))
+    Forall q16_pass (tags ++ [4]) ->
+    run (S (length (rev tags)) + S (length (tags ++ [4])))
       (entry_config 15 (4 :: source_bit old :: left)
         (rev tags ++ source_bit target :: suffix)) =
     cfg_ml (if old then 22 else 21) left
-      (7 :: map q16_restore (rev (rev tags ++ [4])) ++
+      (7 :: map q16_restore (rev (tags ++ [4])) ++
        source_bit target :: suffix).
 Proof.
   intros old target tags left suffix H15 H16.
   rewrite dispatch_run_add.
   rewrite (q15_scan_to_raw (rev tags) target
     (4 :: source_bit old :: left) suffix H15).
-  replace (rev tags ++ 4 :: source_bit old :: left)
-    with ((rev tags ++ [4]) ++ source_bit old :: left)
+  rewrite rev_involutive.
+  replace (tags ++ 4 :: source_bit old :: left)
+    with ((tags ++ [4]) ++ source_bit old :: left)
     by (rewrite <- app_assoc; reflexivity).
-  destruct (rev tags ++ [4]) as [|s remaining] eqn:H.
-  - assert (Hlen : length ([] : list nat) = length (rev tags ++ [4]))
+  destruct (tags ++ [4]) as [|s remaining] eqn:H.
+  - assert (Hlen : length ([] : list nat) = length (tags ++ [4]))
       by (rewrite H; reflexivity).
     rewrite app_length in Hlen. cbn [length] in Hlen. lia.
   - assert (H16' : Forall q16_pass (s :: remaining)) by exact H16.
@@ -793,16 +794,16 @@ Theorem q15_q16_four_prefix_right_direction :
   forall (old target : bool) (tags : list nat)
          dir_head dir_remaining outer suffix,
     Forall q15_pass (rev tags) ->
-    Forall q16_pass (rev tags ++ [4]) ->
+    Forall q16_pass (tags ++ [4]) ->
     Forall q21_pass (dir_head :: dir_remaining) ->
-    run ((S (length (rev tags)) + S (length (rev tags ++ [4]))) +
+    run ((S (length (rev tags)) + S (length (tags ++ [4]))) +
          S (length (dir_head :: dir_remaining)))
       (entry_config 15
         (4 :: source_bit old :: dir_head :: dir_remaining ++ 3 :: outer)
         (rev tags ++ source_bit target :: suffix)) =
     entry_config 19 (source_bit old :: outer)
       (rev (dir_head :: dir_remaining) ++
-       7 :: map q16_restore (rev (rev tags ++ [4])) ++
+       7 :: map q16_restore (rev (tags ++ [4])) ++
        source_bit target :: suffix).
 Proof.
   intros old target tags dir_head dir_remaining outer suffix H15 H16 H21.
@@ -813,17 +814,17 @@ Proof.
     (entry_config (if old then 22 else 21)
       (dir_remaining ++ 3 :: outer)
       (dir_head :: 7 :: map q16_restore
-        (rev (rev tags ++ [4])) ++ source_bit target :: suffix)) =
+        (rev (tags ++ [4])) ++ source_bit target :: suffix)) =
     entry_config 19 (source_bit old :: outer)
       (rev (dir_head :: dir_remaining) ++
-       7 :: map q16_restore (rev (rev tags ++ [4])) ++
+       7 :: map q16_restore (rev (tags ++ [4])) ++
        source_bit target :: suffix)).
   assert (Hq : (if old then 22 else 21) = 21 \/
                (if old then 22 else 21) = 22).
   { destruct old; simpl; auto. }
   rewrite (q21_scan_to_right_direction dir_remaining dir_head
     (if old then 22 else 21) outer
-    (7 :: map q16_restore (rev (rev tags ++ [4])) ++
+    (7 :: map q16_restore (rev (tags ++ [4])) ++
      source_bit target :: suffix) Hq H21).
   destruct old; reflexivity.
 Qed.
@@ -832,9 +833,9 @@ Theorem q15_q16_four_prefix_left_direction :
   forall (old next target : bool) (tags : list nat)
          dir_head dir_remaining outer suffix,
     Forall q15_pass (rev tags) ->
-    Forall q16_pass (rev tags ++ [4]) ->
+    Forall q16_pass (tags ++ [4]) ->
     Forall q21_pass (dir_head :: dir_remaining) ->
-    run ((S (length (rev tags)) + S (length (rev tags ++ [4]))) +
+    run ((S (length (rev tags)) + S (length (tags ++ [4]))) +
          S (length (dir_head :: dir_remaining)))
       (entry_config 15
         (4 :: source_bit old :: dir_head :: dir_remaining ++
@@ -842,7 +843,7 @@ Theorem q15_q16_four_prefix_left_direction :
         (rev tags ++ source_bit next :: suffix)) =
     cfg_ml 20 (source_bit target :: outer)
       (source_bit old :: rev (dir_head :: dir_remaining) ++
-       7 :: map q16_restore (rev (rev tags ++ [4])) ++
+       7 :: map q16_restore (rev (tags ++ [4])) ++
        source_bit next :: suffix).
 Proof.
   intros old next target tags dir_head dir_remaining outer suffix
@@ -855,17 +856,17 @@ Proof.
     (entry_config (if old then 22 else 21)
       (dir_remaining ++ 2 :: source_bit target :: outer)
       (dir_head :: 7 :: map q16_restore
-        (rev (rev tags ++ [4])) ++ source_bit next :: suffix)) =
+        (rev (tags ++ [4])) ++ source_bit next :: suffix)) =
     cfg_ml 20 (source_bit target :: outer)
       (source_bit old :: rev (dir_head :: dir_remaining) ++
-       7 :: map q16_restore (rev (rev tags ++ [4])) ++
+       7 :: map q16_restore (rev (tags ++ [4])) ++
        source_bit next :: suffix)).
   assert (Hq : (if old then 22 else 21) = 21 \/
                (if old then 22 else 21) = 22).
   { destruct old; simpl; auto. }
   rewrite (q21_scan_to_left_direction dir_remaining dir_head
     (if old then 22 else 21) (source_bit target :: outer)
-    (7 :: map q16_restore (rev (rev tags ++ [4])) ++
+    (7 :: map q16_restore (rev (tags ++ [4])) ++
      source_bit next :: suffix) Hq H21).
   destruct old; reflexivity.
 Qed.
