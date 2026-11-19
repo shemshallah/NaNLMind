@@ -158,6 +158,7 @@ Proof.
   }
   destruct dir.
   - rewrite dispatch_run_add.
+    unfold fetch_clock, direction_clock, restore_clock.
     rewrite (canonical_q5_match_copy_direction bits (action_init ++ [b])
       tbuffer data true (4 :: source_bit bit :: tail) Hlen).
     rewrite rev_match_mark_snoc.
@@ -167,6 +168,7 @@ Proof.
       b bit tail H12 H14 H15_3).
     reflexivity.
   - rewrite dispatch_run_add.
+    unfold fetch_clock, direction_clock, restore_clock.
     rewrite (canonical_q5_match_copy_direction bits (action_init ++ [b])
       tbuffer data false (4 :: source_bit bit :: tail) Hlen).
     rewrite rev_match_mark_snoc.
