@@ -4737,8 +4737,10 @@ Proof.
   cbn [rev].
   rewrite rev_involutive.
   rewrite map_app.
-  cbn [map q0_stable_control_tag].
-  repeat rewrite app_assoc.
+  cbn [map q0_stable_control_tag app rev].
+  rewrite (append_singleton_assoc
+    (map q0_stable_control_tag bits ++ [7]) 5
+    (source_bit old :: outer)).
   reflexivity.
 Qed.
 
