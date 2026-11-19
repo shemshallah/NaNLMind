@@ -307,7 +307,7 @@ Theorem canonical_q5_instruction_to_q20 :
          map source_bit (action_init ++ [b]) ++
          source_bit false :: 4 :: source_bit bit :: tail)) =
     cfg_ml 20 (rev data)
-      (source_bit b ++
+      (source_bit b ::
        rev (map q14_restore
              (rev (map match_mark action_init) ++ 5 :: rev tbuffer)) ++
        7 :: map q16_restore
