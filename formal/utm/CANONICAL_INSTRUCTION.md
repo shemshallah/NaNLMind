@@ -193,3 +193,31 @@ exists pre hit post,
 block ends with `map source_bit action_init`, a nonempty raw list.
 For any source state width `p >= 1`, the action field has `p+1 >= 2`
 bits, so `action_init` is nonempty and the collision is unavoidable.
+
+## Why the raw layout fails in both directions
+
+The q19 collision is kernel-checked.  The q20 branch fails for an
+independent, equally native reason.  `q20_scan_to_m` has the explicit
+premise
+
+```text
+Forall q15_pass (s :: remaining)
+```
+
+on the cells between the head and the raw target.  In the canonical raw
+source frame those cells are source data bits `0/1`, while
+`q15_pass = {2,3,4,5,6,7}`.  A raw head therefore triggers
+`q20_raw_to_m` immediately: q20 writes the displaced-head marker `6`
+on the current source cell instead of moving to the left neighbour.
+
+So the relocation macros require a marked/tagged intervening rail in
+both directions:
+
+- q19 needs `Forall q15_pass` over the restored action block;
+- q20 needs `Forall q15_pass` over the left source region.
+
+The canonical raw layout satisfies neither.  This is an architectural
+incompatibility, not a missing arithmetic lemma.  A correct total
+construction must supply the marked 6/7 rail before q15/q19/q20; the
+existing tagged-rail package already certifies the native behaviour once
+that rail exists.
