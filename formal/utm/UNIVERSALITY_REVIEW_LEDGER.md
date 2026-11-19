@@ -1091,3 +1091,31 @@ Fast job
 on `c589061`; clean-branch bridge
 [44612400386](https://github.com/shemshallah/NaNLMind/actions/runs/44612400386)
 was dispatched on the same commit.
+
+### 4-prefix right return to q5 (kernel-checked)
+
+`q15_q22_right_four_prefix_relocates_to_q5` extends the 4-prefix bridge
+through q19 and q17/q18 to q5:
+
+```text
+entry_config 15
+  (4 :: source_bit old :: dirs ++ 3 :: outer)
+  (rev tags ++ source_bit target :: between ++ 7 :: tail)
+  -[q22 + q19/q17 clocks]->
+cfg_ml 5
+  (rev between ++ 6 :: rev scanned ++ source_bit old :: outer)
+  ((if target then 3 else 2) :: tail)
+```
+
+with `scanned = rev dirs ++ 7 :: 4 :: map q16_restore (rev tags)`.
+The `4` is passable through q19 and q17/q18; it does not prevent the
+scan from reaching the raw target.  The result is the tagged-style q5
+return with the 4 inside the rail.
+
+Fast job
+[44638637156](https://github.com/shemshallah/NaNLMind/actions/runs/44638637156)
+on `0dbce41`; clean-branch bridge
+[44639211057](https://github.com/shemshallah/NaNLMind/actions/runs/44639211057)
+was dispatched on the same commit.
+
+Next: q1 scans the 6/7 rail and `q1_four_to_q6` sends the 4 into q6.

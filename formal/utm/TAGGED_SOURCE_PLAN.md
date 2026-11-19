@@ -258,3 +258,27 @@ an obstacle for the right branch.
 
 Next: thread the same prefix through q19/q20, q17/q18, and the q5/q1
 rail, then use `q1_four_to_q6` as the next-instruction reentry.
+
+## 4-prefix right return to q5 (proved)
+
+`q15_q22_right_four_prefix_relocates_to_q5` composes the 4-prefix
+q22-to-q19 theorem with q19 -> q17/q18 -> q5:
+
+```text
+run (q22-clock + q19-clock)
+  (entry_config 15
+    (4 :: source_bit old :: dirs ++ 3 :: outer)
+    (rev tags ++ source_bit target :: between ++ 7 :: tail))
+= cfg_ml 5
+    (rev between ++ 6 :: rev scanned ++ source_bit old :: outer)
+    ((if target then 3 else 2) :: tail)
+```
+
+where `scanned = rev dirs ++ 7 :: 4 :: map q16_restore (rev tags)`.
+The leading `4` travels through the restored rail and does not stop
+q19; the scan reaches the intended raw target.  The return lands at a
+q5 frame whose rail contains the tags, `7`, and `4`.
+
+Next: feed that q5 frame through the q1 rail.  q1 passes 6/7 tags and
+`q1_four_to_q6` sends the `4` into q6, which is the canonical
+next-instruction action-copy entry.
