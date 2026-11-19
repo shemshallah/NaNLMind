@@ -278,14 +278,15 @@ Proof.
                (rev (4 :: rev
                  (instruction_marked bits (action_init ++ [b]) ++ [3]) ++
                 [4])) ++ source_bit bit :: tail)).
+    assert (Hscan : Forall q21_pass (s :: D')).
+    { rewrite HD2 in Hq21D. exact Hq21D. }
     rewrite (q21_scan_to_right_direction D' s
       (if b then 22 else 21) (rev data)
       (7 :: map q16_restore
              (rev (4 :: rev
                (instruction_marked bits (action_init ++ [b]) ++ [3]) ++
-              [4])) ++ source_bit bit :: tail) Hq).
-    - rewrite HD2 in Hq21D. exact Hq21D.
-    - destruct b; reflexivity.
+              [4])) ++ source_bit bit :: tail) Hq Hscan).
+    destruct b; reflexivity.
 Qed.
 
 (** The instruction result reaches q20 (left, marker 2). *)
@@ -374,14 +375,15 @@ Proof.
                (rev (4 :: rev
                  (instruction_marked bits (action_init ++ [b]) ++ [2]) ++
                 [4])) ++ source_bit bit :: tail)).
+    assert (Hscan : Forall q21_pass (s :: D')).
+    { rewrite HD2 in Hq21D. exact Hq21D. }
     rewrite (q21_scan_to_left_direction D' s
       (if b then 22 else 21) (rev data)
       (7 :: map q16_restore
              (rev (4 :: rev
                (instruction_marked bits (action_init ++ [b]) ++ [2]) ++
-              [4])) ++ source_bit bit :: tail) Hq).
-    - rewrite HD2 in Hq21D. exact Hq21D.
-    - destruct b; reflexivity.
+              [4])) ++ source_bit bit :: tail) Hq Hscan).
+    destruct b; reflexivity.
 Qed.
 
 Print Assumptions canonical_q5_instruction_to_q19.
