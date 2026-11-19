@@ -828,3 +828,47 @@ for the wide layout.  These theorems certify reachability of the
 relocation phase; they do not certify a correct source head move.  The
 tagged 6/7 control channel, whole-source invariant, halting reflection
 and universality remain open.
+
+## November 19 canonical q19 collision (kernel-checked)
+
+`canonical_q5_instruction_q19_hits_restored_raw` proves the canonical
+premature-raw capture.  Given the q5 instruction entry and a restored
+action block
+
+```text
+D = map q14_restore
+      (rev (map match_mark action_init) ++ 5 :: rev t-buffer)
+```
+
+that contains a raw `0/1` cell, the first-raw decomposition
+
+```text
+rev D = pre ++ source_bit hit :: post,  Forall q15_pass pre
+```
+
+gives a literal q19 run to
+
+```text
+entry_config (if hit then 18 else 17)
+  (6 :: rev pre ++ source_bit b :: rev data)
+  (post ++ 7 :: q16-backscan ++ source_bit bit :: tail)
+```
+
+with clock `instruction_q19_clock + S |pre|`.  The displaced-head
+marker 6 is therefore written inside the restored action block, before
+the 7 left by q16 and before the intended next raw record bit.
+
+Supporting lemmas: `raw_or_pass`, `q14_restore_raw_or_pass`,
+`Forall_map_q14_restore_raw`, `Forall_map_source_bit_raw`,
+`first_raw_decomp`, `rev_restored_action_block`.
+
+Verification: fast q15-q22 job
+[44451052559](https://github.com/shemshallah/NaNLMind/actions/runs/44451052559)
+on `9e4b846`; full bridge
+[44451499362](https://github.com/shemshallah/NaNLMind/actions/runs/44451499362)
+was dispatched on the same commit.
+
+This is a negative result for the raw canonical layout.  It does not
+prove non-universality of the frozen table; the tagged 6/7 control
+channel remains the repair path.  Whole-source invariants, halting
+reflection and universality remain open.

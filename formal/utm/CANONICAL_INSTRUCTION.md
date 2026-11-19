@@ -131,3 +131,41 @@ rather than the intended source bit.  This is exactly the documented
 premature-raw-capture obstruction.  The q5 -> q19/q20 theorems therefore
 certify the native path to the relocation phase, not a correct source
 head move.  The tagged 6/7 control channel remains the repair path.
+
+## Canonical q19 collision (kernel-checked)
+
+`canonical_q5_instruction_q19_hits_restored_raw` makes the obstruction
+explicit in the canonical frame.  Let
+
+```text
+D = map q14_restore
+      (rev (map match_mark action_init) ++ 5 :: rev t-buffer).
+```
+
+If `D` contains any raw `0/1` cell, then there is a first-raw
+decomposition
+
+```text
+rev D = pre ++ source_bit hit :: post,
+Forall q15_pass pre
+```
+
+and q19 runs from the q5 instruction entry to
+
+```text
+entry_config (if hit then 18 else 17)
+  (6 :: rev pre ++ source_bit b :: rev data)
+  (post ++ 7 :: q16-backscan ++ source_bit bit :: tail)
+```
+
+in clock `instruction_q19_clock + S |pre|`.
+
+So q19 writes its displaced-head marker 6 at a cell of the restored
+action block.  It does **not** reach the intended next raw record bit
+beyond the 7 written by q16.  This is the canonical premature-raw
+capture; the raw layout cannot yield the intended source head move.
+
+The premise is immediate when `action_init` is nonempty, because
+`rev D` ends with the nonempty raw list `map source_bit action_init`.
+It is not automatic for a one-cell action whose only action mark was
+split off as the decision bit.
