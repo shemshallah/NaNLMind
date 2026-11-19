@@ -165,22 +165,19 @@ Proof.
     rewrite (canonical_q5_match_copy_direction bits (action_init ++ [b])
       tbuffer data true (4 :: source_bit bit :: tail) Hlen).
     rewrite rev_match_mark_snoc.
-    match goal with |- ?G => idtac "INSTRGOAL:" G end.
-    rewrite (canonical_q12_restore_q16_decision_next
+    apply (canonical_q12_restore_q16_decision_next
       (rev (map match_mark action_init)) tbuffer data
       (map match_mark bits ++ map match_mark (action_init ++ [b]))
       b bit tail H12 H14 H15_3).
-    reflexivity.
   - rewrite dispatch_run_add.
     unfold fetch_clock, direction_clock, restore_clock, instruction_marked.
     rewrite (canonical_q5_match_copy_direction bits (action_init ++ [b])
       tbuffer data false (4 :: source_bit bit :: tail) Hlen).
     rewrite rev_match_mark_snoc.
-    rewrite (canonical_q13_restore_q16_decision_next
+    apply (canonical_q13_restore_q16_decision_next
       (rev (map match_mark action_init)) tbuffer data
       (map match_mark bits ++ map match_mark (action_init ++ [b]))
       b bit tail H12 H14 H15_2).
-    reflexivity.
 Qed.
 
 Print Assumptions canonical_q5_fetch_to_q16_decision.
