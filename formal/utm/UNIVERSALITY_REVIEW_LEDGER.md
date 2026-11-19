@@ -892,3 +892,26 @@ q19 collision is unconditional.  Verified by the fast job
 clean-branch bridge
 [44457825847](https://github.com/shemshallah/NaNLMind/actions/runs/44457825847)
 was dispatched on the same commit.
+
+### Left-branch canonical obstruction (kernel-checked)
+
+`canonical_q5_instruction_left_branch_hits_current_cell`: if
+`rev data = source_bit d :: rev data'`, the canonical q20 entry performs
+its raw step immediately and writes 6 on the current source cell:
+
+```text
+run (instruction_q20_clock + 1) (q5 instruction entry with direction false)
+= entry_config (if d then 18 else 17)
+    (6 :: rev data')
+    (source_bit b :: rev D ++ 7 :: q16-backscan ++ source_bit bit :: tail).
+```
+
+The reason is the explicit `q20_scan_to_m` premise
+`Forall q15_pass (s :: remaining)`; raw source bits are not q15-passable.
+Together with the q19 collision this closes the raw canonical layout in
+both directions.
+
+Fast job [44564743286](https://github.com/shemshallah/NaNLMind/actions/runs/44564743286);
+clean-branch bridge
+[44565693705](https://github.com/shemshallah/NaNLMind/actions/runs/44565693705)
+was dispatched on the same commit.

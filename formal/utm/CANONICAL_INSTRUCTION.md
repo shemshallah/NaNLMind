@@ -221,3 +221,32 @@ incompatibility, not a missing arithmetic lemma.  A correct total
 construction must supply the marked 6/7 rail before q15/q19/q20; the
 existing tagged-rail package already certifies the native behaviour once
 that rail exists.
+
+## Left branch: q20 displaces the current cell
+
+`canonical_q5_instruction_left_branch_hits_current_cell` makes the
+direction-0 failure equally explicit.  If
+
+```text
+rev data = source_bit d :: rev data'
+```
+
+then the raw q20 head is the current source cell `d`, and
+
+```text
+run (instruction_q20_clock + 1)
+  (entry_config 5 ... source_bit false ...) =
+  entry_config (if d then 18 else 17)
+    (6 :: rev data')
+    (source_bit b :: rev D ++ 7 :: q16-backscan ++ source_bit bit :: tail).
+```
+
+q20 writes the displaced-head marker `6` on the **current** cell in one
+step; it never scans left, because the intervening source cells are raw
+`0/1` and `q15_pass = {2,3,4,5,6,7}`.  Thus the canonical raw layout
+fails in both directions:
+
+| branch | native effect |
+| --- | --- |
+| q19 (right) | captures the first restored action cell |
+| q20 (left) | displaces the current source cell instead of moving left |
