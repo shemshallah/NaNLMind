@@ -228,14 +228,13 @@ Proof.
   {
     rewrite Forall_app. split.
     - exact Hdir15.
-    - rewrite Forall_app. split.
+    - constructor.
+      + unfold q15_pass; auto 12.
       + constructor.
         * unfold q15_pass; auto 12.
-        * constructor.
-          -- unfold q15_pass; auto 12.
-          -- rewrite map_rev.
-             rewrite q16_stable_control_rail_restore_identity.
-             apply q15_stable_control_rail_reverse_safe.
+        * rewrite map_rev.
+          rewrite q16_stable_control_rail_restore_identity.
+          apply q15_stable_control_rail_reverse_safe.
   }
   rewrite dispatch_run_add.
   rewrite (q15_q22_right_four_prefix_to_q19 first rest
