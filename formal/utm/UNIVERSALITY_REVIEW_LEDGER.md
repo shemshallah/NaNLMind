@@ -1008,3 +1008,23 @@ This is a halt macro, not yet source halting reflection: the encoder must
 select this target=true/end-marker path exactly when the source lookup
 fails.  The match/copy integration, source encoder, tape invariant and
 universality reduction remain open.
+
+## November 19 symbol-collision constraint for the tagged encoder
+
+The canonical restore scan cannot carry pre-existing 6-valued control
+tags.  Literal table facts:
+
+- `q12_six_exits_to_q14`: q12 on 6 writes 3 and enters q14.
+- `q13_six_exits_to_q14`: q13 on 6 writes 2 and enters q14.
+
+Thus 6 is the M delimiter, not a passable tag, in the q12/q13 phase.
+Any tagged source encoding must introduce 6 tags after q12/q14 (the
+movement phase writes 6 at q19/q20 and 7 at q16), or keep them outside
+the q12/q14 scan window.  This is a concrete constraint on the still-open
+source/match integration.
+
+Verification: fast q15-q22 job
+[44590892654](https://github.com/shemshallah/NaNLMind/actions/runs/44590892654)
+on `096c55e`; clean-branch bridge
+[44591572127](https://github.com/shemshallah/NaNLMind/actions/runs/44591572127)
+was dispatched on the same commit.

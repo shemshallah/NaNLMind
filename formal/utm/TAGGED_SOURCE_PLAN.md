@@ -142,3 +142,21 @@ So the source-halt path is concrete: encode the end marker after the
 program, dispatch `target = true`, and let q3 reach `5`.  The remaining
 halt obligation is to prove the encoder selects this path exactly when
 `source_lookup` fails.
+
+## Symbol-collision constraint (kernel-checked)
+
+`6` is overloaded in the frozen table:
+
+- q12 on `6` writes `3` and enters q14;
+- q13 on `6` writes `2` and enters q14.
+
+So a pre-existing `6` control tag **cannot** pass through the q12/q13
+restore scan; it is the M delimiter and terminates the scan.
+
+Consequence for the source encoder: 6-valued tags must be introduced
+after q12/q14 (the movement phase itself writes 6 at q19/q20 and 7 at
+q16), or placed entirely outside the q12/q14 scan window.  A source
+encoding that pre-loads a 6/7 rail before q12 is incompatible with the
+literal table.
+
+Lemmas: `q12_six_exits_to_q14`, `q13_six_exits_to_q14`.
