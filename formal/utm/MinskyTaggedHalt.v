@@ -582,3 +582,141 @@ Qed.
 
 Print Assumptions q3_scan_to_q5.
 Print Assumptions q2_rail_reenter_q1.
+
+Lemma rev_snoc_singleton :
+  forall (l : list nat) (x : nat),
+    rev (l ++ [x]) = x :: rev l.
+Proof.
+  intros l x.
+  rewrite rev_app_distr. cbn [rev].
+  rewrite rev_involutive. reflexivity.
+Qed.
+
+(** q0 read-zero: target dispatch to q3, then q3 scans to X=4 and
+    reenters q5. *)
+Theorem q0_rail_read_zero_to_q5 :
+  forall (prefix : list nat) (mark : nat) (c1 c2 : bool)
+         (stored symbols suffix : list nat),
+    Forall q0_pass ((prefix ++ [mark]) ++
+      [q0_stable_control_tag c1; q0_stable_control_tag c2]) ->
+    Forall dispatch_right_symbol symbols ->
+    run ((length ((prefix ++ [mark]) ++
+            [q0_stable_control_tag c1; q0_stable_control_tag c2]) + 3) +
+         (length symbols + 1))
+      (entry_config 0 (0 :: 5 :: stored)
+        (((prefix ++ [mark]) ++
+          [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++
+         0 :: symbols ++ 4 :: suffix)) =
+    cfg_ml 5
+      (rev symbols ++ 3 ::
+       rev ((prefix ++ [mark]) ++
+         [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++
+       0 :: 5 :: stored) (4 :: suffix).
+Proof.
+  intros prefix mark c1 c2 stored symbols suffix H0 Hsym.
+  rewrite dispatch_run_add.
+  rewrite (q0_right_rail_target_dispatch prefix mark c1 c2 false
+    stored (symbols ++ 4 :: suffix) H0).
+  apply q3_scan_to_q5. exact Hsym.
+Qed.
+
+(** q0 read-one: target dispatch to q2, then q2 scans left to the 5
+    delimiter and reenters q1. *)
+Theorem q0_rail_read_one_to_q1 :
+  forall (prefix : list nat) (mark : nat) (c1 c2 : bool)
+         (stored symbols suffix : list nat),
+    Forall q0_pass ((prefix ++ [mark]) ++
+      [q0_stable_control_tag c1; q0_stable_control_tag c2]) ->
+    Forall dispatch_left_symbol
+      (rev ((prefix ++ [mark]) ++
+        [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++ [0]) ->
+    run ((length ((prefix ++ [mark]) ++
+            [q0_stable_control_tag c1; q0_stable_control_tag c2]) + 3) +
+         S (length (rev ((prefix ++ [mark]) ++
+           [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++ [0])))
+      (entry_config 0 (0 :: 5 :: stored)
+        (((prefix ++ [mark]) ++
+          [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++
+         1 :: symbols ++ 4 :: suffix)) =
+    entry_config 1 (5 :: stored)
+      (0 :: ((prefix ++ [mark]) ++
+        [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++
+       2 :: symbols ++ 4 :: suffix).
+Proof.
+  intros prefix mark c1 c2 stored symbols suffix H0 Hleft.
+  rewrite dispatch_run_add.
+  rewrite (q0_right_rail_target_dispatch prefix mark c1 c2 true
+    stored (symbols ++ 4 :: suffix) H0).
+  rewrite (q2_rail_reenter_q1
+    (rev ((prefix ++ [mark]) ++
+      [q0_stable_control_tag c1; q0_stable_control_tag c2]))
+    0 stored (2 :: symbols ++ 4 :: suffix) Hleft).
+  rewrite rev_snoc_singleton.
+  rewrite rev_involutive. reflexivity.
+Qed.
+
+(** q4 target-zero: mirrored target dispatch to q3, then q3 -> q5. *)
+Theorem q4_rail_read_zero_to_q5 :
+  forall (prefix : list nat) (mark : nat) (c1 c2 : bool)
+         (stored symbols suffix : list nat),
+    Forall q4_pass ((prefix ++ [mark]) ++
+      [q0_stable_control_tag c1; q0_stable_control_tag c2]) ->
+    Forall dispatch_right_symbol symbols ->
+    run (S (length ((prefix ++ [mark]) ++
+            [q0_stable_control_tag c1; q0_stable_control_tag c2])) +
+         (length symbols + 1))
+      (entry_config 4 (1 :: 5 :: stored)
+        (((prefix ++ [mark]) ++
+          [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++
+         0 :: symbols ++ 4 :: suffix)) =
+    cfg_ml 5
+      (rev symbols ++ 2 ::
+       rev ((prefix ++ [mark]) ++
+         [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++
+       1 :: 5 :: stored) (4 :: suffix).
+Proof.
+  intros prefix mark c1 c2 stored symbols suffix H4 Hsym.
+  rewrite dispatch_run_add.
+  rewrite (q4_right_rail_target_zero prefix mark c1 c2
+    stored (symbols ++ 4 :: suffix) H4).
+  apply q3_scan_to_q5. exact Hsym.
+Qed.
+
+(** q4 target-one: mirrored target dispatch to q2, then q2 -> q1. *)
+Theorem q4_rail_read_one_to_q1 :
+  forall (prefix : list nat) (mark : nat) (c1 c2 : bool)
+         (stored symbols suffix : list nat),
+    Forall q4_pass ((prefix ++ [mark]) ++
+      [q0_stable_control_tag c1; q0_stable_control_tag c2]) ->
+    Forall dispatch_left_symbol
+      (rev ((prefix ++ [mark]) ++
+        [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++ [1]) ->
+    run (S (length ((prefix ++ [mark]) ++
+            [q0_stable_control_tag c1; q0_stable_control_tag c2])) +
+         S (length (rev ((prefix ++ [mark]) ++
+           [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++ [1])))
+      (entry_config 4 (1 :: 5 :: stored)
+        (((prefix ++ [mark]) ++
+          [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++
+         1 :: symbols ++ 4 :: suffix)) =
+    entry_config 1 (5 :: stored)
+      (1 :: ((prefix ++ [mark]) ++
+        [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++
+       3 :: symbols ++ 4 :: suffix).
+Proof.
+  intros prefix mark c1 c2 stored symbols suffix H4 Hleft.
+  rewrite dispatch_run_add.
+  rewrite (q4_right_rail_target_one prefix mark c1 c2
+    stored (symbols ++ 4 :: suffix) H4).
+  rewrite (q2_rail_reenter_q1
+    (rev ((prefix ++ [mark]) ++
+      [q0_stable_control_tag c1; q0_stable_control_tag c2]))
+    1 stored (3 :: symbols ++ 4 :: suffix) Hleft).
+  rewrite rev_snoc_singleton.
+  rewrite rev_involutive. reflexivity.
+Qed.
+
+Print Assumptions q0_rail_read_zero_to_q5.
+Print Assumptions q0_rail_read_one_to_q1.
+Print Assumptions q4_rail_read_zero_to_q5.
+Print Assumptions q4_rail_read_one_to_q1.
