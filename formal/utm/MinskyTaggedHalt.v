@@ -1445,3 +1445,130 @@ Proof.
 Qed.
 
 Print Assumptions q5_left_false_gate_tagged_target_prefix.
+
+(** ** Left four-prefix gate
+
+    Composing the four-prefix relocation with the generalized left gate
+    yields the exact q3/q2 entry of the next phase, with the restored 4
+    carried as a q0-passable prefix.  This is the left-branch analogue of
+    the right four-prefix q1/q0/q4 dispatch. *)
+
+Lemma four_prefix_restored_map :
+  forall (first : bool) (rest_prefix : list bool)
+         (extra next_control : bool),
+    map q16_restore
+      (rev (map q0_stable_control_tag
+        (first :: (rest_prefix ++ [extra; next_control])) ++ [4])) =
+    [4] ++ q0_stable_control_tag next_control ::
+    q0_stable_control_tag extra ::
+    rev (map q0_stable_control_tag (first :: rest_prefix)).
+Proof.
+  intros first rest_prefix extra next_control.
+  rewrite rev_app_distr. cbn [rev].
+  rewrite map_app.
+  rewrite q16_stable_control_rail_reverse_restore.
+  replace (map q16_restore [4]) with ([4] : list nat) by reflexivity.
+  replace (map q0_stable_control_tag
+      (first :: (rest_prefix ++ [extra; next_control])))
+    with (map q0_stable_control_tag (first :: rest_prefix) ++
+          [q0_stable_control_tag extra; q0_stable_control_tag next_control]).
+  2:{
+    replace (first :: (rest_prefix ++ [extra; next_control]))
+      with ((first :: rest_prefix) ++ [extra; next_control])
+      by reflexivity.
+    rewrite map_app. reflexivity.
+  }
+  rewrite rev_app_distr. cbn [rev].
+  reflexivity.
+Qed.
+
+Lemma four_prefix_q5_frame :
+  forall (first : bool) (rest_prefix : list bool)
+         (extra next_control old read : bool)
+         (outer suffix : list nat),
+    cfg_ml 5
+      (rev (source_bit old :: rev (6 :: [5])) ++ 6 :: outer)
+      (2 :: map q16_restore
+             (rev (map q0_stable_control_tag
+               (first :: (rest_prefix ++ [extra; next_control])) ++ [4])) ++
+       source_bit read :: suffix) =
+    entry_config 5 (5 :: source_bit old :: 6 :: outer)
+      (6 :: 2 :: [4] ++
+       [q0_stable_control_tag next_control;
+        q0_stable_control_tag extra] ++
+       rev (map q0_stable_control_tag (first :: rest_prefix)) ++
+       source_bit read :: suffix).
+Proof.
+  intros. rewrite four_prefix_restored_map. reflexivity.
+Qed.
+
+Theorem q15_left_four_prefix_gate :
+  forall (first : bool) (rest_prefix : list bool)
+         (extra next_control old read : bool) (outer suffix : list nat),
+    run (((S (length (rev (map q0_stable_control_tag
+              (first :: (rest_prefix ++ [extra; next_control]))))) +
+          S (length (map q0_stable_control_tag
+              (first :: (rest_prefix ++ [extra; next_control])) ++ [4])) +
+          S (length (6 :: [5]))) +
+         (1 + S (length (source_bit old :: rev (6 :: [5]))))) + 8)
+      (entry_config 15
+        (4 :: source_bit old :: (6 :: [5]) ++ 2 :: source_bit false :: outer)
+        (rev (map q0_stable_control_tag
+              (first :: (rest_prefix ++ [extra; next_control]))) ++
+         source_bit read :: suffix)) =
+    if read
+    then entry_config 3
+      (3 :: rev ([4] ++
+        [q0_stable_control_tag next_control;
+         q0_stable_control_tag extra]) ++
+       0 :: 6 :: 5 :: source_bit old :: 6 :: outer)
+      (rev (map q0_stable_control_tag (first :: rest_prefix)) ++ suffix)
+    else cfg_ml 2
+      (rev ([4] ++
+        [q0_stable_control_tag next_control;
+         q0_stable_control_tag extra]) ++
+       0 :: 6 :: 5 :: source_bit old :: 6 :: outer)
+      (2 :: rev (map q0_stable_control_tag (first :: rest_prefix)) ++ suffix).
+Proof.
+  intros first rest_prefix extra next_control old read outer suffix.
+  assert (H21 : Forall q21_pass (6 :: [5])).
+  {
+    constructor.
+    - unfold q21_pass; auto 12.
+    - constructor.
+      + unfold q21_pass; auto 12.
+      + constructor.
+  }
+  assert (H17 : Forall q17_pass (rev (6 :: [5]))).
+  {
+    cbn [rev]. constructor.
+    - unfold q17_pass; auto 12.
+    - constructor.
+      + unfold q17_pass; auto 12.
+      + constructor.
+  }
+  rewrite (dispatch_run_add
+    (((S (length (rev (map q0_stable_control_tag
+            (first :: (rest_prefix ++ [extra; next_control]))))) +
+        S (length (map q0_stable_control_tag
+            (first :: (rest_prefix ++ [extra; next_control])) ++ [4])) +
+        S (length (6 :: [5]))) +
+       (1 + S (length (source_bit old :: rev (6 :: [5]))))))
+    8
+    (entry_config 15
+      (4 :: source_bit old :: (6 :: [5]) ++ 2 :: source_bit false :: outer)
+      (rev (map q0_stable_control_tag
+            (first :: (rest_prefix ++ [extra; next_control]))) ++
+       source_bit read :: suffix))).
+  rewrite (q15_q22_left_four_prefix_relocates_to_q5
+    first (rest_prefix ++ [extra; next_control]) 6 [5]
+    old read false outer suffix H21 H17).
+  rewrite four_prefix_q5_frame.
+  apply (q5_left_false_gate_tagged_target_prefix
+    old next_control extra read [4] outer
+    (rev (map q0_stable_control_tag (first :: rest_prefix)) ++ suffix)).
+  repeat constructor.
+  unfold q0_pass; auto 12.
+Qed.
+
+Print Assumptions q15_left_four_prefix_gate.
