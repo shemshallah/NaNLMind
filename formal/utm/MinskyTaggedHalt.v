@@ -459,3 +459,39 @@ Proof.
 Qed.
 
 Print Assumptions q15_q22_right_four_prefix_q1_step.
+
+(** q0 target dispatch over a returned rail: the pass prefix is the
+    rewritten rail plus the relocated old mark, followed by two stable
+    control tags and the raw target. *)
+Theorem q0_right_rail_target_dispatch :
+  forall (prefix : list nat) (mark : nat)
+         (c1 c2 read : bool) (stored tail : list nat),
+    Forall q0_pass (prefix ++ [mark]) ->
+    run (length (prefix ++ [mark]) + 3)
+      (entry_config 0 (0 :: 5 :: stored)
+        (prefix ++ mark ::
+         [q0_stable_control_tag c1; q0_stable_control_tag c2] ++
+         source_bit read :: tail)) =
+    if read
+    then entry_config 3
+      (3 :: rev (prefix ++ [mark] ++
+        [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++
+       0 :: 5 :: stored) tail
+    else cfg_ml 2
+      (rev (prefix ++ [mark] ++
+        [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++
+       0 :: 5 :: stored) (2 :: tail).
+Proof.
+  intros prefix mark c1 c2 read stored tail Hprefix.
+  replace (prefix ++ mark ::
+           [q0_stable_control_tag c1; q0_stable_control_tag c2] ++
+           source_bit read :: tail)
+    with ((prefix ++ [mark]) ++
+          [q0_stable_control_tag c1; q0_stable_control_tag c2] ++
+          source_bit read :: tail)
+    by (repeat rewrite <- app_assoc; reflexivity).
+  apply (q0_tagged_control_pair_dispatches_target
+    (prefix ++ [mark]) (0 :: 5 :: stored) tail c1 c2 read Hprefix).
+Qed.
+
+Print Assumptions q0_right_rail_target_dispatch.
