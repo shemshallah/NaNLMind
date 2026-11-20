@@ -442,16 +442,19 @@ Proof.
           [source_bit old])
     by (rewrite <- app_assoc; cbn [app]; reflexivity).
   rewrite map_entry_rewrite_snoc.
-  change (step
-    (entry_config 1 (5 :: stored)
-      (entry_rewrite (source_bit old) ::
-       map entry_rewrite
-         (rev
-           (rev between ++ 6 ::
-            rev (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
-                 map q16_restore
-                   (rev (map q0_stable_control_tag (first :: rest)))))) ++
-       (if target then 3 else 2) :: tail)) = _).
+  match goal with
+  | |- _ = ?expected =>
+    change (step
+      (entry_config 1 (5 :: stored)
+        (entry_rewrite (source_bit old) ::
+         map entry_rewrite
+           (rev
+             (rev between ++ 6 ::
+              rev (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
+                   map q16_restore
+                     (rev (map q0_stable_control_tag (first :: rest)))))) ++
+         (if target then 3 else 2) :: tail)) = expected)
+  end.
   apply q1_old_mark_step.
 Qed.
 
