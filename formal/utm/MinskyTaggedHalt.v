@@ -372,3 +372,87 @@ Lemma q1_old_mark_step :
 Proof. intros old left rest. destruct old; reflexivity. Qed.
 
 
+
+Theorem q15_q22_right_four_prefix_q1_step :
+  forall (first : bool) (rest : list bool)
+         dir_head dir_remaining old target between tail stored,
+    Forall q21_pass (dir_head :: dir_remaining) ->
+    Forall q15_pass (rev (dir_head :: dir_remaining)) ->
+    Forall q17_pass between ->
+    Forall q5_return_pass
+      (rev between ++ 6 ::
+       rev (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
+            map q16_restore
+              (rev (map q0_stable_control_tag (first :: rest)))) ++
+       [source_bit old]) ->
+    run ((((S (length
+               (rev (map q0_stable_control_tag (first :: rest)))) +
+            S (length
+              (map q0_stable_control_tag (first :: rest) ++ [4])) +
+            S (length (dir_head :: dir_remaining))) +
+           (S (length
+             (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
+              map q16_restore
+                (rev (map q0_stable_control_tag (first :: rest))))) +
+            S (length between))) +
+          S (length
+            (rev between ++ 6 ::
+             rev (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
+                  map q16_restore
+                    (rev (map q0_stable_control_tag (first :: rest)))) ++
+             [source_bit old]))) + 1)
+      (entry_config 15
+        (4 :: source_bit old :: dir_head :: dir_remaining ++
+         3 :: 5 :: stored)
+        (rev (map q0_stable_control_tag (first :: rest)) ++
+         source_bit target :: between ++ 7 :: tail)) =
+    if old
+    then entry_config 4 (1 :: 5 :: stored)
+      (map entry_rewrite
+        (rev
+          (rev between ++ 6 ::
+           rev (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
+                map q16_restore
+                  (rev (map q0_stable_control_tag (first :: rest)))))) ++
+       (if target then 3 else 2) :: tail)
+    else entry_config 0 (0 :: 5 :: stored)
+      (map entry_rewrite
+        (rev
+          (rev between ++ 6 ::
+           rev (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
+                map q16_restore
+                  (rev (map q0_stable_control_tag (first :: rest)))))) ++
+       (if target then 3 else 2) :: tail).
+Proof.
+  intros first rest dir_head dir_remaining old target between tail stored
+    H21 Hdir15 Hbetween Hpass.
+  rewrite dispatch_run_add.
+  rewrite (q15_q22_right_four_prefix_q5_q1 first rest
+    dir_head dir_remaining old target between tail stored
+    H21 Hdir15 Hbetween Hpass).
+  replace (rev between ++ 6 ::
+           rev (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
+                map q16_restore
+                  (rev (map q0_stable_control_tag (first :: rest)))) ++
+           [source_bit old])
+    with ((rev between ++ 6 ::
+           rev (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
+                map q16_restore
+                  (rev (map q0_stable_control_tag (first :: rest))))) ++
+          [source_bit old])
+    by (rewrite <- app_assoc; cbn [app]; reflexivity).
+  rewrite map_entry_rewrite_snoc.
+  change (step
+    (entry_config 1 (5 :: stored)
+      (entry_rewrite (source_bit old) ::
+       map entry_rewrite
+         (rev
+           (rev between ++ 6 ::
+            rev (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
+                 map q16_restore
+                   (rev (map q0_stable_control_tag (first :: rest)))))) ++
+       (if target then 3 else 2) :: tail)) = _).
+  apply q1_old_mark_step.
+Qed.
+
+Print Assumptions q15_q22_right_four_prefix_q1_step.
