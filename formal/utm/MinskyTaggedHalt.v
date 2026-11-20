@@ -838,12 +838,12 @@ Proof.
   fold (right_rail_map first rest dir_head dir_remaining between).
   rewrite (cons_append_split
     (right_rail_map first rest dir_head dir_remaining between)
-    (right_mark target)
+    (if target then 3 else 2)
     [q0_stable_control_tag c1; q0_stable_control_tag c2]
     (source_bit false :: symbols ++ 4 :: suffix)).
   rewrite (q0_rail_read_zero_to_q1
     (right_rail_map first rest dir_head dir_remaining between)
-    (right_mark target) c1 c2 stored symbols suffix
+    (if target then 3 else 2) c1 c2 stored symbols suffix
     Hprefix Hleft).
   reflexivity.
 Qed.
