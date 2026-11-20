@@ -1347,8 +1347,8 @@ Theorem q15_q22_left_four_prefix_relocates_to_q5 :
       (rev (source_bit old :: rev (dir_head :: dir_remaining)) ++
        6 :: outer)
       ((if target then 3 else 2) ::
-       4 :: map q16_restore
-              (rev (map q0_stable_control_tag (first :: rest))) ++
+       map q16_restore
+         (rev (map q0_stable_control_tag (first :: rest) ++ [4])) ++
        source_bit next :: suffix).
 Proof.
   intros first rest dir_head dir_remaining old next target outer suffix
@@ -1385,14 +1385,14 @@ Proof.
   - exact (q18_scan_to_marker
       (source_bit old :: rev (dir_head :: dir_remaining))
       (6 :: outer)
-      (4 :: map q16_restore
-             (rev (map q0_stable_control_tag (first :: rest))) ++
+      (map q16_restore
+         (rev (map q0_stable_control_tag (first :: rest) ++ [4])) ++
        source_bit next :: suffix) Hreturn').
   - exact (q17_scan_to_marker
       (source_bit old :: rev (dir_head :: dir_remaining))
       (6 :: outer)
-      (4 :: map q16_restore
-             (rev (map q0_stable_control_tag (first :: rest))) ++
+      (map q16_restore
+         (rev (map q0_stable_control_tag (first :: rest) ++ [4])) ++
        source_bit next :: suffix) Hreturn').
 Qed.
 
