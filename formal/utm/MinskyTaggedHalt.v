@@ -604,7 +604,7 @@ Theorem q0_rail_read_zero_to_q5 :
       (entry_config 0 (0 :: 5 :: stored)
         ((prefix ++ [mark]) ++
          [q0_stable_control_tag c1; q0_stable_control_tag c2] ++
-         0 :: symbols ++ 4 :: suffix)) =
+         source_bit false :: symbols ++ 4 :: suffix)) =
     cfg_ml 5
       (rev symbols ++ 3 ::
        rev ((prefix ++ [mark]) ++
@@ -613,7 +613,6 @@ Theorem q0_rail_read_zero_to_q5 :
 Proof.
   intros prefix mark c1 c2 stored symbols suffix H0 Hsym.
   rewrite dispatch_run_add.
-  match goal with |- ?G => idtac "Q0GOAL:" G end.
   rewrite (q0_right_rail_target_dispatch prefix mark c1 c2 false
     stored (symbols ++ 4 :: suffix) H0).
   apply q3_scan_to_q5. exact Hsym.
@@ -634,7 +633,7 @@ Theorem q0_rail_read_one_to_q1 :
       (entry_config 0 (0 :: 5 :: stored)
         ((prefix ++ [mark]) ++
          [q0_stable_control_tag c1; q0_stable_control_tag c2] ++
-         1 :: symbols ++ 4 :: suffix)) =
+         source_bit true :: symbols ++ 4 :: suffix)) =
     entry_config 1 (5 :: stored)
       (0 :: ((prefix ++ [mark]) ++
         [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++
