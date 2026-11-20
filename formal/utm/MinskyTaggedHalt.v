@@ -1676,17 +1676,16 @@ Lemma four_prefix_left_rail_safe :
         rev (map q0_stable_control_tag (first :: rest_prefix))) ++ [0; 6]).
 Proof.
   intros first rest_prefix extra next_control.
+  repeat rewrite rev_app_distr.
+  cbn [rev].
+  rewrite rev_involutive.
   rewrite Forall_app. split.
   - rewrite Forall_app. split.
     + rewrite Forall_app. split.
-      * apply Forall_rev. apply q0_stable_control_tags_dispatch_left.
-      * apply Forall_rev. apply q0_stable_control_tags_dispatch_left.
-    + constructor.
-      * unfold dispatch_left_symbol; auto 12.
-      * constructor.
-  - constructor.
-    * unfold dispatch_left_symbol; auto 12.
-    * constructor.
+      * apply q0_stable_control_tags_dispatch_left.
+      * repeat constructor; unfold dispatch_left_symbol; auto 12.
+    + repeat constructor; unfold dispatch_left_symbol; auto 12.
+  - repeat constructor; unfold dispatch_left_symbol; auto 12.
 Qed.
 
 Theorem q15_left_four_prefix_loop_read1_to_q5 :
