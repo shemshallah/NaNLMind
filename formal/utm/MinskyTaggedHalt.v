@@ -1666,6 +1666,20 @@ Print Assumptions q15_left_four_prefix_gate.
     q3->q5 and q2->q1 reentries closes the left movement loop while the
     restored 4 travels in the q5/q1 rail. *)
 
+Lemma four_prefix_left_rail_tail :
+  forall (first : bool) (rest_prefix : list bool)
+         (extra next_control : bool),
+    Forall dispatch_left_symbol
+      (map q0_stable_control_tag (first :: rest_prefix) ++
+       [q0_stable_control_tag extra;
+        q0_stable_control_tag next_control; 4; 0; 6]).
+Proof.
+  intros first rest_prefix extra next_control.
+  rewrite Forall_app. split.
+  - apply q0_stable_control_tags_dispatch_left.
+  - repeat (constructor; try (unfold dispatch_left_symbol; auto 12)).
+Qed.
+
 Lemma four_prefix_left_rail_safe :
   forall (first : bool) (rest_prefix : list bool)
          (extra next_control : bool),
@@ -1676,15 +1690,23 @@ Lemma four_prefix_left_rail_safe :
         rev (map q0_stable_control_tag (first :: rest_prefix))) ++ [0; 6]).
 Proof.
   intros first rest_prefix extra next_control.
-  repeat rewrite rev_app_distr.
-  cbn [rev].
-  rewrite rev_involutive.
-  repeat rewrite app_nil_r.
-  repeat rewrite app_nil_l.
-  repeat rewrite <- app_assoc.
-  rewrite Forall_app. split.
-  - apply q0_stable_control_tags_dispatch_left.
-  - repeat (constructor; try (unfold dispatch_left_symbol; auto 12)).
+  replace (rev ([4] ++
+      [q0_stable_control_tag next_control;
+       q0_stable_control_tag extra] ++
+      rev (map q0_stable_control_tag (first :: rest_prefix))) ++ [0; 6])
+    with (map q0_stable_control_tag (first :: rest_prefix) ++
+      [q0_stable_control_tag extra;
+       q0_stable_control_tag next_control; 4; 0; 6]).
+  2:{
+    repeat rewrite rev_app_distr.
+    cbn [rev].
+    rewrite rev_involutive.
+    repeat rewrite app_nil_r.
+    repeat rewrite app_nil_l.
+    repeat rewrite <- app_assoc.
+    reflexivity.
+  }
+  apply four_prefix_left_rail_tail.
 Qed.
 
 Theorem q15_left_four_prefix_loop_read1_to_q5 :
