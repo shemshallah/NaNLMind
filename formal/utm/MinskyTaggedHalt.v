@@ -1778,11 +1778,11 @@ Theorem q15_left_four_prefix_loop_read0_to_q1 :
           length (rev (map q0_stable_control_tag (first :: rest_prefix))) +
           7)) +
         S (length
-          (rev ([4] ++
+          ((rev ([4] ++
             [q0_stable_control_tag next_control;
              q0_stable_control_tag extra] ++
             rev (map q0_stable_control_tag (first :: rest_prefix))) ++
-           [0; 6])))
+           [0]) ++ [6])))
       (entry_config 15
         (4 :: source_bit old :: 6 :: [5] ++
          2 :: source_bit false :: outer)
@@ -1790,11 +1790,11 @@ Theorem q15_left_four_prefix_loop_read0_to_q1 :
               (first :: (rest_prefix ++ [extra; next_control]))) ++
          source_bit false :: suffix)) =
     entry_config 1 (5 :: source_bit old :: 6 :: outer)
-      (rev (rev ([4] ++
+      (rev ((rev ([4] ++
         [q0_stable_control_tag next_control;
          q0_stable_control_tag extra] ++
         rev (map q0_stable_control_tag (first :: rest_prefix))) ++
-        [0; 6]) ++ 2 :: suffix).
+        [0]) ++ [6]) ++ 2 :: suffix).
 Proof.
   intros first rest_prefix extra next_control old outer suffix.
   rewrite dispatch_run_add.
