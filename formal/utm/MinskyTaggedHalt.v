@@ -1677,7 +1677,17 @@ Proof.
   intros first rest_prefix extra next_control.
   rewrite Forall_app. split.
   - apply q0_stable_control_tags_dispatch_left.
-  - repeat (constructor; try (unfold dispatch_left_symbol; auto 12)).
+  - constructor.
+    + apply q0_stable_control_tag_dispatch_left.
+    + constructor.
+      * apply q0_stable_control_tag_dispatch_left.
+      * constructor.
+        -- unfold dispatch_left_symbol; auto 12.
+        -- constructor.
+           ++ unfold dispatch_left_symbol; auto 12.
+           ++ constructor.
+              ** unfold dispatch_left_symbol; auto 12.
+              ** constructor.
 Qed.
 
 Lemma four_prefix_left_rail_safe :
