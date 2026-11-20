@@ -328,7 +328,7 @@ Proof.
                   (rev (map q0_stable_control_tag (first :: rest)))) ++
            source_bit old :: 5 :: stored)
     with (scanned ++ 5 :: stored)
-    by (unfold scanned; rewrite <- app_assoc; reflexivity).
+    by (unfold scanned; repeat rewrite <- app_assoc; reflexivity).
   destruct scanned as [|s rest'] eqn:HS.
   - contradiction.
   - assert (Hpass' : Forall q5_return_pass (s :: rest')).
