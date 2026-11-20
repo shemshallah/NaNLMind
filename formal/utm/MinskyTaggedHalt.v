@@ -1465,8 +1465,9 @@ Lemma four_prefix_restored_map :
 Proof.
   intros first rest_prefix extra next_control.
   rewrite rev_app_distr. cbn [rev].
-  rewrite map_app. cbn [map].
+  rewrite map_app.
   rewrite q16_stable_control_rail_reverse_restore.
+  replace (map q16_restore [4]) with ([4] : list nat) by reflexivity.
   replace (map q0_stable_control_tag
       (first :: (rest_prefix ++ [extra; next_control])))
     with (map q0_stable_control_tag (first :: rest_prefix) ++
