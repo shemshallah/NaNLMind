@@ -613,6 +613,7 @@ Theorem q0_rail_read_zero_to_q5 :
 Proof.
   intros prefix mark c1 c2 stored symbols suffix H0 Hsym.
   rewrite dispatch_run_add.
+  match goal with |- ?G => idtac "Q0GOAL:" G end.
   rewrite (q0_right_rail_target_dispatch prefix mark c1 c2 false
     stored (symbols ++ 4 :: suffix) H0).
   apply q3_scan_to_q5. exact Hsym.
