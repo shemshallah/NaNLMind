@@ -341,7 +341,6 @@ Proof.
   - contradiction.
   - assert (Hpass' : Forall q5_return_pass (s :: rest')).
     { rewrite <- HS. exact Hpass. }
-    rewrite HS.
     change (run (S (length (s :: rest')))
       (entry_config 5 (rest' ++ 5 :: stored)
         (s :: (if target then 3 else 2) :: tail)) =
