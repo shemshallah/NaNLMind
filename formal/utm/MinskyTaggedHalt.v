@@ -1475,7 +1475,7 @@ Proof.
   2:{
     replace (first :: (rest_prefix ++ [extra; next_control]))
       with ((first :: rest_prefix) ++ [extra; next_control])
-      by (rewrite <- app_assoc; reflexivity).
+      by reflexivity.
     rewrite map_app. reflexivity.
   }
   rewrite rev_app_distr. cbn [rev].
