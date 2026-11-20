@@ -1718,7 +1718,7 @@ Proof.
     repeat rewrite <- app_assoc.
     reflexivity.
   }
-  rewrite app_assoc. reflexivity.
+  rewrite <- app_assoc. reflexivity.
 Qed.
 
 Lemma four_prefix_left_rail_normalize_q2 :
