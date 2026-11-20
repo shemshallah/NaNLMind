@@ -1463,6 +1463,17 @@ Print Assumptions q5_left_false_gate_tagged_target_prefix.
     carried as a q0-passable prefix.  This is the left-branch analogue of
     the right four-prefix q1/q0/q4 dispatch. *)
 
+Lemma four_prefix_q0_shape :
+  forall (prefix spacer tail : list nat) (next extra target : bool),
+    prefix ++ q0_stable_control_tag next ::
+    q0_stable_control_tag extra :: spacer ++ source_bit target :: tail =
+    (prefix ++
+     [q0_stable_control_tag next; q0_stable_control_tag extra] ++
+     spacer) ++ source_bit target :: tail.
+Proof.
+  intros. repeat rewrite <- app_assoc. reflexivity.
+Qed.
+
 Theorem q5_left_false_gate_tagged_target_spacer :
   forall (old next extra target : bool)
          (prefix spacer outer tail : list nat),
@@ -1508,12 +1519,14 @@ Proof.
      q0_stable_control_tag extra ::
      spacer ++ source_bit target :: tail)).
   destruct target.
-  - apply (q0_scan_one
+  - rewrite (four_prefix_q0_shape prefix spacer tail next extra true).
+    apply (q0_scan_one
       (prefix ++
        [q0_stable_control_tag next; q0_stable_control_tag extra] ++
        spacer)
       (0 :: 6 :: 5 :: source_bit old :: 6 :: outer) tail Hmarked).
-  - apply (q0_scan_zero
+  - rewrite (four_prefix_q0_shape prefix spacer tail next extra false).
+    apply (q0_scan_zero
       (prefix ++
        [q0_stable_control_tag next; q0_stable_control_tag extra] ++
        spacer)
