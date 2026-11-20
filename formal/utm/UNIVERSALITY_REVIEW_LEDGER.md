@@ -1172,3 +1172,25 @@ Fast job
 on `fedc78a`; clean-branch bridge
 [44654879521](https://github.com/shemshallah/NaNLMind/actions/runs/44654879521)
 was dispatched on the same commit.
+
+### q0 target dispatch over the returned rail (kernel-checked)
+
+`q0_right_rail_target_dispatch` composes the q0 rail scan with the
+stable control pair and the raw target:
+
+```text
+run (|prefix ++ [mark]| + 3)
+  (entry_config 0 (0 :: 5 :: stored)
+    ((prefix ++ [mark]) ++ [tag c1; tag c2] ++
+     source_bit read :: tail))
+= if read then entry_config 3 (...) tail
+  else cfg_ml 2 (...) (2 :: tail).
+```
+
+Fast job
+[44658366863](https://github.com/shemshallah/NaNLMind/actions/runs/44658366863)
+on `dc31664`; clean-branch bridge
+[44658834726](https://github.com/shemshallah/NaNLMind/actions/runs/44658834726)
+was dispatched on the same commit.
+
+The q4 (`old = true`) mirrored target dispatch remains open.

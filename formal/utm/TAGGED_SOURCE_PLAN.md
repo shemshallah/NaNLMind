@@ -333,3 +333,26 @@ rev (rev dirs ++ 7 :: 4 :: map q16_restore (rev tags))))`.
 
 This is the canonical next-row match entry: q4 for old=true, q0 for
 old=false.  The `4` remains in the rail as the X marker for q6.
+
+## q0 target dispatch over the returned rail (proved)
+
+`q0_right_rail_target_dispatch` reads the next raw target after the
+returned rail, the relocated old mark, and two stable control tags:
+
+```text
+run (|prefix ++ [mark]| + 3)
+  (entry_config 0 (0 :: 5 :: stored)
+    ((prefix ++ [mark]) ++ [tag c1; tag c2] ++
+     source_bit read :: tail))
+= if read
+  then entry_config 3
+    (3 :: rev ((prefix ++ [mark]) ++ [tag c1; tag c2]) ++
+     0 :: 5 :: stored) tail
+  else cfg_ml 2
+    (rev ((prefix ++ [mark]) ++ [tag c1; tag c2]) ++
+     0 :: 5 :: stored) (2 :: tail).
+```
+
+This is the q0 branch of the next-row direction/target dispatch.  The q4
+branch (`old = true`) is the mirrored target dispatch and remains to be
+proved.
