@@ -1318,8 +1318,9 @@ The left 4-prefix counterpart is also native:
 - `q15_q22_left_four_prefix_relocates_to_q5`,
 - `q5_left_false_gate_tagged_target_prefix`.
 
-Fast job
-[44801682830](https://github.com/shemshallah/NaNLMind/actions/runs/44801682830)
-is the acceptance run for the restored `main` state.  The full
-four-prefix gate composition is not claimed; the relocation and gate are
-separate verified pieces.
+The spacer-aware gate `q5_left_false_gate_tagged_target_spacer` and its
+composition `q15_left_four_prefix_gate` are also kernel-checked and
+accepted on `main` (fast run
+[44826329567](https://github.com/shemshallah/NaNLMind/actions/runs/44826329567),
+merged as `62990c1`).  The complete four-prefix loops are a separate
+unmerged branch experiment.

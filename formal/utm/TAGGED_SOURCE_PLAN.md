@@ -519,7 +519,9 @@ q5/q1/q0 gate with an arbitrary `Forall q0_pass prefix` between the
 q1-selected mark and the two control tags.  This is the exact extra
 freedom introduced by the restored 4.
 
-The attempted full four-prefix gate composition was removed before
-acceptance when a clock/frame rewrite did not unify; the verified
-relocation and gate remain, and the composition is the next isolated
-target.
+`q15_left_four_prefix_gate` composes the relocation with this
+spacer-aware gate.  The restored 4 is the q0-passable prefix, the
+remaining tags form a q0-passable spacer, and the raw read bit is still
+the first raw cell.  The composition is kernel-checked and accepted on
+`main`.  Complete four-prefix loops (q3->q5 and q2->q1 reentry) are a
+separate branch experiment, not part of the accepted tree yet.
