@@ -331,8 +331,9 @@ Proof.
     scanned ++ 5 :: stored).
   {
     unfold scanned.
+    cbn [app].
     repeat rewrite <- app_assoc.
-    cbn [app]. reflexivity.
+    reflexivity.
   }
   rewrite Hsplit.
   destruct scanned as [|s rest'] eqn:HS.
