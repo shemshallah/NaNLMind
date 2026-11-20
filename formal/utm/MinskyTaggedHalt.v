@@ -895,7 +895,9 @@ Lemma q0_read_one_from_q1_output :
          [q0_stable_control_tag c1; q0_stable_control_tag c2] ++
          source_bit true :: (symbols ++ 4 :: suffix))) =
     cfg_ml 5
-      (rev symbols ++ 3 :: rev (prefix ++ [mark]) ++
+      (rev symbols ++ 3 ::
+       rev ((prefix ++ [mark]) ++
+         [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++
        0 :: 5 :: stored) (4 :: suffix).
 Proof.
   intros prefix mark c1 c2 stored symbols suffix Hp Hsym.
