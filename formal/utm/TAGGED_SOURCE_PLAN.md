@@ -393,3 +393,21 @@ states with the table's mirrored mapping.
 
 These are the native reentries from the q3/q2 target states to the next
 row's q5/q1 phases.
+
+## Target dispatch + reentry (proved)
+
+Four branch theorems connect the q1 direction decision through the
+target dispatch to the next phase:
+
+| branch | target | path |
+| --- | --- | --- |
+| q0 (old=false) | read=1 | q0 -> q3 -> q5 |
+| q0 (old=false) | read=0 | q0 -> q2 -> q1 |
+| q4 (old=true)  | read=0 | q4 -> q3 -> q5 |
+| q4 (old=true)  | read=1 | q4 -> q2 -> q1 |
+
+The clauses are `q0_rail_read_one_to_q5`,
+`q0_rail_read_zero_to_q1`, `q4_rail_read_zero_to_q5`,
+`q4_rail_read_one_to_q1`.  Every clock is exact; the q3 branch scans
+`dispatch_right_symbol` to X=4, the q2 branch scans
+`dispatch_left_symbol` to the 5 delimiter.

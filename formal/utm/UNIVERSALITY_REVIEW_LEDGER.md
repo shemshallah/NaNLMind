@@ -1233,3 +1233,27 @@ Fast job
 on `22886a8`; clean-branch bridge
 [44664054820](https://github.com/shemshallah/NaNLMind/actions/runs/44664054820)
 was dispatched on the same commit.
+
+### Target dispatch + q2/q3 reentry (kernel-checked)
+
+Four branch theorems now compose the q1 direction decision, the raw
+target dispatch, and the q2/q3 reentry:
+
+```text
+q0, read=1 -> q3 -> q5
+q0, read=0 -> q2 -> q1
+q4, read=0 -> q3 -> q5
+q4, read=1 -> q2 -> q1
+```
+
+Theorems: `q0_rail_read_one_to_q5`, `q0_rail_read_zero_to_q1`,
+`q4_rail_read_zero_to_q5`, `q4_rail_read_one_to_q1`.
+The q0/q4 target mappings are the literal mirrored table behaviour; the
+q3 and q2 scans use `dispatch_right_symbol` and `dispatch_left_symbol`
+respectively, with exact clocks.
+
+Fast job
+[44672011694](https://github.com/shemshallah/NaNLMind/actions/runs/44672011694)
+on `7ad5cb0`; clean-branch bridge
+[44672468846](https://github.com/shemshallah/NaNLMind/actions/runs/44672468846)
+was dispatched on the same commit.
