@@ -1304,3 +1304,22 @@ Fast job
 on `72ae406`; clean-branch bridge
 [44778826706](https://github.com/shemshallah/NaNLMind/actions/runs/44778826706)
 was dispatched on the same commit.
+
+### Left loops and left 4-prefix bridge (kernel-checked)
+
+The tagged left movement half now has complete loops:
+
+- `q15_left_loop_target1_to_q5` (target true: q15 -> q3 -> q5),
+- `q15_left_loop_target0_to_q1` (target false: q15 -> q2 -> q1).
+
+The left 4-prefix counterpart is also native:
+
+- `q15_q22_left_four_prefix_to_q20`,
+- `q15_q22_left_four_prefix_relocates_to_q5`,
+- `q5_left_false_gate_tagged_target_prefix`.
+
+Fast job
+[44801682830](https://github.com/shemshallah/NaNLMind/actions/runs/44801682830)
+is the acceptance run for the restored `main` state.  The full
+four-prefix gate composition is not claimed; the relocation and gate are
+separate verified pieces.

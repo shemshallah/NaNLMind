@@ -469,3 +469,57 @@ loops:
 Each theorem starts at the canonical 4-prefixed q15 entry and ends at
 the next q1/q5 frame, with the exact native clock.  This completes the
 right-direction loop for both direction bits and both read bits.
+
+## Complete left loops (proved)
+
+The left tagged cycle is now composed with both native reentries:
+
+| target | path | theorem |
+| --- | --- | --- |
+| true  | q15 -> ... -> q3 -> q5 | `q15_left_loop_target1_to_q5` |
+| false | q15 -> ... -> q2 -> q1 | `q15_left_loop_target0_to_q1` |
+
+Both start at the supplied 21-step left frame
+
+```text
+entry_config 15
+  (source_bit old :: 6 :: 5 :: 2 :: source_bit false :: outer)
+  (tag next :: tag extra :: source_bit target :: tail)
+```
+
+and end at the next q5/q1 phase with the exact native clock.  The
+passability lemmas `q0_stable_control_tag_dispatch_left/right` and
+`q0_stable_control_rail_dispatch_left` are checked.
+
+## Left 4-prefix bridge (proved)
+
+`q15_q22_left_four_prefix_to_q20` and
+`q15_q22_left_four_prefix_relocates_to_q5` absorb a leading X=4 on the
+left branch:
+
+```text
+run (S |tags| + S |tags ++ [4]| + S |dirs| ...
+  (entry_config 15
+    (4 :: source_bit old :: dirs ++ 2 :: source_bit target :: outer)
+    (rev tags ++ source_bit next :: suffix))
+= cfg_ml 5
+    (rev (source_bit old :: rev dirs) ++ 6 :: outer)
+    ((if target then 3 else 2) ::
+     map q16_restore (rev (tags ++ [4])) ++
+     source_bit next :: suffix)
+```
+
+The restored map begins with the 4, so the q5 tail carries a q0-passable
+prefix before the two stable control tags.
+
+## Generalized left gate (proved)
+
+`q5_left_false_gate_tagged_target_prefix` extends the seven-step left
+q5/q1/q0 gate with an arbitrary `Forall q0_pass prefix` between the
+q1-selected mark and the two control tags.  This is the exact extra
+freedom introduced by the restored 4.
+
+The attempted full four-prefix gate composition was removed before
+acceptance when a clock/frame rewrite did not unify; the verified
+relocation and gate remain, and the composition is the next isolated
+target.
