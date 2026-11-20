@@ -676,7 +676,11 @@ Proof.
        [q0_stable_control_tag c1; q0_stable_control_tag c2])).
   { rewrite Forall_app. split.
     - exact H4.
-    - repeat constructor; unfold q4_pass; auto 12. }
+    - constructor.
+      + destruct c1; unfold q4_pass, q0_stable_control_tag; auto 12.
+      + constructor.
+        * destruct c2; unfold q4_pass, q0_stable_control_tag; auto 12.
+        * constructor. }
   rewrite dispatch_run_add.
   rewrite (q4_right_rail_target_zero prefix mark c1 c2
     stored (symbols ++ 4 :: suffix) H4full).
@@ -710,7 +714,11 @@ Proof.
        [q0_stable_control_tag c1; q0_stable_control_tag c2])).
   { rewrite Forall_app. split.
     - exact H4.
-    - repeat constructor; unfold q4_pass; auto 12. }
+    - constructor.
+      + destruct c1; unfold q4_pass, q0_stable_control_tag; auto 12.
+      + constructor.
+        * destruct c2; unfold q4_pass, q0_stable_control_tag; auto 12.
+        * constructor. }
   rewrite dispatch_run_add.
   rewrite (q4_right_rail_target_one prefix mark c1 c2
     stored (symbols ++ 4 :: suffix) H4full).
