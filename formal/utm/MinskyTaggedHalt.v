@@ -1645,14 +1645,17 @@ Proof.
     first (rest_prefix ++ [extra; next_control]) 6 [5]
     old read false outer suffix H21 H17).
   rewrite four_prefix_q5_frame.
+  assert (Hpre : Forall q0_pass [4]).
+  { constructor.
+    - unfold q0_pass; auto 12.
+    - constructor. }
+  assert (Hsp : Forall q0_pass
+      (rev (map q0_stable_control_tag (first :: rest_prefix)))).
+  { apply Forall_rev. apply q0_stable_control_tags_pass. }
   apply (q5_left_false_gate_tagged_target_spacer
     old next_control extra read [4]
     (rev (map q0_stable_control_tag (first :: rest_prefix)))
-    outer suffix).
-  - repeat constructor.
-    unfold q0_pass; auto 12.
-  - apply Forall_rev.
-    apply q0_stable_control_tags_pass.
+    outer suffix Hpre Hsp).
 Qed.
 
 Print Assumptions q15_left_four_prefix_gate.
