@@ -1285,3 +1285,22 @@ was dispatched on the same commit.
 
 The remaining right-loop cases (q0/read-one, q4/read-zero,
 q4/read-one) and the left branch are analogous compositions.
+
+### All four right loops (kernel-checked)
+
+With the q1-output conversion lemmas, the remaining right loops are
+proved:
+
+- `q15_right_loop_q0_read0` (q0, read 0 -> q2 -> q1),
+- `q15_right_loop_q0_read1` (q0, read 1 -> q3 -> q5),
+- `q15_right_loop_q4_read0` (q4, read 0 -> q3 -> q5),
+- `q15_right_loop_q4_read1` (q4, read 1 -> q2 -> q1).
+
+Each starts at the canonical 4-prefixed q15 entry and returns to the
+next q1/q5 phase with an exact clock.
+
+Fast job
+[44778191825](https://github.com/shemshallah/NaNLMind/actions/runs/44778191825)
+on `72ae406`; clean-branch bridge
+[44778826706](https://github.com/shemshallah/NaNLMind/actions/runs/44778826706)
+was dispatched on the same commit.

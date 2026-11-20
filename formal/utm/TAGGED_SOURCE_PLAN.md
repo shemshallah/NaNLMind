@@ -451,3 +451,21 @@ right_q1_step_clock ... false
 
 This is a genuine native loop from the tagged movement entry back to the
 next-row q1 match entry.
+
+## All four right loops (proved)
+
+The remaining q1-output conversion lemmas are
+`q0_read_one_from_q1_output`, `q4_read_zero_from_q1_output`, and
+`q4_read_one_from_q1_output`.  They yield the four complete right
+loops:
+
+| old | read | loop |
+| --- | --- | --- |
+| false | 0 | q15 -> ... -> q1 -> q0 -> q2 -> q1 |
+| false | 1 | q15 -> ... -> q1 -> q0 -> q3 -> q5 |
+| true  | 0 | q15 -> ... -> q1 -> q4 -> q3 -> q5 |
+| true  | 1 | q15 -> ... -> q1 -> q4 -> q2 -> q1 |
+
+Each theorem starts at the canonical 4-prefixed q15 entry and ends at
+the next q1/q5 frame, with the exact native clock.  This completes the
+right-direction loop for both direction bits and both read bits.
