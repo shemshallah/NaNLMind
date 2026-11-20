@@ -780,3 +780,33 @@ Definition right_mark (target : bool) : nat :=
   if target then 3 else 2.
 
 
+
+(** q0/read-zero when the input is already in the q1-step output form. *)
+Lemma q0_read_zero_from_q1_output :
+  forall (prefix : list nat) (mark : nat) (c1 c2 : bool)
+         (stored symbols suffix : list nat),
+    Forall q0_pass (prefix ++ [mark]) ->
+    Forall dispatch_left_symbol
+      (rev ((prefix ++ [mark]) ++
+        [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++ [0]) ->
+    run ((length (prefix ++ [mark]) + 3) +
+         S (length (rev ((prefix ++ [mark]) ++
+           [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++ [0])))
+      (entry_config 0 (0 :: 5 :: stored)
+        (prefix ++ mark ::
+         [q0_stable_control_tag c1; q0_stable_control_tag c2] ++
+         source_bit false :: symbols ++ 4 :: suffix)) =
+    entry_config 1 (5 :: stored)
+      (0 :: ((prefix ++ [mark]) ++
+        [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++
+       2 :: symbols ++ 4 :: suffix).
+Proof.
+  intros prefix mark c1 c2 stored symbols suffix Hp Hl.
+  rewrite (cons_append_split prefix mark
+    [q0_stable_control_tag c1; q0_stable_control_tag c2]
+    (source_bit false :: symbols ++ 4 :: suffix)).
+  apply (q0_rail_read_zero_to_q1 prefix mark c1 c2 stored symbols
+    suffix Hp Hl).
+Qed.
+
+Print Assumptions q0_read_zero_from_q1_output.
