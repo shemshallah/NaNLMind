@@ -1257,3 +1257,31 @@ Fast job
 on `7ad5cb0`; clean-branch bridge
 [44672468846](https://github.com/shemshallah/NaNLMind/actions/runs/44672468846)
 was dispatched on the same commit.
+
+### Full right loop q0/read-zero (kernel-checked)
+
+`q15_right_loop_q0_read0` is the first complete right loop from the
+tagged q15 movement entry back to q1:
+
+```text
+q15 -> q22 -> q19 -> q17/q18 -> q5 -> q1
+-> q0 (old=false) -> q2 -> q1
+```
+
+The clock is the exact sum of `right_q1_step_clock` and the q0
+read-zero target/reentry clock.  The result is the q1 frame
+
+```text
+entry_config 1 (5 :: stored)
+  (0 :: ((right_rail_map ... ++ [right_mark target]) ++ [tag c1; tag c2]) ++
+   2 :: symbols ++ 4 :: suffix).
+```
+
+Verified by fast jobs
+[44753509463](https://github.com/shemshallah/NaNLMind/actions/runs/44753509463)
+on `2577dac`; clean-branch bridge
+[44755230591](https://github.com/shemshallah/NaNLMind/actions/runs/44755230591)
+was dispatched on the same commit.
+
+The remaining right-loop cases (q0/read-one, q4/read-zero,
+q4/read-one) and the left branch are analogous compositions.

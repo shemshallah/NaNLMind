@@ -411,3 +411,43 @@ The clauses are `q0_rail_read_one_to_q5`,
 `q4_rail_read_one_to_q1`.  Every clock is exact; the q3 branch scans
 `dispatch_right_symbol` to X=4, the q2 branch scans
 `dispatch_left_symbol` to the 5 delimiter.
+
+## Full right loop, q0/read-zero (proved)
+
+`q15_right_loop_q0_read0` is the first complete right loop:
+
+```text
+q15 tagged movement -> q22 -> q19 -> q17/q18 -> q5 -> q1
+-> q0 (old=false) -> q2 -> q1
+```
+
+It starts at
+
+```text
+entry_config 15
+  (4 :: source_bit false :: dirs ++ 3 :: 5 :: stored)
+  (rev tags ++ source_bit target :: between ++ 7 ::
+   [tag c1; tag c2] ++ source_bit false ::
+   (symbols ++ 4 :: suffix))
+```
+
+and returns to
+
+```text
+entry_config 1 (5 :: stored)
+  (0 :: ((right_rail_map ... ++ [right_mark target]) ++
+         [tag c1; tag c2]) ++
+   2 :: symbols ++ 4 :: suffix)
+```
+
+with clock
+
+```text
+right_q1_step_clock ... false
++ (|right_rail_map ... ++ [right_mark target]| + 3)
++ S |rev ((right_rail_map ... ++ [right_mark target]) ++
+           [tag c1; tag c2]) ++ [0]|.
+```
+
+This is a genuine native loop from the tagged movement entry back to the
+next-row q1 match entry.
