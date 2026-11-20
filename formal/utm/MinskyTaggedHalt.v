@@ -574,6 +574,9 @@ Proof.
       (entry_config 2 (rest ++ mark :: 5 :: stored) (r :: right)) =
       entry_config 1 (5 :: stored)
         (rev (r :: rest ++ [mark]) ++ right)).
+    replace (rest ++ mark :: 5 :: stored)
+      with ((rest ++ [mark]) ++ 5 :: stored)
+      by (rewrite <- app_assoc; reflexivity).
     apply (dispatch_left_to_delimiter (rest ++ [mark]) r stored right Hscan).
 Qed.
 
