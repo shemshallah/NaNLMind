@@ -1149,3 +1149,26 @@ Fast jobs
 on `490fb3f`; clean-branch bridge
 [44647605903](https://github.com/shemshallah/NaNLMind/actions/runs/44647605903)
 was dispatched on the same commit.
+
+### q1 dispatch into q0/q4 (kernel-checked)
+
+`q15_q22_right_four_prefix_q1_step` composes the q5->q1 rail with one
+literal q1 transition:
+
+```text
+if old
+then entry_config 4 (1 :: 5 :: stored) (rail_tail_map ++ mark :: tail)
+else entry_config 0 (0 :: 5 :: stored) (rail_tail_map ++ mark :: tail)
+```
+
+with `rail_tail_map = map entry_rewrite (rev (rev between ++ 6 ::
+rev (rev dirs ++ 7 :: 4 :: map q16_restore (rev tags))))`.
+
+This is the canonical next-row match entry (q4/q0), with the 4-prefix
+still in the rail for the q6 X crossing.
+
+Fast job
+[44654274670](https://github.com/shemshallah/NaNLMind/actions/runs/44654274670)
+on `fedc78a`; clean-branch bridge
+[44654879521](https://github.com/shemshallah/NaNLMind/actions/runs/44654879521)
+was dispatched on the same commit.

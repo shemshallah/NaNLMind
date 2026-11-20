@@ -311,3 +311,25 @@ mark `2/3`.  q1 therefore dispatches q0 (mark 2) or q4 (mark 3), which
 is the canonical next-row match phase; the `4` deeper in the rail is
 then the X marker that leads to q6.  This is the loop structure, not a
 gate failure.
+
+## q1 dispatch into q0/q4 (proved)
+
+`q15_q22_right_four_prefix_q1_step` adds one literal q1 step to the
+q5->q1 rail:
+
+```text
+run (right-return clock + q5 clock + 1)
+  (entry_config 15
+    (4 :: source_bit old :: dirs ++ 3 :: 5 :: stored)
+    (rev tags ++ source_bit target :: between ++ 7 :: tail))
+=
+if old
+then entry_config 4 (1 :: 5 :: stored) (rail_tail_map ++ mark :: tail)
+else entry_config 0 (0 :: 5 :: stored) (rail_tail_map ++ mark :: tail)
+```
+
+where `rail_tail_map = map entry_rewrite (rev (rev between ++ 6 ::
+rev (rev dirs ++ 7 :: 4 :: map q16_restore (rev tags))))`.
+
+This is the canonical next-row match entry: q4 for old=true, q0 for
+old=false.  The `4` remains in the rail as the X marker for q6.
