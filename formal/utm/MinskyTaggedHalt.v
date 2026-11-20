@@ -331,6 +331,7 @@ Proof.
     scanned ++ 5 :: stored).
   {
     unfold scanned.
+    repeat rewrite <- app_assoc.
     cbn [app].
     repeat rewrite <- app_assoc.
     reflexivity.
