@@ -928,6 +928,7 @@ Proof.
     ([q0_stable_control_tag c1; q0_stable_control_tag c2] ++
      source_bit true :: (symbols ++ 4 :: suffix)) stored
     H21 Hdir15 Hbetween Hpass).
+  fold (right_rail_map first rest dir_head dir_remaining between).
   rewrite (q1_out_to_q0_frame
     (right_rail_map first rest dir_head dir_remaining between)
     (if target then 3 else 2)
@@ -987,6 +988,7 @@ Proof.
     ([q0_stable_control_tag c1; q0_stable_control_tag c2] ++
      source_bit false :: (symbols ++ 4 :: suffix)) stored
     H21 Hdir15 Hbetween Hpass).
+  fold (right_rail_map first rest dir_head dir_remaining between).
   rewrite (cons_append_split
     (right_rail_map first rest dir_head dir_remaining between)
     (if target then 3 else 2)
@@ -1054,6 +1056,7 @@ Proof.
     ([q0_stable_control_tag c1; q0_stable_control_tag c2] ++
      source_bit true :: (symbols ++ 4 :: suffix)) stored
     H21 Hdir15 Hbetween Hpass).
+  fold (right_rail_map first rest dir_head dir_remaining between).
   rewrite (cons_append_split
     (right_rail_map first rest dir_head dir_remaining between)
     (if target then 3 else 2)
