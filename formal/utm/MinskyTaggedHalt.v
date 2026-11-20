@@ -1172,6 +1172,17 @@ Proof.
     + exact IH.
 Qed.
 
+Lemma q0_stable_control_rail_dispatch_left :
+  forall bits,
+    Forall dispatch_left_symbol
+      (rev (map q0_stable_control_tag bits) ++ [0; 6]).
+Proof.
+  intros bits.
+  rewrite Forall_app. split.
+  - apply Forall_rev. apply q0_stable_control_tags_dispatch_left.
+  - repeat constructor; unfold dispatch_left_symbol; auto 12.
+Qed.
+
 (** target=true: q15 -> ... -> q3 -> q5. *)
 Theorem q15_left_loop_target1_to_q5 :
   forall (old next extra : bool) (outer symbols suffix : list nat),
@@ -1229,9 +1240,9 @@ Proof.
     (rev [q0_stable_control_tag next;
           q0_stable_control_tag extra] ++ [0])
     6 (source_bit old :: 6 :: outer) (2 :: suffix)).
-  rewrite Forall_app. split.
-  - apply Forall_rev. apply q0_stable_control_tags_dispatch_left.
-  - repeat constructor; unfold dispatch_left_symbol; auto 12.
+  change (Forall dispatch_left_symbol
+    (rev (map q0_stable_control_tag [next; extra]) ++ [0; 6])).
+  apply q0_stable_control_rail_dispatch_left.
 Qed.
 
 Print Assumptions q15_left_loop_target1_to_q5.
