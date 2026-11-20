@@ -1397,3 +1397,51 @@ Proof.
 Qed.
 
 Print Assumptions q15_q22_left_four_prefix_relocates_to_q5.
+
+(** ** Generalized left gate with a passable prefix
+
+    The restored 4 is q0-passable, so the left q5/q1/q0 gate can carry it
+    as a prefix before the two stable control tags.  This is the exact
+    extra degree of freedom needed after the four-prefix relocation. *)
+
+Lemma q5_left_four_steps :
+  forall (old : bool) (prefix outer tail : list nat),
+    run 4
+      (entry_config 5 (5 :: source_bit old :: 6 :: outer)
+        (6 :: 2 :: prefix ++ tail)) =
+    entry_config 0 (0 :: 6 :: 5 :: source_bit old :: 6 :: outer)
+      (prefix ++ tail).
+Proof.
+  intros old prefix outer tail. reflexivity.
+Qed.
+
+Theorem q5_left_false_gate_tagged_target_prefix :
+  forall (old next extra target : bool) (prefix outer tail : list nat),
+    Forall q0_pass prefix ->
+    run (length prefix + 7)
+      (entry_config 5 (5 :: source_bit old :: 6 :: outer)
+        (6 :: 2 :: prefix ++
+         q0_stable_control_tag next ::
+         q0_stable_control_tag extra :: source_bit target :: tail)) =
+    if target
+    then entry_config 3
+      (3 :: rev (prefix ++
+        [q0_stable_control_tag next; q0_stable_control_tag extra]) ++
+       0 :: 6 :: 5 :: source_bit old :: 6 :: outer) tail
+    else cfg_ml 2
+      (rev (prefix ++
+        [q0_stable_control_tag next; q0_stable_control_tag extra]) ++
+       0 :: 6 :: 5 :: source_bit old :: 6 :: outer) (2 :: tail).
+Proof.
+  intros old next extra target prefix outer tail Hprefix.
+  replace (length prefix + 7) with (4 + (length prefix + 3)) by lia.
+  rewrite dispatch_run_add.
+  rewrite (q5_left_four_steps old prefix outer
+    (q0_stable_control_tag next ::
+     q0_stable_control_tag extra :: source_bit target :: tail)).
+  apply (q0_tagged_control_pair_dispatches_target
+    prefix (0 :: 6 :: 5 :: source_bit old :: 6 :: outer)
+    tail next extra target Hprefix).
+Qed.
+
+Print Assumptions q5_left_false_gate_tagged_target_prefix.
