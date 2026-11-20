@@ -1261,35 +1261,7 @@ Print Assumptions q15_left_loop_target0_to_q1.
     The resulting q5 tail begins with the restored 4, exactly the
     q0-passable prefix needed by the generalized left gate below. *)
 
-Theorem q15_q16_four_prefix_roundtrip_local :
-  forall (old target : bool) (tags left suffix : list nat),
-    Forall q15_pass (rev tags) ->
-    Forall q16_pass (tags ++ [4]) ->
-    run (S (length (rev tags)) + S (length (tags ++ [4])))
-      (entry_config 15 (4 :: source_bit old :: left)
-        (rev tags ++ source_bit target :: suffix)) =
-    cfg_ml (if old then 22 else 21) left
-      (7 :: map q16_restore (rev (tags ++ [4])) ++
-       source_bit target :: suffix).
-Proof.
-  intros old target tags left suffix H15 H16.
-  rewrite dispatch_run_add.
-  rewrite (q15_scan_to_raw (rev tags) target
-    (4 :: source_bit old :: left) suffix H15).
-  rewrite rev_involutive.
-  replace (tags ++ 4 :: source_bit old :: left)
-    with ((tags ++ [4]) ++ source_bit old :: left)
-    by (rewrite <- app_assoc; reflexivity).
-  destruct (tags ++ [4]) as [|s remaining] eqn:H.
-  - assert (Hlen : length ([] : list nat) = length (tags ++ [4]))
-      by (rewrite H; reflexivity).
-    rewrite app_length in Hlen. cbn [length] in Hlen. lia.
-  - assert (H16' : Forall q16_pass (s :: remaining)) by exact H16.
-    cbn [app cfg_ml].
-    rewrite (q16_restore_to_raw remaining s old left
-      (source_bit target :: suffix) H16').
-    reflexivity.
-Qed.
+
 
 Lemma q0_stable_control_scan_q15 :
   forall bits, Forall q15_pass (rev (map q0_stable_control_tag bits)).
