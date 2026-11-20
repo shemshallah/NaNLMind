@@ -594,7 +594,7 @@ Qed.
 
 (** q0 read-zero: target dispatch to q3, then q3 scans to X=4 and
     reenters q5. *)
-Theorem q0_rail_read_zero_to_q5 :
+Theorem q0_rail_read_one_to_q5 :
   forall (prefix : list nat) (mark : nat) (c1 c2 : bool)
          (stored symbols suffix : list nat),
     Forall q0_pass (prefix ++ [mark]) ->
@@ -604,7 +604,7 @@ Theorem q0_rail_read_zero_to_q5 :
       (entry_config 0 (0 :: 5 :: stored)
         ((prefix ++ [mark]) ++
          [q0_stable_control_tag c1; q0_stable_control_tag c2] ++
-         source_bit false :: symbols ++ 4 :: suffix)) =
+         source_bit true :: symbols ++ 4 :: suffix)) =
     cfg_ml 5
       (rev symbols ++ 3 ::
        rev ((prefix ++ [mark]) ++
@@ -613,14 +613,14 @@ Theorem q0_rail_read_zero_to_q5 :
 Proof.
   intros prefix mark c1 c2 stored symbols suffix H0 Hsym.
   rewrite dispatch_run_add.
-  rewrite (q0_right_rail_target_dispatch prefix mark c1 c2 false
+  rewrite (q0_right_rail_target_dispatch prefix mark c1 c2 true
     stored (symbols ++ 4 :: suffix) H0).
   eapply q3_scan_to_q5. exact Hsym.
 Qed.
 
 (** q0 read-one: target dispatch to q2, then q2 scans left to the 5
     delimiter and reenters q1. *)
-Theorem q0_rail_read_one_to_q1 :
+Theorem q0_rail_read_zero_to_q1 :
   forall (prefix : list nat) (mark : nat) (c1 c2 : bool)
          (stored symbols suffix : list nat),
     Forall q0_pass (prefix ++ [mark]) ->
@@ -633,7 +633,7 @@ Theorem q0_rail_read_one_to_q1 :
       (entry_config 0 (0 :: 5 :: stored)
         ((prefix ++ [mark]) ++
          [q0_stable_control_tag c1; q0_stable_control_tag c2] ++
-         source_bit true :: symbols ++ 4 :: suffix)) =
+         source_bit false :: symbols ++ 4 :: suffix)) =
     entry_config 1 (5 :: stored)
       (0 :: ((prefix ++ [mark]) ++
         [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++
@@ -641,7 +641,7 @@ Theorem q0_rail_read_one_to_q1 :
 Proof.
   intros prefix mark c1 c2 stored symbols suffix H0 Hleft.
   rewrite dispatch_run_add.
-  rewrite (q0_right_rail_target_dispatch prefix mark c1 c2 true
+  rewrite (q0_right_rail_target_dispatch prefix mark c1 c2 false
     stored (symbols ++ 4 :: suffix) H0).
   rewrite (q2_rail_reenter_q1
     (rev ((prefix ++ [mark]) ++
@@ -722,7 +722,7 @@ Proof.
   rewrite rev_involutive. reflexivity.
 Qed.
 
-Print Assumptions q0_rail_read_zero_to_q5.
-Print Assumptions q0_rail_read_one_to_q1.
+Print Assumptions q0_rail_read_one_to_q5.
+Print Assumptions q0_rail_read_zero_to_q1.
 Print Assumptions q4_rail_read_zero_to_q5.
 Print Assumptions q4_rail_read_one_to_q1.
