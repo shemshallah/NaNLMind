@@ -1141,3 +1141,98 @@ Qed.
 Print Assumptions q15_right_loop_q0_read1.
 Print Assumptions q15_right_loop_q4_read0.
 Print Assumptions q15_right_loop_q4_read1.
+
+(** ** Complete left loops
+
+    The tagged left cycle is a 21-step native run from a supplied q15
+    frame to q3 (target=true) or q2 (target=false).  Composing with the
+    verified q3->q5 and q2->q1 reentries yields the two complete left
+    loops from the tagged movement entry back to the next q1/q5 phase. *)
+
+Lemma q0_stable_control_tag_dispatch_left :
+  forall b, dispatch_left_symbol (q0_stable_control_tag b).
+Proof.
+  intros []; unfold dispatch_left_symbol, q0_stable_control_tag; auto 12.
+Qed.
+
+Lemma q0_stable_control_tag_dispatch_right :
+  forall b, dispatch_right_symbol (q0_stable_control_tag b).
+Proof.
+  intros []; unfold dispatch_right_symbol, q0_stable_control_tag; auto 12.
+Qed.
+
+Lemma q0_stable_control_tags_dispatch_left :
+  forall bits,
+    Forall dispatch_left_symbol (map q0_stable_control_tag bits).
+Proof.
+  induction bits as [|b rest IH].
+  - constructor.
+  - constructor.
+    + apply q0_stable_control_tag_dispatch_left.
+    + exact IH.
+Qed.
+
+(** target=true: q15 -> ... -> q3 -> q5. *)
+Theorem q15_left_loop_target1_to_q5 :
+  forall (old next extra : bool) (outer symbols suffix : list nat),
+    Forall dispatch_right_symbol symbols ->
+    run (21 + (length symbols + 1))
+      (entry_config 15
+        (source_bit old :: 6 :: 5 :: 2 :: source_bit false :: outer)
+        (q0_stable_control_tag next ::
+         q0_stable_control_tag extra :: source_bit true ::
+         symbols ++ 4 :: suffix)) =
+    cfg_ml 5
+      (rev symbols ++
+       3 :: rev [q0_stable_control_tag next;
+                 q0_stable_control_tag extra] ++
+       0 :: 6 :: 5 :: source_bit old :: 6 :: outer)
+      (4 :: suffix).
+Proof.
+  intros old next extra outer symbols suffix Hsymbols.
+  rewrite dispatch_run_add.
+  rewrite (q15_left_false_guard_native_tagged_target_dispatch
+    old next extra true outer (symbols ++ 4 :: suffix)).
+  apply (q3_scan_to_q5
+    (3 :: rev [q0_stable_control_tag next;
+               q0_stable_control_tag extra] ++
+     0 :: 6 :: 5 :: source_bit old :: 6 :: outer)
+    symbols suffix Hsymbols).
+Qed.
+
+(** target=false: q15 -> ... -> q2 -> q1. *)
+Theorem q15_left_loop_target0_to_q1 :
+  forall (old next extra : bool) (outer suffix : list nat),
+    run (21 + S (length (rev [q0_stable_control_tag next;
+                              q0_stable_control_tag extra] ++ [0; 6])))
+      (entry_config 15
+        (source_bit old :: 6 :: 5 :: 2 :: source_bit false :: outer)
+        (q0_stable_control_tag next ::
+         q0_stable_control_tag extra :: source_bit false :: suffix)) =
+    entry_config 1 (5 :: source_bit old :: 6 :: outer)
+      (rev (rev [q0_stable_control_tag next;
+                 q0_stable_control_tag extra] ++ [0; 6]) ++
+       2 :: suffix).
+Proof.
+  intros old next extra outer suffix.
+  rewrite dispatch_run_add.
+  rewrite (q15_left_false_guard_native_tagged_target_dispatch
+    old next extra false outer suffix).
+  replace (rev [q0_stable_control_tag next;
+                q0_stable_control_tag extra] ++
+           0 :: 6 :: 5 :: source_bit old :: 6 :: outer)
+    with ((rev [q0_stable_control_tag next;
+                q0_stable_control_tag extra] ++ [0]) ++
+          6 :: 5 :: source_bit old :: 6 :: outer)
+    by (rewrite <- app_assoc; reflexivity).
+  apply (q2_rail_reenter_q1
+    (rev [q0_stable_control_tag next;
+          q0_stable_control_tag extra] ++ [0])
+    6 (source_bit old :: 6 :: outer) (2 :: suffix)).
+  rewrite Forall_app. split.
+  - apply Forall_rev. apply q0_stable_control_tags_dispatch_left.
+  - repeat constructor; unfold dispatch_left_symbol; auto 12.
+Qed.
+
+Print Assumptions q15_left_loop_target1_to_q5.
+Print Assumptions q15_left_loop_target0_to_q1.
