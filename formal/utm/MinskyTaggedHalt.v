@@ -322,13 +322,19 @@ Proof.
   rewrite (q15_q22_right_four_prefix_relocates_to_q5 first rest
     dir_head dir_remaining old target (5 :: stored) between tail
     H21 Hdir15 Hbetween).
-  replace (rev between ++ 6 ::
-           rev (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
-                map q16_restore
-                  (rev (map q0_stable_control_tag (first :: rest)))) ++
-           source_bit old :: 5 :: stored)
-    with (scanned ++ 5 :: stored)
-    by (unfold scanned; repeat rewrite <- app_assoc; reflexivity).
+  assert (Hsplit :
+    rev between ++ 6 ::
+    rev (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
+         map q16_restore
+           (rev (map q0_stable_control_tag (first :: rest)))) ++
+    source_bit old :: 5 :: stored =
+    scanned ++ 5 :: stored).
+  {
+    unfold scanned.
+    repeat rewrite <- app_assoc.
+    cbn [app]. reflexivity.
+  }
+  rewrite Hsplit.
   destruct scanned as [|s rest'] eqn:HS.
   - contradiction.
   - assert (Hpass' : Forall q5_return_pass (s :: rest')).
