@@ -1712,7 +1712,11 @@ Proof.
   2:{
     rewrite rev_app_distr. cbn [rev].
     rewrite rev_app_distr. cbn [rev].
-    rewrite rev_involutive. reflexivity.
+    rewrite rev_involutive.
+    repeat rewrite app_nil_l.
+    repeat rewrite app_nil_r.
+    repeat rewrite <- app_assoc.
+    reflexivity.
   }
   rewrite app_assoc. reflexivity.
 Qed.
