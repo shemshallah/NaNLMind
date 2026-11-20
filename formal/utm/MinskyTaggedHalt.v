@@ -781,6 +781,13 @@ Definition right_mark (target : bool) : nat :=
 
 
 
+Lemma q1_out_to_q0_frame :
+  forall (a : list nat) (x : nat) (b c : list nat),
+    a ++ x :: (b ++ c) = (a ++ [x]) ++ (b ++ c).
+Proof.
+  intros a x b c. rewrite <- app_assoc. reflexivity.
+Qed.
+
 (** q0/read-zero when the input is already in the q1-step output form. *)
 Lemma q0_read_zero_from_q1_output :
   forall (prefix : list nat) (mark : nat) (c1 c2 : bool)
@@ -802,7 +809,7 @@ Lemma q0_read_zero_from_q1_output :
        2 :: symbols ++ 4 :: suffix).
 Proof.
   intros prefix mark c1 c2 stored symbols suffix Hp Hl.
-  rewrite (cons_append_split prefix mark
+  rewrite (q1_out_to_q0_frame prefix mark
     [q0_stable_control_tag c1; q0_stable_control_tag c2]
     (source_bit false :: (symbols ++ 4 :: suffix))).
   apply (q0_rail_read_zero_to_q1 prefix mark c1 c2 stored symbols
