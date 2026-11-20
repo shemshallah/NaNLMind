@@ -538,3 +538,44 @@ Qed.
 
 Print Assumptions q4_right_rail_target_zero.
 Print Assumptions q4_right_rail_target_one.
+
+(** q3 reentry: scan right over dispatch_right_symbols to X=4 and enter
+    q5 for the next row. *)
+Theorem q3_scan_to_q5 :
+  forall (left symbols suffix : list nat),
+    Forall dispatch_right_symbol symbols ->
+    run (length symbols + 1)
+      (entry_config 3 left (symbols ++ 4 :: suffix)) =
+    cfg_ml 5 (rev symbols ++ left) (4 :: suffix).
+Proof.
+  intros left symbols suffix Hsymbols.
+  rewrite (q3_reaches_marker symbols left suffix Hsymbols).
+  apply q3_at_marker_step.
+Qed.
+
+(** q2 reentry: from a cfg_ml with a 5 delimiter in the left tape, scan
+    left to the delimiter and enter q1. *)
+Theorem q2_rail_reenter_q1 :
+  forall (rail : list nat) (mark : nat) (stored : list nat)
+         (right : list nat),
+    Forall dispatch_left_symbol (rail ++ [mark]) ->
+    run (S (length (rail ++ [mark])))
+      (cfg_ml 2 (rail ++ mark :: 5 :: stored) right) =
+    entry_config 1 (5 :: stored) (rev (rail ++ [mark]) ++ right).
+Proof.
+  intros rail mark stored right Hscan.
+  destruct rail as [|r rest].
+  - change (run (S (length (mark :: [])))
+      (entry_config 2 ([] ++ 5 :: stored) (mark :: right)) =
+      entry_config 1 (5 :: stored)
+        (rev (mark :: []) ++ right)).
+    apply (dispatch_left_to_delimiter [] mark stored right Hscan).
+  - change (run (S (length (r :: rest ++ [mark])))
+      (entry_config 2 (rest ++ mark :: 5 :: stored) (r :: right)) =
+      entry_config 1 (5 :: stored)
+        (rev (r :: rest ++ [mark]) ++ right)).
+    apply (dispatch_left_to_delimiter (rest ++ [mark]) r stored right Hscan).
+Qed.
+
+Print Assumptions q3_scan_to_q5.
+Print Assumptions q2_rail_reenter_q1.
