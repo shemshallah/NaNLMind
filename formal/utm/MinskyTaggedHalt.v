@@ -929,14 +929,15 @@ Proof.
      source_bit true :: (symbols ++ 4 :: suffix)) stored
     H21 Hdir15 Hbetween Hpass).
   fold (right_rail_map first rest dir_head dir_remaining between).
+  replace (if target then 3 else 2) with (right_mark target) by reflexivity.
   rewrite (q1_out_to_q0_frame
     (right_rail_map first rest dir_head dir_remaining between)
-    (if target then 3 else 2)
+    (right_mark target)
     [q0_stable_control_tag c1; q0_stable_control_tag c2]
     (source_bit true :: (symbols ++ 4 :: suffix))).
   apply (q0_rail_read_one_to_q5
     (right_rail_map first rest dir_head dir_remaining between)
-    (if target then 3 else 2) c1 c2 stored symbols suffix
+    (right_mark target) c1 c2 stored symbols suffix
     Hprefix Hsym).
 Qed.
 
@@ -989,14 +990,15 @@ Proof.
      source_bit false :: (symbols ++ 4 :: suffix)) stored
     H21 Hdir15 Hbetween Hpass).
   fold (right_rail_map first rest dir_head dir_remaining between).
+  replace (if target then 3 else 2) with (right_mark target) by reflexivity.
   rewrite (cons_append_split
     (right_rail_map first rest dir_head dir_remaining between)
-    (if target then 3 else 2)
+    (right_mark target)
     [q0_stable_control_tag c1; q0_stable_control_tag c2]
     (source_bit false :: (symbols ++ 4 :: suffix))).
   apply (q4_rail_read_zero_to_q5
     (right_rail_map first rest dir_head dir_remaining between)
-    (if target then 3 else 2) c1 c2 stored symbols suffix
+    (right_mark target) c1 c2 stored symbols suffix
     Hprefix Hsym).
 Qed.
 
@@ -1057,14 +1059,15 @@ Proof.
      source_bit true :: (symbols ++ 4 :: suffix)) stored
     H21 Hdir15 Hbetween Hpass).
   fold (right_rail_map first rest dir_head dir_remaining between).
+  replace (if target then 3 else 2) with (right_mark target) by reflexivity.
   rewrite (cons_append_split
     (right_rail_map first rest dir_head dir_remaining between)
-    (if target then 3 else 2)
+    (right_mark target)
     [q0_stable_control_tag c1; q0_stable_control_tag c2]
     (source_bit true :: (symbols ++ 4 :: suffix))).
   apply (q4_rail_read_one_to_q1
     (right_rail_map first rest dir_head dir_remaining between)
-    (if target then 3 else 2) c1 c2 stored symbols suffix
+    (right_mark target) c1 c2 stored symbols suffix
     Hprefix Hleft).
 Qed.
 
