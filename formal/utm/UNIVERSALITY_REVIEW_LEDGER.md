@@ -1194,3 +1194,23 @@ on `dc31664`; clean-branch bridge
 was dispatched on the same commit.
 
 The q4 (`old = true`) mirrored target dispatch remains open.
+
+### q4 mirrored target dispatch (kernel-checked)
+
+`q4_right_rail_target_zero` and `q4_right_rail_target_one` are the q4
+counterparts of the q0 target dispatch:
+
+```text
+target 0 -> entry_config 3 (2 :: rev rail ++ 1 :: 5 :: stored) tail
+target 1 -> cfg_ml 2 (rev rail ++ 1 :: 5 :: stored) (3 :: tail)
+```
+
+Together with `q0_right_rail_target_dispatch`, both q1 direction branches
+(`old=false -> q0`, `old=true -> q4`) now dispatch the raw read bit into
+q3 or q2 with the literal mirrored table mapping.
+
+Fast job
+[44661141653](https://github.com/shemshallah/NaNLMind/actions/runs/44661141653)
+on `3b98371`; clean-branch bridge
+[44661627757](https://github.com/shemshallah/NaNLMind/actions/runs/44661627757)
+was dispatched on the same commit.

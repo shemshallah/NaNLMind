@@ -356,3 +356,16 @@ run (|prefix ++ [mark]| + 3)
 This is the q0 branch of the next-row direction/target dispatch.  The q4
 branch (`old = true`) is the mirrored target dispatch and remains to be
 proved.
+
+## q4 mirrored target dispatch (proved)
+
+`q4_right_rail_target_zero` and `q4_right_rail_target_one` complete the
+other q1 branch:
+
+- target 0 -> `entry_config 3` with the mark 2 on the left (right move);
+- target 1 -> `cfg_ml 2` with the mark 3 on the right (left move).
+
+Both read the raw target after the returned rail and the two stable
+control tags.  Together with `q0_right_rail_target_dispatch`, both
+`old` branches of the q1 direction decision now reach the q3/q2 target
+states with the table's mirrored mapping.
