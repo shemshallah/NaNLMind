@@ -1711,6 +1711,22 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma four_prefix_left_rail_normalize_q2 :
+  forall (first : bool) (rest_prefix : list bool)
+         (extra next_control : bool),
+    ((rev ([4] ++
+       [q0_stable_control_tag next_control;
+        q0_stable_control_tag extra] ++
+       rev (map q0_stable_control_tag (first :: rest_prefix))) ++ [0]) ++ [6]) =
+    map q0_stable_control_tag (first :: rest_prefix) ++
+      [q0_stable_control_tag extra;
+       q0_stable_control_tag next_control; 4; 0; 6].
+Proof.
+  intros first rest_prefix extra next_control.
+  rewrite app_assoc. cbn [app].
+  apply four_prefix_left_rail_normalize.
+Qed.
+
 Lemma four_prefix_left_rail_safe :
   forall (first : bool) (rest_prefix : list bool)
          (extra next_control : bool),
@@ -1721,8 +1737,7 @@ Lemma four_prefix_left_rail_safe :
         rev (map q0_stable_control_tag (first :: rest_prefix))) ++ [0]) ++ [6]).
 Proof.
   intros first rest_prefix extra next_control.
-  rewrite app_assoc.
-  rewrite four_prefix_left_rail_normalize.
+  rewrite four_prefix_left_rail_normalize_q2.
   apply four_prefix_left_rail_tail.
 Qed.
 
