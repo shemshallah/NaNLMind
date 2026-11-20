@@ -615,7 +615,7 @@ Proof.
   rewrite dispatch_run_add.
   rewrite (q0_right_rail_target_dispatch prefix mark c1 c2 false
     stored (symbols ++ 4 :: suffix) H0).
-  apply q3_scan_to_q5. exact Hsym.
+  eapply q3_scan_to_q5. exact Hsym.
 Qed.
 
 (** q0 read-one: target dispatch to q2, then q2 scans left to the 5
@@ -680,7 +680,7 @@ Proof.
   rewrite dispatch_run_add.
   rewrite (q4_right_rail_target_zero prefix mark c1 c2
     stored (symbols ++ 4 :: suffix) H4full).
-  apply q3_scan_to_q5. exact Hsym.
+  eapply q3_scan_to_q5. exact Hsym.
 Qed.
 
 (** q4 target-one: mirrored target dispatch to q2, then q2 -> q1. *)
