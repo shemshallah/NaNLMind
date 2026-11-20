@@ -883,3 +883,83 @@ Qed.
 Print Assumptions q15_right_loop_q0_read0.
 
 
+
+Lemma q0_read_one_from_q1_output :
+  forall (prefix : list nat) (mark : nat) (c1 c2 : bool)
+         (stored symbols suffix : list nat),
+    Forall q0_pass (prefix ++ [mark]) ->
+    Forall dispatch_right_symbol symbols ->
+    run ((length (prefix ++ [mark]) + 3) + (length symbols + 1))
+      (entry_config 0 (0 :: 5 :: stored)
+        (prefix ++ mark ::
+         [q0_stable_control_tag c1; q0_stable_control_tag c2] ++
+         source_bit true :: (symbols ++ 4 :: suffix))) =
+    cfg_ml 5
+      (rev symbols ++ 3 :: rev (prefix ++ [mark]) ++
+       0 :: 5 :: stored) (4 :: suffix).
+Proof.
+  intros prefix mark c1 c2 stored symbols suffix Hp Hsym.
+  rewrite (q1_out_to_q0_frame prefix mark
+    [q0_stable_control_tag c1; q0_stable_control_tag c2]
+    (source_bit true :: (symbols ++ 4 :: suffix))).
+  apply (q0_rail_read_one_to_q5 prefix mark c1 c2 stored symbols
+    suffix Hp Hsym).
+Qed.
+
+Lemma q4_read_zero_from_q1_output :
+  forall (prefix : list nat) (mark : nat) (c1 c2 : bool)
+         (stored symbols suffix : list nat),
+    Forall q4_pass (prefix ++ [mark]) ->
+    Forall dispatch_right_symbol symbols ->
+    run (S (length ((prefix ++ [mark]) ++
+            [q0_stable_control_tag c1; q0_stable_control_tag c2])) +
+         (length symbols + 1))
+      (entry_config 4 (1 :: 5 :: stored)
+        (prefix ++ mark ::
+         [q0_stable_control_tag c1; q0_stable_control_tag c2] ++
+         source_bit false :: (symbols ++ 4 :: suffix))) =
+    cfg_ml 5
+      (rev symbols ++ 2 ::
+       rev ((prefix ++ [mark]) ++
+         [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++
+       1 :: 5 :: stored) (4 :: suffix).
+Proof.
+  intros prefix mark c1 c2 stored symbols suffix Hp Hsym.
+  rewrite (cons_append_split prefix mark
+    [q0_stable_control_tag c1; q0_stable_control_tag c2]
+    (source_bit false :: (symbols ++ 4 :: suffix))).
+  apply (q4_rail_read_zero_to_q5 prefix mark c1 c2 stored symbols
+    suffix Hp Hsym).
+Qed.
+
+Lemma q4_read_one_from_q1_output :
+  forall (prefix : list nat) (mark : nat) (c1 c2 : bool)
+         (stored symbols suffix : list nat),
+    Forall q4_pass (prefix ++ [mark]) ->
+    Forall dispatch_left_symbol
+      (rev ((prefix ++ [mark]) ++
+        [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++ [1]) ->
+    run (S (length ((prefix ++ [mark]) ++
+            [q0_stable_control_tag c1; q0_stable_control_tag c2])) +
+         S (length (rev ((prefix ++ [mark]) ++
+           [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++ [1])))
+      (entry_config 4 (1 :: 5 :: stored)
+        (prefix ++ mark ::
+         [q0_stable_control_tag c1; q0_stable_control_tag c2] ++
+         source_bit true :: (symbols ++ 4 :: suffix))) =
+    entry_config 1 (5 :: stored)
+      (1 :: ((prefix ++ [mark]) ++
+        [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++
+       3 :: symbols ++ 4 :: suffix).
+Proof.
+  intros prefix mark c1 c2 stored symbols suffix Hp Hleft.
+  rewrite (cons_append_split prefix mark
+    [q0_stable_control_tag c1; q0_stable_control_tag c2]
+    (source_bit true :: (symbols ++ 4 :: suffix))).
+  apply (q4_rail_read_one_to_q1 prefix mark c1 c2 stored symbols
+    suffix Hp Hleft).
+Qed.
+
+Print Assumptions q0_read_one_from_q1_output.
+Print Assumptions q4_read_zero_from_q1_output.
+Print Assumptions q4_read_one_from_q1_output.
