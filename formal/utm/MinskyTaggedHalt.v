@@ -267,9 +267,10 @@ Theorem q15_q22_right_four_prefix_q5_q1 :
     Forall q15_pass (rev (dir_head :: dir_remaining)) ->
     Forall q17_pass between ->
     Forall q5_return_pass
-      (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
-       map q16_restore
-         (rev (map q0_stable_control_tag (first :: rest))) ++
+      (rev between ++ 6 ::
+       rev (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
+            map q16_restore
+              (rev (map q0_stable_control_tag (first :: rest)))) ++
        [source_bit old]) ->
     run (((S (length
               (rev (map q0_stable_control_tag (first :: rest)))) +
@@ -282,9 +283,10 @@ Theorem q15_q22_right_four_prefix_q5_q1 :
                (rev (map q0_stable_control_tag (first :: rest))))) +
            S (length between))) +
          S (length
-           (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
-            map q16_restore
-              (rev (map q0_stable_control_tag (first :: rest))) ++
+           (rev between ++ 6 ::
+            rev (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
+                 map q16_restore
+                   (rev (map q0_stable_control_tag (first :: rest)))) ++
             [source_bit old])))
       (entry_config 15
         (4 :: source_bit old :: dir_head :: dir_remaining ++
@@ -294,33 +296,36 @@ Theorem q15_q22_right_four_prefix_q5_q1 :
     entry_config 1 (5 :: stored)
       (map entry_rewrite
         (rev
-          (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
-           map q16_restore
-             (rev (map q0_stable_control_tag (first :: rest))) ++
+          (rev between ++ 6 ::
+           rev (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
+                map q16_restore
+                  (rev (map q0_stable_control_tag (first :: rest)))) ++
            [source_bit old])) ++
        (if target then 3 else 2) :: tail).
 Proof.
   intros first rest dir_head dir_remaining old target between tail stored
     H21 Hdir15 Hbetween Hpass.
   set (scanned :=
-    rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
-    map q16_restore
-      (rev (map q0_stable_control_tag (first :: rest))) ++
+    rev between ++ 6 ::
+    rev (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
+         map q16_restore
+           (rev (map q0_stable_control_tag (first :: rest)))) ++
     [source_bit old]).
   assert (Hnonempty : scanned <> []).
   {
     intro H.
     assert (Hl : length scanned = 0) by (rewrite H; reflexivity).
-    unfold scanned in Hl. rewrite app_length in Hl.
+    unfold scanned in Hl. rewrite length_app in Hl.
     cbn [length] in Hl. lia.
   }
   rewrite dispatch_run_add.
   rewrite (q15_q22_right_four_prefix_relocates_to_q5 first rest
     dir_head dir_remaining old target (5 :: stored) between tail
     H21 Hdir15 Hbetween).
-  replace (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
-           map q16_restore
-             (rev (map q0_stable_control_tag (first :: rest))) ++
+  replace (rev between ++ 6 ::
+           rev (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
+                map q16_restore
+                  (rev (map q0_stable_control_tag (first :: rest)))) ++
            source_bit old :: 5 :: stored)
     with (scanned ++ 5 :: stored)
     by (unfold scanned; rewrite <- app_assoc; reflexivity).
