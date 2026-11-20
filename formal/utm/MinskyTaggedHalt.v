@@ -1679,6 +1679,9 @@ Proof.
   repeat rewrite rev_app_distr.
   cbn [rev].
   rewrite rev_involutive.
+  repeat rewrite app_nil_r.
+  repeat rewrite app_nil_l.
+  repeat rewrite <- app_assoc.
   rewrite Forall_app. split.
   - apply q0_stable_control_tags_dispatch_left.
   - repeat (constructor; try (unfold dispatch_left_symbol; auto 12)).
