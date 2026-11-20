@@ -1180,7 +1180,11 @@ Proof.
   intros bits.
   rewrite Forall_app. split.
   - apply Forall_rev. apply q0_stable_control_tags_dispatch_left.
-  - repeat constructor; unfold dispatch_left_symbol; auto 12.
+  - constructor.
+    + unfold dispatch_left_symbol; auto 12.
+    + constructor.
+      * unfold dispatch_left_symbol; auto 12.
+      * constructor.
 Qed.
 
 (** target=true: q15 -> ... -> q3 -> q5. *)
