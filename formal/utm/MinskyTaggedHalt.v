@@ -1680,12 +1680,8 @@ Proof.
   cbn [rev].
   rewrite rev_involutive.
   rewrite Forall_app. split.
-  - rewrite Forall_app. split.
-    + rewrite Forall_app. split.
-      * apply q0_stable_control_tags_dispatch_left.
-      * repeat constructor; unfold dispatch_left_symbol; auto 12.
-    + repeat constructor; unfold dispatch_left_symbol; auto 12.
-  - repeat constructor; unfold dispatch_left_symbol; auto 12.
+  - apply q0_stable_control_tags_dispatch_left.
+  - repeat (constructor; try (unfold dispatch_left_symbol; auto 12)).
 Qed.
 
 Theorem q15_left_four_prefix_loop_read1_to_q5 :
