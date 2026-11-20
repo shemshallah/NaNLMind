@@ -1590,7 +1590,8 @@ Theorem q15_left_four_prefix_gate :
           S (length (map q0_stable_control_tag
               (first :: (rest_prefix ++ [extra; next_control])) ++ [4])) +
           S (length (6 :: [5]))) +
-         (1 + S (length (source_bit old :: rev (6 :: [5]))))) + 8)
+         (1 + S (length (source_bit old :: rev (6 :: [5]))))) +
+        (length (rev (map q0_stable_control_tag (first :: rest_prefix))) + 8))
       (entry_config 15
         (4 :: source_bit old :: 6 :: [5] ++ 2 :: source_bit false :: outer)
         (rev (map q0_stable_control_tag
@@ -1634,7 +1635,7 @@ Proof.
             (first :: (rest_prefix ++ [extra; next_control])) ++ [4])) +
         S (length (6 :: [5]))) +
        (1 + S (length (source_bit old :: rev (6 :: [5]))))))
-    8
+    (length (rev (map q0_stable_control_tag (first :: rest_prefix))) + 8)
     (entry_config 15
       (4 :: source_bit old :: 6 :: [5] ++ 2 :: source_bit false :: outer)
       (rev (map q0_stable_control_tag
