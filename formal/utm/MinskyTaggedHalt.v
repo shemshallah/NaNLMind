@@ -597,8 +597,7 @@ Qed.
 Theorem q0_rail_read_zero_to_q5 :
   forall (prefix : list nat) (mark : nat) (c1 c2 : bool)
          (stored symbols suffix : list nat),
-    Forall q0_pass ((prefix ++ [mark]) ++
-      [q0_stable_control_tag c1; q0_stable_control_tag c2]) ->
+    Forall q0_pass (prefix ++ [mark]) ->
     Forall dispatch_right_symbol symbols ->
     run ((length ((prefix ++ [mark]) ++
             [q0_stable_control_tag c1; q0_stable_control_tag c2]) + 3) +
@@ -625,8 +624,7 @@ Qed.
 Theorem q0_rail_read_one_to_q1 :
   forall (prefix : list nat) (mark : nat) (c1 c2 : bool)
          (stored symbols suffix : list nat),
-    Forall q0_pass ((prefix ++ [mark]) ++
-      [q0_stable_control_tag c1; q0_stable_control_tag c2]) ->
+    Forall q0_pass (prefix ++ [mark]) ->
     Forall dispatch_left_symbol
       (rev ((prefix ++ [mark]) ++
         [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++ [0]) ->
@@ -659,8 +657,7 @@ Qed.
 Theorem q4_rail_read_zero_to_q5 :
   forall (prefix : list nat) (mark : nat) (c1 c2 : bool)
          (stored symbols suffix : list nat),
-    Forall q4_pass ((prefix ++ [mark]) ++
-      [q0_stable_control_tag c1; q0_stable_control_tag c2]) ->
+    Forall q4_pass (prefix ++ [mark]) ->
     Forall dispatch_right_symbol symbols ->
     run (S (length ((prefix ++ [mark]) ++
             [q0_stable_control_tag c1; q0_stable_control_tag c2])) +
@@ -676,9 +673,15 @@ Theorem q4_rail_read_zero_to_q5 :
        1 :: 5 :: stored) (4 :: suffix).
 Proof.
   intros prefix mark c1 c2 stored symbols suffix H4 Hsym.
+  assert (H4full : Forall q4_pass
+      ((prefix ++ [mark]) ++
+       [q0_stable_control_tag c1; q0_stable_control_tag c2])).
+  { rewrite Forall_app. split.
+    - exact H4.
+    - repeat constructor; unfold q4_pass; auto 12. }
   rewrite dispatch_run_add.
   rewrite (q4_right_rail_target_zero prefix mark c1 c2
-    stored (symbols ++ 4 :: suffix) H4).
+    stored (symbols ++ 4 :: suffix) H4full).
   apply q3_scan_to_q5. exact Hsym.
 Qed.
 
@@ -686,8 +689,7 @@ Qed.
 Theorem q4_rail_read_one_to_q1 :
   forall (prefix : list nat) (mark : nat) (c1 c2 : bool)
          (stored symbols suffix : list nat),
-    Forall q4_pass ((prefix ++ [mark]) ++
-      [q0_stable_control_tag c1; q0_stable_control_tag c2]) ->
+    Forall q4_pass (prefix ++ [mark]) ->
     Forall dispatch_left_symbol
       (rev ((prefix ++ [mark]) ++
         [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++ [1]) ->
@@ -705,9 +707,15 @@ Theorem q4_rail_read_one_to_q1 :
        3 :: symbols ++ 4 :: suffix).
 Proof.
   intros prefix mark c1 c2 stored symbols suffix H4 Hleft.
+  assert (H4full : Forall q4_pass
+      ((prefix ++ [mark]) ++
+       [q0_stable_control_tag c1; q0_stable_control_tag c2])).
+  { rewrite Forall_app. split.
+    - exact H4.
+    - repeat constructor; unfold q4_pass; auto 12. }
   rewrite dispatch_run_add.
   rewrite (q4_right_rail_target_one prefix mark c1 c2
-    stored (symbols ++ 4 :: suffix) H4).
+    stored (symbols ++ 4 :: suffix) H4full).
   rewrite (q2_rail_reenter_q1
     (rev ((prefix ++ [mark]) ++
       [q0_stable_control_tag c1; q0_stable_control_tag c2]))
