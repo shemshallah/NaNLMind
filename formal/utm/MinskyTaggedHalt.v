@@ -1694,12 +1694,13 @@ Lemma four_prefix_left_rail_safe :
   forall (first : bool) (rest_prefix : list bool)
          (extra next_control : bool),
     Forall dispatch_left_symbol
-      (rev ([4] ++
+      ((rev ([4] ++
         [q0_stable_control_tag next_control;
          q0_stable_control_tag extra] ++
-        rev (map q0_stable_control_tag (first :: rest_prefix))) ++ [0; 6]).
+        rev (map q0_stable_control_tag (first :: rest_prefix))) ++ [0]) ++ [6]).
 Proof.
   intros first rest_prefix extra next_control.
+  rewrite app_assoc.
   replace (rev ([4] ++
       [q0_stable_control_tag next_control;
        q0_stable_control_tag extra] ++
