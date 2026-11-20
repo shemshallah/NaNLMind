@@ -599,8 +599,7 @@ Theorem q0_rail_read_zero_to_q5 :
          (stored symbols suffix : list nat),
     Forall q0_pass (prefix ++ [mark]) ->
     Forall dispatch_right_symbol symbols ->
-    run ((length ((prefix ++ [mark]) ++
-            [q0_stable_control_tag c1; q0_stable_control_tag c2]) + 3) +
+    run ((length (prefix ++ [mark]) + 3) +
          (length symbols + 1))
       (entry_config 0 (0 :: 5 :: stored)
         (((prefix ++ [mark]) ++
@@ -628,8 +627,7 @@ Theorem q0_rail_read_one_to_q1 :
     Forall dispatch_left_symbol
       (rev ((prefix ++ [mark]) ++
         [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++ [0]) ->
-    run ((length ((prefix ++ [mark]) ++
-            [q0_stable_control_tag c1; q0_stable_control_tag c2]) + 3) +
+    run ((length (prefix ++ [mark]) + 3) +
          S (length (rev ((prefix ++ [mark]) ++
            [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++ [0])))
       (entry_config 0 (0 :: 5 :: stored)
