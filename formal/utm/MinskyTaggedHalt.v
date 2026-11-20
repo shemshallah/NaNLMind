@@ -736,3 +736,113 @@ Print Assumptions q4_rail_read_zero_to_q5.
 Print Assumptions q4_rail_read_one_to_q1.
 
 
+
+Definition right_rail_map
+    (first : bool) (rest : list bool)
+    (dir_head : nat) (dir_remaining between : list nat) : list nat :=
+  map entry_rewrite
+    (rev
+      (rev between ++ 6 ::
+       rev (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
+            map q16_restore
+              (rev (map q0_stable_control_tag (first :: rest)))))).
+
+Definition right_q1_step_clock
+    (first : bool) (rest : list bool)
+    (dir_head : nat) (dir_remaining between : list nat)
+    (old : bool) : nat :=
+  ((((S (length
+          (rev (map q0_stable_control_tag (first :: rest)))) +
+       S (length
+         (map q0_stable_control_tag (first :: rest) ++ [4])) +
+       S (length (dir_head :: dir_remaining))) +
+      (S (length
+        (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
+         map q16_restore
+           (rev (map q0_stable_control_tag (first :: rest))))) +
+       S (length between))) +
+     S (length
+       (rev between ++ 6 ::
+        rev (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
+             map q16_restore
+               (rev (map q0_stable_control_tag (first :: rest)))) ++
+        [source_bit old]))) + 1).
+
+Lemma cons_append_split :
+  forall (a : list nat) (x : nat) (b c : list nat),
+    a ++ x :: (b ++ c) = ((a ++ [x]) ++ b) ++ c.
+Proof.
+  intros a x b c.
+  cbn [app]. repeat rewrite <- app_assoc. reflexivity.
+Qed.
+
+(** Full right loop for q0/read-zero: q15 -> q22 -> q19 -> q17/q18
+    -> q5 -> q1 -> q0 -> q2 -> q1. *)
+Theorem q15_right_loop_q0_read0 :
+  forall (first : bool) (rest : list bool)
+         dir_head dir_remaining target between stored
+         (c1 c2 : bool) symbols suffix,
+    Forall q21_pass (dir_head :: dir_remaining) ->
+    Forall q15_pass (rev (dir_head :: dir_remaining)) ->
+    Forall q17_pass between ->
+    Forall q5_return_pass
+      (rev between ++ 6 ::
+       rev (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
+            map q16_restore
+              (rev (map q0_stable_control_tag (first :: rest)))) ++
+       [source_bit false]) ->
+    Forall q0_pass
+      (right_rail_map first rest dir_head dir_remaining between ++
+       [if target then 3 else 2]) ->
+    Forall dispatch_left_symbol
+      (rev
+        ((right_rail_map first rest dir_head dir_remaining between ++
+          [if target then 3 else 2]) ++
+         [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++ [0]) ->
+    run
+      (right_q1_step_clock first rest dir_head dir_remaining between false +
+       ((length
+          (right_rail_map first rest dir_head dir_remaining between ++
+           [if target then 3 else 2]) + 3) +
+        S (length
+          (rev
+            ((right_rail_map first rest dir_head dir_remaining between ++
+              [if target then 3 else 2]) ++
+             [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++ [0]))))
+      (entry_config 15
+        (4 :: source_bit false :: dir_head :: dir_remaining ++
+         3 :: 5 :: stored)
+        (rev (map q0_stable_control_tag (first :: rest)) ++
+         source_bit target :: between ++ 7 ::
+         [q0_stable_control_tag c1; q0_stable_control_tag c2] ++
+         source_bit false :: symbols ++ 4 :: suffix)) =
+    entry_config 1 (5 :: stored)
+      (0 ::
+       ((right_rail_map first rest dir_head dir_remaining between ++
+         [if target then 3 else 2]) ++
+        [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++
+       2 :: symbols ++ 4 :: suffix).
+Proof.
+  intros first rest dir_head dir_remaining target between stored
+    c1 c2 symbols suffix H21 Hdir15 Hbetween Hpass Hprefix Hleft.
+  rewrite dispatch_run_add.
+  unfold right_q1_step_clock.
+  rewrite (q15_q22_right_four_prefix_q1_step first rest
+    dir_head dir_remaining false target between
+    ([q0_stable_control_tag c1; q0_stable_control_tag c2] ++
+     source_bit false :: symbols ++ 4 :: suffix) stored
+    H21 Hdir15 Hbetween Hpass).
+  fold (right_rail_map first rest dir_head dir_remaining between).
+  rewrite (cons_append_split
+    (right_rail_map first rest dir_head dir_remaining between)
+    (if target then 3 else 2)
+    [q0_stable_control_tag c1; q0_stable_control_tag c2]
+    (source_bit false :: symbols ++ 4 :: suffix)).
+  rewrite (q0_rail_read_zero_to_q1
+    (right_rail_map first rest dir_head dir_remaining between)
+    (if target then 3 else 2) c1 c2 stored symbols suffix
+    Hprefix Hleft).
+  reflexivity.
+Qed.
+
+Print Assumptions q15_right_loop_q0_read0.
