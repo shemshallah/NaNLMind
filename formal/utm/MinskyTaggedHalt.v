@@ -1464,18 +1464,20 @@ Lemma four_prefix_restored_map :
     rev (map q0_stable_control_tag (first :: rest_prefix)).
 Proof.
   intros first rest_prefix extra next_control.
-  replace (map q16_restore
-      (rev (map q0_stable_control_tag
-        (first :: (rest_prefix ++ [extra; next_control])) ++ [4])))
-    with (map q16_restore (rev [4]) ++
-          map q16_restore
-            (rev (map q0_stable_control_tag
-              (first :: (rest_prefix ++ [extra; next_control]))))).
-  2:{ rewrite rev_app_distr, map_app. reflexivity. }
+  rewrite rev_app_distr. cbn [rev].
+  rewrite map_app. cbn [map].
   rewrite q16_stable_control_rail_reverse_restore.
-  cbn [rev map].
-  rewrite map_app.
-  rewrite rev_app_distr. cbn [rev map].
+  replace (map q0_stable_control_tag
+      (first :: (rest_prefix ++ [extra; next_control])))
+    with (map q0_stable_control_tag (first :: rest_prefix) ++
+          [q0_stable_control_tag extra; q0_stable_control_tag next_control]).
+  2:{
+    replace (first :: (rest_prefix ++ [extra; next_control]))
+      with ((first :: rest_prefix) ++ [extra; next_control])
+      by (rewrite <- app_assoc; reflexivity).
+    rewrite map_app. reflexivity.
+  }
+  rewrite rev_app_distr. cbn [rev].
   reflexivity.
 Qed.
 
