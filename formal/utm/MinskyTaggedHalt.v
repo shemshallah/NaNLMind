@@ -776,6 +776,9 @@ Proof.
   cbn [app]. repeat rewrite <- app_assoc. reflexivity.
 Qed.
 
+Definition right_mark (target : bool) : nat :=
+  if target then 3 else 2.
+
 (** Full right loop for q0/read-zero: q15 -> q22 -> q19 -> q17/q18
     -> q5 -> q1 -> q0 -> q2 -> q1. *)
 Theorem q15_right_loop_q0_read0 :
@@ -793,21 +796,21 @@ Theorem q15_right_loop_q0_read0 :
        [source_bit false]) ->
     Forall q0_pass
       (right_rail_map first rest dir_head dir_remaining between ++
-       [if target then 3 else 2]) ->
+       [right_mark target]) ->
     Forall dispatch_left_symbol
       (rev
         ((right_rail_map first rest dir_head dir_remaining between ++
-          [if target then 3 else 2]) ++
+          [right_mark target]) ++
          [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++ [0]) ->
     run
       (right_q1_step_clock first rest dir_head dir_remaining between false +
        ((length
           (right_rail_map first rest dir_head dir_remaining between ++
-           [if target then 3 else 2]) + 3) +
+           [right_mark target]) + 3) +
         S (length
           (rev
             ((right_rail_map first rest dir_head dir_remaining between ++
-              [if target then 3 else 2]) ++
+              [right_mark target]) ++
              [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++ [0]))))
       (entry_config 15
         (4 :: source_bit false :: dir_head :: dir_remaining ++
@@ -819,7 +822,7 @@ Theorem q15_right_loop_q0_read0 :
     entry_config 1 (5 :: stored)
       (0 ::
        ((right_rail_map first rest dir_head dir_remaining between ++
-         [if target then 3 else 2]) ++
+         [right_mark target]) ++
         [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++
        2 :: symbols ++ 4 :: suffix).
 Proof.
@@ -835,12 +838,12 @@ Proof.
   fold (right_rail_map first rest dir_head dir_remaining between).
   rewrite (cons_append_split
     (right_rail_map first rest dir_head dir_remaining between)
-    (if target then 3 else 2)
+    (right_mark target)
     [q0_stable_control_tag c1; q0_stable_control_tag c2]
     (source_bit false :: symbols ++ 4 :: suffix)).
   rewrite (q0_rail_read_zero_to_q1
     (right_rail_map first rest dir_head dir_remaining between)
-    (if target then 3 else 2) c1 c2 stored symbols suffix
+    (right_mark target) c1 c2 stored symbols suffix
     Hprefix Hleft).
   reflexivity.
 Qed.
