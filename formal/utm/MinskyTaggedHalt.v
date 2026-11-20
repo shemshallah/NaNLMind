@@ -353,6 +353,16 @@ Qed.
 
 Print Assumptions q15_q22_right_four_prefix_q5_q1.
 
+Lemma map_entry_rewrite_snoc :
+  forall (A : list nat) (x : nat),
+    map entry_rewrite (rev (A ++ [x])) =
+    entry_rewrite x :: map entry_rewrite (rev A).
+Proof.
+  intros A x.
+  rewrite rev_app_distr. cbn [rev].
+  rewrite map_app. cbn [map]. reflexivity.
+Qed.
+
 Lemma q1_old_mark_step :
   forall (old : bool) (left rest : list nat),
     step (entry_config 1 left (entry_rewrite (source_bit old) :: rest)) =
@@ -421,28 +431,7 @@ Proof.
   rewrite (q15_q22_right_four_prefix_q5_q1 first rest
     dir_head dir_remaining old target between tail stored
     H21 Hdir15 Hbetween Hpass).
-  replace
-    (map entry_rewrite
-      (rev
-        (rev between ++ 6 ::
-         rev (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
-              map q16_restore
-                (rev (map q0_stable_control_tag (first :: rest)))) ++
-         [source_bit old])) ++
-     (if target then 3 else 2) :: tail)
-    with
-    (entry_rewrite (source_bit old) ::
-     map entry_rewrite
-       (rev
-         (rev between ++ 6 ::
-          rev (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
-               map q16_restore
-                 (rev (map q0_stable_control_tag (first :: rest)))))) ++
-     (if target then 3 else 2) :: tail).
-  2:{
-    rewrite rev_app_distr. cbn [rev].
-    rewrite map_app. cbn [map]. reflexivity.
-  }
+  rewrite map_entry_rewrite_snoc.
   change (step
     (entry_config 1 (5 :: stored)
       (entry_rewrite (source_bit old) ::
