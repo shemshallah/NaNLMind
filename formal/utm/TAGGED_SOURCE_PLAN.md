@@ -282,3 +282,32 @@ q5 frame whose rail contains the tags, `7`, and `4`.
 Next: feed that q5 frame through the q1 rail.  q1 passes 6/7 tags and
 `q1_four_to_q6` sends the `4` into q6, which is the canonical
 next-instruction action-copy entry.
+
+## 4-prefix q5->q1 rail (proved)
+
+`q15_q22_right_four_prefix_q5_q1` extends the right return through the
+q5 rail scan:
+
+```text
+run (q22 + q19 + q5 clocks)
+  (entry_config 15
+    (4 :: source_bit old :: dirs ++ 3 :: 5 :: stored)
+    (rev tags ++ source_bit target :: between ++ 7 :: tail))
+= entry_config 1 (5 :: stored)
+    (map entry_rewrite (rev rail) ++
+     (if target then 3 else 2) :: tail)
+```
+
+where
+
+```text
+rail = rev between ++ 6 ::
+       rev (rev dirs ++ 7 :: 4 :: map q16_restore (rev tags)) ++
+       [source_bit old].
+```
+
+The q1 head is the rewrite of the last rail cell, i.e. the old-bit
+mark `2/3`.  q1 therefore dispatches q0 (mark 2) or q4 (mark 3), which
+is the canonical next-row match phase; the `4` deeper in the rail is
+then the X marker that leads to q6.  This is the loop structure, not a
+gate failure.

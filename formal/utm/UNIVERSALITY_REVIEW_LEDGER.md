@@ -1119,3 +1119,33 @@ on `0dbce41`; clean-branch bridge
 was dispatched on the same commit.
 
 Next: q1 scans the 6/7 rail and `q1_four_to_q6` sends the 4 into q6.
+
+### 4-prefix q5 to q1 rail (kernel-checked)
+
+`q15_q22_right_four_prefix_q5_q1` composes the right return with the q5
+rail scan to the 5 delimiter and returns q1:
+
+```text
+entry_config 1 (5 :: stored)
+  (map entry_rewrite (rev rail) ++
+   (if target then 3 else 2) :: tail)
+```
+
+with
+
+```text
+rail = rev between ++ 6 ::
+       rev (rev dirs ++ 7 :: 4 :: map q16_restore (rev tags)) ++
+       [source_bit old].
+```
+
+The q1 head is the rewritten old-bit mark (2/3), so q1 dispatches q0
+or q4 — the canonical next-row match.  The `4` remains deeper in the
+rail as the X marker leading to q6.  This is the loop structure, not a
+gate failure.
+
+Fast jobs
+[44646932269](https://github.com/shemshallah/NaNLMind/actions/runs/44646932269)
+on `490fb3f`; clean-branch bridge
+[44647605903](https://github.com/shemshallah/NaNLMind/actions/runs/44647605903)
+was dispatched on the same commit.
