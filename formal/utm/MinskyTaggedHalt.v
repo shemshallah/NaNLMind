@@ -491,36 +491,50 @@ Print Assumptions q0_right_rail_target_dispatch.
 
 (** q4 mirrored target dispatch over the returned rail.  q4 on the raw
     target writes the opposite mark and moves right (0 -> q3) or left
-    (1 -> q2). *)
-Theorem q4_right_rail_target_dispatch :
+    (1 -> q2).  Split into the two direct scan cases. *)
+Theorem q4_right_rail_target_zero :
   forall (prefix : list nat) (mark : nat)
-         (c1 c2 read : bool) (stored tail : list nat),
+         (c1 c2 : bool) (stored tail : list nat),
     Forall q4_pass ((prefix ++ [mark]) ++
       [q0_stable_control_tag c1; q0_stable_control_tag c2]) ->
     run (S (length ((prefix ++ [mark]) ++
       [q0_stable_control_tag c1; q0_stable_control_tag c2])))
       (entry_config 4 (1 :: 5 :: stored)
-        ((prefix ++ [mark]) ++
-         [q0_stable_control_tag c1; q0_stable_control_tag c2] ++
-         source_bit read :: tail)) =
-    if read
-    then cfg_ml 2
-      (rev ((prefix ++ [mark]) ++
-        [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++
-       1 :: 5 :: stored) (3 :: tail)
-    else entry_config 3
+        (((prefix ++ [mark]) ++
+          [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++
+         0 :: tail)) =
+    entry_config 3
       (2 :: rev ((prefix ++ [mark]) ++
         [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++
        1 :: 5 :: stored) tail.
 Proof.
-  intros prefix mark c1 c2 read stored tail Hpass.
-  destruct read.
-  - apply (q4_scan_one ((prefix ++ [mark]) ++
-      [q0_stable_control_tag c1; q0_stable_control_tag c2])
-      (1 :: 5 :: stored) tail Hpass).
-  - apply (q4_scan_zero ((prefix ++ [mark]) ++
-      [q0_stable_control_tag c1; q0_stable_control_tag c2])
-      (1 :: 5 :: stored) tail Hpass).
+  intros prefix mark c1 c2 stored tail Hpass.
+  apply (q4_scan_zero ((prefix ++ [mark]) ++
+    [q0_stable_control_tag c1; q0_stable_control_tag c2])
+    (1 :: 5 :: stored) tail Hpass).
 Qed.
 
-Print Assumptions q4_right_rail_target_dispatch.
+Theorem q4_right_rail_target_one :
+  forall (prefix : list nat) (mark : nat)
+         (c1 c2 : bool) (stored tail : list nat),
+    Forall q4_pass ((prefix ++ [mark]) ++
+      [q0_stable_control_tag c1; q0_stable_control_tag c2]) ->
+    run (S (length ((prefix ++ [mark]) ++
+      [q0_stable_control_tag c1; q0_stable_control_tag c2])))
+      (entry_config 4 (1 :: 5 :: stored)
+        (((prefix ++ [mark]) ++
+          [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++
+         1 :: tail)) =
+    cfg_ml 2
+      (rev ((prefix ++ [mark]) ++
+        [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++
+       1 :: 5 :: stored) (3 :: tail).
+Proof.
+  intros prefix mark c1 c2 stored tail Hpass.
+  apply (q4_scan_one ((prefix ++ [mark]) ++
+    [q0_stable_control_tag c1; q0_stable_control_tag c2])
+    (1 :: 5 :: stored) tail Hpass).
+Qed.
+
+Print Assumptions q4_right_rail_target_zero.
+Print Assumptions q4_right_rail_target_one.
