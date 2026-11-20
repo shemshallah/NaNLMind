@@ -602,8 +602,8 @@ Theorem q0_rail_read_zero_to_q5 :
     run ((length (prefix ++ [mark]) + 3) +
          (length symbols + 1))
       (entry_config 0 (0 :: 5 :: stored)
-        (((prefix ++ [mark]) ++
-          [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++
+        ((prefix ++ [mark]) ++
+         [q0_stable_control_tag c1; q0_stable_control_tag c2] ++
          0 :: symbols ++ 4 :: suffix)) =
     cfg_ml 5
       (rev symbols ++ 3 ::
@@ -631,8 +631,8 @@ Theorem q0_rail_read_one_to_q1 :
          S (length (rev ((prefix ++ [mark]) ++
            [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++ [0])))
       (entry_config 0 (0 :: 5 :: stored)
-        (((prefix ++ [mark]) ++
-          [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++
+        ((prefix ++ [mark]) ++
+         [q0_stable_control_tag c1; q0_stable_control_tag c2] ++
          1 :: symbols ++ 4 :: suffix)) =
     entry_config 1 (5 :: stored)
       (0 :: ((prefix ++ [mark]) ++
