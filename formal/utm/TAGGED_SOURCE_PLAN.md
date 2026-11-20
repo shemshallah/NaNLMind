@@ -369,3 +369,27 @@ Both read the raw target after the returned rail and the two stable
 control tags.  Together with `q0_right_rail_target_dispatch`, both
 `old` branches of the q1 direction decision now reach the q3/q2 target
 states with the table's mirrored mapping.
+
+## q2/q3 reentry scans (proved)
+
+- `q3_scan_to_q5`: q3 scans any `dispatch_right_symbol` list
+  (`0,1,2,3,6,7`) to X=4 and enters q5:
+
+  ```text
+  run (|symbols| + 1)
+    (entry_config 3 left (symbols ++ 4 :: suffix))
+  = cfg_ml 5 (rev symbols ++ left) (4 :: suffix).
+  ```
+
+- `q2_rail_reenter_q1`: from a `cfg_ml 2` frame whose left tape contains
+  a 5 delimiter, q2 scans left over any `dispatch_left_symbol` rail to
+  the delimiter and enters q1:
+
+  ```text
+  run (S |rail ++ [mark]|)
+    (cfg_ml 2 (rail ++ mark :: 5 :: stored) right)
+  = entry_config 1 (5 :: stored) (rev (rail ++ [mark]) ++ right).
+  ```
+
+These are the native reentries from the q3/q2 target states to the next
+row's q5/q1 phases.

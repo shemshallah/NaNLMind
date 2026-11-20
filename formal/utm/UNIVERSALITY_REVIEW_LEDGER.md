@@ -1214,3 +1214,22 @@ Fast job
 on `3b98371`; clean-branch bridge
 [44661627757](https://github.com/shemshallah/NaNLMind/actions/runs/44661627757)
 was dispatched on the same commit.
+
+### q2/q3 reentry scans (kernel-checked)
+
+`q3_scan_to_q5` and `q2_rail_reenter_q1` lift the concrete-dispatch scan
+lemmas to the returned rail/cfg frames:
+
+```text
+q3: entry_config 3 left (symbols ++ 4 :: suffix)
+  -> cfg_ml 5 (rev symbols ++ left) (4 :: suffix)
+
+q2: cfg_ml 2 (rail ++ mark :: 5 :: stored) right
+  -> entry_config 1 (5 :: stored) (rev (rail ++ [mark]) ++ right)
+```
+
+Fast job
+[44663570913](https://github.com/shemshallah/NaNLMind/actions/runs/44663570913)
+on `22886a8`; clean-branch bridge
+[44664054820](https://github.com/shemshallah/NaNLMind/actions/runs/44664054820)
+was dispatched on the same commit.
