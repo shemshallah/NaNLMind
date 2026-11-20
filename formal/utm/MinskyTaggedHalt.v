@@ -808,15 +808,15 @@ Theorem q15_right_four_prefix_loop_q0_read0 :
          [q0_stable_control_tag c1; q0_stable_control_tag c2] ++
          source_bit false :: symbols ++ 4 :: suffix)) =
     entry_config 1 (5 :: stored)
-      (0 ::
-       ((map entry_rewrite
-           (rev
-             (rev between ++ 6 ::
-              rev (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
-                   map q16_restore
-                     (rev (map q0_stable_control_tag (first :: rest)))))) ++
-         [if target then 3 else 2]) ++
-        2 :: symbols ++ 4 :: suffix)).
+      (0 :: ((map entry_rewrite
+                (rev
+                  (rev between ++ 6 ::
+                   rev (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
+                        map q16_restore
+                          (rev (map q0_stable_control_tag (first :: rest)))))) ++
+              [if target then 3 else 2]) ++
+             [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++
+       2 :: symbols ++ 4 :: suffix).
 Proof.
   intros first rest dir_head dir_remaining target between stored
     c1 c2 symbols suffix H21 Hdir15 Hbetween Hpass Hprefix Hleft.
