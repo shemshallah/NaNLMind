@@ -795,7 +795,7 @@ Lemma q0_read_zero_from_q1_output :
       (entry_config 0 (0 :: 5 :: stored)
         (prefix ++ mark ::
          [q0_stable_control_tag c1; q0_stable_control_tag c2] ++
-         source_bit false :: symbols ++ 4 :: suffix)) =
+         source_bit false :: (symbols ++ 4 :: suffix))) =
     entry_config 1 (5 :: stored)
       (0 :: ((prefix ++ [mark]) ++
         [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++
@@ -804,7 +804,7 @@ Proof.
   intros prefix mark c1 c2 stored symbols suffix Hp Hl.
   rewrite (cons_append_split prefix mark
     [q0_stable_control_tag c1; q0_stable_control_tag c2]
-    (source_bit false :: symbols ++ 4 :: suffix)).
+    (source_bit false :: (symbols ++ 4 :: suffix))).
   apply (q0_rail_read_zero_to_q1 prefix mark c1 c2 stored symbols
     suffix Hp Hl).
 Qed.
