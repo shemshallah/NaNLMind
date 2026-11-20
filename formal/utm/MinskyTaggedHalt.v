@@ -1532,9 +1532,21 @@ Theorem q15_left_four_prefix_gate :
 Proof.
   intros first rest_prefix extra next_control old read outer suffix.
   assert (H21 : Forall q21_pass (6 :: [5])).
-  { repeat constructor; unfold q21_pass; auto 12. }
+  {
+    constructor.
+    - unfold q21_pass; auto 12.
+    - constructor.
+      + unfold q21_pass; auto 12.
+      + constructor.
+  }
   assert (H17 : Forall q17_pass (rev (6 :: [5]))).
-  { repeat constructor; unfold q17_pass; auto 12. }
+  {
+    cbn [rev]. constructor.
+    - unfold q17_pass; auto 12.
+    - constructor.
+      + unfold q17_pass; auto 12.
+      + constructor.
+  }
   rewrite writeback_run_add.
   rewrite (q15_q22_left_four_prefix_relocates_to_q5
     first (rest_prefix ++ [extra; next_control]) 6 [5]
