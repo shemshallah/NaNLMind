@@ -589,7 +589,7 @@ Lemma rev_snoc_singleton :
 Proof.
   intros l x.
   rewrite rev_app_distr. cbn [rev].
-  rewrite rev_involutive. reflexivity.
+  reflexivity.
 Qed.
 
 (** q0 read-zero: target dispatch to q3, then q3 scans to X=4 and
