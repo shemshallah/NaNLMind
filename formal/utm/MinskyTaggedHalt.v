@@ -1547,7 +1547,19 @@ Proof.
       + unfold q17_pass; auto 12.
       + constructor.
   }
-  rewrite writeback_run_add.
+  rewrite (dispatch_run_add
+    (((S (length (rev (map q0_stable_control_tag
+            (first :: (rest_prefix ++ [extra; next_control]))))) +
+        S (length (map q0_stable_control_tag
+            (first :: (rest_prefix ++ [extra; next_control])) ++ [4])) +
+        S (length (6 :: [5]))) +
+       (1 + S (length (source_bit old :: rev (6 :: [5]))))))
+    8
+    (entry_config 15
+      (4 :: source_bit old :: 6 :: 5 :: 2 :: source_bit false :: outer)
+      (rev (map q0_stable_control_tag
+            (first :: (rest_prefix ++ [extra; next_control]))) ++
+       source_bit read :: suffix))).
   rewrite (q15_q22_left_four_prefix_relocates_to_q5
     first (rest_prefix ++ [extra; next_control]) 6 [5]
     old read false outer suffix H21 H17).
