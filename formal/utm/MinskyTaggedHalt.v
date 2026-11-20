@@ -965,3 +965,179 @@ Qed.
 Print Assumptions q0_read_one_from_q1_output.
 Print Assumptions q4_read_zero_from_q1_output.
 Print Assumptions q4_read_one_from_q1_output.
+
+(** Full right loop, q0/read-one: q15 -> ... -> q1 -> q0 -> q3 -> q5. *)
+Theorem q15_right_loop_q0_read1 :
+  forall (first : bool) (rest : list bool)
+         dir_head dir_remaining target between stored
+         (c1 c2 : bool) symbols suffix,
+    Forall q21_pass (dir_head :: dir_remaining) ->
+    Forall q15_pass (rev (dir_head :: dir_remaining)) ->
+    Forall q17_pass between ->
+    Forall q5_return_pass
+      (rev between ++ 6 ::
+       rev (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
+            map q16_restore
+              (rev (map q0_stable_control_tag (first :: rest)))) ++
+       [source_bit false]) ->
+    Forall q0_pass
+      (right_rail_map first rest dir_head dir_remaining between ++
+       [right_mark target]) ->
+    Forall dispatch_right_symbol symbols ->
+    run
+      (right_q1_step_clock first rest dir_head dir_remaining between false +
+       ((length
+          (right_rail_map first rest dir_head dir_remaining between ++
+           [right_mark target]) + 3) +
+        (length symbols + 1)))
+      (entry_config 15
+        (4 :: source_bit false :: dir_head :: dir_remaining ++
+         3 :: 5 :: stored)
+        (rev (map q0_stable_control_tag (first :: rest)) ++
+         source_bit target :: between ++ 7 ::
+         [q0_stable_control_tag c1; q0_stable_control_tag c2] ++
+         source_bit true :: (symbols ++ 4 :: suffix))) =
+    cfg_ml 5
+      (rev symbols ++ 3 ::
+       rev ((right_rail_map first rest dir_head dir_remaining between ++
+             [right_mark target]) ++
+            [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++
+       0 :: 5 :: stored) (4 :: suffix).
+Proof.
+  intros first rest dir_head dir_remaining target between stored
+    c1 c2 symbols suffix H21 Hdir15 Hbetween Hpass Hprefix Hsym.
+  rewrite dispatch_run_add.
+  unfold right_q1_step_clock.
+  rewrite (q15_q22_right_four_prefix_q1_step first rest
+    dir_head dir_remaining false target between
+    ([q0_stable_control_tag c1; q0_stable_control_tag c2] ++
+     source_bit true :: (symbols ++ 4 :: suffix)) stored
+    H21 Hdir15 Hbetween Hpass).
+  fold (right_rail_map first rest dir_head dir_remaining between).
+  replace (if target then 3 else 2) with (right_mark target) by reflexivity.
+  apply (q0_read_one_from_q1_output
+    (right_rail_map first rest dir_head dir_remaining between)
+    (right_mark target) c1 c2 stored symbols suffix Hprefix Hsym).
+Qed.
+
+(** Full right loop, q4/read-zero: q15 -> ... -> q1 -> q4 -> q3 -> q5. *)
+Theorem q15_right_loop_q4_read0 :
+  forall (first : bool) (rest : list bool)
+         dir_head dir_remaining target between stored
+         (c1 c2 : bool) symbols suffix,
+    Forall q21_pass (dir_head :: dir_remaining) ->
+    Forall q15_pass (rev (dir_head :: dir_remaining)) ->
+    Forall q17_pass between ->
+    Forall q5_return_pass
+      (rev between ++ 6 ::
+       rev (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
+            map q16_restore
+              (rev (map q0_stable_control_tag (first :: rest)))) ++
+       [source_bit true]) ->
+    Forall q4_pass
+      (right_rail_map first rest dir_head dir_remaining between ++
+       [right_mark target]) ->
+    Forall dispatch_right_symbol symbols ->
+    run
+      (right_q1_step_clock first rest dir_head dir_remaining between true +
+       (S (length
+          ((right_rail_map first rest dir_head dir_remaining between ++
+            [right_mark target]) ++
+           [q0_stable_control_tag c1; q0_stable_control_tag c2])) +
+        (length symbols + 1)))
+      (entry_config 15
+        (4 :: source_bit true :: dir_head :: dir_remaining ++
+         3 :: 5 :: stored)
+        (rev (map q0_stable_control_tag (first :: rest)) ++
+         source_bit target :: between ++ 7 ::
+         [q0_stable_control_tag c1; q0_stable_control_tag c2] ++
+         source_bit false :: (symbols ++ 4 :: suffix))) =
+    cfg_ml 5
+      (rev symbols ++ 2 ::
+       rev ((right_rail_map first rest dir_head dir_remaining between ++
+             [right_mark target]) ++
+            [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++
+       1 :: 5 :: stored) (4 :: suffix).
+Proof.
+  intros first rest dir_head dir_remaining target between stored
+    c1 c2 symbols suffix H21 Hdir15 Hbetween Hpass Hprefix Hsym.
+  rewrite dispatch_run_add.
+  unfold right_q1_step_clock.
+  rewrite (q15_q22_right_four_prefix_q1_step first rest
+    dir_head dir_remaining true target between
+    ([q0_stable_control_tag c1; q0_stable_control_tag c2] ++
+     source_bit false :: (symbols ++ 4 :: suffix)) stored
+    H21 Hdir15 Hbetween Hpass).
+  fold (right_rail_map first rest dir_head dir_remaining between).
+  replace (if target then 3 else 2) with (right_mark target) by reflexivity.
+  apply (q4_read_zero_from_q1_output
+    (right_rail_map first rest dir_head dir_remaining between)
+    (right_mark target) c1 c2 stored symbols suffix Hprefix Hsym).
+Qed.
+
+(** Full right loop, q4/read-one: q15 -> ... -> q1 -> q4 -> q2 -> q1. *)
+Theorem q15_right_loop_q4_read1 :
+  forall (first : bool) (rest : list bool)
+         dir_head dir_remaining target between stored
+         (c1 c2 : bool) symbols suffix,
+    Forall q21_pass (dir_head :: dir_remaining) ->
+    Forall q15_pass (rev (dir_head :: dir_remaining)) ->
+    Forall q17_pass between ->
+    Forall q5_return_pass
+      (rev between ++ 6 ::
+       rev (rev (dir_head :: dir_remaining) ++ 7 :: 4 ::
+            map q16_restore
+              (rev (map q0_stable_control_tag (first :: rest)))) ++
+       [source_bit true]) ->
+    Forall q4_pass
+      (right_rail_map first rest dir_head dir_remaining between ++
+       [right_mark target]) ->
+    Forall dispatch_left_symbol
+      (rev
+        ((right_rail_map first rest dir_head dir_remaining between ++
+          [right_mark target]) ++
+         [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++ [1]) ->
+    run
+      (right_q1_step_clock first rest dir_head dir_remaining between true +
+       (S (length
+          ((right_rail_map first rest dir_head dir_remaining between ++
+            [right_mark target]) ++
+           [q0_stable_control_tag c1; q0_stable_control_tag c2])) +
+        S (length
+          (rev
+            ((right_rail_map first rest dir_head dir_remaining between ++
+              [right_mark target]) ++
+             [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++ [1]))))
+      (entry_config 15
+        (4 :: source_bit true :: dir_head :: dir_remaining ++
+         3 :: 5 :: stored)
+        (rev (map q0_stable_control_tag (first :: rest)) ++
+         source_bit target :: between ++ 7 ::
+         [q0_stable_control_tag c1; q0_stable_control_tag c2] ++
+         source_bit true :: (symbols ++ 4 :: suffix))) =
+    entry_config 1 (5 :: stored)
+      (1 ::
+       ((right_rail_map first rest dir_head dir_remaining between ++
+         [right_mark target]) ++
+        [q0_stable_control_tag c1; q0_stable_control_tag c2]) ++
+       3 :: symbols ++ 4 :: suffix).
+Proof.
+  intros first rest dir_head dir_remaining target between stored
+    c1 c2 symbols suffix H21 Hdir15 Hbetween Hpass Hprefix Hleft.
+  rewrite dispatch_run_add.
+  unfold right_q1_step_clock.
+  rewrite (q15_q22_right_four_prefix_q1_step first rest
+    dir_head dir_remaining true target between
+    ([q0_stable_control_tag c1; q0_stable_control_tag c2] ++
+     source_bit true :: (symbols ++ 4 :: suffix)) stored
+    H21 Hdir15 Hbetween Hpass).
+  fold (right_rail_map first rest dir_head dir_remaining between).
+  replace (if target then 3 else 2) with (right_mark target) by reflexivity.
+  apply (q4_read_one_from_q1_output
+    (right_rail_map first rest dir_head dir_remaining between)
+    (right_mark target) c1 c2 stored symbols suffix Hprefix Hleft).
+Qed.
+
+Print Assumptions q15_right_loop_q0_read1.
+Print Assumptions q15_right_loop_q4_read0.
+Print Assumptions q15_right_loop_q4_read1.
