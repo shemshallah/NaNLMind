@@ -3018,6 +3018,7 @@ Print Assumptions canonical_q6_to_q5_right.
 
 Theorem canonical_q5_return_to_q5_right :
   forall (post pre : list nat) (bprev : bool) (data : list nat)
+         (data' : list nat)
          (symbol : nat) (remaining prefix : list nat)
          (hit next_bit : bool) (next_tail : list nat)
          (q16map : list nat) (bits action_init : list bool)
@@ -3036,7 +3037,8 @@ Theorem canonical_q5_return_to_q5_right :
       map match_raw bits ++ tail ->
     tail = map source_bit (action_init ++ [bnext]) ++
            source_bit true :: rest ->
-    prefix = rev tbuffer ++ 6 :: rev data ->
+    prefix = rev tbuffer ++ 6 :: rev data' ->
+    rev data' = rev pre ++ source_bit bprev :: rev data ->
     length (action_init ++ [bnext]) = length bits ->
     rest = source_bit next_bit' :: next_tail' ->
     map q14_restore
@@ -3084,7 +3086,7 @@ Theorem canonical_q5_return_to_q5_right :
          map q16_restore q16map ++
          source_bit next_bit :: next_tail)) =
     cfg_ml 5
-      (rev hpost ++ 6 :: rev hpre ++ source_bit bnext :: rev data)
+      (rev hpost ++ 6 :: rev hpre ++ source_bit bnext :: rev data')
       ((if hhit then 3 else 2) ::
        map q16_restore
          (rev (3 :: rev
@@ -3092,18 +3094,18 @@ Theorem canonical_q5_return_to_q5_right :
             map match_mark (action_init ++ [bnext])) ++ [4])) ++
        source_bit next_bit' :: next_tail').
 Proof.
-  intros post pre bprev data symbol remaining prefix hit next_bit
-    next_tail q16map bits action_init tbuffer bnext rest s21 rest21
-    hpre hhit hpost next_bit' next_tail' tail
-    Hleft Hscan Hrail Htail Hprefix Hlen Hrest Hrestored Hdecomp
-    Hpre Hpost H12r H14r.
+  intros post pre bprev data data' symbol remaining prefix hit
+    next_bit next_tail q16map bits action_init tbuffer bnext rest s21
+    rest21 hpre hhit hpost next_bit' next_tail' tail
+    Hleft Hscan Hrail Htail Hprefix Hshift Hlen Hrest Hrestored
+    Hdecomp Hpre Hpost H12r H14r.
   rewrite dispatch_run_add.
   rewrite (canonical_q5_return_to_q6
     post pre bprev data symbol remaining prefix hit next_bit next_tail
     q16map bits [] tail Hleft Hscan Hrail (Forall_nil q1_pass)).
   rewrite Htail, Hprefix.
   apply (canonical_q6_to_q5_right
-    bits action_init tbuffer data bnext rest s21 rest21
+    bits action_init tbuffer data' bnext rest s21 rest21
     hpre hhit hpost next_bit' next_tail'
     Hlen Hrest Hrestored Hdecomp Hpre Hpost H12r H14r).
 Qed.
@@ -3217,7 +3219,8 @@ Print Assumptions canonical_q6_to_q5_left.
 (** ** q5 return -> q5 return, left direction *)
 
 Theorem canonical_q5_return_to_q5_left :
-  forall (post pre : list nat) (bprev : bool) (data data' : list nat)
+  forall (post pre : list nat) (bprev : bool)
+         (data data_q6 data' : list nat)
          (symbol : nat) (remaining prefix : list nat)
          (hit next_bit : bool) (next_tail : list nat)
          (q16map : list nat) (bits action_init : list bool)
@@ -3235,9 +3238,10 @@ Theorem canonical_q5_return_to_q5_left :
       map match_raw bits ++ tail' ->
     tail' = map source_bit (action_init ++ [bnext]) ++
             source_bit false :: rest ->
-    prefix = rev tbuffer ++ 6 :: rev data ->
+    prefix = rev tbuffer ++ 6 :: rev data_q6 ->
+    rev data_q6 = rev pre ++ source_bit bprev :: rev data ->
     length (action_init ++ [bnext]) = length bits ->
-    rev data = source_bit d :: rev data' ->
+    rev data_q6 = source_bit d :: rev data' ->
     rest = source_bit bit :: tail ->
     map q14_restore
       (rev (map match_mark action_init) ++ 5 :: rev tbuffer) =
@@ -3290,17 +3294,17 @@ Theorem canonical_q5_return_to_q5_left :
             map match_mark (action_init ++ [bnext])) ++ [4])) ++
        source_bit bit :: tail).
 Proof.
-  intros post pre bprev data data' symbol remaining prefix hit
-    next_bit next_tail q16map bits action_init tbuffer bnext rest d
-    bit tail s21 rest21 tail' Hleft Hscan Hrail Htail Hprefix Hlen
-    Hdata Hrest Hrestored Hreturn H12r H14r.
+  intros post pre bprev data data_q6 data' symbol remaining prefix
+    hit next_bit next_tail q16map bits action_init tbuffer bnext rest d
+    bit tail s21 rest21 tail' Hleft Hscan Hrail Htail Hprefix Hshift
+    Hlen Hdata Hrest Hrestored Hreturn H12r H14r.
   rewrite dispatch_run_add.
   rewrite (canonical_q5_return_to_q6
     post pre bprev data symbol remaining prefix hit next_bit next_tail
     q16map bits [] tail' Hleft Hscan Hrail (Forall_nil q1_pass)).
   rewrite Htail, Hprefix.
   apply (canonical_q6_to_q5_left
-    bits action_init tbuffer data data' bnext rest d bit tail
+    bits action_init tbuffer data_q6 data' bnext rest d bit tail
     s21 rest21 Hlen Hdata Hrest Hrestored Hreturn H12r H14r).
 Qed.
 
@@ -3317,6 +3321,7 @@ Record canonical_return_step := {
   crs_pre : list nat;
   crs_bprev : bool;
   crs_data : list nat;
+  crs_data' : list nat;
   crs_symbol : nat;
   crs_remaining : list nat;
   crs_prefix : list nat;
@@ -3354,7 +3359,7 @@ Definition canonical_return_step_start (p : canonical_return_step) : Config :=
 Definition canonical_return_step_end (p : canonical_return_step) : Config :=
   cfg_ml 5
     (rev (crs_hpost p) ++ 6 :: rev (crs_hpre p) ++
-     source_bit (crs_bnext p) :: rev (crs_data p))
+     source_bit (crs_bnext p) :: rev (crs_data' p))
     ((if crs_hhit p then 3 else 2) ::
      map q16_restore
        (rev (3 :: rev (canonical_return_marked p) ++ [4])) ++
@@ -3406,7 +3411,10 @@ Record canonical_return_step_ok (p : canonical_return_step) : Prop := {
   crso_tail :
     crs_tail p = map source_bit (crs_action_init p ++ [crs_bnext p]) ++
                  source_bit true :: crs_rest p;
-  crso_prefix : crs_prefix p = rev (crs_tbuffer p) ++ 6 :: rev (crs_data p);
+  crso_prefix : crs_prefix p = rev (crs_tbuffer p) ++ 6 :: rev (crs_data' p);
+  crso_shift :
+    rev (crs_data' p) =
+    rev (crs_pre p) ++ source_bit (crs_bprev p) :: rev (crs_data p);
   crso_len :
     length (crs_action_init p ++ [crs_bnext p]) = length (crs_bits p);
   crso_rest : crs_rest p = source_bit (crs_next_bit' p) :: crs_next_tail' p;
@@ -3440,20 +3448,21 @@ Theorem canonical_return_step_run :
     canonical_return_step_end p.
 Proof.
   intros p H.
-  destruct H as [Hleft Hscan Hrail Htail Hprefix Hlen Hrest
+  destruct H as [Hleft Hscan Hrail Htail Hprefix Hshift Hlen Hrest
     Hrestored Hdecomp Hpre Hpost H12r H14r].
   unfold canonical_return_step_clock, canonical_return_q5_q6_clock,
     canonical_return_q6_q5_clock, canonical_return_step_start,
     canonical_return_step_end, canonical_return_marked.
   apply (canonical_q5_return_to_q5_right
     (crs_post p) (crs_pre p) (crs_bprev p) (crs_data p)
+    (crs_data' p)
     (crs_symbol p) (crs_remaining p) (crs_prefix p) (crs_hit p)
     (crs_next_bit p) (crs_next_tail p) (crs_q16map p) (crs_bits p)
     (crs_action_init p) (crs_tbuffer p) (crs_bnext p) (crs_rest p)
     (crs_s21 p) (crs_rest21 p) (crs_hpre p) (crs_hhit p)
     (crs_hpost p) (crs_next_bit' p) (crs_next_tail' p) (crs_tail p)
-    Hleft Hscan Hrail Htail Hprefix Hlen Hrest Hrestored Hdecomp
-    Hpre Hpost H12r H14r).
+    Hleft Hscan Hrail Htail Hprefix Hshift Hlen Hrest Hrestored
+    Hdecomp Hpre Hpost H12r H14r).
 Qed.
 
 Print Assumptions canonical_return_step_run.
