@@ -922,7 +922,15 @@ Theorem canonical_q5_instruction_q19_collision_to_q5 :
 Proof.
   intros bits action_init tbuffer data b bit tail pre hit post
     Hlen H12t H14t Hdecomp Hpre Hpost.
-  rewrite dispatch_run_add.
+  match goal with
+  | |- run ?clock ?start = ?rhs =>
+    replace clock with
+      ((instruction_q19_clock bits action_init tbuffer b + S (length pre)) +
+       S (length post)) by reflexivity;
+    rewrite (dispatch_run_add
+      (instruction_q19_clock bits action_init tbuffer b + S (length pre))
+      (S (length post)) start)
+  end.
   unfold instruction_q19_clock.
   rewrite (canonical_q5_instruction_to_q19 bits action_init tbuffer
     data b bit tail Hlen H12t H14t).
@@ -999,7 +1007,22 @@ Theorem canonical_q5_instruction_left_collision_to_q5 :
 Proof.
   intros bits action_init tbuffer data data' b bit tail d
     Hlen H12t H14t Hdata Hpost.
-  rewrite dispatch_run_add.
+  match goal with
+  | |- run ?clock ?start = ?rhs =>
+    replace clock with
+      ((instruction_q20_clock bits action_init tbuffer b + 1) +
+       S (length
+         (source_bit b ::
+          rev (map q14_restore
+            (rev (map match_mark action_init) ++ 5 :: rev tbuffer)))))
+      by reflexivity;
+    rewrite (dispatch_run_add
+      (instruction_q20_clock bits action_init tbuffer b + 1)
+      (S (length
+        (source_bit b ::
+         rev (map q14_restore
+           (rev (map match_mark action_init) ++ 5 :: rev tbuffer))))) start)
+  end.
   unfold instruction_q20_clock.
   rewrite (canonical_q5_instruction_left_branch_hits_current_cell
     bits action_init tbuffer data data' b bit tail d
@@ -1119,7 +1142,17 @@ Proof.
   intros bits action_init tbuffer data b bit tail pre hit post
     rail_data prefix symbol remaining Hlen H12t H14t Hdecomp
     Hpre Hpost Hdata Hleft Hscan.
-  rewrite dispatch_run_add.
+  match goal with
+  | |- run ?clock ?start = ?rhs =>
+    replace clock with
+      ((instruction_q19_clock bits action_init tbuffer b +
+        S (length pre) + S (length post)) +
+       S (length (symbol :: remaining))) by reflexivity;
+    rewrite (dispatch_run_add
+      (instruction_q19_clock bits action_init tbuffer b +
+       S (length pre) + S (length post))
+      (S (length (symbol :: remaining))) start)
+  end.
   rewrite (canonical_q5_instruction_q19_collision_to_q5
     bits action_init tbuffer data b bit tail pre hit post
     Hlen H12t H14t Hdecomp Hpre Hpost).
@@ -1177,7 +1210,23 @@ Proof.
   intros bits action_init tbuffer data data' b bit tail d
     rail_data prefix symbol remaining Hlen H12t H14t Hdata Hpost
     Hdata' Hleft Hscan.
-  rewrite dispatch_run_add.
+  match goal with
+  | |- run ?clock ?start = ?rhs =>
+    replace clock with
+      ((instruction_q20_clock bits action_init tbuffer b + 1 +
+        S (length
+          (source_bit b ::
+           rev (map q14_restore
+             (rev (map match_mark action_init) ++ 5 :: rev tbuffer))))) +
+       S (length (symbol :: remaining))) by reflexivity;
+    rewrite (dispatch_run_add
+      (instruction_q20_clock bits action_init tbuffer b + 1 +
+       S (length
+         (source_bit b ::
+          rev (map q14_restore
+            (rev (map match_mark action_init) ++ 5 :: rev tbuffer)))))
+      (S (length (symbol :: remaining))) start)
+  end.
   rewrite (canonical_q5_instruction_left_collision_to_q5
     bits action_init tbuffer data data' b bit tail d
     Hlen H12t H14t Hdata Hpost).
