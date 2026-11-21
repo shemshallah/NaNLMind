@@ -3004,7 +3004,7 @@ Proof.
     (map match_mark bits ++
      map match_mark (action_init ++ [b]))
     tbuffer data b (rev (map match_mark action_init))
-    next_bit next_tail s21 rest21
+    next_bit next_tail s21 rest21 pre hit post
     H12r H14r Hmarked15 Hmarked16 Hrestored Hdecomp Hpre Hpost).
 Qed.
 
