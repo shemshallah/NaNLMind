@@ -468,6 +468,19 @@ Proof.
   split; [rewrite <- Heq | rewrite <- Her]; assumption.
 Qed.
 
+Lemma read_write :
+  forall (t : Tape) (s : nat), read (write t s) = s.
+Proof.
+  intros t s. unfold read, write.
+  destruct (t_right t); reflexivity.
+Qed.
+
+Lemma move_tape_zero :
+  forall (t : Tape), move_tape t 0 = t.
+Proof.
+  intros t. unfold move_tape. reflexivity.
+Qed.
+
 Theorem step_halted_shape :
   forall c,
     c_halted c = false ->
@@ -494,9 +507,10 @@ Proof.
       }
       subst e.
       unfold step. rewrite Hrun, Hfind, Hehalt.
-      cbn [halt c_state c_tape e_to e_write e_move
-           move_tape write read].
-      split; reflexivity.
+      cbn [halt c_state c_tape e_to e_write e_move].
+      split.
+      - reflexivity.
+      - rewrite move_tape_zero, read_write. reflexivity.
     + cbn [c_halted] in Hhalt. discriminate Hhalt.
   - right.
     destruct (Nat.lt_ge_cases (c_state c) 23) as [Hq|Hq].
