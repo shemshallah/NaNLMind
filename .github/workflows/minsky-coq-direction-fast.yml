@@ -18,6 +18,7 @@ on:
       - 'formal/utm/MinskyCanonicalFetch.v'
       - 'formal/utm/MinskyCanonicalInstruction.v'
       - 'formal/utm/MinskyTaggedHalt.v'
+      - 'formal/utm/MinskyTaggedWideDispatch.v'
 
 permissions:
   contents: read
@@ -90,6 +91,17 @@ jobs:
             exit 1
           fi
           coqchk -Q formal/utm NaNLM formal/utm/MinskyTaggedHalt.vo
+          if ! coqc -Q formal/utm NaNLM \
+              -w -notation-overridden,-stdlib-vector \
+              formal/utm/MinskyTaggedWideDispatch.v \
+              > /tmp/tagged-wide-dispatch-coq.log 2>&1; then
+            tail -n 100 /tmp/tagged-wide-dispatch-coq.log
+            while IFS= read -r line; do
+              echo "::error title=Coq tagged wide dispatch::$line"
+            done < <(tail -n 100 /tmp/tagged-wide-dispatch-coq.log)
+            exit 1
+          fi
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyTaggedWideDispatch.vo
           echo 'NANLM FAST Q15-Q22 COQCHK PASS'
 
       - name: Independently replay left tagged macro and wrong-guard controls
