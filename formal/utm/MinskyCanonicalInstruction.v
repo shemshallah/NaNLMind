@@ -2041,7 +2041,29 @@ Proof.
     symbol remaining prefix rest Hlen H12t H14t Hdecomp Hpre Hpost
     Hprefix Hleft Htail Hrail Hscan.
   subst prefix. subst tail.
-  rewrite dispatch_run_add.
+  match goal with
+  | |- run ?clock ?start = ?rhs =>
+    replace clock with
+      ((instruction_q19_clock bits action_init tbuffer b +
+        S (length pre) + S (length post) +
+        S (length (symbol :: remaining)) +
+        matched_comparison_steps bits (length ([] : list nat)) (length [4]) +
+        S (length ([] ++ map match_raw bits))) +
+       (copy_all_clock bits (action_init ++ [b]) [] (map match_mark bits) +
+        direction_clock
+          (map match_mark bits ++ map match_mark (action_init ++ [b]))
+          (map match_mark (action_init ++ [b])))) by lia;
+    rewrite (dispatch_run_add
+      (instruction_q19_clock bits action_init tbuffer b +
+       S (length pre) + S (length post) +
+       S (length (symbol :: remaining)) +
+       matched_comparison_steps bits (length ([] : list nat)) (length [4]) +
+       S (length ([] ++ map match_raw bits)))
+      (copy_all_clock bits (action_init ++ [b]) [] (map match_mark bits) +
+       direction_clock
+         (map match_mark bits ++ map match_mark (action_init ++ [b]))
+         (map match_mark (action_init ++ [b]))) start)
+  end.
   rewrite (canonical_q5_instruction_q19_collision_to_q6
     bits action_init tbuffer data b bit
     (map source_bit (action_init ++ [b]) ++ source_bit true :: rest)
