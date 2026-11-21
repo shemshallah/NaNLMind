@@ -2002,6 +2002,7 @@ Theorem canonical_q5_instruction_full_right_to_q12 :
       pre ++ source_bit hit :: post ->
     Forall q15_pass pre ->
     Forall q17_pass post ->
+    prefix = rev tbuffer ++ 6 :: rev data ->
     rev post ++ 6 :: rev pre ++ source_bit b :: rev data =
       (symbol :: remaining) ++ 5 :: prefix ->
     tail = map source_bit (action_init ++ [b]) ++
@@ -2038,13 +2039,14 @@ Theorem canonical_q5_instruction_full_right_to_q12 :
 Proof.
   intros bits action_init tbuffer data b bit tail pre hit post
     symbol remaining prefix rest Hlen H12t H14t Hdecomp Hpre Hpost
-    Hleft Htail Hrail Hscan.
-  subst tail.
+    Hprefix Hleft Htail Hrail Hscan.
+  subst prefix. subst tail.
   rewrite dispatch_run_add.
   rewrite (canonical_q5_instruction_q19_collision_to_q6
     bits action_init tbuffer data b bit
     (map source_bit (action_init ++ [b]) ++ source_bit true :: rest)
-    pre hit post [] symbol remaining bits []
+    pre hit post (rev tbuffer ++ 6 :: rev data)
+    symbol remaining bits []
     Hlen H12t H14t Hdecomp Hpre Hpost Hleft
     Hscan Hrail (Forall_nil q1_pass)).
   rewrite (canonical_q6_copy_direction_to_q12
