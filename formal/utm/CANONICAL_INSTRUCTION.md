@@ -381,3 +381,31 @@ entry_config 6
 with clock `copy_all_clock ... + direction_clock ...`.  Together with
 the q5 -> q6 cycles this gives q5 -> q12/q13.  The remaining movement
 half is q12/q13 -> restore -> q16 -> q5.
+
+## q12 -> q5 and q21 -> q5 (proved)
+
+Two more native compositions close the right movement half:
+
+- `canonical_q21_decision_to_q5`: from the q21/q22 entry after q16, scan
+  to the direction marker 3, run q19 to the first raw cell, then q17/q18
+  to the next 7.
+- `canonical_q12_restore_to_q5`: compose the q12 restore/q16 decision
+  with the q21 path, reaching the q5 return frame.
+- `canonical_q21_decision_to_q5_map` is the same path with an arbitrary
+  restored q16 map, used by the q12 composition.
+
+The q12 path is
+
+```text
+cfg_ml 12 ...
+-> q14/q16 decision
+-> cfg_ml (if b then 22 else 21)
+     (map q14_restore (...) ++ 3 :: rev data)
+     (7 :: map q16_restore (...) ++ source_bit bit :: tail)
+-> q19 -> q17/q18 -> q5.
+```
+
+The result is the same q5 return frame as the q5 -> q5 collision cycle.
+Together with `canonical_q6_copy_direction_to_q12` and the q5 -> q6
+cycles, the right instruction movement is closed:
+q5 -> q6 -> q12 -> q16 -> q19 -> q17/q18 -> q5.

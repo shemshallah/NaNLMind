@@ -1383,3 +1383,16 @@ Fast branch acceptance:
 
 The remaining movement half is q12/q13 -> restore -> q16 decision ->
 q19/q20 -> q17/q18 -> q5.
+
+### q12/q21 -> q5 (kernel-checked)
+
+- `canonical_q21_decision_to_q5` and its generic-map variant
+  `canonical_q21_decision_to_q5_map`,
+- `canonical_q12_restore_to_q5`.
+
+Fast branch acceptance:
+[44857107069](https://github.com/shemshallah/NaNLMind/actions/runs/44857107069).
+
+The right canonical instruction movement is closed at q5:
+q5 -> q6 -> q12 -> q16 -> q19 -> q17/q18 -> q5.  The left q13 branch
+and the source encoder/halt reflection remain.
