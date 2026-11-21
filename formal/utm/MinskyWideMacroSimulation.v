@@ -138,3 +138,64 @@ End ConditionalWideNativeSimulation.
 (** The section's three bridge premises are visible arguments in the
     elaborated theorem: this command does not certify them. *)
 Print Assumptions conditional_wide_source_native_halting_equivalence.
+
+(** ** Concrete halt-side encoder fragment
+
+    This is the first concrete piece of the wide-source encoder: the
+    halted and lookup-failure cases.  The running case is left as an
+    explicit placeholder; the theorem below proves the macro step only
+    for the halt side. *)
+
+Definition wide_halted_marker : Config :=
+  {| c_state := 0;
+     c_tape := {| t_left := []; t_right := [5] |};
+     c_halted := true |}.
+
+Definition wide_halt_entry : Config :=
+  entry_config 3 [] [5].
+
+Definition wide_encode_halt
+    (rows : list WideSourceRow) (c : WideSourceConfig) : Config :=
+  if wc_halted c then wide_halted_marker
+  else
+    match wide_source_lookup rows (wc_state c)
+                              (wc_tape c (wc_head c)) with
+    | None => wide_halt_entry
+    | Some _ => wide_halt_entry  (* running-case placeholder *)
+    end.
+
+Lemma wide_halt_entry_step :
+  step wide_halt_entry = wide_halted_marker.
+Proof. reflexivity. Qed.
+
+Lemma wide_encode_halt_reflects :
+  forall rows c,
+    c_halted (wide_encode_halt rows c) = wc_halted c.
+Proof.
+  intros rows c.
+  unfold wide_encode_halt.
+  destruct (wc_halted c) eqn:H.
+  - reflexivity.
+  - destruct (wide_source_lookup rows (wc_state c)
+                (wc_tape c (wc_head c))); reflexivity.
+Qed.
+
+Lemma wide_encode_halt_step_none :
+  forall rows c,
+    wc_halted c = false ->
+    wide_source_lookup rows (wc_state c) (wc_tape c (wc_head c)) = None ->
+    run 1 (wide_encode_halt rows c) =
+    wide_encode_halt rows (wide_source_step rows c).
+Proof.
+  intros rows c Hh Hlookup.
+  unfold wide_encode_halt.
+  rewrite Hh, Hlookup.
+  unfold wide_source_step.
+  rewrite Hh, Hlookup.
+  cbn [wc_halted wc_state wc_tape wc_head].
+  unfold wide_halt_entry, wide_halted_marker.
+  reflexivity.
+Qed.
+
+Print Assumptions wide_encode_halt_reflects.
+Print Assumptions wide_encode_halt_step_none.
