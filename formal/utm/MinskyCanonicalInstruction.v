@@ -1422,7 +1422,7 @@ Theorem canonical_q5_instruction_q19_collision_to_q6 :
     run (instruction_q19_clock bits action_init tbuffer b +
          S (length pre) + S (length post) +
          S (length (symbol :: remaining)) +
-         matched_comparison_steps bits' (length pass) 1 +
+         matched_comparison_steps bits' (length pass) (length [4]) +
          S (length (pass ++ map match_raw bits')))
       (entry_config 5
         (rev (map source_bit bits) ++ 5 :: rev tbuffer ++ 6 :: rev data)
@@ -1484,7 +1484,7 @@ Theorem canonical_q5_instruction_left_collision_to_q6 :
             rev (map q14_restore
               (rev (map match_mark action_init) ++ 5 :: rev tbuffer)))) +
          S (length (symbol :: remaining)) +
-         matched_comparison_steps bits' (length pass) 1 +
+         matched_comparison_steps bits' (length pass) (length [4]) +
          S (length (pass ++ map match_raw bits')))
       (entry_config 5
         (rev (map source_bit bits) ++ 5 :: rev tbuffer ++ 6 :: rev data)
