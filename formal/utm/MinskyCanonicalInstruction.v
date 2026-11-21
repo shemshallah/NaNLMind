@@ -3017,13 +3017,14 @@ Print Assumptions canonical_q6_to_q5_right.
     the next q5 return frame is produced. *)
 
 Theorem canonical_q5_return_to_q5_right :
-  forall (post pre data : list nat) (bprev : bool) (symbol : nat)
-         (remaining prefix : list nat) (hit next_bit : bool)
-         (next_tail : list nat) (q16map : list nat)
-         (bits action_init : list bool) (tbuffer : list nat)
-         (bnext : bool) (rest : list nat) (s21 : nat)
-         (rest21 hpre : list nat) (hhit : bool) (hpost : list nat)
-         (next_bit' : bool) (next_tail' tail : list nat),
+  forall (post pre : list nat) (bprev : bool) (data : list nat)
+         (symbol : nat) (remaining prefix : list nat)
+         (hit next_bit : bool) (next_tail : list nat)
+         (q16map : list nat) (bits action_init : list bool)
+         (tbuffer : list nat) (bnext : bool) (rest : list nat)
+         (s21 : nat) (rest21 hpre : list nat) (hhit : bool)
+         (hpost : list nat) (next_bit' : bool)
+         (next_tail' tail : list nat),
     rev post ++ 6 :: rev pre ++ source_bit bprev :: rev data =
       (symbol :: remaining) ++ 5 :: prefix ->
     Forall canonical_q5_return_pass (symbol :: remaining) ->
