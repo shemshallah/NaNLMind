@@ -360,3 +360,24 @@ entry_config 6
 This is the next-instruction action-copy entry.  The remaining movement
 half is q6 -> copy/direction/restore/q16 -> q5, which closes the full
 source-step cycle.
+
+## q6 -> q12/q13 (proved)
+
+`canonical_q6_copy_direction_to_q12` composes the action copy and the
+direction capture:
+
+```text
+entry_config 6
+  (4 :: rev (map source_bit bits) ++ 5 :: rev tbuffer ++ 6 :: rev data)
+  (map match_mark bits ++ map source_bit action_bits ++
+   source_bit dir :: rest)
+-> q6 copy -> q6 direction capture
+-> cfg_ml (if dir then 12 else 13)
+     (rev (map match_mark action_bits) ++ 5 :: rev tbuffer ++ 6 :: rev data)
+     (4 :: (map match_mark bits ++ map match_mark action_bits) ++
+           (if dir then 3 else 2) :: rest)
+```
+
+with clock `copy_all_clock ... + direction_clock ...`.  Together with
+the q5 -> q6 cycles this gives q5 -> q12/q13.  The remaining movement
+half is q12/q13 -> restore -> q16 -> q5.

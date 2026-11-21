@@ -1373,3 +1373,13 @@ Fast branch acceptance:
 The remaining movement half is the q6 copy/direction/restore/q16 path
 back to q5; after that the q5->q6 and q6->q5 halves close the source
 step.
+
+### q6 -> q12/q13 (kernel-checked)
+
+`canonical_q6_copy_direction_to_q12` composes the q6 action copy with
+the q9/q10 direction capture and reaches the exact q12/q13 frame.
+Fast branch acceptance:
+[44853328187](https://github.com/shemshallah/NaNLMind/actions/runs/44853328187).
+
+The remaining movement half is q12/q13 -> restore -> q16 decision ->
+q19/q20 -> q17/q18 -> q5.
