@@ -508,9 +508,7 @@ Proof.
       subst e.
       unfold step. rewrite Hrun, Hfind, Hehalt.
       cbn [halt c_state c_tape e_to e_write e_move].
-      split.
-      - reflexivity.
-      - rewrite move_tape_zero, read_write. reflexivity.
+      split; [reflexivity | rewrite move_tape_zero, read_write; reflexivity].
     + cbn [c_halted] in Hhalt. discriminate Hhalt.
   - right.
     destruct (Nat.lt_ge_cases (c_state c) 23) as [Hq|Hq].
