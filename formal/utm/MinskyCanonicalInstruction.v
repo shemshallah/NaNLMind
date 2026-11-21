@@ -2292,7 +2292,7 @@ Theorem canonical_q5_instruction_full_left_to_q13 :
     tail = map source_bit (action_init ++ [b]) ++
            source_bit false :: rest ->
     map entry_rewrite (rev (symbol :: remaining)) ++
-      (if hit then 3 else 2) ::
+      (if d then 3 else 2) ::
       map q16_restore
         (rev (4 :: rev
           (instruction_marked bits (action_init ++ [b]) ++ [2]) ++
@@ -2330,6 +2330,20 @@ Proof.
   rewrite Hprefix in Hleft.
   rewrite Htail.
   rewrite Htail in Hrail.
+  assert (Hrail' :
+    map entry_rewrite (rev (symbol :: remaining)) ++
+      (if d then 3 else 2) ::
+      map q16_restore
+        (rev (4 :: rev
+          (instruction_marked bits (action_init ++ [b]) ++ [2]) ++
+         [4])) ++
+      source_bit bit ::
+      map source_bit (action_init ++ [b]) ++
+      source_bit false :: rest =
+      ([] : list nat) ++ map match_mark bits ++ [4] ++ map match_raw bits ++
+      map source_bit (action_init ++ [b]) ++
+      source_bit false :: rest).
+  { rewrite Hrail. reflexivity. }
   match goal with
   | |- run ?clock ?start = ?rhs =>
     replace clock with
@@ -2362,7 +2376,7 @@ Proof.
     (map source_bit (action_init ++ [b]) ++
      source_bit false :: rest) d
     (rev tbuffer ++ 6 :: rev data) symbol remaining bits []
-    Hlen H12t H14t Hdata Hreturn Hleft Hscan Hrail
+    Hlen H12t H14t Hdata Hreturn Hleft Hscan Hrail'
     (Forall_nil q1_pass)).
   apply (canonical_q6_copy_direction_to_q12
     bits (action_init ++ [b]) tbuffer data false rest Hlen).
