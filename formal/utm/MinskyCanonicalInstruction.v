@@ -927,7 +927,7 @@ Proof.
   | |- run ?clock ?start = ?rhs =>
     replace clock with
       (instruction_q19_clock bits action_init tbuffer b +
-       (S (length pre) + S (length post))) by reflexivity;
+       (S (length pre) + S (length post))) by lia;
     rewrite (dispatch_run_add
       (instruction_q19_clock bits action_init tbuffer b)
       (S (length pre) + S (length post)) start)
