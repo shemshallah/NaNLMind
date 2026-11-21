@@ -2046,7 +2046,7 @@ Proof.
     (map source_bit (action_init ++ [b]) ++ source_bit true :: rest)
     pre hit post [] symbol remaining bits []
     Hlen H12t H14t Hdecomp Hpre Hpost Hleft
-    Hrail (Forall_nil q1_pass)).
+    Hscan Hrail (Forall_nil q1_pass)).
   rewrite (canonical_q6_copy_direction_to_q12
     bits (action_init ++ [b]) tbuffer data true rest Hlen).
   reflexivity.
