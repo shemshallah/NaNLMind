@@ -403,3 +403,85 @@ Proof.
 Qed.
 
 Print Assumptions canonical_q5_match_to_q6.
+
+(** ** Native halt shape
+
+    The frozen table has exactly one halting entry, q3/5.  A step from a
+    running configuration can therefore halt only in the encoded marker
+    configuration (state 0, read 5) or outside the finite table domain. *)
+
+Lemma find_entry_some_bounds :
+  forall q s e,
+    find_entry q s = Some e -> q < 23 /\ s < 8.
+Proof.
+  intros q s e H. unfold find_entry in H.
+  destruct ((q <? 23) && (s <? 8)) eqn:Hc; [| discriminate H].
+  apply andb_true_iff in Hc. destruct Hc as [Hq Hs].
+  split; apply Nat.ltb_lt; assumption.
+Qed.
+
+Definition halting_lookup_ok : bool :=
+  forallb
+    (fun q =>
+      forallb
+        (fun s =>
+          match find_entry q s with
+          | Some e => if e_halt e then (q =? 3) && (s =? 5) else true
+          | None => true
+          end)
+        (seq 0 8))
+    (seq 0 23).
+
+Lemma halting_lookup_ok_true : halting_lookup_ok = true.
+Proof. vm_compute. reflexivity. Qed.
+
+Lemma find_entry_halt_unique :
+  forall q s e,
+    find_entry q s = Some e -> e_halt e = true -> q = 3 /\ s = 5.
+Proof.
+  intros q s e Hfind Hhalt.
+  assert (Hqin : In q (seq 0 23)) by (apply in_seq; lia).
+  assert (Hsin : In s (seq 0 8)) by (apply in_seq; lia).
+  pose proof (forallb_forall _ _ _ halting_lookup_ok_true q Hqin) as Hqok.
+  pose proof (forallb_forall _ _ _ Hqok s Hsin) as Hsok.
+  rewrite Hfind, Hhalt in Hsok.
+  apply andb_true_iff in Hsok. destruct Hsok as [Hq3 Hs5].
+  split; apply Nat.eqb_eq; assumption.
+Qed.
+
+Theorem step_halted_shape :
+  forall c,
+    c_halted c = false ->
+    c_halted (step c) = true ->
+    (c_state (step c) = 0 /\ read (c_tape (step c)) = 5) \/
+    (23 <= c_state (step c) \/ 8 <= read (c_tape (step c))).
+Proof.
+  intros c Hrun Hhalt.
+  unfold step in Hhalt. rewrite Hrun in Hhalt.
+  destruct (find_entry (c_state c) (read (c_tape c))) as [e|] eqn:Hfind.
+  - destruct (e_halt e) eqn:Hehalt.
+    + left.
+      pose proof (find_entry_halt_unique _ _ _ Hfind Hehalt) as [Hq3 Hs5].
+      assert (He : e =
+        {| e_from := 3; e_read := 5; e_write := 5; e_move := 0%Z;
+           e_to := 0; e_halt := true |}).
+      {
+        destruct minsky_halt_entry as [e0 [Hfind0 Hhalt0]].
+        rewrite Hq3, Hs5 in Hfind.
+        rewrite Hfind0 in Hfind. inversion Hfind. subst e0. reflexivity.
+      }
+      subst e.
+      cbn [c_state c_tape e_to e_write e_move].
+      split; reflexivity.
+    + cbn [c_halted] in Hhalt. discriminate Hhalt.
+  - right.
+    destruct (Nat.lt_ge_cases (c_state c) 23) as [Hq|Hq].
+    + destruct (Nat.lt_ge_cases (read (c_tape c)) 8) as [Hs|Hs].
+      * exfalso.
+        destruct (minsky_table_complete _ _ Hq Hs) as [e He].
+        rewrite He in Hfind. discriminate.
+      * right. cbn [c_state c_tape halt]. exact Hs.
+    + left. cbn [c_state c_tape halt]. exact Hq.
+Qed.
+
+Print Assumptions step_halted_shape.
