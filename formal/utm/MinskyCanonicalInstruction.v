@@ -1640,8 +1640,8 @@ Theorem canonical_q21_decision_to_q5 :
           [4])) ++
        source_bit bit :: tail).
 Proof.
-  intros bits action_init tbuffer data b bit tail s remaining
-    pre hit post H21 Hdecomp Hpre Hpost.
+  intros bits action_init tbuffer data tail b bit s remaining
+    pre post hit H21 Hdecomp Hpre Hpost.
   rewrite dispatch_run_add.
   assert (Hq : (if b then 22 else 21) = 21 \/
                (if b then 22 else 21) = 22)
