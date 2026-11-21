@@ -2243,10 +2243,14 @@ Proof.
        S (length pre) + S (length post)) start)
   end.
   rewrite (canonical_q5_instruction_full_right_to_q12
-    bits action_init tbuffer data b bit tail pre hit post
+    bits action_init tbuffer data b bit
+    (map source_bit (action_init ++ [b]) ++
+     source_bit true :: source_bit next_bit :: next_tail)
+    pre hit post
     symbol remaining prefix
     (source_bit next_bit :: next_tail)
-    Hlen H12t H14t Hdecomp Hpre Hpost Hprefix Hleft Htail Hrail Hscan).
+    Hlen H12t H14t Hdecomp Hpre Hpost Hprefix Hleft
+    eq_refl Hrail Hscan).
   apply (canonical_q12_restore_to_q5
     (map match_mark bits ++ map match_mark (action_init ++ [b]))
     tbuffer data b (rev (map match_mark action_init))
