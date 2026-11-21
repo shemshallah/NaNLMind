@@ -3213,3 +3213,95 @@ Proof.
 Qed.
 
 Print Assumptions canonical_q6_to_q5_left.
+
+(** ** q5 return -> q5 return, left direction *)
+
+Theorem canonical_q5_return_to_q5_left :
+  forall (post pre : list nat) (bprev : bool) (data data' : list nat)
+         (symbol : nat) (remaining prefix : list nat)
+         (hit next_bit : bool) (next_tail : list nat)
+         (q16map : list nat) (bits action_init : list bool)
+         (tbuffer : list nat) (bnext : bool) (rest : list nat)
+         (d : bool) (bit : bool) (tail : list nat) (s21 : nat)
+         (rest21 : list nat) (tail' : list nat),
+    rev post ++ 6 :: rev pre ++ source_bit bprev :: rev data =
+      (symbol :: remaining) ++ 5 :: prefix ->
+    Forall canonical_q5_return_pass (symbol :: remaining) ->
+    map entry_rewrite (rev (symbol :: remaining)) ++
+      (if hit then 3 else 2) ::
+      map q16_restore q16map ++
+      source_bit next_bit :: next_tail =
+      ([] : list nat) ++ map match_mark bits ++ [4] ++
+      map match_raw bits ++ tail' ->
+    tail' = map source_bit (action_init ++ [bnext]) ++
+            source_bit false :: rest ->
+    prefix = rev tbuffer ++ 6 :: rev data ->
+    length (action_init ++ [bnext]) = length bits ->
+    rev data = source_bit d :: rev data' ->
+    rest = source_bit bit :: tail ->
+    map q14_restore
+      (rev (map match_mark action_init) ++ 5 :: rev tbuffer) =
+      s21 :: rest21 ->
+    Forall q17_pass (source_bit bnext :: rev (s21 :: rest21)) ->
+    Forall q12_pass
+      (match_mark bnext :: rev (map match_mark action_init) ++
+       5 :: rev tbuffer) ->
+    Forall q14_pass
+      (tbuffer ++ [5] ++ rev (rev (map match_mark action_init)) ++
+       [match_mark bnext]) ->
+    run ((S (length (symbol :: remaining)) +
+          matched_comparison_steps bits (length ([] : list nat))
+            (length [4]) +
+          S (length ([] ++ map match_raw bits))) +
+         ((copy_all_clock bits (action_init ++ [bnext]) []
+             (map match_mark bits) +
+           direction_clock
+             (map match_mark bits ++
+              map match_mark (action_init ++ [bnext]))
+             (map match_mark (action_init ++ [bnext]))) +
+          (S (length
+               (match_mark bnext ::
+                rev (map match_mark action_init) ++
+                5 :: rev tbuffer)) +
+           S (length
+               (tbuffer ++ [5] ++
+                rev (rev (map match_mark action_init)) ++
+                [match_mark bnext])) +
+           S (length
+               ((map match_mark bits ++
+                 map match_mark (action_init ++ [bnext])) ++ [2])) +
+           S (length
+               (2 :: rev
+                 (map match_mark bits ++
+                  map match_mark (action_init ++ [bnext])) ++ [4])) +
+           S (length (s21 :: rest21)) + 1 +
+           S (length (source_bit bnext :: rev (s21 :: rest21))))))
+      (cfg_ml 5
+        (rev post ++ 6 :: rev pre ++ source_bit bprev :: rev data)
+        ((if hit then 3 else 2) ::
+         map q16_restore q16map ++
+         source_bit next_bit :: next_tail)) =
+    cfg_ml 5
+      (rev (source_bit bnext :: rev (s21 :: rest21)) ++ 6 :: rev data')
+      ((if d then 3 else 2) ::
+       map q16_restore
+         (rev (2 :: rev
+           (map match_mark bits ++
+            map match_mark (action_init ++ [bnext])) ++ [4])) ++
+       source_bit bit :: tail).
+Proof.
+  intros post pre bprev data data' symbol remaining prefix hit
+    next_bit next_tail q16map bits action_init tbuffer bnext rest d
+    bit tail s21 rest21 tail' Hleft Hscan Hrail Htail Hprefix Hlen
+    Hdata Hrest Hrestored Hreturn H12r H14r.
+  rewrite dispatch_run_add.
+  rewrite (canonical_q5_return_to_q6
+    post pre bprev data symbol remaining prefix hit next_bit next_tail
+    q16map bits [] tail' Hleft Hscan Hrail (Forall_nil q1_pass)).
+  rewrite Htail, Hprefix, Hrest.
+  apply (canonical_q6_to_q5_left
+    bits action_init tbuffer data data' bnext rest d bit tail
+    s21 rest21 Hlen Hdata Hrest Hrestored Hreturn H12r H14r).
+Qed.
+
+Print Assumptions canonical_q5_return_to_q5_left.
