@@ -1521,3 +1521,22 @@ obligations of the source encoder interface.  Fast branch acceptance:
 
 The remaining encoder obligation is still the concrete `encode`
 construction with matching `canonical_step_start`/`end` frames.
+
+### Wide halt-side encoder fragment (kernel-checked)
+
+The first concrete wide-source encoder piece is formal:
+
+- `wide_halted_marker`, `wide_halt_entry`,
+- `wide_encode_halt` (halted and lookup-failure cases; running case is a
+  placeholder),
+- `wide_encode_halt_reflects`:
+  `c_halted (wide_encode_halt rows c) = wc_halted c`,
+- `wide_encode_halt_step_none`: for a running source configuration with
+  `wide_source_lookup = None`, the one-step native run reaches the
+  encoding of the source successor.
+
+Full bridge acceptance:
+[44946577098](https://github.com/shemshallah/NaNLMind/actions/runs/44946577098).
+
+The remaining encoder work is the running/lookup-hit case, which must
+use the packaged canonical step.
