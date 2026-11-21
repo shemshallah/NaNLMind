@@ -250,3 +250,57 @@ fails in both directions:
 | --- | --- |
 | q19 (right) | captures the first restored action cell |
 | q20 (left) | displaces the current source cell instead of moving left |
+
+## Canonical q5 movement and q5 -> q1 cycles (proved)
+
+The canonical instruction phase now has four complete native cycle
+theorems:
+
+| branch | endpoint |
+| --- | --- |
+| right, collision hit | `q5 -> ... -> q5` |
+| left, current cell | `q5 -> ... -> q5` |
+| right, collision hit | `q5 -> ... -> q1` |
+| left, current cell | `q5 -> ... -> q1` |
+
+The q5 -> q5 theorems are
+`canonical_q5_instruction_q19_collision_to_q5` and
+`canonical_q5_instruction_left_collision_to_q5`.  They stop q19 at the
+first restored action bit
+
+```text
+rev restored = pre ++ source_bit hit :: post
+```
+
+and return to the q5 rail
+
+```text
+cfg_ml 5
+  (rev post ++ 6 :: rev pre ++ source_bit b :: rev data)
+  ((if hit then 3 else 2) ::
+   map q16_restore (...) ++ source_bit bit :: tail).
+```
+
+Composing with the native q5 scan
+`canonical_q5_return_scan_to_first_five` gives the q5 -> q1 theorems
+`canonical_q5_instruction_q19_collision_to_q1` and
+`canonical_q5_instruction_left_collision_to_q1`.  Their input includes
+the exact q5-left decomposition
+
+```text
+rev post ++ 6 :: rev pre ++ source_bit b :: rev data =
+  (symbol :: remaining) ++ 5 :: prefix
+```
+
+and their output is the next q1 match entry
+
+```text
+entry_config 1 (5 :: prefix)
+  (map entry_rewrite (rev (symbol :: remaining)) ++
+   hit_mark :: map q16_restore (...) ++ source_bit bit :: tail).
+```
+
+This is the canonical representation interface for the next-row
+q1/q0/q4 match.  The encoder must supply the q5-left decomposition and
+the 7-free post-hit tail; the native cycles themselves are unconditional
+apart from those explicit representation premises.

@@ -1324,3 +1324,23 @@ accepted on `main` (fast run
 [44826329567](https://github.com/shemshallah/NaNLMind/actions/runs/44826329567),
 merged as `62990c1`).  The complete four-prefix loops are a separate
 unmerged branch experiment.
+
+### Canonical q5 movement and q5-to-q1 cycles (kernel-checked)
+
+The canonical instruction path is now closed at the movement level:
+
+- `canonical_q5_instruction_q19_collision_to_q5` (right, first restored
+  action hit),
+- `canonical_q5_instruction_left_collision_to_q5` (left, current cell),
+- `canonical_q5_return_scan_to_first_five`,
+- `canonical_q5_instruction_q19_collision_to_q1` (right),
+- `canonical_q5_instruction_left_collision_to_q1` (left).
+
+The q5 -> q1 theorems expose the exact q5-left decomposition as an
+explicit premise and return the q1 match entry with the rewritten rail.
+Fast branch acceptance:
+[44847179304](https://github.com/shemshallah/NaNLMind/actions/runs/44847179304).
+
+The next open composition is the q1/q0/q4 match of the returned rail
+against the following record, then the source encoder and halt
+reflection.
