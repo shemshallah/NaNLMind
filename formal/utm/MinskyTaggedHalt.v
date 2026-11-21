@@ -1725,13 +1725,7 @@ Lemma four_prefix_left_rail_normalize_q2 :
        q0_stable_control_tag next_control; 4; 0; 6].
 Proof.
   intros first rest_prefix extra next_control.
-  change (rev (4 :: q0_stable_control_tag next_control ::
-               q0_stable_control_tag extra ::
-               rev (map q0_stable_control_tag (first :: rest_prefix))) ++
-            [0; 6] =
-          map q0_stable_control_tag (first :: rest_prefix) ++
-            [q0_stable_control_tag extra;
-             q0_stable_control_tag next_control; 4; 0; 6]).
+  rewrite <- app_assoc.
   apply four_prefix_left_rail_normalize.
 Qed.
 
