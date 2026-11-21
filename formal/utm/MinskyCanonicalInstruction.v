@@ -2327,6 +2327,9 @@ Proof.
     pre hit post symbol remaining prefix rest
     Hlen H12t H14t Hdata Hdecomp Hpre Hpost Hreturn Hprefix Hleft
     Htail Hrail Hscan.
+  rewrite Hprefix in Hleft.
+  rewrite Hprefix.
+  rewrite Htail.
   match goal with
   | |- run ?clock ?start = ?rhs =>
     replace clock with
@@ -2355,10 +2358,12 @@ Proof.
          (map match_mark (action_init ++ [b]))) start)
   end.
   rewrite (canonical_q5_instruction_left_collision_to_q6
-    bits action_init tbuffer data data' b bit tail d
-    prefix symbol remaining bits []
+    bits action_init tbuffer data data' b bit
+    (map source_bit (action_init ++ [b]) ++
+     source_bit false :: rest) d
+    (rev tbuffer ++ 6 :: rev data) symbol remaining bits []
     Hlen H12t H14t Hdata Hreturn Hleft Hscan Hrail
-    (Forall_nil q1_pass)).
+    eq_refl eq_refl (Forall_nil q1_pass)).
   apply (canonical_q6_copy_direction_to_q12
     bits (action_init ++ [b]) tbuffer data false rest Hlen).
 Qed.
