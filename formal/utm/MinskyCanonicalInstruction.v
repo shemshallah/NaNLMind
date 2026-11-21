@@ -1524,3 +1524,68 @@ Proof.
 Qed.
 
 Print Assumptions canonical_q5_instruction_left_collision_to_q6.
+
+(** ** q6 -> q12/q13: action copy and direction capture
+
+    The q5 -> q6 entry has the matched condition marks on the right and
+    the raw action bits after them.  q6 copies the action bits into
+    marks, q9/q10 capture the direction bit, and q12/q13 is reached.
+    This is the first half of the q6 -> q5 movement cycle. *)
+
+Theorem canonical_q6_copy_direction_to_q12 :
+  forall bits action_bits tbuffer data (dir : bool) rest,
+    length action_bits = length bits ->
+    run (copy_all_clock bits action_bits [] (map match_mark bits) +
+         direction_clock
+           (map match_mark bits ++ map match_mark action_bits)
+           (map match_mark action_bits))
+      (entry_config 6
+        (4 :: rev (map source_bit bits) ++
+         5 :: rev tbuffer ++ 6 :: rev data)
+        (map match_mark bits ++ map source_bit action_bits ++
+         source_bit dir :: rest)) =
+    cfg_ml (if dir then 12 else 13)
+      (rev (map match_mark action_bits) ++
+       5 :: rev tbuffer ++ 6 :: rev data)
+      (4 :: (map match_mark bits ++ map match_mark action_bits) ++
+            (if dir then 3 else 2) :: rest).
+Proof.
+  intros bits action_bits tbuffer data dir rest Hlen.
+  assert (Hbits6 : Forall q6_pass (map match_mark bits)).
+  { apply Forall_match_mark.
+    intros b. destruct b; unfold q6_pass, match_mark; auto 10. }
+  assert (Hbits7 : Forall q7_pass (map match_mark bits)).
+  { apply Forall_match_mark.
+    intros b. destruct b; unfold q7_pass, match_mark; auto 10. }
+  assert (Hact6 : Forall q6_pass (map match_mark action_bits)).
+  { apply Forall_match_mark.
+    intros b. destruct b; unfold q6_pass, match_mark; auto 10. }
+  assert (Hact7 : Forall q7_pass (map match_mark action_bits)).
+  { apply Forall_match_mark.
+    intros b. destruct b; unfold q7_pass, match_mark; auto 10. }
+  assert (Hact9 : Forall q9_pass (map match_mark action_bits)).
+  { apply Forall_match_mark.
+    intros b. destruct b; unfold q9_pass, match_mark; auto 10. }
+  assert (Hmarked6 : Forall q6_pass
+      (map match_mark bits ++ map match_mark action_bits)).
+  { apply Forall_app; split; [exact Hbits6 | exact Hact6]. }
+  assert (Hmarked7 : Forall q7_pass
+      (map match_mark bits ++ map match_mark action_bits)).
+  { apply Forall_app; split; [exact Hbits7 | exact Hact7]. }
+  rewrite dispatch_run_add.
+  rewrite (canonical_q6_copy_all bits
+    (4 :: rev (map source_bit bits) ++
+     5 :: rev tbuffer ++ 6 :: rev data)
+    (map match_mark bits ++ map source_bit action_bits ++
+     source_bit dir :: rest)
+    [] (map match_mark bits) action_bits (source_bit dir :: rest)
+    tbuffer data eq_refl eq_refl (eq_sym Hlen)
+    (Forall_nil q7_pass) (Forall_nil q9_pass) Hbits6 Hbits7).
+  apply (canonical_q6_direction_capture
+    (map match_mark bits ++ map match_mark action_bits)
+    (map match_mark action_bits) rest tbuffer data dir
+    Hmarked6 Hmarked7 Hact7 Hact9).
+Qed.
+
+Print Assumptions canonical_q6_copy_direction_to_q12.
+
