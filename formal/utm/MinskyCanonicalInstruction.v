@@ -1239,3 +1239,152 @@ Proof.
 Qed.
 
 Print Assumptions canonical_q5_instruction_left_collision_to_q1.
+
+(** ** q5 -> q1 -> matched q1
+
+    The q5 -> q1 cycles return the next-row q1 rail.  If that rail is
+    decomposed as [pass] ++ marked bits ++ [done] ++ raw bits, the
+    canonical wide-mark match theorem consumes the raw bits and rewrites
+    the marked ones.  This isolates the encoder's rail invariant as an
+    explicit premise. *)
+
+Theorem canonical_q5_instruction_q19_collision_to_match :
+  forall bits action_init tbuffer data b bit tail pre hit post
+         prefix symbol remaining bits' pass done,
+    length (action_init ++ [b]) = length bits ->
+    Forall q12_pass tbuffer ->
+    Forall q14_pass tbuffer ->
+    rev (map q14_restore
+      (rev (map match_mark action_init) ++ 5 :: rev tbuffer)) =
+      pre ++ source_bit hit :: post ->
+    Forall q15_pass pre ->
+    Forall q17_pass post ->
+    rev post ++ 6 :: rev pre ++ source_bit b :: rev data =
+      (symbol :: remaining) ++ 5 :: prefix ->
+    Forall canonical_q5_return_pass (symbol :: remaining) ->
+    map entry_rewrite (rev (symbol :: remaining)) ++
+      (if hit then 3 else 2) ::
+      map q16_restore
+        (rev (4 :: rev
+          (instruction_marked bits (action_init ++ [b]) ++ [3]) ++
+         [4])) ++
+      source_bit bit :: tail =
+      pass ++ map match_mark bits' ++ done ++ map match_raw bits' ++ tail ->
+    Forall q1_pass pass ->
+    Forall wide_mark done ->
+    run (instruction_q19_clock bits action_init tbuffer b +
+         S (length pre) + S (length post) +
+         S (length (symbol :: remaining)) +
+         matched_comparison_steps bits' (length pass) (length done))
+      (entry_config 5
+        (rev (map source_bit bits) ++ 5 :: rev tbuffer ++ 6 :: rev data)
+        (4 :: map source_bit bits ++
+         map source_bit (action_init ++ [b]) ++
+         source_bit true :: 4 :: source_bit bit :: tail)) =
+    entry_config 1 (5 :: prefix)
+      (pass ++ map match_raw bits' ++ done ++
+       map match_mark bits' ++ tail).
+Proof.
+  intros bits action_init tbuffer data b bit tail pre hit post
+    prefix symbol remaining bits' pass done Hlen H12t H14t Hdecomp
+    Hpre Hpost Hleft Hscan Hrail Hpass Hdone.
+  match goal with
+  | |- run ?clock ?start = ?rhs =>
+    replace clock with
+      ((instruction_q19_clock bits action_init tbuffer b +
+        S (length pre) + S (length post) +
+        S (length (symbol :: remaining))) +
+       matched_comparison_steps bits' (length pass) (length done))
+      by reflexivity;
+    rewrite (dispatch_run_add
+      (instruction_q19_clock bits action_init tbuffer b +
+       S (length pre) + S (length post) +
+       S (length (symbol :: remaining)))
+      (matched_comparison_steps bits' (length pass) (length done)) start)
+  end.
+  rewrite (canonical_q5_instruction_q19_collision_to_q1
+    bits action_init tbuffer data b bit tail pre hit post
+    prefix symbol remaining Hlen H12t H14t Hdecomp Hpre Hpost
+    Hleft Hscan).
+  rewrite Hrail.
+  apply (q1_all_matching_bits_wide bits' pass done prefix tail
+    Hpass Hdone).
+Qed.
+
+Print Assumptions canonical_q5_instruction_q19_collision_to_match.
+
+Theorem canonical_q5_instruction_left_collision_to_match :
+  forall bits action_init tbuffer data data' b bit tail (d : bool)
+         prefix symbol remaining bits' pass done,
+    length (action_init ++ [b]) = length bits ->
+    Forall q12_pass tbuffer ->
+    Forall q14_pass tbuffer ->
+    rev data = source_bit d :: rev data' ->
+    Forall q17_pass
+      (source_bit b ::
+       rev (map q14_restore
+         (rev (map match_mark action_init) ++ 5 :: rev tbuffer))) ->
+    rev (source_bit b ::
+      rev (map q14_restore
+        (rev (map match_mark action_init) ++ 5 :: rev tbuffer))) ++
+      6 :: rev data' = (symbol :: remaining) ++ 5 :: prefix ->
+    Forall canonical_q5_return_pass (symbol :: remaining) ->
+    map entry_rewrite (rev (symbol :: remaining)) ++
+      (if d then 3 else 2) ::
+      map q16_restore
+        (rev (4 :: rev
+          (instruction_marked bits (action_init ++ [b]) ++ [2]) ++
+         [4])) ++
+      source_bit bit :: tail =
+      pass ++ map match_mark bits' ++ done ++ map match_raw bits' ++ tail ->
+    Forall q1_pass pass ->
+    Forall wide_mark done ->
+    run (instruction_q20_clock bits action_init tbuffer b + 1 +
+         S (length
+           (source_bit b ::
+            rev (map q14_restore
+              (rev (map match_mark action_init) ++ 5 :: rev tbuffer)))) +
+         S (length (symbol :: remaining)) +
+         matched_comparison_steps bits' (length pass) (length done))
+      (entry_config 5
+        (rev (map source_bit bits) ++ 5 :: rev tbuffer ++ 6 :: rev data)
+        (4 :: map source_bit bits ++
+         map source_bit (action_init ++ [b]) ++
+         source_bit false :: 4 :: source_bit bit :: tail)) =
+    entry_config 1 (5 :: prefix)
+      (pass ++ map match_raw bits' ++ done ++
+       map match_mark bits' ++ tail).
+Proof.
+  intros bits action_init tbuffer data data' b bit tail d
+    prefix symbol remaining bits' pass done Hlen H12t H14t Hdata
+    Hpost Hleft Hscan Hrail Hpass Hdone.
+  match goal with
+  | |- run ?clock ?start = ?rhs =>
+    replace clock with
+      ((instruction_q20_clock bits action_init tbuffer b + 1 +
+        S (length
+          (source_bit b ::
+           rev (map q14_restore
+             (rev (map match_mark action_init) ++ 5 :: rev tbuffer)))) +
+        S (length (symbol :: remaining))) +
+       matched_comparison_steps bits' (length pass) (length done))
+      by reflexivity;
+    rewrite (dispatch_run_add
+      (instruction_q20_clock bits action_init tbuffer b + 1 +
+       S (length
+         (source_bit b ::
+          rev (map q14_restore
+            (rev (map match_mark action_init) ++ 5 :: rev tbuffer)))) +
+       S (length (symbol :: remaining)))
+      (matched_comparison_steps bits' (length pass) (length done)) start)
+  end.
+  rewrite (canonical_q5_instruction_left_collision_to_q1
+    bits action_init tbuffer data data' b bit tail d
+    prefix symbol remaining Hlen H12t H14t Hdata Hpost
+    Hleft Hscan).
+  rewrite Hrail.
+  apply (q1_all_matching_bits_wide bits' pass done prefix tail
+    Hpass Hdone).
+Qed.
+
+Print Assumptions canonical_q5_instruction_left_collision_to_match.
