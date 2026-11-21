@@ -1540,3 +1540,18 @@ Full bridge acceptance:
 
 The remaining encoder work is the running/lookup-hit case, which must
 use the packaged canonical step.
+
+### Running-case one-row macro (kernel-checked)
+
+- `canonical_q5_return_to_q1`,
+- `canonical_q5_return_to_q6`,
+- `canonical_q6_to_q5_right`,
+- `canonical_q5_return_to_q5_right`.
+
+Fast branch acceptance:
+[44954850874](https://github.com/shemshallah/NaNLMind/actions/runs/44954850874).
+
+This resolves the pipeline offset: the one-row source step is
+q5-return -> q5-return, not q5-fetch -> q5-return.  The encoder can map
+a source configuration to the q5 return frame and use this macro.  The
+left/q13 variant and the concrete tape layout remain.

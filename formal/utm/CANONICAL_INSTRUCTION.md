@@ -551,3 +551,18 @@ The encoder obligation is now explicit: for each source configuration,
 produce a `canonical_step` whose `ok` witness holds and whose start/end
 frames are the encodings of the source configuration and its successor.
 The clock is split exactly as `q5 -> q12` plus `q12 -> q5`.
+
+## Running-case one-row macro (proved)
+
+The true one-row encoder loop is now formal:
+
+- `canonical_q5_return_to_q1` — q5 return -> q5 scan -> q1 match,
+- `canonical_q5_return_to_q6` — q1 X=4 crossing -> q6,
+- `canonical_q6_to_q5_right` — q6 copy/direction/q12 restore -> q5,
+- `canonical_q5_return_to_q5_right` — the full q5-return -> q5-return
+  one-row macro in the right direction.
+
+The last theorem is the running-case encoder step: the previous
+instruction's q5 return frame is matched against the next row, copied,
+moved, and the next q5 return frame is produced, with the exact native
+clock.
