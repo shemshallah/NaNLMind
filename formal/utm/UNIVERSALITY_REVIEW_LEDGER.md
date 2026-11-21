@@ -1323,3 +1323,22 @@ Fast job
 is the acceptance run for the restored `main` state.  The full
 four-prefix gate composition is not claimed; the relocation and gate are
 separate verified pieces.
+
+### Canonical q5 -> q5 movement cycles (kernel-checked)
+
+The raw restored-action collision is now a positive native q5 -> q5
+movement theorem, not a closed negative path:
+
+- `canonical_q5_instruction_q19_collision_to_q5` (right),
+- `canonical_q5_instruction_left_collision_to_q5` (left).
+
+The right branch stops q19 at the first restored action bit
+`rev restored = pre ++ source_bit hit :: post`, then q17/q18 relocate it
+to the q5 rail.  The left branch uses the current source cell as the q20
+target.  Both return to a q5 frame with the hit mark and the restored
+map, with exact clocks.
+
+Fast canonical-match and cycle jobs on main passed for this batch
+([44841115503](https://github.com/shemshallah/NaNLMind/actions/runs/44841115503)).
+This closes the canonical movement half at q5; the q5 -> q1 scan,
+q1/q0/q4 match, source encoder and halt reflection remain open.

@@ -250,3 +250,39 @@ fails in both directions:
 | --- | --- |
 | q19 (right) | captures the first restored action cell |
 | q20 (left) | displaces the current source cell instead of moving left |
+
+## Canonical collision-to-q5 cycles (proved)
+
+The q5 instruction phase restores the copied action block to raw 0/1
+cells.  q19 therefore stops at the **first restored action bit**, not at
+the later source bit.  This is the state-register comparison for the next
+row, not a dead end.
+
+The two new theorems make the full q5 -> q5 movement explicit:
+
+- `canonical_q5_instruction_q19_collision_to_q5` (right branch),
+- `canonical_q5_instruction_left_collision_to_q5` (left branch).
+
+The right branch takes a decomposition
+
+```text
+rev restored = pre ++ source_bit hit :: post
+```
+
+with `Forall q15_pass pre` and `Forall q17_pass post`, runs q19 to the
+hit, then q17/q18 to the 7 written by q16, and returns to
+
+```text
+cfg_ml 5
+  (rev post ++ 6 :: rev pre ++ source_bit b :: rev data)
+  ((if hit then 3 else 2) ::
+   map q16_restore (...) ++ source_bit bit :: tail).
+```
+
+The left branch uses the current source cell as the q20 target and
+returns to the analogous q5 frame.  Both clocks are exact native sums.
+
+These theorems close the canonical movement half at q5 for arbitrary
+finite bit/action prefixes, without any tag-rail assumption.  The next
+phase is the q5 -> q1 scan and the q1/q0/q4 match back to the next q5
+fetch entry.
