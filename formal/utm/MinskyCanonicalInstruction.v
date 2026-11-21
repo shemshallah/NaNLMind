@@ -1616,7 +1616,9 @@ Print Assumptions canonical_q6_copy_direction_to_q12.
     q16, and q17/q18 return to the next 7. *)
 
 Theorem canonical_q21_decision_to_q5 :
-  forall bits action_init tbuffer data b bit tail s remaining pre hit post,
+  forall (bits action_init : list bool) (tbuffer data tail : list nat)
+         (b bit : bool) (s : nat) (remaining pre post : list nat)
+         (hit : bool),
     Forall q21_pass (s :: remaining) ->
     rev (s :: remaining) = pre ++ source_bit hit :: post ->
     Forall q15_pass pre ->
