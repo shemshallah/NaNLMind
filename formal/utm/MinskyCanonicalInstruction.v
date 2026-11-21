@@ -2019,7 +2019,7 @@ Theorem canonical_q5_instruction_full_right_to_q12 :
     run (instruction_q19_clock bits action_init tbuffer b +
          S (length pre) + S (length post) +
          S (length (symbol :: remaining)) +
-         matched_comparison_steps bits (length []) (length [4]) +
+         matched_comparison_steps bits (length ([] : list nat)) (length [4]) +
          S (length ([] ++ map match_raw bits)) +
          copy_all_clock bits (action_init ++ [b]) [] (map match_mark bits) +
          direction_clock
