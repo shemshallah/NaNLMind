@@ -16,7 +16,7 @@
 From Coq Require Import List Arith Bool Lia.
 Import ListNotations.
 
-From NaNLM Require Import MinskyTable MinskySourceEncoding
+From NaNLM Require Import MinskyTable MinskyTableData MinskySourceEncoding
   MinskyConcreteEntry MinskyMatchMacro MinskyConcreteDispatch.
 
 (** Marked cells that may be crossed by the q0/q4 comparison scan.  This
