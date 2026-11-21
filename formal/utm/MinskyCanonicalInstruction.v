@@ -2161,7 +2161,6 @@ Proof.
     symbol remaining prefix rest s21 rest21 next_bit next_tail
     Hlen H12t H14t Hdecomp Hpre Hpost Hprefix Hleft Htail Hrest
     Hrail Hscan Hrestored H12r H14r.
-  subst rest. subst prefix. subst tail.
   assert (Hdecomp' : rev (s21 :: rest21) =
       pre ++ source_bit hit :: post).
   { rewrite <- Hrestored. exact Hdecomp. }
@@ -2243,14 +2242,11 @@ Proof.
        S (length pre) + S (length post)) start)
   end.
   rewrite (canonical_q5_instruction_full_right_to_q12
-    bits action_init tbuffer data b bit
-    (map source_bit (action_init ++ [b]) ++
-     source_bit true :: source_bit next_bit :: next_tail)
-    pre hit post
-    symbol remaining prefix
-    (source_bit next_bit :: next_tail)
+    bits action_init tbuffer data b bit tail pre hit post
+    symbol remaining prefix rest
     Hlen H12t H14t Hdecomp Hpre Hpost Hprefix Hleft
-    eq_refl Hrail Hscan).
+    Htail Hrail Hscan).
+  rewrite Hrest.
   apply (canonical_q12_restore_to_q5
     (map match_mark bits ++ map match_mark (action_init ++ [b]))
     tbuffer data b (rev (map match_mark action_init))
