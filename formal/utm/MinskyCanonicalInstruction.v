@@ -2329,6 +2329,7 @@ Proof.
     Htail Hrail Hscan.
   rewrite Hprefix in Hleft.
   rewrite Htail.
+  rewrite Htail in Hrail.
   match goal with
   | |- run ?clock ?start = ?rhs =>
     replace clock with
