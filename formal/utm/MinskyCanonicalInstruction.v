@@ -2557,11 +2557,35 @@ Proof.
     rewrite rev_app_distr. cbn [rev].
     reflexivity.
   }
+  assert (Hmarked15 : Forall q15_pass
+      ((map match_mark bits ++
+        map match_mark (action_init ++ [b])) ++ [2])).
+  {
+    rewrite Forall_app. split.
+    - rewrite Forall_app. split.
+      + apply Forall_match_mark.
+        intros b0. destruct b0; unfold q15_pass, match_mark; auto 10.
+      + apply Forall_match_mark.
+        intros b0. destruct b0; unfold q15_pass, match_mark; auto 10.
+    - constructor.
+      + unfold q15_pass; auto 10.
+      + constructor.
+  }
+  assert (Hmarked16 : Forall q16_pass
+      (map match_mark bits ++
+       map match_mark (action_init ++ [b]))).
+  {
+    rewrite Forall_app. split.
+    - apply Forall_match_mark.
+      intros b0. destruct b0; unfold q16_pass, match_mark; auto 10.
+    - apply Forall_match_mark.
+      intros b0. destruct b0; unfold q16_pass, match_mark; auto 10.
+  }
   apply (canonical_q13_restore_to_q5
     (map match_mark bits ++ map match_mark (action_init ++ [b]))
     tbuffer data data' b (rev (map match_mark action_init))
     next_bit next_tail d s21 rest21
-    H12r H14r Hrestored Hdata Hreturn13).
+    H12r H14r Hmarked15 Hmarked16 Hrestored Hdata Hreturn13).
 Qed.
 
 Print Assumptions canonical_q5_instruction_full_left_to_q5.
