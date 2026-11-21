@@ -1388,3 +1388,129 @@ Proof.
 Qed.
 
 Print Assumptions canonical_q5_instruction_left_collision_to_match.
+
+(** ** q5 -> q6: the next-instruction action-copy entry
+
+    The matched q1 rail is followed by the record's X=4.  q1 crosses it
+    into q6, the canonical action-copy entry for the next instruction.
+    This composes the q5 -> matched q1 theorem with the native q1->q6
+    scan. *)
+
+Theorem canonical_q5_instruction_q19_collision_to_q6 :
+  forall bits action_init tbuffer data b bit tail pre hit post
+         prefix symbol remaining bits' pass,
+    length (action_init ++ [b]) = length bits ->
+    Forall q12_pass tbuffer ->
+    Forall q14_pass tbuffer ->
+    rev (map q14_restore
+      (rev (map match_mark action_init) ++ 5 :: rev tbuffer)) =
+      pre ++ source_bit hit :: post ->
+    Forall q15_pass pre ->
+    Forall q17_pass post ->
+    rev post ++ 6 :: rev pre ++ source_bit b :: rev data =
+      (symbol :: remaining) ++ 5 :: prefix ->
+    Forall canonical_q5_return_pass (symbol :: remaining) ->
+    map entry_rewrite (rev (symbol :: remaining)) ++
+      (if hit then 3 else 2) ::
+      map q16_restore
+        (rev (4 :: rev
+          (instruction_marked bits (action_init ++ [b]) ++ [3]) ++
+         [4])) ++
+      source_bit bit :: tail =
+      pass ++ map match_mark bits' ++ [4] ++ map match_raw bits' ++ tail ->
+    Forall q1_pass pass ->
+    run (instruction_q19_clock bits action_init tbuffer b +
+         S (length pre) + S (length post) +
+         S (length (symbol :: remaining)) +
+         matched_comparison_steps bits' (length pass) 1 +
+         S (length (pass ++ map match_raw bits')))
+      (entry_config 5
+        (rev (map source_bit bits) ++ 5 :: rev tbuffer ++ 6 :: rev data)
+        (4 :: map source_bit bits ++
+         map source_bit (action_init ++ [b]) ++
+         source_bit true :: 4 :: source_bit bit :: tail)) =
+    entry_config 6
+      (4 :: rev (pass ++ map match_raw bits') ++ 5 :: prefix)
+      (map match_mark bits' ++ tail).
+Proof.
+  intros bits action_init tbuffer data b bit tail pre hit post
+    prefix symbol remaining bits' pass Hlen H12t H14t Hdecomp
+    Hpre Hpost Hleft Hscan Hrail Hpass.
+  assert (H4 : Forall wide_mark [4]).
+  { constructor; [unfold wide_mark; auto 10 | constructor]. }
+  rewrite dispatch_run_add.
+  rewrite (canonical_q5_instruction_q19_collision_to_match
+    bits action_init tbuffer data b bit tail pre hit post
+    prefix symbol remaining bits' pass [4]
+    Hlen H12t H14t Hdecomp Hpre Hpost Hleft Hscan Hrail Hpass H4).
+  apply (q1_scan_four_list_to_q6
+    (pass ++ map match_raw bits')
+    (map match_mark bits' ++ tail) (5 :: prefix)).
+  rewrite Forall_app. split.
+  - exact Hpass.
+  - apply match_raw_valid.
+Qed.
+
+Print Assumptions canonical_q5_instruction_q19_collision_to_q6.
+
+Theorem canonical_q5_instruction_left_collision_to_q6 :
+  forall bits action_init tbuffer data data' b bit tail (d : bool)
+         prefix symbol remaining bits' pass,
+    length (action_init ++ [b]) = length bits ->
+    Forall q12_pass tbuffer ->
+    Forall q14_pass tbuffer ->
+    rev data = source_bit d :: rev data' ->
+    Forall q17_pass
+      (source_bit b ::
+       rev (map q14_restore
+         (rev (map match_mark action_init) ++ 5 :: rev tbuffer))) ->
+    rev (source_bit b ::
+      rev (map q14_restore
+        (rev (map match_mark action_init) ++ 5 :: rev tbuffer))) ++
+      6 :: rev data' = (symbol :: remaining) ++ 5 :: prefix ->
+    Forall canonical_q5_return_pass (symbol :: remaining) ->
+    map entry_rewrite (rev (symbol :: remaining)) ++
+      (if d then 3 else 2) ::
+      map q16_restore
+        (rev (4 :: rev
+          (instruction_marked bits (action_init ++ [b]) ++ [2]) ++
+         [4])) ++
+      source_bit bit :: tail =
+      pass ++ map match_mark bits' ++ [4] ++ map match_raw bits' ++ tail ->
+    Forall q1_pass pass ->
+    run (instruction_q20_clock bits action_init tbuffer b + 1 +
+         S (length
+           (source_bit b ::
+            rev (map q14_restore
+              (rev (map match_mark action_init) ++ 5 :: rev tbuffer)))) +
+         S (length (symbol :: remaining)) +
+         matched_comparison_steps bits' (length pass) 1 +
+         S (length (pass ++ map match_raw bits')))
+      (entry_config 5
+        (rev (map source_bit bits) ++ 5 :: rev tbuffer ++ 6 :: rev data)
+        (4 :: map source_bit bits ++
+         map source_bit (action_init ++ [b]) ++
+         source_bit false :: 4 :: source_bit bit :: tail)) =
+    entry_config 6
+      (4 :: rev (pass ++ map match_raw bits') ++ 5 :: prefix)
+      (map match_mark bits' ++ tail).
+Proof.
+  intros bits action_init tbuffer data data' b bit tail d
+    prefix symbol remaining bits' pass Hlen H12t H14t Hdata
+    Hpost Hleft Hscan Hrail Hpass.
+  assert (H4 : Forall wide_mark [4]).
+  { constructor; [unfold wide_mark; auto 10 | constructor]. }
+  rewrite dispatch_run_add.
+  rewrite (canonical_q5_instruction_left_collision_to_match
+    bits action_init tbuffer data data' b bit tail d
+    prefix symbol remaining bits' pass [4]
+    Hlen H12t H14t Hdata Hpost Hleft Hscan Hrail Hpass H4).
+  apply (q1_scan_four_list_to_q6
+    (pass ++ map match_raw bits')
+    (map match_mark bits' ++ tail) (5 :: prefix)).
+  rewrite Forall_app. split.
+  - exact Hpass.
+  - apply match_raw_valid.
+Qed.
+
+Print Assumptions canonical_q5_instruction_left_collision_to_q6.
