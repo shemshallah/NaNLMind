@@ -409,3 +409,23 @@ The result is the same q5 return frame as the q5 -> q5 collision cycle.
 Together with `canonical_q6_copy_direction_to_q12` and the q5 -> q6
 cycles, the right instruction movement is closed:
 q5 -> q6 -> q12 -> q16 -> q19 -> q17/q18 -> q5.
+
+## q13 -> q5 and the closed left movement (proved)
+
+`canonical_q22_decision_to_q5_left` scans q21/q22 left to the direction
+marker 2, applies the q20 raw step to the current source cell, and
+returns through q17/q18 to q5.  `canonical_q13_restore_to_q5` composes
+the q13 restore/q16 decision with that path.
+
+The left movement is now closed:
+
+```text
+q5 return -> q6 (match/copy)
+-> q13 (copy/direction, dir=false)
+-> q16 decision
+-> q21 -> q20 -> q17/q18
+-> q5 return.
+```
+
+Together with the right q12 path, the canonical instruction movement is
+complete for both directions.

@@ -1396,3 +1396,21 @@ Fast branch acceptance:
 The right canonical instruction movement is closed at q5:
 q5 -> q6 -> q12 -> q16 -> q19 -> q17/q18 -> q5.  The left q13 branch
 and the source encoder/halt reflection remain.
+
+### q13 -> q5 (kernel-checked) and both movement halves closed
+
+- `canonical_q22_decision_to_q5_left`,
+- `canonical_q13_restore_to_q5`.
+
+Fast branch acceptance:
+[44863526932](https://github.com/shemshallah/NaNLMind/actions/runs/44863526932).
+
+The canonical instruction movement is now closed for both directions:
+
+```text
+q5 return -> q6 -> q12/q13 -> q16 -> q19/q20 -> q17/q18 -> q5 return.
+```
+
+The next composition is the single q5-return -> q5-return macro joining
+the q5->q6, q6->q12/q13, and q12/q13->q5 theorems, followed by the source
+encoder and halt reflection.
