@@ -2831,7 +2831,12 @@ Proof.
     next_tail q16map bits' pass done tail Hleft Hscan Hrail Hpass Hdone.
   rewrite Hleft.
   cbn [cfg_ml].
-  rewrite dispatch_run_add.
+  rewrite (dispatch_run_add
+    (S (length (symbol :: remaining)))
+    (matched_comparison_steps bits' (length pass) (length done))
+    (entry_config 5 (remaining ++ 5 :: prefix)
+      (symbol :: (if hit then 3 else 2) ::
+       map q16_restore q16map ++ source_bit next_bit :: next_tail))).
   rewrite (canonical_q5_return_scan_to_first_five remaining symbol prefix
     ((if hit then 3 else 2) ::
      map q16_restore q16map ++ source_bit next_bit :: next_tail) Hscan).
