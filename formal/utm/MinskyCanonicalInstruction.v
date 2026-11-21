@@ -2902,3 +2902,110 @@ Proof.
 Qed.
 
 Print Assumptions canonical_q5_return_to_q6.
+
+(** ** q6 -> q5 right movement
+
+    q6 copies the next row's action bits, captures the right direction,
+    and the q12 restore/q16/q19/q17/q18 path returns to q5. *)
+
+Theorem canonical_q6_to_q5_right :
+  forall bits action_init tbuffer data b rest
+         s21 rest21 pre hit post next_bit next_tail,
+    length (action_init ++ [b]) = length bits ->
+    rest = source_bit next_bit :: next_tail ->
+    map q14_restore
+      (rev (map match_mark action_init) ++ 5 :: rev tbuffer) =
+      s21 :: rest21 ->
+    rev (s21 :: rest21) = pre ++ source_bit hit :: post ->
+    Forall q15_pass pre ->
+    Forall q17_pass post ->
+    Forall q12_pass
+      (match_mark b :: rev (map match_mark action_init) ++
+       5 :: rev tbuffer) ->
+    Forall q14_pass
+      (tbuffer ++ [5] ++ rev (rev (map match_mark action_init)) ++
+       [match_mark b]) ->
+    run ((copy_all_clock bits (action_init ++ [b]) []
+            (map match_mark bits) +
+          direction_clock
+            (map match_mark bits ++
+             map match_mark (action_init ++ [b]))
+            (map match_mark (action_init ++ [b]))) +
+         (S (length
+              (match_mark b :: rev (map match_mark action_init) ++
+               5 :: rev tbuffer)) +
+          S (length
+              (tbuffer ++ [5] ++
+               rev (rev (map match_mark action_init)) ++
+               [match_mark b])) +
+          S (length
+              ((map match_mark bits ++
+                map match_mark (action_init ++ [b])) ++ [3])) +
+          S (length
+              (3 :: rev
+                (map match_mark bits ++
+                 map match_mark (action_init ++ [b])) ++ [4])) +
+          S (length (s21 :: rest21)) +
+          S (length pre) + S (length post)))
+      (entry_config 6
+        (4 :: rev (map source_bit bits) ++
+         5 :: rev tbuffer ++ 6 :: rev data)
+        (map match_mark bits ++
+         map source_bit (action_init ++ [b]) ++
+         source_bit true :: rest)) =
+    cfg_ml 5
+      (rev post ++ 6 :: rev pre ++ source_bit b :: rev data)
+      ((if hit then 3 else 2) ::
+       map q16_restore
+         (rev (3 :: rev
+           (map match_mark bits ++
+            map match_mark (action_init ++ [b])) ++ [4])) ++
+       source_bit next_bit :: next_tail).
+Proof.
+  intros bits action_init tbuffer data b rest s21 rest21
+    pre hit post next_bit next_tail Hlen Hrest Hrestored
+    Hdecomp Hpre Hpost H12r H14r.
+  assert (Hmarked15 : Forall q15_pass
+      ((map match_mark bits ++
+        map match_mark (action_init ++ [b])) ++ [3])).
+  {
+    rewrite Forall_app. split.
+    - rewrite Forall_app. split.
+      + apply Forall_match_mark.
+        intros b0. destruct b0; unfold q15_pass, match_mark; auto 10.
+      + apply Forall_match_mark.
+        intros b0. destruct b0; unfold q15_pass, match_mark; auto 10.
+    - constructor.
+      + unfold q15_pass; auto 10.
+      + constructor.
+  }
+  assert (Hmarked16 : Forall q16_pass
+      (map match_mark bits ++
+       map match_mark (action_init ++ [b]))).
+  {
+    rewrite Forall_app. split.
+    - apply Forall_match_mark.
+      intros b0. destruct b0; unfold q16_pass, match_mark; auto 10.
+    - apply Forall_match_mark.
+      intros b0. destruct b0; unfold q16_pass, match_mark; auto 10.
+  }
+  rewrite dispatch_run_add.
+  rewrite (canonical_q6_copy_direction_to_q12
+    bits (action_init ++ [b]) tbuffer data true rest Hlen).
+  rewrite Hrest.
+  replace (rev (map match_mark (action_init ++ [b])))
+    with (match_mark b :: rev (map match_mark action_init)).
+  2:{
+    rewrite map_app.
+    rewrite rev_app_distr. cbn [rev].
+    reflexivity.
+  }
+  apply (canonical_q12_restore_to_q5
+    (map match_mark bits ++
+     map match_mark (action_init ++ [b]))
+    tbuffer data b (rev (map match_mark action_init))
+    next_bit next_tail
+    H12r H14r Hmarked15 Hmarked16 Hrestored Hdecomp Hpre Hpost).
+Qed.
+
+Print Assumptions canonical_q6_to_q5_right.
