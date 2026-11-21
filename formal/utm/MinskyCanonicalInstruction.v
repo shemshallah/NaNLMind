@@ -3165,7 +3165,7 @@ Theorem canonical_q6_to_q5_left :
          (rev (2 :: rev
            (map match_mark bits ++
             map match_mark (action_init ++ [b])) ++ [4])) ++
-       bit :: tail).
+       source_bit bit :: tail).
 Proof.
   intros bits action_init tbuffer data data' b rest d bit tail
     s21 rest21 Hlen Hdata Hrest Hrestored Hreturn H12r H14r.
