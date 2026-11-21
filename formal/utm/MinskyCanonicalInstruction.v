@@ -1642,7 +1642,15 @@ Theorem canonical_q21_decision_to_q5 :
 Proof.
   intros bits action_init tbuffer data tail b bit s remaining
     pre post hit H21 Hdecomp Hpre Hpost.
-  rewrite dispatch_run_add.
+  match goal with
+  | |- run ?clock ?start = ?rhs =>
+    replace clock with
+      (S (length (s :: remaining)) +
+       (S (length pre) + S (length post))) by lia;
+    rewrite (dispatch_run_add
+      (S (length (s :: remaining)))
+      (S (length pre) + S (length post)) start)
+  end.
   assert (Hq : (if b then 22 else 21) = 21 \/
                (if b then 22 else 21) = 22)
     by (destruct b; simpl; auto).
