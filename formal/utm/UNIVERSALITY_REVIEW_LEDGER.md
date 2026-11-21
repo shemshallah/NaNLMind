@@ -1436,3 +1436,13 @@ acceptance:
 
 The left full macro (q5 -> q13 -> q5) uses the same pattern with
 `canonical_q13_restore_to_q5`.
+
+### Full left instruction to q13 (kernel-checked)
+
+`canonical_q5_instruction_full_left_to_q13` joins the left q5 -> q6
+match/copy with the q6 -> q13 false-direction copy/direction phase.
+Fast branch acceptance:
+[44916335227](https://github.com/shemshallah/NaNLMind/actions/runs/44916335227).
+
+The final left movement composition is q5 -> q13 -> q5 via
+`canonical_q13_restore_to_q5`.

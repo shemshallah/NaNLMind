@@ -482,3 +482,23 @@ The statement carries the representation premises explicitly:
 
 The clock is the exact sum of the q5 -> q12 and q12 -> q5 phase clocks.
 This is the macro the source encoder must instantiate.
+
+## Full left instruction to q13 (proved)
+
+`canonical_q5_instruction_full_left_to_q13` composes the left q5 -> q6
+next-row match/copy with the q6 action copy and false-direction capture:
+
+```text
+q5 fetch (left branch)
+-> q6 match/copy
+-> q13 (copy/direction, dir=false)
+= cfg_ml 13
+    (rev (map match_mark (action_init ++ [b])) ++
+     5 :: rev tbuffer ++ 6 :: rev data)
+    (4 :: (map match_mark bits ++
+           map match_mark (action_init ++ [b])) ++
+          2 :: rest)
+```
+
+Composing this with `canonical_q13_restore_to_q5` gives the full left
+q5 -> q5 instruction movement macro.
