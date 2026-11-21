@@ -465,7 +465,7 @@ Proof.
   rewrite Hhalt in He.
   apply andb_true_iff in He. destruct He as [Hfrom Hread].
   apply Nat.eqb_eq in Hfrom. apply Nat.eqb_eq in Hread.
-  split; [rewrite Heq | rewrite Her]; assumption.
+  split; [rewrite <- Heq | rewrite <- Her]; assumption.
 Qed.
 
 Theorem step_halted_shape :
