@@ -2328,7 +2328,6 @@ Proof.
     Hlen H12t H14t Hdata Hdecomp Hpre Hpost Hreturn Hprefix Hleft
     Htail Hrail Hscan.
   rewrite Hprefix in Hleft.
-  rewrite Hprefix.
   rewrite Htail.
   match goal with
   | |- run ?clock ?start = ?rhs =>
