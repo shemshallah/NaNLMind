@@ -581,3 +581,33 @@ The left variant uses the q13 marker-2/q20 path.
 This is the core running-case encoder step.  The remaining work is the
 concrete q5-return tape layout from a wide-source configuration and the
 halt/mismatch branch.
+
+## Packaged running return step (proved)
+
+The running one-row macro is now a reusable interface:
+
+```text
+Record canonical_return_step
+Record canonical_return_step_ok
+Definition canonical_return_step_start
+Definition canonical_return_step_end
+Definition canonical_return_step_clock
+Theorem canonical_return_step_run :
+  canonical_return_step_ok p ->
+  run (canonical_return_step_clock p)
+      (canonical_return_step_start p) =
+  canonical_return_step_end p.
+```
+
+The encoder obligation for the running case is now exactly:
+
+```text
+forall rows c,
+  wide_source_lookup ... = Some row ->
+  exists p,
+    canonical_return_step_ok p /\
+    canonical_return_step_start p = encode rows c /\
+    canonical_return_step_end p = encode rows (wide_source_step rows c).
+```
+
+The left/q13 variant uses `canonical_q5_return_to_q5_left`.

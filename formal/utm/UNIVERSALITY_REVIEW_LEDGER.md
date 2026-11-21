@@ -1568,3 +1568,15 @@ Both directions now have the complete one-row running macro from a q5
 return frame to the next q5 return frame.  The remaining encoder pieces
 are the concrete q5-return layout and the lookup-failure/mismatch
 branch.
+
+### Packaged running return step (kernel-checked)
+
+`canonical_return_step` / `canonical_return_step_ok` /
+`canonical_return_step_start` / `_end` / `_clock` and
+`canonical_return_step_run` package the q5-return -> q5-return running
+macro.  Fast branch acceptance:
+[44959046681](https://github.com/shemshallah/NaNLMind/actions/runs/44959046681).
+
+The remaining encoder obligation is the concrete q5-return layout and
+the invariant that the running step preserves it.  The halt-side
+fragment is already proved in `MinskyWideMacroSimulation.v`.
