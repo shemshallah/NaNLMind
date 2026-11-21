@@ -1156,8 +1156,14 @@ Proof.
   rewrite (canonical_q5_instruction_q19_collision_to_q5
     bits action_init tbuffer data b bit tail pre hit post
     Hlen H12t H14t Hdecomp Hpre Hpost).
-  rewrite Hleft.
-  rewrite Hdata.
+  replace (rev post ++ 6 :: rev pre ++ source_bit b :: rev data)
+    with ((symbol :: remaining) ++ 5 :: prefix).
+  2:{
+    rewrite Hdata.
+    repeat rewrite <- app_assoc.
+    rewrite Hleft.
+    reflexivity.
+  }
   cbn [cfg_ml].
   apply (canonical_q5_return_scan_to_first_five remaining symbol prefix
     ((if hit then 3 else 2) ::
@@ -1230,8 +1236,17 @@ Proof.
   rewrite (canonical_q5_instruction_left_collision_to_q5
     bits action_init tbuffer data data' b bit tail d
     Hlen H12t H14t Hdata Hpost).
-  rewrite Hleft.
-  rewrite Hdata'.
+  replace (rev (source_bit b ::
+      rev (map q14_restore
+        (rev (map match_mark action_init) ++ 5 :: rev tbuffer))) ++
+      6 :: rev data')
+    with ((symbol :: remaining) ++ 5 :: prefix).
+  2:{
+    rewrite Hdata'.
+    repeat rewrite <- app_assoc.
+    rewrite Hleft.
+    reflexivity.
+  }
   cbn [cfg_ml].
   apply (canonical_q5_return_scan_to_first_five remaining symbol prefix
     ((if d then 3 else 2) ::
