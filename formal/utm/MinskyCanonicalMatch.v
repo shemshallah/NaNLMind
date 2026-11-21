@@ -428,21 +428,44 @@ Definition halting_entries_ok : bool :=
 Lemma halting_entries_ok_true : halting_entries_ok = true.
 Proof. vm_compute. reflexivity. Qed.
 
+Lemma scan_table_some_in :
+  forall q s e, scan_table q s = Some e -> In e minsky_entries.
+Proof.
+  intros q s e H. unfold scan_table in H.
+  induction minsky_entries as [|a rest IH]; simpl in H.
+  - discriminate.
+  - destruct ((e_from a =? q) && (e_read a =? s)) eqn:Hkey.
+    + inversion H. subst a. left. reflexivity.
+    + right. apply IH. exact H.
+Qed.
+
+Lemma scan_table_some_from_read :
+  forall q s e, scan_table q s = Some e -> e_from e = q /\ e_read e = s.
+Proof.
+  intros q s e H. unfold scan_table in H.
+  induction minsky_entries as [|a rest IH]; simpl in H.
+  - discriminate.
+  - destruct ((e_from a =? q) && (e_read a =? s)) eqn:Hkey.
+    + inversion H. subst a. apply andb_true_iff in Hkey.
+      destruct Hkey as [Hq Hs]. split; apply Nat.eqb_eq; assumption.
+    + apply IH. exact H.
+Qed.
+
 Lemma find_entry_halt_unique :
   forall q s e,
     find_entry q s = Some e -> e_halt e = true -> q = 3 /\ s = 5.
 Proof.
   intros q s e Hfind Hhalt.
-  unfold find_entry in Hfind.
-  destruct ((q <? 23) && (s <? 8)) eqn:Hc; [| discriminate Hfind].
-  apply nth_error_In in Hfind.
-  pose proof (forallb_forall _ _ _ halting_entries_ok_true e Hfind) as He.
+  pose proof (find_entry_some_bounds _ _ _ Hfind) as [Hq Hs].
+  rewrite (find_entry_scan_valid q s Hq Hs) in Hfind.
+  pose proof (scan_table_some_in _ _ _ Hfind) as Hin.
+  pose proof (scan_table_some_from_read _ _ _ Hfind) as [Heq Her].
+  pose proof (forallb_forall _ _ _ halting_entries_ok_true e Hin) as He.
   unfold halting_entries_ok in He.
   rewrite Hhalt in He.
-  apply andb_true_iff in He. destruct He as [Hq3 Hs5].
-  split.
-  - apply Nat.eqb_eq. exact Hq3.
-  - apply Nat.eqb_eq. exact Hs5.
+  apply andb_true_iff in He. destruct He as [Hfrom Hread].
+  apply Nat.eqb_eq in Hfrom. apply Nat.eqb_eq in Hread.
+  split; [rewrite Heq | rewrite Her]; assumption.
 Qed.
 
 Theorem step_halted_shape :
