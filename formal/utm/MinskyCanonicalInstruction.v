@@ -1984,3 +1984,72 @@ Proof.
 Qed.
 
 Print Assumptions canonical_q13_restore_to_q5.
+
+(** ** Full right instruction movement: q5 -> q12
+
+    Compose the q5 -> q6 next-row match/copy with the q6 action copy and
+    direction capture.  The q5 rail is supplied with an empty pass prefix
+    and the matched bits are the current/read bits. *)
+
+Theorem canonical_q5_instruction_full_right_to_q12 :
+  forall bits action_init tbuffer data b bit tail pre hit post
+         symbol remaining prefix rest,
+    length (action_init ++ [b]) = length bits ->
+    Forall q12_pass tbuffer ->
+    Forall q14_pass tbuffer ->
+    rev (map q14_restore
+      (rev (map match_mark action_init) ++ 5 :: rev tbuffer)) =
+      pre ++ source_bit hit :: post ->
+    Forall q15_pass pre ->
+    Forall q17_pass post ->
+    rev post ++ 6 :: rev pre ++ source_bit b :: rev data =
+      (symbol :: remaining) ++ 5 :: prefix ->
+    tail = map source_bit (action_init ++ [b]) ++
+           source_bit true :: rest ->
+    map entry_rewrite (rev (symbol :: remaining)) ++
+      (if hit then 3 else 2) ::
+      map q16_restore
+        (rev (4 :: rev
+          (instruction_marked bits (action_init ++ [b]) ++ [3]) ++
+         [4])) ++
+      source_bit bit :: tail =
+      map match_mark bits ++ [4] ++ map match_raw bits ++ tail ->
+    Forall canonical_q5_return_pass (symbol :: remaining) ->
+    run (instruction_q19_clock bits action_init tbuffer b +
+         S (length pre) + S (length post) +
+         S (length (symbol :: remaining)) +
+         matched_comparison_steps bits 0 (length [4]) +
+         S (length (map match_raw bits)) +
+         copy_all_clock bits (action_init ++ [b]) [] (map match_mark bits) +
+         direction_clock
+           (map match_mark bits ++ map match_mark (action_init ++ [b]))
+           (map match_mark (action_init ++ [b])))
+      (entry_config 5
+        (rev (map source_bit bits) ++ 5 :: rev tbuffer ++ 6 :: rev data)
+        (4 :: map source_bit bits ++
+         map source_bit (action_init ++ [b]) ++
+         source_bit true :: 4 :: source_bit bit :: tail)) =
+    cfg_ml 12
+      (rev (map match_mark (action_init ++ [b])) ++
+       5 :: rev tbuffer ++ 6 :: rev data)
+      (4 :: (map match_mark bits ++
+             map match_mark (action_init ++ [b])) ++
+            3 :: rest).
+Proof.
+  intros bits action_init tbuffer data b bit tail pre hit post
+    symbol remaining prefix rest Hlen H12t H14t Hdecomp Hpre Hpost
+    Hleft Htail Hrail Hscan.
+  subst tail.
+  rewrite dispatch_run_add.
+  rewrite (canonical_q5_instruction_q19_collision_to_q6
+    bits action_init tbuffer data b bit
+    (map source_bit (action_init ++ [b]) ++ source_bit true :: rest)
+    pre hit post [] symbol remaining bits []
+    Hlen H12t H14t Hdecomp Hpre Hpost Hleft
+    Hrail (Forall_nil q1_pass)).
+  rewrite (canonical_q6_copy_direction_to_q12
+    bits (action_init ++ [b]) tbuffer data true rest Hlen).
+  reflexivity.
+Qed.
+
+Print Assumptions canonical_q5_instruction_full_right_to_q12.
