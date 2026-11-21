@@ -2589,3 +2589,150 @@ Proof.
 Qed.
 
 Print Assumptions canonical_q5_instruction_full_left_to_q5.
+
+(** ** Packaged canonical instruction step
+
+    The full right q5 -> q5 macro as a reusable step interface.  The
+    encoder's remaining obligation is to produce a [canonical_step] for
+    each source configuration, with matching start/end frames. *)
+
+Record canonical_step := {
+  cs_bits : list bool;
+  cs_action_init : list bool;
+  cs_tbuffer : list nat;
+  cs_data : list nat;
+  cs_b : bool;
+  cs_bit : bool;
+  cs_tail : list nat;
+  cs_pre : list nat;
+  cs_hit : bool;
+  cs_post : list nat;
+  cs_symbol : nat;
+  cs_remaining : list nat;
+  cs_prefix : list nat;
+  cs_rest : list nat;
+  cs_s21 : nat;
+  cs_rest21 : list nat;
+  cs_next_bit : bool;
+  cs_next_tail : list nat
+}.
+
+Definition canonical_step_marked (p : canonical_step) : list nat :=
+  map match_mark (cs_bits p) ++
+  map match_mark (cs_action_init p ++ [cs_b p]).
+
+Definition canonical_step_start (p : canonical_step) : Config :=
+  entry_config 5
+    (rev (map source_bit (cs_bits p)) ++
+     5 :: rev (cs_tbuffer p) ++ 6 :: rev (cs_data p))
+    (4 :: map source_bit (cs_bits p) ++
+     map source_bit (cs_action_init p ++ [cs_b p]) ++
+     source_bit true :: 4 :: source_bit (cs_bit p) :: cs_tail p).
+
+Definition canonical_step_end (p : canonical_step) : Config :=
+  cfg_ml 5
+    (rev (cs_post p) ++ 6 :: rev (cs_pre p) ++
+     source_bit (cs_b p) :: rev (cs_data p))
+    ((if cs_hit p then 3 else 2) ::
+     map q16_restore
+       (rev (3 :: rev (canonical_step_marked p) ++ [4])) ++
+     source_bit (cs_next_bit p) :: cs_next_tail p).
+
+Definition canonical_step_clock (p : canonical_step) : nat :=
+  instruction_q19_clock (cs_bits p) (cs_action_init p)
+    (cs_tbuffer p) (cs_b p) +
+  S (length (cs_pre p)) + S (length (cs_post p)) +
+  S (length (cs_symbol p :: cs_remaining p)) +
+  matched_comparison_steps (cs_bits p) (length ([] : list nat)) (length [4]) +
+  S (length ([] ++ map match_raw (cs_bits p))) +
+  copy_all_clock (cs_bits p) (cs_action_init p ++ [cs_b p])
+    [] (map match_mark (cs_bits p)) +
+  direction_clock
+    (map match_mark (cs_bits p) ++
+     map match_mark (cs_action_init p ++ [cs_b p]))
+    (map match_mark (cs_action_init p ++ [cs_b p])) +
+  S (length
+       (match_mark (cs_b p) ::
+        rev (map match_mark (cs_action_init p)) ++
+        5 :: rev (cs_tbuffer p))) +
+  S (length
+       (cs_tbuffer p ++ [5] ++
+        rev (rev (map match_mark (cs_action_init p))) ++
+        [match_mark (cs_b p)])) +
+  S (length (canonical_step_marked p ++ [3])) +
+  S (length (3 :: rev (canonical_step_marked p) ++ [4])) +
+  S (length (cs_s21 p :: cs_rest21 p)) +
+  S (length (cs_pre p)) + S (length (cs_post p)).
+
+Record canonical_step_ok (p : canonical_step) : Prop := {
+  cso_len :
+    length (cs_action_init p ++ [cs_b p]) = length (cs_bits p);
+  cso_tb12 : Forall q12_pass (cs_tbuffer p);
+  cso_tb14 : Forall q14_pass (cs_tbuffer p);
+  cso_decomp :
+    rev (map q14_restore
+      (rev (map match_mark (cs_action_init p)) ++
+       5 :: rev (cs_tbuffer p))) =
+    cs_pre p ++ source_bit (cs_hit p) :: cs_post p;
+  cso_pre : Forall q15_pass (cs_pre p);
+  cso_post : Forall q17_pass (cs_post p);
+  cso_prefix : cs_prefix p = rev (cs_tbuffer p) ++ 6 :: rev (cs_data p);
+  cso_left :
+    rev (cs_post p) ++ 6 :: rev (cs_pre p) ++
+      source_bit (cs_b p) :: rev (cs_data p) =
+    (cs_symbol p :: cs_remaining p) ++ 5 :: cs_prefix p;
+  cso_tail :
+    cs_tail p = map source_bit (cs_action_init p ++ [cs_b p]) ++
+                source_bit true :: cs_rest p;
+  cso_rest : cs_rest p = source_bit (cs_next_bit p) :: cs_next_tail p;
+  cso_rail :
+    map entry_rewrite (rev (cs_symbol p :: cs_remaining p)) ++
+      (if cs_hit p then 3 else 2) ::
+      map q16_restore
+        (rev (4 :: rev
+          (instruction_marked (cs_bits p)
+            (cs_action_init p ++ [cs_b p]) ++ [3]) ++
+         [4])) ++
+      source_bit (cs_bit p) :: cs_tail p =
+    map match_mark (cs_bits p) ++ [4] ++
+      map match_raw (cs_bits p) ++ cs_tail p;
+  cso_scan : Forall canonical_q5_return_pass (cs_symbol p :: cs_remaining p);
+  cso_restored :
+    map q14_restore
+      (rev (map match_mark (cs_action_init p)) ++
+       5 :: rev (cs_tbuffer p)) =
+    cs_s21 p :: cs_rest21 p;
+  cso_line12 :
+    Forall q12_pass
+      (match_mark (cs_b p) ::
+       rev (map match_mark (cs_action_init p)) ++
+       5 :: rev (cs_tbuffer p));
+  cso_line14 :
+    Forall q14_pass
+      (cs_tbuffer p ++ [5] ++
+       rev (rev (map match_mark (cs_action_init p))) ++
+       [match_mark (cs_b p)])
+}.
+
+Theorem canonical_step_run :
+  forall p,
+    canonical_step_ok p ->
+    run (canonical_step_clock p) (canonical_step_start p) =
+    canonical_step_end p.
+Proof.
+  intros p H.
+  destruct H as [Hlen H12 H14 Hdecomp Hpre Hpost Hprefix Hleft
+    Htail Hrest Hrail Hscan Hrestored Hline12 Hline14].
+  unfold canonical_step_clock, canonical_step_start, canonical_step_end,
+    canonical_step_marked.
+  apply (canonical_q5_instruction_full_right_to_q5
+    (cs_bits p) (cs_action_init p) (cs_tbuffer p) (cs_data p)
+    (cs_b p) (cs_bit p) (cs_tail p) (cs_pre p) (cs_hit p)
+    (cs_post p) (cs_symbol p) (cs_remaining p) (cs_prefix p)
+    (cs_rest p) (cs_s21 p) (cs_rest21 p) (cs_next_bit p)
+    (cs_next_tail p)
+    Hlen H12 H14 Hdecomp Hpre Hpost Hprefix Hleft Htail Hrest
+    Hrail Hscan Hrestored Hline12 Hline14).
+Qed.
+
+Print Assumptions canonical_step_run.
