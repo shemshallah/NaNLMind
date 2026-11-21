@@ -440,7 +440,9 @@ Proof.
   unfold halting_entries_ok in He.
   rewrite Hhalt in He.
   apply andb_true_iff in He. destruct He as [Hq3 Hs5].
-  split; apply Nat.eqb_eq; assumption.
+  split.
+  - apply Nat.eqb_eq. exact Hq3.
+  - apply Nat.eqb_eq. exact Hs5.
 Qed.
 
 Theorem step_halted_shape :
