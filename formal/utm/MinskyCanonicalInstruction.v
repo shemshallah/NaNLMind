@@ -2247,6 +2247,12 @@ Proof.
     Hlen H12t H14t Hdecomp Hpre Hpost Hprefix Hleft
     Htail Hrail Hscan).
   rewrite Hrest.
+  replace (rev (map match_mark (action_init ++ [b])))
+    with (match_mark b :: rev (map match_mark action_init)).
+  2:{
+    rewrite map_app. cbn [rev map].
+    reflexivity.
+  }
   apply (canonical_q12_restore_to_q5
     (map match_mark bits ++ map match_mark (action_init ++ [b]))
     tbuffer data b (rev (map match_mark action_init))
