@@ -1608,3 +1608,87 @@ Qed.
 
 Print Assumptions canonical_q6_copy_direction_to_q12.
 
+
+(** ** q21/q22 -> q5 after the q16 decision
+
+    This is the post-q16 half of the canonical movement.  q21/q22 scans
+    left to the direction marker 3, q19 relocates the first raw cell after
+    q16, and q17/q18 return to the next 7. *)
+
+Theorem canonical_q21_decision_to_q5 :
+  forall bits action_init tbuffer data b bit tail s remaining pre hit post,
+    Forall q21_pass (s :: remaining) ->
+    rev (s :: remaining) = pre ++ source_bit hit :: post ->
+    Forall q15_pass pre ->
+    Forall q17_pass post ->
+    run (S (length (s :: remaining)) + S (length pre) + S (length post))
+      (entry_config (if b then 22 else 21)
+        (remaining ++ 3 :: rev data)
+        (s :: 7 :: map q16_restore
+               (rev (4 :: rev
+                 (instruction_marked bits (action_init ++ [b]) ++ [3]) ++
+                [4])) ++
+         source_bit bit :: tail)) =
+    cfg_ml 5
+      (rev post ++ 6 :: rev pre ++ source_bit b :: rev data)
+      ((if hit then 3 else 2) ::
+       map q16_restore
+         (rev (4 :: rev
+           (instruction_marked bits (action_init ++ [b]) ++ [3]) ++
+          [4])) ++
+       source_bit bit :: tail).
+Proof.
+  intros bits action_init tbuffer data b bit tail s remaining
+    pre hit post H21 Hdecomp Hpre Hpost.
+  rewrite dispatch_run_add.
+  assert (Hq : (if b then 22 else 21) = 21 \/
+               (if b then 22 else 21) = 22)
+    by (destruct b; simpl; auto).
+  rewrite (q21_scan_to_right_direction remaining s
+    (if b then 22 else 21) (rev data)
+    (7 :: map q16_restore
+           (rev (4 :: rev
+             (instruction_marked bits (action_init ++ [b]) ++ [3]) ++
+            [4])) ++
+     source_bit bit :: tail) Hq H21).
+  replace (q21_written (if b then 22 else 21)) with (source_bit b)
+    by (destruct b; reflexivity).
+  rewrite Hdecomp.
+  replace ((pre ++ source_bit hit :: post) ++
+      7 :: map q16_restore
+             (rev (4 :: rev
+               (instruction_marked bits (action_init ++ [b]) ++ [3]) ++
+              [4])) ++
+      source_bit bit :: tail)
+    with (pre ++ source_bit hit ::
+      (post ++
+       7 :: map q16_restore
+              (rev (4 :: rev
+                (instruction_marked bits (action_init ++ [b]) ++ [3]) ++
+               [4])) ++
+       source_bit bit :: tail))
+    by (rewrite <- app_assoc; reflexivity).
+  rewrite dispatch_run_add.
+  rewrite (q19_scan_to_m pre hit (source_bit b :: rev data)
+    (post ++
+     7 :: map q16_restore
+            (rev (4 :: rev
+              (instruction_marked bits (action_init ++ [b]) ++ [3]) ++
+             [4])) ++
+     source_bit bit :: tail) Hpre).
+  destruct hit.
+  - apply (q18_scan_to_marker post
+      (6 :: rev pre ++ source_bit b :: rev data)
+      (map q16_restore
+         (rev (4 :: rev
+           (instruction_marked bits (action_init ++ [b]) ++ [3]) ++
+          [4])) ++ source_bit bit :: tail) Hpost).
+  - apply (q17_scan_to_marker post
+      (6 :: rev pre ++ source_bit b :: rev data)
+      (map q16_restore
+         (rev (4 :: rev
+           (instruction_marked bits (action_init ++ [b]) ++ [3]) ++
+          [4])) ++ source_bit bit :: tail) Hpost).
+Qed.
+
+Print Assumptions canonical_q21_decision_to_q5.
