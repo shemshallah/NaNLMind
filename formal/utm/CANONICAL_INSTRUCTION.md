@@ -332,3 +332,31 @@ This is the first verified q5-to-match composition.  The remaining
 representation step is to identify this q1 entry with the next q5 fetch
 entry (the q5-scan/q1-match/q6-copy half) and then close the source-step
 loop.
+
+## q5 -> q6 next-instruction entry (proved)
+
+The matched q1 rail is followed by the record's X=4, so q1 crosses it
+into q6, the action-copy entry for the next instruction:
+
+- `canonical_q5_instruction_q19_collision_to_q6` (right),
+- `canonical_q5_instruction_left_collision_to_q6` (left).
+
+The rail premise is
+
+```text
+map entry_rewrite (rev (symbol :: remaining)) ++
+  hit_mark :: map q16_restore (...) ++ source_bit bit :: tail =
+  pass ++ map match_mark bits ++ [4] ++ map match_raw bits ++ tail.
+```
+
+The result is
+
+```text
+entry_config 6
+  (4 :: rev (pass ++ map match_raw bits) ++ 5 :: prefix)
+  (map match_mark bits ++ tail).
+```
+
+This is the next-instruction action-copy entry.  The remaining movement
+half is q6 -> copy/direction/restore/q16 -> q5, which closes the full
+source-step cycle.

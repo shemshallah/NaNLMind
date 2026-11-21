@@ -1359,3 +1359,17 @@ Fast branch acceptance:
 
 The next open composition is the q5-scan/q1-match/q6-copy half that
 turns this q1 entry back into the next q5 fetch entry.
+
+### q5 -> q6 next-instruction entry (kernel-checked)
+
+Composing the matched q1 cycles with the native q1->q6 scan gives:
+
+- `canonical_q5_instruction_q19_collision_to_q6`,
+- `canonical_q5_instruction_left_collision_to_q6`.
+
+Fast branch acceptance:
+[44849983390](https://github.com/shemshallah/NaNLMind/actions/runs/44849983390).
+
+The remaining movement half is the q6 copy/direction/restore/q16 path
+back to q5; after that the q5->q6 and q6->q5 halves close the source
+step.
