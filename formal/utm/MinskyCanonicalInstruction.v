@@ -2791,3 +2791,53 @@ Qed.
 
 Print Assumptions canonical_step_clock_positive.
 Print Assumptions canonical_step_run_not_halted.
+
+(** ** q5 return -> q1 match entry
+
+    The encoder step starts at the q5 return frame of the previous
+    instruction.  q5 scans left to the first Y=5 delimiter, then q1
+    matches the returned rail against the next row's condition bits.
+    This is the first half of the running-case encoder. *)
+
+Theorem canonical_q5_return_to_q1 :
+  forall (post pre : list nat) (b : bool) (data : list nat)
+         (symbol : nat) (remaining : list nat) (prefix : list nat)
+         (hit : bool) (next_bit : bool) (next_tail : list nat)
+         (q16map : list nat) (bits' : list bool)
+         (pass done tail : list nat),
+    rev post ++ 6 :: rev pre ++ source_bit b :: rev data =
+      (symbol :: remaining) ++ 5 :: prefix ->
+    Forall canonical_q5_return_pass (symbol :: remaining) ->
+    map entry_rewrite (rev (symbol :: remaining)) ++
+      (if hit then 3 else 2) ::
+      map q16_restore q16map ++
+      source_bit next_bit :: next_tail =
+      pass ++ map match_mark bits' ++ done ++
+      map match_raw bits' ++ tail ->
+    Forall q1_pass pass ->
+    Forall wide_mark done ->
+    run (S (length (symbol :: remaining)) +
+         matched_comparison_steps bits' (length pass) (length done))
+      (cfg_ml 5
+        (rev post ++ 6 :: rev pre ++ source_bit b :: rev data)
+        ((if hit then 3 else 2) ::
+         map q16_restore q16map ++
+         source_bit next_bit :: next_tail)) =
+    entry_config 1 (5 :: prefix)
+      (pass ++ map match_raw bits' ++ done ++
+       map match_mark bits' ++ tail).
+Proof.
+  intros post pre b data symbol remaining prefix hit next_bit
+    next_tail q16map bits' pass done tail Hleft Hscan Hrail Hpass Hdone.
+  rewrite Hleft.
+  cbn [cfg_ml].
+  rewrite dispatch_run_add.
+  rewrite (canonical_q5_return_scan_to_first_five remaining symbol prefix
+    ((if hit then 3 else 2) ::
+     map q16_restore q16map ++ source_bit next_bit :: next_tail) Hscan).
+  rewrite Hrail.
+  apply (q1_all_matching_bits_wide bits' pass done prefix tail
+    Hpass Hdone).
+Qed.
+
+Print Assumptions canonical_q5_return_to_q1.
