@@ -3109,3 +3109,83 @@ Proof.
 Qed.
 
 Print Assumptions canonical_q5_return_to_q5_right.
+
+(** ** q6 -> q5 left movement *)
+
+Theorem canonical_q6_to_q5_left :
+  forall (bits action_init : list bool) (tbuffer data data' : list nat)
+         (b : bool) (rest : list nat) (d : bool)
+         (bit : bool) (tail : list nat) (s21 : nat)
+         (rest21 : list nat),
+    length (action_init ++ [b]) = length bits ->
+    rev data = source_bit d :: rev data' ->
+    rest = source_bit bit :: tail ->
+    map q14_restore
+      (rev (map match_mark action_init) ++ 5 :: rev tbuffer) =
+      s21 :: rest21 ->
+    Forall q17_pass (source_bit b :: rev (s21 :: rest21)) ->
+    Forall q12_pass
+      (match_mark b :: rev (map match_mark action_init) ++
+       5 :: rev tbuffer) ->
+    Forall q14_pass
+      (tbuffer ++ [5] ++ rev (rev (map match_mark action_init)) ++
+       [match_mark b]) ->
+    run ((copy_all_clock bits (action_init ++ [b]) []
+            (map match_mark bits) +
+          direction_clock
+            (map match_mark bits ++
+             map match_mark (action_init ++ [b]))
+            (map match_mark (action_init ++ [b]))) +
+         (S (length
+              (match_mark b :: rev (map match_mark action_init) ++
+               5 :: rev tbuffer)) +
+          S (length
+              (tbuffer ++ [5] ++
+               rev (rev (map match_mark action_init)) ++
+               [match_mark b])) +
+          S (length
+              ((map match_mark bits ++
+                map match_mark (action_init ++ [b])) ++ [2])) +
+          S (length
+              (2 :: rev
+                (map match_mark bits ++
+                 map match_mark (action_init ++ [b])) ++ [4])) +
+          S (length (s21 :: rest21)) + 1 +
+          S (length (source_bit b :: rev (s21 :: rest21)))))
+      (entry_config 6
+        (4 :: rev (map source_bit bits) ++
+         5 :: rev tbuffer ++ 6 :: rev data)
+        (map match_mark bits ++
+         map source_bit (action_init ++ [b]) ++
+         source_bit false :: rest)) =
+    cfg_ml 5
+      (rev (source_bit b :: rev (s21 :: rest21)) ++ 6 :: rev data')
+      ((if d then 3 else 2) ::
+       map q16_restore
+         (rev (2 :: rev
+           (map match_mark bits ++
+            map match_mark (action_init ++ [b])) ++ [4])) ++
+       bit :: tail).
+Proof.
+  intros bits action_init tbuffer data data' b rest d bit tail
+    s21 rest21 Hlen Hdata Hrest Hrestored Hreturn H12r H14r.
+  rewrite dispatch_run_add.
+  rewrite (canonical_q6_copy_direction_to_q12
+    bits (action_init ++ [b]) tbuffer data false rest Hlen).
+  rewrite Hrest.
+  replace (rev (map match_mark (action_init ++ [b])))
+    with (match_mark b :: rev (map match_mark action_init)).
+  2:{
+    rewrite map_app.
+    rewrite rev_app_distr. cbn [rev].
+    reflexivity.
+  }
+  apply (canonical_q13_restore_to_q5
+    (map match_mark bits ++
+     map match_mark (action_init ++ [b]))
+    tbuffer data data' b (rev (map match_mark action_init))
+    bit tail d s21 rest21
+    H12r H14r Hrestored Hdata Hreturn).
+Qed.
+
+Print Assumptions canonical_q6_to_q5_left.
