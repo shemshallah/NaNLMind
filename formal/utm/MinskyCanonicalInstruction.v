@@ -1702,3 +1702,105 @@ Proof.
 Qed.
 
 Print Assumptions canonical_q21_decision_to_q5.
+
+(** ** Generic q21/q22 -> q5 tail map
+
+    The same post-q16 path with an arbitrary restored map, so the q12/q13
+    restore phase can plug in its own map. *)
+
+Theorem canonical_q21_decision_to_q5_map :
+  forall (bits action_init : list bool) (tbuffer data tail : list nat)
+         (b bit : bool) (s : nat) (remaining pre post : list nat)
+         (hit : bool) (q16map : list nat),
+    Forall q21_pass (s :: remaining) ->
+    rev (s :: remaining) = pre ++ source_bit hit :: post ->
+    Forall q15_pass pre ->
+    Forall q17_pass post ->
+    run (S (length (s :: remaining)) + S (length pre) + S (length post))
+      (entry_config (if b then 22 else 21)
+        (remaining ++ 3 :: rev data)
+        (s :: 7 :: map q16_restore q16map ++ source_bit bit :: tail)) =
+    cfg_ml 5
+      (rev post ++ 6 :: rev pre ++ source_bit b :: rev data)
+      ((if hit then 3 else 2) ::
+       map q16_restore q16map ++ source_bit bit :: tail).
+Proof.
+  intros bits action_init tbuffer data tail b bit s remaining
+    pre post hit q16map H21 Hdecomp Hpre Hpost.
+  match goal with
+  | |- run ?clock ?start = ?rhs =>
+    replace clock with
+      (S (length (s :: remaining)) +
+       (S (length pre) + S (length post))) by lia;
+    rewrite (dispatch_run_add
+      (S (length (s :: remaining)))
+      (S (length pre) + S (length post)) start)
+  end.
+  assert (Hq : (if b then 22 else 21) = 21 \/
+               (if b then 22 else 21) = 22)
+    by (destruct b; simpl; auto).
+  rewrite (q21_scan_to_right_direction remaining s
+    (if b then 22 else 21) (rev data)
+    (7 :: map q16_restore q16map ++ source_bit bit :: tail) Hq H21).
+  replace (q21_written (if b then 22 else 21)) with (source_bit b)
+    by (destruct b; reflexivity).
+  rewrite Hdecomp.
+  replace ((pre ++ source_bit hit :: post) ++
+      7 :: map q16_restore q16map ++ source_bit bit :: tail)
+    with (pre ++ source_bit hit ::
+      (post ++ 7 :: map q16_restore q16map ++
+       source_bit bit :: tail))
+    by (rewrite <- app_assoc; reflexivity).
+  rewrite dispatch_run_add.
+  rewrite (q19_scan_to_m pre hit (source_bit b :: rev data)
+    (post ++ 7 :: map q16_restore q16map ++
+     source_bit bit :: tail) Hpre).
+  destruct hit.
+  - apply (q18_scan_to_marker post
+      (6 :: rev pre ++ source_bit b :: rev data)
+      (map q16_restore q16map ++ source_bit bit :: tail) Hpost).
+  - apply (q17_scan_to_marker post
+      (6 :: rev pre ++ source_bit b :: rev data)
+      (map q16_restore q16map ++ source_bit bit :: tail) Hpost).
+Qed.
+
+Print Assumptions canonical_q21_decision_to_q5_map.
+
+Theorem canonical_q12_restore_to_q5 :
+  forall marked tbuffer data b rest bit tail s21 rest21 pre hit post,
+    Forall q12_pass (match_mark b :: rest ++ 5 :: rev tbuffer) ->
+    Forall q14_pass (tbuffer ++ [5] ++ rev rest ++ [match_mark b]) ->
+    Forall q15_pass (marked ++ [3]) ->
+    Forall q16_pass marked ->
+    map q14_restore (rest ++ 5 :: rev tbuffer) = s21 :: rest21 ->
+    rev (s21 :: rest21) = pre ++ source_bit hit :: post ->
+    Forall q15_pass pre ->
+    Forall q17_pass post ->
+    run (S (length (match_mark b :: rest ++ 5 :: rev tbuffer)) +
+         S (length (tbuffer ++ [5] ++ rev rest ++ [match_mark b])) +
+         S (length (s21 :: rest21)) + S (length pre) + S (length post))
+      (cfg_ml 12
+        (match_mark b :: rest ++ 5 :: rev tbuffer ++ 6 :: rev data)
+        (4 :: marked ++ 3 :: source_bit bit :: tail)) =
+    cfg_ml 5
+      (rev post ++ 6 :: rev pre ++ source_bit b :: rev data)
+      ((if hit then 3 else 2) ::
+       map q16_restore (rev (3 :: rev marked ++ [4])) ++
+       source_bit bit :: tail).
+Proof.
+  intros marked tbuffer data b rest bit tail s21 rest21
+    pre hit post H12 H14 H15 H16 Hrestored Hdecomp Hpre Hpost.
+  rewrite dispatch_run_add.
+  rewrite (canonical_q12_restore_to_q16_decision marked tbuffer data
+    b rest bit tail H12 H14 H15 H16).
+  rewrite Hrestored.
+  cbn [cfg_ml].
+  apply (canonical_q21_decision_to_q5_map
+    [] [] tbuffer data tail b bit s21 rest21 pre post hit
+    (rev (3 :: rev marked ++ [4])) Hdecomp Hpre Hpost).
+  - exact Hdecomp.
+  - exact Hpre.
+  - exact Hpost.
+Qed.
+
+Print Assumptions canonical_q12_restore_to_q5.
