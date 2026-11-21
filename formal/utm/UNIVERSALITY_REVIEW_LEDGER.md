@@ -1424,3 +1424,15 @@ with the exact summed clock.  Fast branch acceptance:
 
 The last movement composition is q5 -> q12 -> q5, using
 `canonical_q12_restore_to_q5`.
+
+### Full right instruction macro q5 -> q5 (kernel-checked)
+
+`canonical_q5_instruction_full_right_to_q5` composes the q5 -> q12
+match/copy/direction theorem with q12 -> q5 restore/relocation.  It is
+the complete right instruction movement, with all representation
+premises explicit and the exact summed native clock.  Fast branch
+acceptance:
+[44913839415](https://github.com/shemshallah/NaNLMind/actions/runs/44913839415).
+
+The left full macro (q5 -> q13 -> q5) uses the same pattern with
+`canonical_q13_restore_to_q5`.

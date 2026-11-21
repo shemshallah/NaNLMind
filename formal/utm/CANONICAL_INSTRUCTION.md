@@ -457,3 +457,28 @@ decomposition, the prefix identity, and the `tail` shape.
 
 Composing this with `canonical_q12_restore_to_q5` is the final q5 -> q5
 instruction movement macro.
+
+## Full right instruction macro q5 -> q5 (proved)
+
+`canonical_q5_instruction_full_right_to_q5` is the complete right
+instruction movement in one native run:
+
+```text
+q5 fetch
+-> q6 next-row match/copy
+-> q12 action copy + direction
+-> q16 decision
+-> q21 -> q19 -> q17/q18
+-> q5 return
+```
+
+The statement carries the representation premises explicitly:
+
+- the q5-left decomposition into `(symbol :: remaining) ++ 5 :: prefix`,
+- the rail decomposition `pass ++ match_mark bits ++ [4] ++ match_raw bits`,
+- the prefix identity `prefix = rev tbuffer ++ 6 :: rev data`,
+- the restored-action decomposition and its first raw hit,
+- the q12/q13 line and q14/tbuffer constraints.
+
+The clock is the exact sum of the q5 -> q12 and q12 -> q5 phase clocks.
+This is the macro the source encoder must instantiate.
