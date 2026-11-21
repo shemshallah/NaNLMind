@@ -493,7 +493,9 @@ Proof.
         inversion Hfind. subst e. reflexivity.
       }
       subst e.
-      cbn [c_state c_tape e_to e_write e_move].
+      unfold step. rewrite Hrun, Hfind, Hehalt.
+      cbn [halt c_state c_tape e_to e_write e_move
+           move_tape write read].
       split; reflexivity.
     + cbn [c_halted] in Hhalt. discriminate Hhalt.
   - right.
