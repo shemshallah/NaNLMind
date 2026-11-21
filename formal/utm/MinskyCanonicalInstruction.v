@@ -1581,6 +1581,19 @@ Proof.
     [] (map match_mark bits) action_bits (source_bit dir :: rest)
     tbuffer data eq_refl eq_refl (eq_sym Hlen)
     (Forall_nil q7_pass) (Forall_nil q9_pass) Hbits6 Hbits7).
+  change (run (direction_clock
+      (map match_mark bits ++ map match_mark action_bits)
+      (map match_mark action_bits))
+    (entry_config 6
+      (4 :: rev (map match_mark action_bits) ++
+       5 :: rev tbuffer ++ 6 :: rev data)
+      (map match_mark bits ++ map match_mark action_bits ++
+       source_bit dir :: rest)) =
+    cfg_ml (if dir then 12 else 13)
+      (rev (map match_mark action_bits) ++
+       5 :: rev tbuffer ++ 6 :: rev data)
+      (4 :: (map match_mark bits ++ map match_mark action_bits) ++
+            (if dir then 3 else 2) :: rest)).
   apply (canonical_q6_direction_capture
     (map match_mark bits ++ map match_mark action_bits)
     (map match_mark action_bits) rest tbuffer data dir
