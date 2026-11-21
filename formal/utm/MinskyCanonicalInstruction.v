@@ -3009,3 +3009,98 @@ Proof.
 Qed.
 
 Print Assumptions canonical_q6_to_q5_right.
+
+(** ** q5 return -> q5 return: the running-case one-row macro
+
+    This is the true one-row encoder loop: the previous instruction's q5
+    return frame is matched against the next row, copied and moved, and
+    the next q5 return frame is produced. *)
+
+Theorem canonical_q5_return_to_q5_right :
+  forall post pre bprev data symbol remaining prefix hit next_bit next_tail
+         q16map bits action_init tbuffer bnext rest s21 rest21
+         hpre hhit hpost next_bit' next_tail' tail,
+    rev post ++ 6 :: rev pre ++ source_bit bprev :: rev data =
+      (symbol :: remaining) ++ 5 :: prefix ->
+    Forall canonical_q5_return_pass (symbol :: remaining) ->
+    map entry_rewrite (rev (symbol :: remaining)) ++
+      (if hit then 3 else 2) ::
+      map q16_restore q16map ++
+      source_bit next_bit :: next_tail =
+      ([] : list nat) ++ map match_mark bits ++ [4] ++
+      map match_raw bits ++ tail ->
+    tail = map source_bit (action_init ++ [bnext]) ++
+           source_bit true :: rest ->
+    prefix = rev tbuffer ++ 6 :: rev data ->
+    length (action_init ++ [bnext]) = length bits ->
+    rest = source_bit next_bit' :: next_tail' ->
+    map q14_restore
+      (rev (map match_mark action_init) ++ 5 :: rev tbuffer) =
+      s21 :: rest21 ->
+    rev (s21 :: rest21) = hpre ++ source_bit hhit :: hpost ->
+    Forall q15_pass hpre ->
+    Forall q17_pass hpost ->
+    Forall q12_pass
+      (match_mark bnext :: rev (map match_mark action_init) ++
+       5 :: rev tbuffer) ->
+    Forall q14_pass
+      (tbuffer ++ [5] ++ rev (rev (map match_mark action_init)) ++
+       [match_mark bnext]) ->
+    run ((S (length (symbol :: remaining)) +
+          matched_comparison_steps bits (length ([] : list nat))
+            (length [4]) +
+          S (length ([] ++ map match_raw bits))) +
+         ((copy_all_clock bits (action_init ++ [bnext]) []
+             (map match_mark bits) +
+           direction_clock
+             (map match_mark bits ++
+              map match_mark (action_init ++ [bnext]))
+             (map match_mark (action_init ++ [bnext]))) +
+          (S (length
+               (match_mark bnext ::
+                rev (map match_mark action_init) ++
+                5 :: rev tbuffer)) +
+           S (length
+               (tbuffer ++ [5] ++
+                rev (rev (map match_mark action_init)) ++
+                [match_mark bnext])) +
+           S (length
+               ((map match_mark bits ++
+                 map match_mark (action_init ++ [bnext])) ++ [3])) +
+           S (length
+               (3 :: rev
+                 (map match_mark bits ++
+                  map match_mark (action_init ++ [bnext])) ++ [4])) +
+           S (length (s21 :: rest21)) +
+           S (length hpre) + S (length hpost))))
+      (cfg_ml 5
+        (rev post ++ 6 :: rev pre ++ source_bit bprev :: rev data)
+        ((if hit then 3 else 2) ::
+         map q16_restore q16map ++
+         source_bit next_bit :: next_tail)) =
+    cfg_ml 5
+      (rev hpost ++ 6 :: rev hpre ++ source_bit bnext :: rev data)
+      ((if hhit then 3 else 2) ::
+       map q16_restore
+         (rev (3 :: rev
+           (map match_mark bits ++
+            map match_mark (action_init ++ [bnext])) ++ [4])) ++
+       source_bit next_bit' :: next_tail').
+Proof.
+  intros post pre bprev data symbol remaining prefix hit next_bit
+    next_tail q16map bits action_init tbuffer bnext rest s21 rest21
+    hpre hhit hpost next_bit' next_tail' tail
+    Hleft Hscan Hrail Htail Hprefix Hlen Hrest Hrestored Hdecomp
+    Hpre Hpost H12r H14r.
+  rewrite dispatch_run_add.
+  rewrite (canonical_q5_return_to_q6
+    post pre bprev data symbol remaining prefix hit next_bit next_tail
+    q16map bits [] tail Hleft Hscan Hrail (Forall_nil q1_pass)).
+  rewrite Htail, Hprefix.
+  apply (canonical_q6_to_q5_right
+    bits action_init tbuffer data bnext rest s21 rest21
+    hpre hhit hpost next_bit' next_tail'
+    Hlen Hrest Hrestored Hdecomp Hpre Hpost H12r H14r).
+Qed.
+
+Print Assumptions canonical_q5_return_to_q5_right.
