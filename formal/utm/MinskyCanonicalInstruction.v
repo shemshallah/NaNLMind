@@ -2363,7 +2363,7 @@ Proof.
      source_bit false :: rest) d
     (rev tbuffer ++ 6 :: rev data) symbol remaining bits []
     Hlen H12t H14t Hdata Hreturn Hleft Hscan Hrail
-    eq_refl eq_refl (Forall_nil q1_pass)).
+    (Forall_nil q1_pass)).
   apply (canonical_q6_copy_direction_to_q12
     bits (action_init ++ [b]) tbuffer data false rest Hlen).
 Qed.
