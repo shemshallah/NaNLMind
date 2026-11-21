@@ -2250,7 +2250,8 @@ Proof.
   replace (rev (map match_mark (action_init ++ [b])))
     with (match_mark b :: rev (map match_mark action_init)).
   2:{
-    rewrite map_app. cbn [rev map].
+    rewrite map_app.
+    rewrite rev_app_distr. cbn [rev].
     reflexivity.
   }
   apply (canonical_q12_restore_to_q5
