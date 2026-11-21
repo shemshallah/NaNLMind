@@ -1892,7 +1892,7 @@ Proof.
   rewrite Hdata.
   cbn [cfg_ml].
   rewrite dispatch_run_add.
-  rewrite run_one_add by (cbn [run]; reflexivity).
+  rewrite run_one_add by (destruct d; reflexivity).
   rewrite (q20_raw_to_m d data'
     (source_bit b :: rev (s :: rest21) ++
      7 :: map q16_restore q16map ++ source_bit bit :: tail)).
