@@ -1884,7 +1884,14 @@ Proof.
   rewrite Hdata.
   cbn [cfg_ml].
   rewrite dispatch_run_add.
-  cbn [run].
+  change (run (S (length (source_bit b :: rev (s :: rest21))))
+    (step (entry_config 20 data'
+      (source_bit d :: source_bit b :: rev (s :: rest21) ++
+       7 :: map q16_restore q16map ++ source_bit bit :: tail))) =
+    cfg_ml 5
+      (rev (source_bit b :: rev (s :: rest21)) ++ 6 :: rev data')
+      ((if d then 3 else 2) :: map q16_restore q16map ++
+       source_bit bit :: tail)).
   rewrite (q20_raw_to_m d data'
     (source_bit b :: rev (s :: rest21) ++
      7 :: map q16_restore q16map ++ source_bit bit :: tail)).
