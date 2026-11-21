@@ -3305,3 +3305,155 @@ Proof.
 Qed.
 
 Print Assumptions canonical_q5_return_to_q5_left.
+
+(** ** Packaged running-case one-row step
+
+    The q5-return -> q5-return macro as a reusable step interface.  The
+    encoder's remaining obligation is to produce such a step for each
+    running source configuration, with matching start/end frames. *)
+
+Record canonical_return_step := {
+  crs_post : list nat;
+  crs_pre : list nat;
+  crs_bprev : bool;
+  crs_data : list nat;
+  crs_symbol : nat;
+  crs_remaining : list nat;
+  crs_prefix : list nat;
+  crs_hit : bool;
+  crs_next_bit : bool;
+  crs_next_tail : list nat;
+  crs_q16map : list nat;
+  crs_bits : list bool;
+  crs_action_init : list bool;
+  crs_tbuffer : list nat;
+  crs_bnext : bool;
+  crs_rest : list nat;
+  crs_s21 : nat;
+  crs_rest21 : list nat;
+  crs_hpre : list nat;
+  crs_hhit : bool;
+  crs_hpost : list nat;
+  crs_next_bit' : bool;
+  crs_next_tail' : list nat;
+  crs_tail : list nat
+}.
+
+Definition canonical_return_marked (p : canonical_return_step) : list nat :=
+  map match_mark (crs_bits p) ++
+  map match_mark (crs_action_init p ++ [crs_bnext p]).
+
+Definition canonical_return_step_start (p : canonical_return_step) : Config :=
+  cfg_ml 5
+    (rev (crs_post p) ++ 6 :: rev (crs_pre p) ++
+     source_bit (crs_bprev p) :: rev (crs_data p))
+    ((if crs_hit p then 3 else 2) ::
+     map q16_restore (crs_q16map p) ++
+     source_bit (crs_next_bit p) :: crs_next_tail p).
+
+Definition canonical_return_step_end (p : canonical_return_step) : Config :=
+  cfg_ml 5
+    (rev (crs_hpost p) ++ 6 :: rev (crs_hpre p) ++
+     source_bit (crs_bnext p) :: rev (crs_data p))
+    ((if crs_hhit p then 3 else 2) ::
+     map q16_restore
+       (rev (3 :: rev (canonical_return_marked p) ++ [4])) ++
+     source_bit (crs_next_bit' p) :: crs_next_tail' p).
+
+Definition canonical_return_q5_q6_clock (p : canonical_return_step) : nat :=
+  S (length (crs_symbol p :: crs_remaining p)) +
+  matched_comparison_steps (crs_bits p) (length ([] : list nat))
+    (length [4]) +
+  S (length ([] ++ map match_raw (crs_bits p))).
+
+Definition canonical_return_q6_q5_clock (p : canonical_return_step) : nat :=
+  (copy_all_clock (crs_bits p) (crs_action_init p ++ [crs_bnext p])
+     [] (map match_mark (crs_bits p)) +
+   direction_clock
+     (map match_mark (crs_bits p) ++
+      map match_mark (crs_action_init p ++ [crs_bnext p]))
+     (map match_mark (crs_action_init p ++ [crs_bnext p]))) +
+  (S (length
+       (match_mark (crs_bnext p) ::
+        rev (map match_mark (crs_action_init p)) ++
+        5 :: rev (crs_tbuffer p))) +
+   S (length
+       (crs_tbuffer p ++ [5] ++
+        rev (rev (map match_mark (crs_action_init p))) ++
+        [match_mark (crs_bnext p)])) +
+   S (length (canonical_return_marked p ++ [3])) +
+   S (length (3 :: rev (canonical_return_marked p) ++ [4])) +
+   S (length (crs_s21 p :: crs_rest21 p)) +
+   S (length (crs_hpre p)) + S (length (crs_hpost p))).
+
+Definition canonical_return_step_clock (p : canonical_return_step) : nat :=
+  canonical_return_q5_q6_clock p + canonical_return_q6_q5_clock p.
+
+Record canonical_return_step_ok (p : canonical_return_step) : Prop := {
+  crso_left :
+    rev (crs_post p) ++ 6 :: rev (crs_pre p) ++
+      source_bit (crs_bprev p) :: rev (crs_data p) =
+    (crs_symbol p :: crs_remaining p) ++ 5 :: crs_prefix p;
+  crso_scan :
+    Forall canonical_q5_return_pass (crs_symbol p :: crs_remaining p);
+  crso_rail :
+    map entry_rewrite (rev (crs_symbol p :: crs_remaining p)) ++
+      (if crs_hit p then 3 else 2) ::
+      map q16_restore (crs_q16map p) ++
+      source_bit (crs_next_bit p) :: crs_next_tail p =
+    ([] : list nat) ++ map match_mark (crs_bits p) ++ [4] ++
+    map match_raw (crs_bits p) ++ crs_tail p;
+  crso_tail :
+    crs_tail p = map source_bit (crs_action_init p ++ [crs_bnext p]) ++
+                 source_bit true :: crs_rest p;
+  crso_prefix : crs_prefix p = rev (crs_tbuffer p) ++ 6 :: rev (crs_data p);
+  crso_len :
+    length (crs_action_init p ++ [crs_bnext p]) = length (crs_bits p);
+  crso_rest : crs_rest p = source_bit (crs_next_bit' p) :: crs_next_tail' p;
+  crso_restored :
+    map q14_restore
+      (rev (map match_mark (crs_action_init p)) ++
+       5 :: rev (crs_tbuffer p)) =
+    crs_s21 p :: crs_rest21 p;
+  crso_decomp :
+    rev (crs_s21 p :: crs_rest21 p) =
+    crs_hpre p ++ source_bit (crs_hhit p) :: crs_hpost p;
+  crso_pre : Forall q15_pass (crs_hpre p);
+  crso_post : Forall q17_pass (crs_hpost p);
+  crso_line12 :
+    Forall q12_pass
+      (match_mark (crs_bnext p) ::
+       rev (map match_mark (crs_action_init p)) ++
+       5 :: rev (crs_tbuffer p));
+  crso_line14 :
+    Forall q14_pass
+      (crs_tbuffer p ++ [5] ++
+       rev (rev (map match_mark (crs_action_init p))) ++
+       [match_mark (crs_bnext p)])
+}.
+
+Theorem canonical_return_step_run :
+  forall p,
+    canonical_return_step_ok p ->
+    run (canonical_return_step_clock p)
+        (canonical_return_step_start p) =
+    canonical_return_step_end p.
+Proof.
+  intros p H.
+  destruct H as [Hleft Hscan Hrail Htail Hprefix Hlen Hrest
+    Hrestored Hdecomp Hpre Hpost H12r H14r].
+  unfold canonical_return_step_clock, canonical_return_q5_q6_clock,
+    canonical_return_q6_q5_clock, canonical_return_step_start,
+    canonical_return_step_end, canonical_return_marked.
+  apply (canonical_q5_return_to_q5_right
+    (crs_post p) (crs_pre p) (crs_bprev p) (crs_data p)
+    (crs_symbol p) (crs_remaining p) (crs_prefix p) (crs_hit p)
+    (crs_next_bit p) (crs_next_tail p) (crs_q16map p) (crs_bits p)
+    (crs_action_init p) (crs_tbuffer p) (crs_bnext p) (crs_rest p)
+    (crs_s21 p) (crs_rest21 p) (crs_hpre p) (crs_hhit p)
+    (crs_hpost p) (crs_next_bit' p) (crs_next_tail' p) (crs_tail p)
+    Hleft Hscan Hrail Htail Hprefix Hlen Hrest Hrestored Hdecomp
+    Hpre Hpost H12r H14r).
+Qed.
+
+Print Assumptions canonical_return_step_run.
