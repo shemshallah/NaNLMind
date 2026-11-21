@@ -1836,3 +1836,134 @@ Proof.
 Qed.
 
 Print Assumptions canonical_q12_restore_to_q5.
+
+(** ** q13 -> q5: the left movement half
+
+    q13 restores with the direction marker 2.  q21/q22 scans left to 2,
+    q20 applies its raw step to the current source cell, and q17/q18
+    return across the written 6 and the stored direction mark to the
+    next 7. *)
+
+Theorem canonical_q22_decision_to_q5_left :
+  forall (bits action_init : list bool) (tbuffer data data' tail : list nat)
+         (b bit d : bool) (s : nat) (rest21 : list nat)
+         (q16map : list nat),
+    Forall q21_pass (s :: rest21) ->
+    rev data = source_bit d :: rev data' ->
+    Forall q17_pass (source_bit b :: rev (s :: rest21)) ->
+    run (S (length (s :: rest21)) + 1 +
+         S (length (source_bit b :: rev (s :: rest21))))
+      (entry_config (if b then 22 else 21)
+        (rest21 ++ 2 :: rev data)
+        (s :: 7 :: map q16_restore q16map ++ source_bit bit :: tail)) =
+    cfg_ml 5
+      (rev (source_bit b :: rev (s :: rest21)) ++ 6 :: rev data')
+      ((if d then 3 else 2) :: map q16_restore q16map ++
+       source_bit bit :: tail).
+Proof.
+  intros bits action_init tbuffer data data' tail b bit d s rest21
+    q16map H21 Hdata Hreturn.
+  match goal with
+  | |- run ?clock ?start = ?rhs =>
+    replace clock with
+      (S (length (s :: rest21)) +
+       (1 + S (length (source_bit b :: rev (s :: rest21)))))
+      by lia;
+    rewrite (dispatch_run_add
+      (S (length (s :: rest21)))
+      (1 + S (length (source_bit b :: rev (s :: rest21)))) start)
+  end.
+  assert (Hq : (if b then 22 else 21) = 21 \/
+               (if b then 22 else 21) = 22)
+    by (destruct b; simpl; auto).
+  rewrite (q21_scan_to_left_direction rest21 s
+    (if b then 22 else 21) (rev data)
+    (7 :: map q16_restore q16map ++ source_bit bit :: tail) Hq H21).
+  replace (q21_written (if b then 22 else 21)) with (source_bit b)
+    by (destruct b; reflexivity).
+  rewrite Hdata.
+  cbn [cfg_ml].
+  match goal with
+  | |- run (S (length (source_bit b :: rev (s :: rest21))))
+      (step (entry_config 20 data'
+        (source_bit d :: source_bit b :: rev (s :: rest21) ++
+         7 :: map q16_restore q16map ++ source_bit bit :: tail))) = ?rhs =>
+    change (run (S (length (source_bit b :: rev (s :: rest21))))
+      (entry_config 20 data'
+        (source_bit d :: source_bit b :: rev (s :: rest21) ++
+         7 :: map q16_restore q16map ++ source_bit bit :: tail)) = rhs)
+  end.
+  rewrite (q20_raw_to_m d data'
+    (source_bit b :: rev (s :: rest21) ++
+     7 :: map q16_restore q16map ++ source_bit bit :: tail)).
+  destruct d.
+  - apply (q18_scan_to_marker
+      (source_bit b :: rev (s :: rest21))
+      (6 :: data')
+      (map q16_restore q16map ++ source_bit bit :: tail) Hreturn).
+  - apply (q17_scan_to_marker
+      (source_bit b :: rev (s :: rest21))
+      (6 :: data')
+      (map q16_restore q16map ++ source_bit bit :: tail) Hreturn).
+Qed.
+
+Print Assumptions canonical_q22_decision_to_q5_left.
+
+Theorem canonical_q13_restore_to_q5 :
+  forall marked tbuffer data data' b rest bit tail d (s21 : nat) rest21,
+    Forall q12_pass (match_mark b :: rest ++ 5 :: rev tbuffer) ->
+    Forall q14_pass (tbuffer ++ [5] ++ rev rest ++ [match_mark b]) ->
+    Forall q15_pass (marked ++ [2]) ->
+    Forall q16_pass marked ->
+    map q14_restore (rest ++ 5 :: rev tbuffer) = s21 :: rest21 ->
+    rev data = source_bit d :: rev data' ->
+    Forall q17_pass (source_bit b :: rev (s21 :: rest21)) ->
+    run (S (length (match_mark b :: rest ++ 5 :: rev tbuffer)) +
+         S (length (tbuffer ++ [5] ++ rev rest ++ [match_mark b])) +
+         S (length (marked ++ [2])) +
+         S (length (2 :: rev marked ++ [4])) +
+         S (length (s21 :: rest21)) + 1 +
+         S (length (source_bit b :: rev (s21 :: rest21))))
+      (cfg_ml 13
+        (match_mark b :: rest ++ 5 :: rev tbuffer ++ 6 :: rev data)
+        (4 :: marked ++ 2 :: source_bit bit :: tail)) =
+    cfg_ml 5
+      (rev (source_bit b :: rev (s21 :: rest21)) ++ 6 :: rev data')
+      ((if d then 3 else 2) ::
+       map q16_restore (rev (2 :: rev marked ++ [4])) ++
+       source_bit bit :: tail).
+Proof.
+  intros marked tbuffer data data' b rest bit tail d s21 rest21
+    H12 H14 H15 H16 Hrestored Hdata Hreturn.
+  match goal with
+  | |- run ?clock ?start = ?rhs =>
+    replace clock with
+      ((S (length (match_mark b :: rest ++ 5 :: rev tbuffer)) +
+        S (length (tbuffer ++ [5] ++ rev rest ++ [match_mark b])) +
+        S (length (marked ++ [2])) +
+        S (length (2 :: rev marked ++ [4]))) +
+       (S (length (s21 :: rest21)) + 1 +
+        S (length (source_bit b :: rev (s21 :: rest21))))) by lia;
+    rewrite (dispatch_run_add
+      (S (length (match_mark b :: rest ++ 5 :: rev tbuffer)) +
+       S (length (tbuffer ++ [5] ++ rev rest ++ [match_mark b])) +
+       S (length (marked ++ [2])) +
+       S (length (2 :: rev marked ++ [4])))
+      (S (length (s21 :: rest21)) + 1 +
+       S (length (source_bit b :: rev (s21 :: rest21)))) start)
+  end.
+  rewrite (canonical_q13_restore_to_q16_decision marked tbuffer data
+    b rest bit tail H12 H14 H15 H16).
+  rewrite Hrestored.
+  cbn [cfg_ml].
+  apply (canonical_q22_decision_to_q5_left
+    [] [] tbuffer data data' tail b bit d s21 rest21
+    (rev (2 :: rev marked ++ [4]))).
+  - rewrite <- Hrestored. apply Forall_q14_restore_q21.
+    inversion H14 as [|? ? Hmark Htail]; subst.
+    exact Htail.
+  - exact Hdata.
+  - exact Hreturn.
+Qed.
+
+Print Assumptions canonical_q13_restore_to_q5.
