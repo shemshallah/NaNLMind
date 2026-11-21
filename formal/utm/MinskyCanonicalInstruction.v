@@ -543,7 +543,6 @@ Proof.
                     [4])) ++
             source_bit bit :: tail))
     by (rewrite <- app_assoc; reflexivity).
-  rewrite dispatch_run_add.
   rewrite (q19_scan_to_m pre hit (source_bit b :: rev data)
     (post ++
      7 :: map q16_restore
@@ -950,6 +949,7 @@ Proof.
                [4])) ++
        source_bit bit :: tail))
     by (rewrite <- app_assoc; reflexivity).
+  rewrite dispatch_run_add.
   rewrite (q19_scan_to_m pre hit (source_bit b :: rev data)
     (post ++
      7 :: map q16_restore
