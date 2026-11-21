@@ -1778,6 +1778,8 @@ Theorem canonical_q12_restore_to_q5 :
     Forall q17_pass post ->
     run (S (length (match_mark b :: rest ++ 5 :: rev tbuffer)) +
          S (length (tbuffer ++ [5] ++ rev rest ++ [match_mark b])) +
+         S (length (marked ++ [3])) +
+         S (length (3 :: rev marked ++ [4])) +
          S (length (s21 :: rest21)) + S (length pre) + S (length post))
       (cfg_ml 12
         (match_mark b :: rest ++ 5 :: rev tbuffer ++ 6 :: rev data)
@@ -1807,7 +1809,23 @@ Proof.
   inversion H14' as [|? ? Hmark Htail]; subst.
   assert (H21 : Forall q21_pass (s21 :: rest21)).
   { rewrite <- Hrestored. apply Forall_q14_restore_q21. exact Htail. }
-  rewrite dispatch_run_add.
+  match goal with
+  | |- run ?clock ?start = ?rhs =>
+    replace clock with
+      ((S (length (match_mark b :: rest ++ 5 :: rev tbuffer)) +
+        S (length (tbuffer ++ [5] ++ rev rest ++ [match_mark b])) +
+        S (length (marked ++ [3])) +
+        S (length (3 :: rev marked ++ [4]))) +
+       (S (length (s21 :: rest21)) +
+        S (length pre) + S (length post))) by lia;
+    rewrite (dispatch_run_add
+      (S (length (match_mark b :: rest ++ 5 :: rev tbuffer)) +
+       S (length (tbuffer ++ [5] ++ rev rest ++ [match_mark b])) +
+       S (length (marked ++ [3])) +
+       S (length (3 :: rev marked ++ [4])))
+      (S (length (s21 :: rest21)) +
+       S (length pre) + S (length post)) start)
+  end.
   rewrite (canonical_q12_restore_to_q16_decision marked tbuffer data
     b rest bit tail H12 H14 H15 H16).
   rewrite Hrestored.
