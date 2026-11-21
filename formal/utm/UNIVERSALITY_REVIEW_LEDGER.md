@@ -1555,3 +1555,16 @@ This resolves the pipeline offset: the one-row source step is
 q5-return -> q5-return, not q5-fetch -> q5-return.  The encoder can map
 a source configuration to the q5 return frame and use this macro.  The
 left/q13 variant and the concrete tape layout remain.
+
+### Running-case one-row macro, both directions (kernel-checked)
+
+- `canonical_q5_return_to_q5_right`,
+- `canonical_q5_return_to_q5_left`.
+
+Fast branch acceptance:
+[44957145351](https://github.com/shemshallah/NaNLMind/actions/runs/44957145351).
+
+Both directions now have the complete one-row running macro from a q5
+return frame to the next q5 return frame.  The remaining encoder pieces
+are the concrete q5-return layout and the lookup-failure/mismatch
+branch.

@@ -566,3 +566,18 @@ The last theorem is the running-case encoder step: the previous
 instruction's q5 return frame is matched against the next row, copied,
 moved, and the next q5 return frame is produced, with the exact native
 clock.
+
+## Running-case one-row macro, both directions (proved)
+
+Both one-row running macros are now kernel-checked:
+
+- `canonical_q5_return_to_q5_right`,
+- `canonical_q5_return_to_q5_left`.
+
+Each starts at a q5 return frame, matches the next row, copies/moves it,
+and returns to the next q5 return frame with the exact native clock.
+The left variant uses the q13 marker-2/q20 path.
+
+This is the core running-case encoder step.  The remaining work is the
+concrete q5-return tape layout from a wide-source configuration and the
+halt/mismatch branch.
