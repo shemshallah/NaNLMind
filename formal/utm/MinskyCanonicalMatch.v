@@ -482,7 +482,7 @@ Proof.
     + left.
       pose proof (find_entry_halt_unique _ _ _ Hfind Hehalt) as [Hq3 Hs5].
       assert (He : e =
-        {| e_from := 3; e_read := 5; e_write := 5; e_move := 0%Z;
+        {| e_from := 3; e_read := 5; e_write := 5; e_move := 0;
            e_to := 0; e_halt := true |}).
       {
         destruct minsky_halt_entry as [e0 [Hfind0 Hhalt0]].
