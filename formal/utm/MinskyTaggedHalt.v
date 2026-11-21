@@ -1702,23 +1702,15 @@ Lemma four_prefix_left_rail_normalize :
        q0_stable_control_tag next_control; 4; 0; 6].
 Proof.
   intros first rest_prefix extra next_control.
-  replace (rev ([4] ++
-      [q0_stable_control_tag next_control;
-       q0_stable_control_tag extra] ++
-      rev (map q0_stable_control_tag (first :: rest_prefix))))
-    with (map q0_stable_control_tag (first :: rest_prefix) ++
-      [q0_stable_control_tag extra;
-       q0_stable_control_tag next_control; 4]).
-  2:{
-    rewrite rev_app_distr. cbn [rev].
-    rewrite rev_app_distr. cbn [rev].
-    rewrite rev_involutive.
-    repeat rewrite app_nil_l.
-    repeat rewrite app_nil_r.
-    repeat rewrite <- app_assoc.
-    reflexivity.
-  }
-  rewrite <- app_assoc. reflexivity.
+  rewrite rev_app_distr.
+  rewrite rev_app_distr.
+  cbn [rev].
+  rewrite rev_involutive.
+  repeat rewrite app_nil_l.
+  repeat rewrite app_nil_r.
+  repeat rewrite <- app_assoc.
+  cbn [app].
+  reflexivity.
 Qed.
 
 Lemma four_prefix_left_rail_normalize_q2 :
