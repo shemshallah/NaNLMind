@@ -2086,7 +2086,7 @@ Print Assumptions canonical_q5_instruction_full_right_to_q12.
 
 Theorem canonical_q5_instruction_full_right_to_q5 :
   forall bits action_init tbuffer data b bit tail pre hit post
-         symbol remaining prefix rest s21 rest21 bit' tail',
+         symbol remaining prefix rest s21 rest21 next_bit next_tail,
     length (action_init ++ [b]) = length bits ->
     Forall q12_pass tbuffer ->
     Forall q14_pass tbuffer ->
@@ -2100,7 +2100,7 @@ Theorem canonical_q5_instruction_full_right_to_q5 :
       (symbol :: remaining) ++ 5 :: prefix ->
     tail = map source_bit (action_init ++ [b]) ++
            source_bit true :: rest ->
-    rest = source_bit bit' :: tail' ->
+    rest = source_bit next_bit :: next_tail ->
     map entry_rewrite (rev (symbol :: remaining)) ++
       (if hit then 3 else 2) ::
       map q16_restore
@@ -2155,10 +2155,10 @@ Theorem canonical_q5_instruction_full_right_to_q5 :
          (rev (3 :: rev
            (map match_mark bits ++
             map match_mark (action_init ++ [b])) ++ [4])) ++
-       source_bit bit' :: tail').
+       source_bit next_bit :: next_tail).
 Proof.
   intros bits action_init tbuffer data b bit tail pre hit post
-    symbol remaining prefix rest s21 rest21 bit' tail'
+    symbol remaining prefix rest s21 rest21 next_bit next_tail
     Hlen H12t H14t Hdecomp Hpre Hpost Hprefix Hleft Htail Hrest
     Hrail Hscan Hrestored H12r H14r.
   subst rest. subst prefix. subst tail.
@@ -2245,12 +2245,12 @@ Proof.
   rewrite (canonical_q5_instruction_full_right_to_q12
     bits action_init tbuffer data b bit tail pre hit post
     symbol remaining prefix
-    (source_bit bit' :: tail')
+    (source_bit next_bit :: next_tail)
     Hlen H12t H14t Hdecomp Hpre Hpost Hprefix Hleft Htail Hrail Hscan).
   apply (canonical_q12_restore_to_q5
     (map match_mark bits ++ map match_mark (action_init ++ [b]))
     tbuffer data b (rev (map match_mark action_init))
-    bit' tail' s21 rest21 pre hit post
+    next_bit next_tail s21 rest21 pre hit post
     H12r H14r Hmarked15 Hmarked16 Hrestored Hdecomp' Hpre Hpost).
 Qed.
 
