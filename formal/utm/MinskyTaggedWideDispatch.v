@@ -90,8 +90,6 @@ Proof.
   intros old bits target outer tail.
   rewrite dispatch_run_add.
   rewrite q5_left_buffer_to_q0_any_tags.
-  replace (4 + (length bits + 1))
-    with (4 + (length ([] : list nat) + length bits + 1)) by lia.
   apply (q0_tagged_control_list_dispatches_target
     [] (0 :: 6 :: 5 :: source_bit old :: 6 :: outer) tail bits target).
   constructor.
@@ -193,7 +191,8 @@ Proof.
     (0 :: 6 :: map q0_stable_control_tag bits ++ 5 :: stored)
     tail next_bits target).
   constructor.
-  destruct sacrificial; unfold q0_pass; auto 12.
+  - destruct sacrificial; unfold q0_pass; auto 12.
+  - constructor.
 Qed.
 
 Print Assumptions q5_q1_q0_buffered_tagged_list_dispatch.
