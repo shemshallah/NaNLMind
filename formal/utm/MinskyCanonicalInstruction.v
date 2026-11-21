@@ -2305,6 +2305,7 @@ Theorem canonical_q5_instruction_full_left_to_q13 :
            (source_bit b ::
             rev (map q14_restore
               (rev (map match_mark action_init) ++ 5 :: rev tbuffer)))) +
+         S (length (symbol :: remaining)) +
          matched_comparison_steps bits (length ([] : list nat)) (length [4]) +
          S (length ([] ++ map match_raw bits)) +
          copy_all_clock bits (action_init ++ [b]) [] (map match_mark bits) +
@@ -2352,6 +2353,7 @@ Proof.
           (source_bit b ::
            rev (map q14_restore
              (rev (map match_mark action_init) ++ 5 :: rev tbuffer)))) +
+        S (length (symbol :: remaining)) +
         matched_comparison_steps bits (length ([] : list nat)) (length [4]) +
         S (length ([] ++ map match_raw bits))) +
        (copy_all_clock bits (action_init ++ [b]) [] (map match_mark bits) +
@@ -2364,6 +2366,7 @@ Proof.
          (source_bit b ::
           rev (map q14_restore
             (rev (map match_mark action_init) ++ 5 :: rev tbuffer)))) +
+       S (length (symbol :: remaining)) +
        matched_comparison_steps bits (length ([] : list nat)) (length [4]) +
        S (length ([] ++ map match_raw bits)))
       (copy_all_clock bits (action_init ++ [b]) [] (map match_mark bits) +
