@@ -487,7 +487,7 @@ Proof.
       {
         destruct minsky_halt_entry as [e0 [Hfind0 Hhalt0]].
         rewrite Hq3, Hs5 in Hfind.
-        rewrite Hfind0 in Hfind. inversion Hfind. subst e0. reflexivity.
+        rewrite Hfind0 in Hfind. inversion Hfind. subst e. reflexivity.
       }
       subst e.
       cbn [c_state c_tape e_to e_write e_move].
