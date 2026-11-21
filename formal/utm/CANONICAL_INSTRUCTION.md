@@ -429,3 +429,31 @@ q5 return -> q6 (match/copy)
 
 Together with the right q12 path, the canonical instruction movement is
 complete for both directions.
+
+## Full right instruction to q12 (proved)
+
+`canonical_q5_instruction_full_right_to_q12` composes the q5 -> q6
+next-row match/copy with the q6 action copy and direction capture in one
+native run:
+
+```text
+entry_config 5
+  (rev (map source_bit bits) ++ 5 :: rev tbuffer ++ 6 :: rev data)
+  (4 :: map source_bit bits ++
+   map source_bit (action_init ++ [b]) ++
+   source_bit true :: 4 :: source_bit bit :: tail)
+-> q6 match/copy -> q6 copy -> q12
+= cfg_ml 12
+    (rev (map match_mark (action_init ++ [b])) ++
+     5 :: rev tbuffer ++ 6 :: rev data)
+    (4 :: (map match_mark bits ++
+           map match_mark (action_init ++ [b])) ++
+          3 :: rest)
+```
+
+with the exact sum of the q5 -> q6, copy, and direction clocks.  The
+representation premises are the q5-left decomposition, the rail
+decomposition, the prefix identity, and the `tail` shape.
+
+Composing this with `canonical_q12_restore_to_q5` is the final q5 -> q5
+instruction movement macro.

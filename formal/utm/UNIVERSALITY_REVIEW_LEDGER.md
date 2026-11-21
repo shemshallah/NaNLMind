@@ -1414,3 +1414,13 @@ q5 return -> q6 -> q12/q13 -> q16 -> q19/q20 -> q17/q18 -> q5 return.
 The next composition is the single q5-return -> q5-return macro joining
 the q5->q6, q6->q12/q13, and q12/q13->q5 theorems, followed by the source
 encoder and halt reflection.
+
+### Full right instruction to q12 (kernel-checked)
+
+`canonical_q5_instruction_full_right_to_q12` joins the q5 -> q6
+match/copy and the q6 -> q12 copy/direction phases in one native run
+with the exact summed clock.  Fast branch acceptance:
+[44910845782](https://github.com/shemshallah/NaNLMind/actions/runs/44910845782).
+
+The last movement composition is q5 -> q12 -> q5, using
+`canonical_q12_restore_to_q5`.
