@@ -1844,6 +1844,11 @@ Print Assumptions canonical_q12_restore_to_q5.
     return across the written 6 and the stored direction mark to the
     next 7. *)
 
+Lemma cfg_ml_cons :
+  forall (q : nat) (x : nat) (xs right : list nat),
+    cfg_ml q (x :: xs) right = entry_config q xs (x :: right).
+Proof. intros q x xs right. reflexivity. Qed.
+
 Lemma run_one_entry :
   forall (q : nat) (left right : list nat),
     run 1 (entry_config q left right) =
@@ -1888,7 +1893,7 @@ Proof.
   replace (q21_written (if b then 22 else 21)) with (source_bit b)
     by (destruct b; reflexivity).
   rewrite Hdata.
-  cbn [cfg_ml].
+  rewrite cfg_ml_cons.
   rewrite dispatch_run_add.
   rewrite run_one_entry.
   rewrite (q20_raw_to_m d data'
