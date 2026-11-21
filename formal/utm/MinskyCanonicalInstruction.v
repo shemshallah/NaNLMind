@@ -2076,3 +2076,182 @@ Proof.
 Qed.
 
 Print Assumptions canonical_q5_instruction_full_right_to_q12.
+
+(** ** Full right instruction movement: q5 -> q5
+
+    Compose the q5 -> q12 full match/copy/direction theorem with the
+    q12 restore/q16/q19/q17/q18 return.  This is the complete right
+    instruction movement macro, conditional on the representation
+    premises supplied by the encoder. *)
+
+Theorem canonical_q5_instruction_full_right_to_q5 :
+  forall bits action_init tbuffer data b bit tail pre hit post
+         symbol remaining prefix rest s21 rest21 bit' tail',
+    length (action_init ++ [b]) = length bits ->
+    Forall q12_pass tbuffer ->
+    Forall q14_pass tbuffer ->
+    rev (map q14_restore
+      (rev (map match_mark action_init) ++ 5 :: rev tbuffer)) =
+      pre ++ source_bit hit :: post ->
+    Forall q15_pass pre ->
+    Forall q17_pass post ->
+    prefix = rev tbuffer ++ 6 :: rev data ->
+    rev post ++ 6 :: rev pre ++ source_bit b :: rev data =
+      (symbol :: remaining) ++ 5 :: prefix ->
+    tail = map source_bit (action_init ++ [b]) ++
+           source_bit true :: rest ->
+    rest = source_bit bit' :: tail' ->
+    map entry_rewrite (rev (symbol :: remaining)) ++
+      (if hit then 3 else 2) ::
+      map q16_restore
+        (rev (4 :: rev
+          (instruction_marked bits (action_init ++ [b]) ++ [3]) ++
+         [4])) ++
+      source_bit bit :: tail =
+      map match_mark bits ++ [4] ++ map match_raw bits ++ tail ->
+    Forall canonical_q5_return_pass (symbol :: remaining) ->
+    map q14_restore
+      (rev (map match_mark action_init) ++ 5 :: rev tbuffer) =
+      s21 :: rest21 ->
+    Forall q12_pass
+      (match_mark b :: rev (map match_mark action_init) ++
+       5 :: rev tbuffer) ->
+    Forall q14_pass
+      (tbuffer ++ [5] ++ rev (rev (map match_mark action_init)) ++
+       [match_mark b]) ->
+    run ((instruction_q19_clock bits action_init tbuffer b +
+          S (length pre) + S (length post) +
+          S (length (symbol :: remaining)) +
+          matched_comparison_steps bits (length ([] : list nat)) (length [4]) +
+          S (length ([] ++ map match_raw bits)) +
+          copy_all_clock bits (action_init ++ [b]) [] (map match_mark bits) +
+          direction_clock
+            (map match_mark bits ++ map match_mark (action_init ++ [b]))
+            (map match_mark (action_init ++ [b]))) +
+         (S (length
+              (match_mark b :: rev (map match_mark action_init) ++
+               5 :: rev tbuffer)) +
+          S (length
+              (tbuffer ++ [5] ++ rev (rev (map match_mark action_init)) ++
+               [match_mark b])) +
+          S (length
+              ((map match_mark bits ++
+                map match_mark (action_init ++ [b])) ++ [3])) +
+          S (length
+              (3 :: rev
+                (map match_mark bits ++
+                 map match_mark (action_init ++ [b])) ++ [4])) +
+          S (length (s21 :: rest21)) +
+          S (length pre) + S (length post)))
+      (entry_config 5
+        (rev (map source_bit bits) ++ 5 :: rev tbuffer ++ 6 :: rev data)
+        (4 :: map source_bit bits ++
+         map source_bit (action_init ++ [b]) ++
+         source_bit true :: 4 :: source_bit bit :: tail)) =
+    cfg_ml 5
+      (rev post ++ 6 :: rev pre ++ source_bit b :: rev data)
+      ((if hit then 3 else 2) ::
+       map q16_restore
+         (rev (3 :: rev
+           (map match_mark bits ++
+            map match_mark (action_init ++ [b])) ++ [4])) ++
+       source_bit bit' :: tail').
+Proof.
+  intros bits action_init tbuffer data b bit tail pre hit post
+    symbol remaining prefix rest s21 rest21 bit' tail'
+    Hlen H12t H14t Hdecomp Hpre Hpost Hprefix Hleft Htail Hrest
+    Hrail Hscan Hrestored H12r H14r.
+  subst rest. subst prefix. subst tail.
+  assert (Hdecomp' : rev (s21 :: rest21) =
+      pre ++ source_bit hit :: post).
+  { rewrite <- Hrestored. exact Hdecomp. }
+  assert (Hmarked15 : Forall q15_pass
+      ((map match_mark bits ++
+        map match_mark (action_init ++ [b])) ++ [3])).
+  {
+    rewrite Forall_app. split.
+    - rewrite Forall_app. split.
+      + apply Forall_match_mark.
+        intros b0. destruct b0; unfold q15_pass, match_mark; auto 10.
+      + apply Forall_match_mark.
+        intros b0. destruct b0; unfold q15_pass, match_mark; auto 10.
+    - constructor.
+      + unfold q15_pass; auto 10.
+      + constructor.
+  }
+  assert (Hmarked16 : Forall q16_pass
+      (map match_mark bits ++
+       map match_mark (action_init ++ [b]))).
+  {
+    rewrite Forall_app. split.
+    - apply Forall_match_mark.
+      intros b0. destruct b0; unfold q16_pass, match_mark; auto 10.
+    - apply Forall_match_mark.
+      intros b0. destruct b0; unfold q16_pass, match_mark; auto 10.
+  }
+  match goal with
+  | |- run ?clock ?start = ?rhs =>
+    replace clock with
+      ((instruction_q19_clock bits action_init tbuffer b +
+        S (length pre) + S (length post) +
+        S (length (symbol :: remaining)) +
+        matched_comparison_steps bits (length ([] : list nat)) (length [4]) +
+        S (length ([] ++ map match_raw bits)) +
+        copy_all_clock bits (action_init ++ [b]) [] (map match_mark bits) +
+        direction_clock
+          (map match_mark bits ++ map match_mark (action_init ++ [b]))
+          (map match_mark (action_init ++ [b]))) +
+       (S (length
+            (match_mark b :: rev (map match_mark action_init) ++
+             5 :: rev tbuffer)) +
+        S (length
+            (tbuffer ++ [5] ++ rev (rev (map match_mark action_init)) ++
+             [match_mark b])) +
+        S (length
+            ((map match_mark bits ++
+              map match_mark (action_init ++ [b])) ++ [3])) +
+        S (length
+            (3 :: rev
+              (map match_mark bits ++
+               map match_mark (action_init ++ [b])) ++ [4])) +
+        S (length (s21 :: rest21)) +
+        S (length pre) + S (length post))) by lia;
+    rewrite (dispatch_run_add
+      (instruction_q19_clock bits action_init tbuffer b +
+       S (length pre) + S (length post) +
+       S (length (symbol :: remaining)) +
+       matched_comparison_steps bits (length ([] : list nat)) (length [4]) +
+       S (length ([] ++ map match_raw bits)) +
+       copy_all_clock bits (action_init ++ [b]) [] (map match_mark bits) +
+       direction_clock
+         (map match_mark bits ++ map match_mark (action_init ++ [b]))
+         (map match_mark (action_init ++ [b])))
+      (S (length
+           (match_mark b :: rev (map match_mark action_init) ++
+            5 :: rev tbuffer)) +
+       S (length
+           (tbuffer ++ [5] ++ rev (rev (map match_mark action_init)) ++
+            [match_mark b])) +
+       S (length
+           ((map match_mark bits ++
+             map match_mark (action_init ++ [b])) ++ [3])) +
+       S (length
+           (3 :: rev
+             (map match_mark bits ++
+              map match_mark (action_init ++ [b])) ++ [4])) +
+       S (length (s21 :: rest21)) +
+       S (length pre) + S (length post)) start)
+  end.
+  rewrite (canonical_q5_instruction_full_right_to_q12
+    bits action_init tbuffer data b bit tail pre hit post
+    symbol remaining prefix
+    (source_bit bit' :: tail')
+    Hlen H12t H14t Hdecomp Hpre Hpost Hprefix Hleft Htail Hrail Hscan).
+  apply (canonical_q12_restore_to_q5
+    (map match_mark bits ++ map match_mark (action_init ++ [b]))
+    tbuffer data b (rev (map match_mark action_init))
+    bit' tail' s21 rest21 pre hit post
+    H12r H14r Hmarked15 Hmarked16 Hrestored Hdecomp' Hpre Hpost).
+Qed.
+
+Print Assumptions canonical_q5_instruction_full_right_to_q5.
