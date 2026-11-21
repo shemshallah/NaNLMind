@@ -1443,6 +1443,13 @@ Proof.
     bits action_init tbuffer data b bit tail pre hit post
     prefix symbol remaining bits' pass [4]
     Hlen H12t H14t Hdecomp Hpre Hpost Hleft Hscan Hrail Hpass H4).
+  change (run (S (length (pass ++ map match_raw bits')))
+    (entry_config 1 (5 :: prefix)
+      ((pass ++ map match_raw bits') ++ [4] ++
+       map match_mark bits' ++ tail)) =
+    entry_config 6
+      (4 :: rev (pass ++ map match_raw bits') ++ 5 :: prefix)
+      (map match_mark bits' ++ tail)).
   apply (q1_scan_four_list_to_q6
     (pass ++ map match_raw bits')
     (map match_mark bits' ++ tail) (5 :: prefix)).
@@ -1505,6 +1512,13 @@ Proof.
     bits action_init tbuffer data data' b bit tail d
     prefix symbol remaining bits' pass [4]
     Hlen H12t H14t Hdata Hpost Hleft Hscan Hrail Hpass H4).
+  change (run (S (length (pass ++ map match_raw bits')))
+    (entry_config 1 (5 :: prefix)
+      ((pass ++ map match_raw bits') ++ [4] ++
+       map match_mark bits' ++ tail)) =
+    entry_config 6
+      (4 :: rev (pass ++ map match_raw bits') ++ 5 :: prefix)
+      (map match_mark bits' ++ tail)).
   apply (q1_scan_four_list_to_q6
     (pass ++ map match_raw bits')
     (map match_mark bits' ++ tail) (5 :: prefix)).
