@@ -1487,3 +1487,22 @@ This is the native half of halt reflection.  The encoder must show that
 valid encoded configurations are in range and that the marker is reached
 exactly when `source_lookup` fails.  Fast branch acceptance:
 [44932476393](https://github.com/shemshallah/NaNLMind/actions/runs/44932476393).
+
+### Packaged canonical step (kernel-checked)
+
+`canonical_step` / `canonical_step_ok` / `canonical_step_start` /
+`canonical_step_end` / `canonical_step_clock` package the full right
+q5 -> q5 macro as a single reusable native step.  Fast branch
+acceptance:
+[44937038226](https://github.com/shemshallah/NaNLMind/actions/runs/44937038226).
+
+The remaining encoder obligation is exactly:
+
+```text
+forall rows c,
+  exists p, canonical_step_ok p /\
+    canonical_step_start p = encode rows c /\
+    canonical_step_end p = encode rows (source_step rows c).
+```
+
+plus the clock/positivity/halt-refinement instances.

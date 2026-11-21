@@ -531,3 +531,23 @@ Both complete q5 -> q5 instruction macros are now kernel-checked:
 
 The remaining work is the source encoder/tape invariant, halt
 reflection, and the universality reduction.
+
+## Packaged canonical instruction step (proved)
+
+The full right q5 -> q5 macro is now a reusable step interface:
+
+```text
+Record canonical_step
+Record canonical_step_ok
+Definition canonical_step_start / canonical_step_end
+Definition canonical_step_clock
+Theorem canonical_step_run :
+  canonical_step_ok p ->
+  run (canonical_step_clock p) (canonical_step_start p) =
+  canonical_step_end p.
+```
+
+The encoder obligation is now explicit: for each source configuration,
+produce a `canonical_step` whose `ok` witness holds and whose start/end
+frames are the encodings of the source configuration and its successor.
+The clock is split exactly as `q5 -> q12` plus `q12 -> q5`.
