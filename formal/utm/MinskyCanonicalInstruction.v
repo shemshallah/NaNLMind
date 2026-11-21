@@ -1109,7 +1109,7 @@ Print Assumptions canonical_q5_return_scan_to_first_five.
 
 Theorem canonical_q5_instruction_q19_collision_to_q1 :
   forall bits action_init tbuffer data b bit tail pre hit post
-         rail_data prefix symbol remaining,
+         prefix symbol remaining,
     length (action_init ++ [b]) = length bits ->
     Forall q12_pass tbuffer ->
     Forall q14_pass tbuffer ->
@@ -1118,9 +1118,8 @@ Theorem canonical_q5_instruction_q19_collision_to_q1 :
       pre ++ source_bit hit :: post ->
     Forall q15_pass pre ->
     Forall q17_pass post ->
-    rev data = rail_data ++ 5 :: prefix ->
-    rev post ++ 6 :: rev pre ++ source_bit b :: rail_data =
-      symbol :: remaining ->
+    rev post ++ 6 :: rev pre ++ source_bit b :: rev data =
+      (symbol :: remaining) ++ 5 :: prefix ->
     Forall canonical_q5_return_pass (symbol :: remaining) ->
     run (instruction_q19_clock bits action_init tbuffer b +
          S (length pre) + S (length post) +
@@ -1140,8 +1139,8 @@ Theorem canonical_q5_instruction_q19_collision_to_q1 :
        source_bit bit :: tail).
 Proof.
   intros bits action_init tbuffer data b bit tail pre hit post
-    rail_data prefix symbol remaining Hlen H12t H14t Hdecomp
-    Hpre Hpost Hdata Hleft Hscan.
+    prefix symbol remaining Hlen H12t H14t Hdecomp
+    Hpre Hpost Hleft Hscan.
   match goal with
   | |- run ?clock ?start = ?rhs =>
     replace clock with
@@ -1156,14 +1155,7 @@ Proof.
   rewrite (canonical_q5_instruction_q19_collision_to_q5
     bits action_init tbuffer data b bit tail pre hit post
     Hlen H12t H14t Hdecomp Hpre Hpost).
-  replace (rev post ++ 6 :: rev pre ++ source_bit b :: rev data)
-    with ((symbol :: remaining) ++ 5 :: prefix).
-  2:{
-    rewrite Hdata.
-    repeat rewrite <- app_assoc.
-    rewrite Hleft.
-    reflexivity.
-  }
+  rewrite Hleft.
   cbn [cfg_ml].
   apply (canonical_q5_return_scan_to_first_five remaining symbol prefix
     ((if hit then 3 else 2) ::
@@ -1178,7 +1170,7 @@ Print Assumptions canonical_q5_instruction_q19_collision_to_q1.
 
 Theorem canonical_q5_instruction_left_collision_to_q1 :
   forall bits action_init tbuffer data data' b bit tail (d : bool)
-         rail_data prefix symbol remaining,
+         prefix symbol remaining,
     length (action_init ++ [b]) = length bits ->
     Forall q12_pass tbuffer ->
     Forall q14_pass tbuffer ->
@@ -1187,11 +1179,10 @@ Theorem canonical_q5_instruction_left_collision_to_q1 :
       (source_bit b ::
        rev (map q14_restore
          (rev (map match_mark action_init) ++ 5 :: rev tbuffer))) ->
-    rev data' = rail_data ++ 5 :: prefix ->
     rev (source_bit b ::
       rev (map q14_restore
         (rev (map match_mark action_init) ++ 5 :: rev tbuffer))) ++
-      6 :: rail_data = symbol :: remaining ->
+      6 :: rev data' = (symbol :: remaining) ++ 5 :: prefix ->
     Forall canonical_q5_return_pass (symbol :: remaining) ->
     run (instruction_q20_clock bits action_init tbuffer b + 1 +
          S (length
@@ -1214,8 +1205,8 @@ Theorem canonical_q5_instruction_left_collision_to_q1 :
        source_bit bit :: tail).
 Proof.
   intros bits action_init tbuffer data data' b bit tail d
-    rail_data prefix symbol remaining Hlen H12t H14t Hdata Hpost
-    Hdata' Hleft Hscan.
+    prefix symbol remaining Hlen H12t H14t Hdata Hpost
+    Hleft Hscan.
   match goal with
   | |- run ?clock ?start = ?rhs =>
     replace clock with
@@ -1236,17 +1227,7 @@ Proof.
   rewrite (canonical_q5_instruction_left_collision_to_q5
     bits action_init tbuffer data data' b bit tail d
     Hlen H12t H14t Hdata Hpost).
-  replace (rev (source_bit b ::
-      rev (map q14_restore
-        (rev (map match_mark action_init) ++ 5 :: rev tbuffer))) ++
-      6 :: rev data')
-    with ((symbol :: remaining) ++ 5 :: prefix).
-  2:{
-    rewrite Hdata'.
-    repeat rewrite <- app_assoc.
-    rewrite Hleft.
-    reflexivity.
-  }
+  rewrite Hleft.
   cbn [cfg_ml].
   apply (canonical_q5_return_scan_to_first_five remaining symbol prefix
     ((if d then 3 else 2) ::
