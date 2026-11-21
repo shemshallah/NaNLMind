@@ -1024,7 +1024,6 @@ Proof.
          rev (map q14_restore
            (rev (map match_mark action_init) ++ 5 :: rev tbuffer))))) start)
   end.
-  unfold instruction_q20_clock.
   rewrite (canonical_q5_instruction_left_branch_hits_current_cell
     bits action_init tbuffer data data' b bit tail d
     Hlen H12t H14t Hdata).
