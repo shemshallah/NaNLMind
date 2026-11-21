@@ -516,8 +516,10 @@ Proof.
       * exfalso.
         destruct (minsky_table_complete _ _ Hq Hs) as [e He].
         rewrite He in Hfind. discriminate.
-      * right. cbn [c_state c_tape halt]. exact Hs.
-    + left. cbn [c_state c_tape halt]. exact Hq.
+      * right. unfold step. rewrite Hrun, Hfind.
+        cbn [c_state c_tape halt]. exact Hs.
+    + left. unfold step. rewrite Hrun, Hfind.
+      cbn [c_state c_tape halt]. exact Hq.
 Qed.
 
 Print Assumptions step_halted_shape.
