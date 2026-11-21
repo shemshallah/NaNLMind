@@ -146,9 +146,12 @@ Print Assumptions conditional_wide_source_native_halting_equivalence.
     explicit placeholder; the theorem below proves the macro step only
     for the halt side. *)
 
+Definition wide_halted_tape : Tape :=
+  {| t_left := []; t_right := [5] |}.
+
 Definition wide_halted_marker : Config :=
   {| c_state := 0;
-     c_tape := ({| t_left := []; t_right := [5] |});
+     c_tape := wide_halted_tape;
      c_halted := true |}.
 
 Definition wide_halt_entry : Config :=
