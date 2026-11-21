@@ -2071,9 +2071,8 @@ Proof.
     symbol remaining bits []
     Hlen H12t H14t Hdecomp Hpre Hpost Hleft
     Hscan Hrail (Forall_nil q1_pass)).
-  rewrite (canonical_q6_copy_direction_to_q12
+  apply (canonical_q6_copy_direction_to_q12
     bits (action_init ++ [b]) tbuffer data true rest Hlen).
-  reflexivity.
 Qed.
 
 Print Assumptions canonical_q5_instruction_full_right_to_q12.
