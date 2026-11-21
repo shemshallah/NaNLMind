@@ -1847,7 +1847,7 @@ Print Assumptions canonical_q12_restore_to_q5.
 Lemma run_one_add :
   forall (n : nat) (c : Config),
     run (1 + n) c = run n (step c).
-Proof. intros n c. reflexivity. Qed.
+Proof. intros n c. cbn [Nat.add]. reflexivity. Qed.
 
 Theorem canonical_q22_decision_to_q5_left :
   forall (bits action_init : list bool) (tbuffer data data' tail : list nat)
