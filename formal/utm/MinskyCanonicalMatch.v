@@ -485,9 +485,12 @@ Proof.
         {| e_from := 3; e_read := 5; e_write := 5; e_move := 0%Z;
            e_to := 0; e_halt := true |}).
       {
-        destruct minsky_halt_entry as [e0 [Hfind0 Hhalt0]].
+        assert (H35 : find_entry 3 5 =
+          Some {| e_from := 3; e_read := 5; e_write := 5; e_move := 0%Z;
+                  e_to := 0; e_halt := true |}) by reflexivity.
         rewrite Hq3, Hs5 in Hfind.
-        rewrite Hfind0 in Hfind. inversion Hfind. subst e. reflexivity.
+        rewrite H35 in Hfind.
+        inversion Hfind. subst e. reflexivity.
       }
       subst e.
       cbn [c_state c_tape e_to e_write e_move].
