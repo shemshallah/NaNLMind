@@ -1506,3 +1506,18 @@ forall rows c,
 ```
 
 plus the clock/positivity/halt-refinement instances.
+
+### Packaged step clock and halt invariants (kernel-checked)
+
+- `canonical_step_clock_positive`:
+  `1 <= canonical_step_clock p` for every packaged step.
+- `canonical_step_start_not_halted` / `canonical_step_end_not_halted`.
+- `canonical_step_run_not_halted`:
+  the packaged native step never introduces a halt.
+
+These discharge the clock-positivity and native halt-invariant
+obligations of the source encoder interface.  Fast branch acceptance:
+[44939960496](https://github.com/shemshallah/NaNLMind/actions/runs/44939960496).
+
+The remaining encoder obligation is still the concrete `encode`
+construction with matching `canonical_step_start`/`end` frames.
