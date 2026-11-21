@@ -1883,16 +1883,7 @@ Proof.
     by (destruct b; reflexivity).
   rewrite Hdata.
   cbn [cfg_ml].
-  match goal with
-  | |- run (S (length (source_bit b :: rev (s :: rest21))))
-      (step (entry_config 20 data'
-        (source_bit d :: source_bit b :: rev (s :: rest21) ++
-         7 :: map q16_restore q16map ++ source_bit bit :: tail))) = ?rhs =>
-    change (run (S (length (source_bit b :: rev (s :: rest21))))
-      (entry_config 20 data'
-        (source_bit d :: source_bit b :: rev (s :: rest21) ++
-         7 :: map q16_restore q16map ++ source_bit bit :: tail)) = rhs)
-  end.
+  rewrite dispatch_run_add.
   rewrite (q20_raw_to_m d data'
     (source_bit b :: rev (s :: rest21) ++
      7 :: map q16_restore q16map ++ source_bit bit :: tail)).
