@@ -3298,7 +3298,7 @@ Proof.
   rewrite (canonical_q5_return_to_q6
     post pre bprev data symbol remaining prefix hit next_bit next_tail
     q16map bits [] tail' Hleft Hscan Hrail (Forall_nil q1_pass)).
-  rewrite Htail, Hprefix, Hrest.
+  rewrite Htail, Hprefix.
   apply (canonical_q6_to_q5_left
     bits action_init tbuffer data data' bnext rest d bit tail
     s21 rest21 Hlen Hdata Hrest Hrestored Hreturn H12r H14r).
