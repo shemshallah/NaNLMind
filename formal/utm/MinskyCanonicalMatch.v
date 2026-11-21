@@ -420,19 +420,12 @@ Proof.
   split; apply Nat.ltb_lt; assumption.
 Qed.
 
-Definition halting_lookup_ok : bool :=
+Definition halting_entries_ok : bool :=
   forallb
-    (fun q =>
-      forallb
-        (fun s =>
-          match find_entry q s with
-          | Some e => if e_halt e then (q =? 3) && (s =? 5) else true
-          | None => true
-          end)
-        (seq 0 8))
-    (seq 0 23).
+    (fun e => if e_halt e then (e_from e =? 3) && (e_read e =? 5) else true)
+    minsky_entries.
 
-Lemma halting_lookup_ok_true : halting_lookup_ok = true.
+Lemma halting_entries_ok_true : halting_entries_ok = true.
 Proof. vm_compute. reflexivity. Qed.
 
 Lemma find_entry_halt_unique :
@@ -440,13 +433,13 @@ Lemma find_entry_halt_unique :
     find_entry q s = Some e -> e_halt e = true -> q = 3 /\ s = 5.
 Proof.
   intros q s e Hfind Hhalt.
-  pose proof (find_entry_some_bounds _ _ _ Hfind) as [Hq Hs].
-  assert (Hqin : In q (seq 0 23)) by (apply in_seq; lia).
-  assert (Hsin : In s (seq 0 8)) by (apply in_seq; lia).
-  pose proof (forallb_forall _ _ _ halting_lookup_ok_true q Hqin) as Hqok.
-  pose proof (forallb_forall _ _ _ Hqok s Hsin) as Hsok.
-  rewrite Hfind, Hhalt in Hsok.
-  apply andb_true_iff in Hsok. destruct Hsok as [Hq3 Hs5].
+  unfold find_entry in Hfind.
+  destruct ((q <? 23) && (s <? 8)) eqn:Hc; [| discriminate Hfind].
+  apply nth_error_In in Hfind.
+  pose proof (forallb_forall _ _ _ halting_entries_ok_true e Hfind) as He.
+  unfold halting_entries_ok in He.
+  rewrite Hhalt in He.
+  apply andb_true_iff in He. destruct He as [Hq3 Hs5].
   split; apply Nat.eqb_eq; assumption.
 Qed.
 
