@@ -883,3 +883,146 @@ Lemma q1_four_to_q6 :
 Proof. intros left tail. reflexivity. Qed.
 
 Print Assumptions q1_four_to_q6.
+
+(** ** Canonical collision-to-q5 cycles
+
+    The q5 instruction phase always restores the copied action block to
+    raw 0/1 cells.  q19 therefore stops at the first restored action bit,
+    not at the later source bit.  That first hit is the state-register
+    comparison for the next row: q17/q18 relocate it to q5.  The two
+    theorems below make this exact native path explicit.  They require
+    the post-hit restored tail (right branch) or the whole restored block
+    (left branch) to be 7-free, so q17/q18 stop at the 7 written by q16. *)
+
+Theorem canonical_q5_instruction_q19_collision_to_q5 :
+  forall bits action_init tbuffer data b bit tail pre hit post,
+    length (action_init ++ [b]) = length bits ->
+    Forall q12_pass tbuffer ->
+    Forall q14_pass tbuffer ->
+    rev (map q14_restore
+      (rev (map match_mark action_init) ++ 5 :: rev tbuffer)) =
+      pre ++ source_bit hit :: post ->
+    Forall q15_pass pre ->
+    Forall q17_pass post ->
+    run (instruction_q19_clock bits action_init tbuffer b +
+         S (length pre) + S (length post))
+      (entry_config 5
+        (rev (map source_bit bits) ++ 5 :: rev tbuffer ++ 6 :: rev data)
+        (4 :: map source_bit bits ++
+         map source_bit (action_init ++ [b]) ++
+         source_bit true :: 4 :: source_bit bit :: tail)) =
+    cfg_ml 5
+      (rev post ++ 6 :: rev pre ++ source_bit b :: rev data)
+      ((if hit then 3 else 2) ::
+       map q16_restore
+         (rev (4 :: rev
+           (instruction_marked bits (action_init ++ [b]) ++ [3]) ++
+          [4])) ++
+       source_bit bit :: tail).
+Proof.
+  intros bits action_init tbuffer data b bit tail pre hit post
+    Hlen H12t H14t Hdecomp Hpre Hpost.
+  rewrite dispatch_run_add.
+  unfold instruction_q19_clock.
+  rewrite (canonical_q5_instruction_to_q19 bits action_init tbuffer
+    data b bit tail Hlen H12t H14t).
+  rewrite Hdecomp.
+  replace ((pre ++ source_bit hit :: post) ++
+      7 :: map q16_restore
+             (rev (4 :: rev
+               (instruction_marked bits (action_init ++ [b]) ++ [3]) ++
+              [4])) ++
+      source_bit bit :: tail)
+    with (pre ++ source_bit hit ::
+      (post ++
+       7 :: map q16_restore
+              (rev (4 :: rev
+                (instruction_marked bits (action_init ++ [b]) ++ [3]) ++
+               [4])) ++
+       source_bit bit :: tail))
+    by (rewrite <- app_assoc; reflexivity).
+  rewrite (q19_scan_to_m pre hit (source_bit b :: rev data)
+    (post ++
+     7 :: map q16_restore
+            (rev (4 :: rev
+              (instruction_marked bits (action_init ++ [b]) ++ [3]) ++
+             [4])) ++
+     source_bit bit :: tail) Hpre).
+  destruct hit.
+  - apply (q18_scan_to_marker post
+      (6 :: rev pre ++ source_bit b :: rev data)
+      (map q16_restore
+         (rev (4 :: rev
+           (instruction_marked bits (action_init ++ [b]) ++ [3]) ++
+          [4])) ++ source_bit bit :: tail) Hpost).
+  - apply (q17_scan_to_marker post
+      (6 :: rev pre ++ source_bit b :: rev data)
+      (map q16_restore
+         (rev (4 :: rev
+           (instruction_marked bits (action_init ++ [b]) ++ [3]) ++
+          [4])) ++ source_bit bit :: tail) Hpost).
+Qed.
+
+Print Assumptions canonical_q5_instruction_q19_collision_to_q5.
+
+Theorem canonical_q5_instruction_left_collision_to_q5 :
+  forall bits action_init tbuffer data data' b bit tail (d : bool),
+    length (action_init ++ [b]) = length bits ->
+    Forall q12_pass tbuffer ->
+    Forall q14_pass tbuffer ->
+    rev data = source_bit d :: rev data' ->
+    Forall q17_pass
+      (source_bit b ::
+       rev (map q14_restore
+         (rev (map match_mark action_init) ++ 5 :: rev tbuffer))) ->
+    run (instruction_q20_clock bits action_init tbuffer b + 1 +
+         S (length
+           (source_bit b ::
+            rev (map q14_restore
+              (rev (map match_mark action_init) ++ 5 :: rev tbuffer)))))
+      (entry_config 5
+        (rev (map source_bit bits) ++ 5 :: rev tbuffer ++ 6 :: rev data)
+        (4 :: map source_bit bits ++
+         map source_bit (action_init ++ [b]) ++
+         source_bit false :: 4 :: source_bit bit :: tail)) =
+    cfg_ml 5
+      (rev (source_bit b ::
+        rev (map q14_restore
+          (rev (map match_mark action_init) ++ 5 :: rev tbuffer))) ++
+       6 :: rev data')
+      ((if d then 3 else 2) ::
+       map q16_restore
+         (rev (4 :: rev
+           (instruction_marked bits (action_init ++ [b]) ++ [2]) ++
+          [4])) ++
+       source_bit bit :: tail).
+Proof.
+  intros bits action_init tbuffer data data' b bit tail d
+    Hlen H12t H14t Hdata Hpost.
+  rewrite dispatch_run_add.
+  unfold instruction_q20_clock.
+  rewrite (canonical_q5_instruction_left_branch_hits_current_cell
+    bits action_init tbuffer data data' b bit tail d
+    Hlen H12t H14t Hdata).
+  destruct d.
+  - apply (q18_scan_to_marker
+      (source_bit b ::
+       rev (map q14_restore
+         (rev (map match_mark action_init) ++ 5 :: rev tbuffer)))
+      (6 :: rev data')
+      (map q16_restore
+         (rev (4 :: rev
+           (instruction_marked bits (action_init ++ [b]) ++ [2]) ++
+          [4])) ++ source_bit bit :: tail) Hpost).
+  - apply (q17_scan_to_marker
+      (source_bit b ::
+       rev (map q14_restore
+         (rev (map match_mark action_init) ++ 5 :: rev tbuffer)))
+      (6 :: rev data')
+      (map q16_restore
+         (rev (4 :: rev
+           (instruction_marked bits (action_init ++ [b]) ++ [2]) ++
+          [4])) ++ source_bit bit :: tail) Hpost).
+Qed.
+
+Print Assumptions canonical_q5_instruction_left_collision_to_q5.
