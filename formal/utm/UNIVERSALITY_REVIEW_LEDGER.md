@@ -1446,3 +1446,18 @@ Fast branch acceptance:
 
 The final left movement composition is q5 -> q13 -> q5 via
 `canonical_q13_restore_to_q5`.
+
+### Full left instruction macro q5 -> q5 (kernel-checked)
+
+`canonical_q5_instruction_full_left_to_q5` composes the full left
+q5 -> q13 match/copy/direction theorem with q13 -> q5
+restore/q20/q17/q18.  Fast branch acceptance:
+[44917301839](https://github.com/shemshallah/NaNLMind/actions/runs/44917301839).
+
+Both directions now have complete q5 -> q5 instruction movement macros:
+
+- `canonical_q5_instruction_full_right_to_q5`,
+- `canonical_q5_instruction_full_left_to_q5`.
+
+The remaining obligations are the source encoder/tape invariant, halt
+reflection iff, and the universality reduction.

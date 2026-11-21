@@ -502,3 +502,32 @@ q5 fetch (left branch)
 
 Composing this with `canonical_q13_restore_to_q5` gives the full left
 q5 -> q5 instruction movement macro.
+
+## Full left instruction macro q5 -> q5 (proved)
+
+`canonical_q5_instruction_full_left_to_q5` is the complete left
+instruction movement in one native run:
+
+```text
+q5 fetch (left branch)
+-> q6 next-row match/copy
+-> q13 copy/direction (dir=false)
+-> q16 decision
+-> q21 -> q20 -> q17/q18
+-> q5 return
+```
+
+It is conditional on the same kind of representation premises as the
+right macro: the q5-left decomposition, the rail decomposition, the
+prefix identity, the restored-action decomposition, and the q12/q13
+line/tbuffer constraints.
+
+## Movement phase complete for both directions
+
+Both complete q5 -> q5 instruction macros are now kernel-checked:
+
+- `canonical_q5_instruction_full_right_to_q5`,
+- `canonical_q5_instruction_full_left_to_q5`.
+
+The remaining work is the source encoder/tape invariant, halt
+reflection, and the universality reduction.
