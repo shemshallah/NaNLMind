@@ -148,7 +148,7 @@ Print Assumptions conditional_wide_source_native_halting_equivalence.
 
 Definition wide_halted_marker : Config :=
   {| c_state := 0;
-     c_tape := {| t_left := []; t_right := [5] |};
+     c_tape := ({| t_left := []; t_right := [5] |});
      c_halted := true |}.
 
 Definition wide_halt_entry : Config :=
