@@ -2742,3 +2742,52 @@ Proof.
 Qed.
 
 Print Assumptions canonical_step_run.
+
+(** ** Basic properties of the packaged canonical step
+
+    The clock is positive, the start and end frames are non-halted, and
+    the packaged native step never introduces a halt.  These are the
+    clock-positivity and halt-invariant obligations of the source encoder
+    interface. *)
+
+Lemma cfg_ml_not_halted :
+  forall (q : nat) (l r : list nat),
+    c_halted (cfg_ml q l r) = false.
+Proof.
+  intros q l r. unfold cfg_ml.
+  destruct l; reflexivity.
+Qed.
+
+Lemma canonical_step_start_not_halted :
+  forall p, c_halted (canonical_step_start p) = false.
+Proof.
+  intro p. unfold canonical_step_start. reflexivity.
+Qed.
+
+Lemma canonical_step_end_not_halted :
+  forall p, c_halted (canonical_step_end p) = false.
+Proof.
+  intro p. unfold canonical_step_end. apply cfg_ml_not_halted.
+Qed.
+
+Lemma canonical_step_clock_positive :
+  forall p, 1 <= canonical_step_clock p.
+Proof.
+  intro p.
+  unfold canonical_step_clock, canonical_step_q5_q12_clock,
+    canonical_step_q12_q5_clock.
+  lia.
+Qed.
+
+Lemma canonical_step_run_not_halted :
+  forall p,
+    canonical_step_ok p ->
+    c_halted
+      (run (canonical_step_clock p) (canonical_step_start p)) = false.
+Proof.
+  intros p H. rewrite (canonical_step_run p H).
+  apply canonical_step_end_not_halted.
+Qed.
+
+Print Assumptions canonical_step_clock_positive.
+Print Assumptions canonical_step_run_not_halted.
