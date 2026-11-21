@@ -1594,6 +1594,11 @@ Proof.
        5 :: rev tbuffer ++ 6 :: rev data)
       (4 :: (map match_mark bits ++ map match_mark action_bits) ++
             (if dir then 3 else 2) :: rest)).
+  replace (map match_mark bits ++ map match_mark action_bits ++
+           source_bit dir :: rest)
+    with ((map match_mark bits ++ map match_mark action_bits) ++
+          source_bit dir :: rest)
+    by (rewrite <- app_assoc; reflexivity).
   unfold direction_clock.
   apply (canonical_q6_direction_capture
     (map match_mark bits ++ map match_mark action_bits)
