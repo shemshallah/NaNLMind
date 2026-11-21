@@ -11,6 +11,7 @@
 *)
 
 From Coq Require Import List Arith Lia.
+Import ListNotations.
 
 From NaNLM Require Import MinskyTable MinskyWideSource
   MinskyConcreteDispatch.
