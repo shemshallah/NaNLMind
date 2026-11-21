@@ -2846,3 +2846,59 @@ Proof.
 Qed.
 
 Print Assumptions canonical_q5_return_to_q1.
+
+(** ** q5 return -> q6
+
+    Compose the q5 scan/q1 match with the q1 X=4 crossing.  This is the
+    full running-case encoder entry from the previous q5 return frame. *)
+
+Theorem canonical_q5_return_to_q6 :
+  forall (post pre : list nat) (b : bool) (data : list nat)
+         (symbol : nat) (remaining : list nat) (prefix : list nat)
+         (hit : bool) (next_bit : bool) (next_tail : list nat)
+         (q16map : list nat) (bits' : list bool)
+         (pass tail : list nat),
+    rev post ++ 6 :: rev pre ++ source_bit b :: rev data =
+      (symbol :: remaining) ++ 5 :: prefix ->
+    Forall canonical_q5_return_pass (symbol :: remaining) ->
+    map entry_rewrite (rev (symbol :: remaining)) ++
+      (if hit then 3 else 2) ::
+      map q16_restore q16map ++
+      source_bit next_bit :: next_tail =
+      pass ++ map match_mark bits' ++ [4] ++
+      map match_raw bits' ++ tail ->
+    Forall q1_pass pass ->
+    run (S (length (symbol :: remaining)) +
+         matched_comparison_steps bits' (length pass) (length [4]) +
+         S (length (pass ++ map match_raw bits')))
+      (cfg_ml 5
+        (rev post ++ 6 :: rev pre ++ source_bit b :: rev data)
+        ((if hit then 3 else 2) ::
+         map q16_restore q16map ++
+         source_bit next_bit :: next_tail)) =
+    entry_config 6
+      (4 :: rev (pass ++ map match_raw bits') ++ 5 :: prefix)
+      (map match_mark bits' ++ tail).
+Proof.
+  intros post pre b data symbol remaining prefix hit next_bit
+    next_tail q16map bits' pass tail Hleft Hscan Hrail Hpass.
+  assert (H4 : Forall wide_mark [4]).
+  { constructor; [unfold wide_mark; auto 10 | constructor]. }
+  rewrite dispatch_run_add.
+  rewrite (canonical_q5_return_to_q1 post pre b data symbol remaining
+    prefix hit next_bit next_tail q16map bits' pass [4] tail
+    Hleft Hscan Hrail Hpass H4).
+  replace (pass ++ map match_raw bits' ++ [4] ++
+           map match_mark bits' ++ tail)
+    with ((pass ++ map match_raw bits') ++ [4] ++
+          map match_mark bits' ++ tail)
+    by (repeat rewrite <- app_assoc; reflexivity).
+  apply (q1_scan_four_list_to_q6
+    (pass ++ map match_raw bits')
+    (map match_mark bits' ++ tail) (5 :: prefix)).
+  rewrite Forall_app. split.
+  - exact Hpass.
+  - apply match_raw_valid.
+Qed.
+
+Print Assumptions canonical_q5_return_to_q6.
