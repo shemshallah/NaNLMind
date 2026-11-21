@@ -1461,3 +1461,29 @@ Both directions now have complete q5 -> q5 instruction movement macros:
 
 The remaining obligations are the source encoder/tape invariant, halt
 reflection iff, and the universality reduction.
+
+### Native halt shape (kernel-checked)
+
+The frozen table has exactly one halting entry q3/5:
+
+- `halting_entries_ok_true` (computed certificate over the 184 rows),
+- `find_entry_halt_unique`,
+- `scan_table_some_in`, `scan_table_some_from_read`,
+- `read_write`, `move_tape_zero`,
+- `step_halted_shape`.
+
+`step_halted_shape` states that a step from a running configuration can
+halt only in the encoded marker configuration (state 0, read 5) or
+outside the finite table domain:
+
+```text
+c_halted c = false ->
+c_halted (step c) = true ->
+(c_state (step c) = 0 /\ read (c_tape (step c)) = 5) \/
+(23 <= c_state (step c) \/ 8 <= read (c_tape (step c))).
+```
+
+This is the native half of halt reflection.  The encoder must show that
+valid encoded configurations are in range and that the marker is reached
+exactly when `source_lookup` fails.  Fast branch acceptance:
+[44932476393](https://github.com/shemshallah/NaNLMind/actions/runs/44932476393).
