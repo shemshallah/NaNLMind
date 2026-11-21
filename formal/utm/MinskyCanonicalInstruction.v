@@ -2638,7 +2638,7 @@ Definition canonical_step_end (p : canonical_step) : Config :=
        (rev (3 :: rev (canonical_step_marked p) ++ [4])) ++
      source_bit (cs_next_bit p) :: cs_next_tail p).
 
-Definition canonical_step_clock (p : canonical_step) : nat :=
+Definition canonical_step_q5_q12_clock (p : canonical_step) : nat :=
   instruction_q19_clock (cs_bits p) (cs_action_init p)
     (cs_tbuffer p) (cs_b p) +
   S (length (cs_pre p)) + S (length (cs_post p)) +
@@ -2650,7 +2650,9 @@ Definition canonical_step_clock (p : canonical_step) : nat :=
   direction_clock
     (map match_mark (cs_bits p) ++
      map match_mark (cs_action_init p ++ [cs_b p]))
-    (map match_mark (cs_action_init p ++ [cs_b p])) +
+    (map match_mark (cs_action_init p ++ [cs_b p])).
+
+Definition canonical_step_q12_q5_clock (p : canonical_step) : nat :=
   S (length
        (match_mark (cs_b p) ::
         rev (map match_mark (cs_action_init p)) ++
@@ -2663,6 +2665,9 @@ Definition canonical_step_clock (p : canonical_step) : nat :=
   S (length (3 :: rev (canonical_step_marked p) ++ [4])) +
   S (length (cs_s21 p :: cs_rest21 p)) +
   S (length (cs_pre p)) + S (length (cs_post p)).
+
+Definition canonical_step_clock (p : canonical_step) : nat :=
+  canonical_step_q5_q12_clock p + canonical_step_q12_q5_clock p.
 
 Record canonical_step_ok (p : canonical_step) : Prop := {
   cso_len :
@@ -2723,8 +2728,9 @@ Proof.
   intros p H.
   destruct H as [Hlen H12 H14 Hdecomp Hpre Hpost Hprefix Hleft
     Htail Hrest Hrail Hscan Hrestored Hline12 Hline14].
-  unfold canonical_step_clock, canonical_step_start, canonical_step_end,
-    canonical_step_marked.
+  unfold canonical_step_clock, canonical_step_q5_q12_clock,
+    canonical_step_q12_q5_clock, canonical_step_start,
+    canonical_step_end, canonical_step_marked.
   apply (canonical_q5_instruction_full_right_to_q5
     (cs_bits p) (cs_action_init p) (cs_tbuffer p) (cs_data p)
     (cs_b p) (cs_bit p) (cs_tail p) (cs_pre p) (cs_hit p)
