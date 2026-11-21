@@ -1344,3 +1344,18 @@ Fast branch acceptance:
 The next open composition is the q1/q0/q4 match of the returned rail
 against the following record, then the source encoder and halt
 reflection.
+
+### q5 -> matched q1 (kernel-checked)
+
+The q5 -> q1 cycles now compose with `q1_all_matching_bits_wide`:
+
+- `canonical_q5_instruction_q19_collision_to_match`,
+- `canonical_q5_instruction_left_collision_to_match`.
+
+The rail decomposition is an explicit premise, so the theorem is a
+conditional representation bridge rather than a source-step claim.
+Fast branch acceptance:
+[44847699341](https://github.com/shemshallah/NaNLMind/actions/runs/44847699341).
+
+The next open composition is the q5-scan/q1-match/q6-copy half that
+turns this q1 entry back into the next q5 fetch entry.

@@ -304,3 +304,31 @@ This is the canonical representation interface for the next-row
 q1/q0/q4 match.  The encoder must supply the q5-left decomposition and
 the 7-free post-hit tail; the native cycles themselves are unconditional
 apart from those explicit representation premises.
+
+## q5 -> matched q1 (proved)
+
+The q5 -> q1 cycles compose with the canonical wide-mark match:
+
+- `canonical_q5_instruction_q19_collision_to_match` (right),
+- `canonical_q5_instruction_left_collision_to_match` (left).
+
+The new premise is the exact rail decomposition
+
+```text
+map entry_rewrite (rev (symbol :: remaining)) ++
+  hit_mark :: map q16_restore (...) ++ source_bit bit :: tail =
+  pass ++ map match_mark bits ++ done ++ map match_raw bits ++ tail
+```
+
+with `Forall q1_pass pass` and `Forall wide_mark done`.  The result is
+
+```text
+entry_config 1 (5 :: prefix)
+  (pass ++ map match_raw bits ++ done ++
+   map match_mark bits ++ tail).
+```
+
+This is the first verified q5-to-match composition.  The remaining
+representation step is to identify this q1 entry with the next q5 fetch
+entry (the q5-scan/q1-match/q6-copy half) and then close the source-step
+loop.
