@@ -1798,7 +1798,11 @@ Proof.
     - apply Forall_rev. exact H14.
     - rewrite rev_app_distr. cbn [rev].
       repeat rewrite rev_app_distr. cbn [rev].
-      repeat rewrite rev_involutive. reflexivity.
+      repeat rewrite rev_involutive.
+      repeat rewrite app_nil_l.
+      repeat rewrite app_nil_r.
+      repeat rewrite <- app_assoc.
+      reflexivity.
   }
   inversion H14' as [|? ? Hmark Htail]; subst.
   assert (H21 : Forall q21_pass (s21 :: rest21)).
