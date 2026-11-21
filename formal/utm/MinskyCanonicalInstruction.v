@@ -543,6 +543,7 @@ Proof.
                     [4])) ++
             source_bit bit :: tail))
     by (rewrite <- app_assoc; reflexivity).
+  rewrite dispatch_run_add.
   rewrite (q19_scan_to_m pre hit (source_bit b :: rev data)
     (post ++
      7 :: map q16_restore
@@ -925,11 +926,11 @@ Proof.
   match goal with
   | |- run ?clock ?start = ?rhs =>
     replace clock with
-      ((instruction_q19_clock bits action_init tbuffer b + S (length pre)) +
-       S (length post)) by reflexivity;
+      (instruction_q19_clock bits action_init tbuffer b +
+       (S (length pre) + S (length post))) by reflexivity;
     rewrite (dispatch_run_add
-      (instruction_q19_clock bits action_init tbuffer b + S (length pre))
-      (S (length post)) start)
+      (instruction_q19_clock bits action_init tbuffer b)
+      (S (length pre) + S (length post)) start)
   end.
   unfold instruction_q19_clock.
   rewrite (canonical_q5_instruction_to_q19 bits action_init tbuffer
