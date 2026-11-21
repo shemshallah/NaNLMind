@@ -1790,6 +1790,19 @@ Theorem canonical_q12_restore_to_q5 :
 Proof.
   intros marked tbuffer data b rest bit tail s21 rest21
     pre hit post H12 H14 H15 H16 Hrestored Hdecomp Hpre Hpost.
+  assert (H14' : Forall q14_pass
+      (match_mark b :: rest ++ 5 :: rev tbuffer)).
+  {
+    replace (match_mark b :: rest ++ 5 :: rev tbuffer)
+      with (rev (tbuffer ++ [5] ++ rev rest ++ [match_mark b])).
+    - apply Forall_rev. exact H14.
+    - rewrite rev_app_distr. cbn [rev].
+      repeat rewrite rev_app_distr. cbn [rev].
+      repeat rewrite rev_involutive. reflexivity.
+  }
+  inversion H14' as [|? ? Hmark Htail]; subst.
+  assert (H21 : Forall q21_pass (s21 :: rest21)).
+  { rewrite <- Hrestored. apply Forall_q14_restore_q21. exact Htail. }
   rewrite dispatch_run_add.
   rewrite (canonical_q12_restore_to_q16_decision marked tbuffer data
     b rest bit tail H12 H14 H15 H16).
@@ -1797,10 +1810,7 @@ Proof.
   cbn [cfg_ml].
   apply (canonical_q21_decision_to_q5_map
     [] [] tbuffer data tail b bit s21 rest21 pre post hit
-    (rev (3 :: rev marked ++ [4])) Hdecomp Hpre Hpost).
-  - exact Hdecomp.
-  - exact Hpre.
-  - exact Hpost.
+    (rev (3 :: rev marked ++ [4])) H21 Hdecomp Hpre Hpost).
 Qed.
 
 Print Assumptions canonical_q12_restore_to_q5.
