@@ -1960,7 +1960,21 @@ Proof.
     [] [] tbuffer data data' tail b bit d s21 rest21
     (rev (2 :: rev marked ++ [4]))).
   - rewrite <- Hrestored. apply Forall_q14_restore_q21.
-    inversion H14 as [|? ? Hmark Htail]; subst.
+    assert (H14' : Forall q14_pass
+        (match_mark b :: rest ++ 5 :: rev tbuffer)).
+    {
+      replace (match_mark b :: rest ++ 5 :: rev tbuffer)
+        with (rev (tbuffer ++ [5] ++ rev rest ++ [match_mark b])).
+      - apply Forall_rev. exact H14.
+      - rewrite rev_app_distr. cbn [rev].
+        repeat rewrite rev_app_distr. cbn [rev].
+        repeat rewrite rev_involutive.
+        repeat rewrite app_nil_l.
+        repeat rewrite app_nil_r.
+        repeat rewrite <- app_assoc.
+        reflexivity.
+    }
+    inversion H14' as [|? ? Hmark Htail]; subst.
     exact Htail.
   - exact Hdata.
   - exact Hreturn.
