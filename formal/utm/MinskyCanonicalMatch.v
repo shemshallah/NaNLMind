@@ -440,6 +440,7 @@ Lemma find_entry_halt_unique :
     find_entry q s = Some e -> e_halt e = true -> q = 3 /\ s = 5.
 Proof.
   intros q s e Hfind Hhalt.
+  pose proof (find_entry_some_bounds _ _ _ Hfind) as [Hq Hs].
   assert (Hqin : In q (seq 0 23)) by (apply in_seq; lia).
   assert (Hsin : In s (seq 0 8)) by (apply in_seq; lia).
   pose proof (forallb_forall _ _ _ halting_lookup_ok_true q Hqin) as Hqok.
