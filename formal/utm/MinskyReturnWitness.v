@@ -128,8 +128,8 @@ Proof.
     + unfold q15_pass; auto 12.
     + constructor.
   - cbn. constructor.
-  - cbn. repeat constructor; unfold q12_pass; auto 12.
-  - cbn. repeat constructor; unfold q14_pass; auto 12.
+  - cbn. repeat constructor; try (unfold q12_pass; auto 12); constructor.
+  - cbn. repeat constructor; try (unfold q14_pass; auto 12); constructor.
 Qed.
 
 Theorem canonical_witness_family_run :
