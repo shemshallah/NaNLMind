@@ -23,6 +23,32 @@ From NaNLM Require Import MinskyTable MinskyConcreteEntry
   MinskyActionMacro MinskyRelocationMacro MinskyCanonicalMatch
   MinskyCanonicalInstruction.
 
+Lemma Forall_marks_two_or_three :
+  forall bits, Forall (fun x => x = 2 \/ x = 3) (map match_mark bits).
+Proof.
+  induction bits as [|b rest IH]; simpl.
+  - constructor.
+  - constructor.
+    + destruct b; cbn; auto.
+    + exact IH.
+Qed.
+
+Lemma entry_rewrite_two_or_three :
+  forall x, x = 2 \/ x = 3 -> entry_rewrite x = x.
+Proof. intros x [-> | ->]; reflexivity. Qed.
+
+Lemma map_entry_rewrite_marks_id :
+  forall l,
+    Forall (fun x => x = 2 \/ x = 3) l ->
+    map entry_rewrite l = l.
+Proof.
+  induction l as [|x rest IH]; intros H; simpl.
+  - reflexivity.
+  - inversion H as [|? ? Hx Hrest]; subst.
+    rewrite (entry_rewrite_two_or_three x Hx).
+    rewrite IH. reflexivity. exact Hrest.
+Qed.
+
 Lemma entry_rewrite_match_mark :
   forall b, entry_rewrite (match_mark b) = match_mark b.
 Proof. intros []; reflexivity. Qed.
@@ -143,8 +169,27 @@ Proof.
         (rev (map match_mark (first_init :: init_rest)))).
       apply Forall_rev. apply Forall_q5_match_marks.
   - (* rail *) cbn.
-    repeat rewrite entry_rewrite_match_mark.
-    repeat rewrite map_entry_rewrite_match_mark.
+    change (map entry_rewrite
+        (rev (match_mark pre_last ::
+              rev (map match_mark (first_init :: init_rest)))) ++
+      match_mark last_bit :: [4] ++
+      source_bit first_init ::
+      map match_raw init_rest ++
+      [match_raw pre_last; match_raw last_bit] ++
+      map source_bit (first_action :: action_tail ++ [last_state; bnext]) ++
+      1 :: 0 :: rest_tail =
+      map match_mark (first_init :: init_rest ++ [pre_last; last_bit]) ++
+      [4] ++
+      map match_raw (first_init :: init_rest ++ [pre_last; last_bit]) ++
+      map source_bit (first_action :: action_tail ++ [last_state; bnext]) ++
+      1 :: 0 :: rest_tail).
+    rewrite (map_entry_rewrite_marks_id
+      (rev (match_mark pre_last ::
+            rev (map match_mark (first_init :: init_rest))))).
+    2:{ apply Forall_rev. constructor.
+        - destruct pre_last; cbn; auto.
+        - apply Forall_marks_two_or_three. }
+    cbn [rev map app].
     repeat rewrite map_app.
     repeat rewrite rev_app_distr.
     repeat rewrite rev_involutive.
