@@ -525,3 +525,30 @@ remaining tags form a q0-passable spacer, and the raw read bit is still
 the first raw cell.  The composition is kernel-checked and accepted on
 `main`.  Complete four-prefix loops (q3->q5 and q2->q1 reentry) are a
 separate branch experiment, not part of the accepted tree yet.
+
+## Arbitrary-width tagged dispatch (proved)
+
+`MinskyTaggedWideDispatch.v` removes the fixed two-bit control field
+from the tagged dispatch:
+
+- `q0_tagged_control_list_dispatches_target` scans
+  `map q0_stable_control_tag bits` for any finite `bits`;
+- `q5_left_false_gate_tagged_list_dispatch` extends the seven-step
+  left q5/q1/q0 gate to any tag list;
+- `q5_q1_q0_buffered_tagged_list_dispatch` does the same for the
+  buffered right return;
+- `q15_left_false_guard_native_tagged_list_dispatch` and
+  `q15_right_buffered_native_tagged_list_dispatch` are the full
+  relocation-plus-dispatch macros for an arbitrary action rail.
+
+The four-prefix bridge now also has complete left loops:
+
+```text
+q15_left_four_prefix_loop_read1_to_q5
+q15_left_four_prefix_loop_read0_to_q1
+```
+
+These start at the 4-prefixed q15 left frame and end at q5/q1 after the
+native q3->q5 or q2->q1 reentry.  They do not construct the upstream
+canonical q12 frame, and they do not yet provide the full source
+encoding or halt reflection.

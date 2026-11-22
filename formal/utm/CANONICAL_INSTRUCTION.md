@@ -611,3 +611,46 @@ forall rows c,
 ```
 
 The left/q13 variant uses `canonical_q5_return_to_q5_left`.
+
+## Data-shift repair of the running step (proved)
+
+The first packaged running-step interface had a hidden mismatch: the
+q5 return frame ends with
+
+```text
+rev post ++ 6 :: rev pre ++ source_bit b :: rev data
+```
+
+but the next q6 entry needs the *post-write* data tape
+
+```text
+data' = data ++ [b] ++ pre, i.e. rev data' = rev pre ++ b :: rev data.
+```
+
+Sharing one `data` variable between the start, the q6 entry and the end
+made `crso_prefix` inconsistent with `crso_left`.  The theorems now carry
+the missing shift explicitly:
+
+```text
+canonical_q5_return_to_q5_right : ... ->
+  prefix = rev tbuffer ++ 6 :: rev data' ->
+  rev data' = rev pre ++ source_bit bprev :: rev data -> ...
+
+canonical_q5_return_to_q5_left : ... ->
+  prefix = rev tbuffer ++ 6 :: rev data_q6 ->
+  rev data_q6 = rev pre ++ source_bit bprev :: rev data ->
+  rev data_q6 = source_bit d :: rev data' -> ...
+```
+
+`canonical_return_step` now has `crs_data` (the start tape) and
+`crs_data'` (the post-write tape), and `canonical_return_step_ok` has
+`crso_shift`:
+
+```text
+rev (crs_data' p) =
+rev (crs_pre p) ++ source_bit (crs_bprev p) :: rev (crs_data p).
+```
+
+This makes the running interface non-vacuous and lets the end frame be
+the start frame of the next step.  The concrete encoder must now supply
+the shift, not merely the old shared-data equations.
