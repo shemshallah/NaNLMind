@@ -112,8 +112,10 @@ Proof.
   unfold canonical_witness_family.
   constructor.
   - cbn. reflexivity.
-  - cbn. auto 12.
-  - cbn. auto 12.
+  - cbn. constructor.
+    + unfold canonical_q5_return_pass; auto 12.
+    + constructor.
+  - cbn. reflexivity.
   - cbn. reflexivity.
   - cbn. rewrite rev_app_distr. cbn. reflexivity.
   - cbn. rewrite rev_app_distr. cbn. reflexivity.
@@ -121,11 +123,12 @@ Proof.
   - cbn. reflexivity.
   - cbn. reflexivity.
   - cbn. reflexivity.
-  - cbn. auto 12.
-  - cbn. auto 12.
-  - cbn. auto 12.
-  - cbn. auto 12.
-  all: match goal with |- ?G => fail 1 "FAMILY GOAL:" G end.
+  - cbn. constructor.
+    + unfold q15_pass; auto 12.
+    + constructor.
+  - cbn. constructor.
+  - cbn. repeat constructor; unfold q12_pass; auto 12.
+  - cbn. repeat constructor; unfold q14_pass; auto 12.
 Qed.
 
 Theorem canonical_witness_family_run :
