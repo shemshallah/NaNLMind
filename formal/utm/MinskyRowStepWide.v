@@ -55,8 +55,9 @@ Lemma split_current :
 Proof.
   intros [|a [|b rest]] d read Hlen; try (cbn in Hlen; lia).
   simpl.
-  fold (split_init (b :: rest)).
-  fold (split_last (b :: rest) d).
+  change (a :: (split_init (b :: rest) ++
+                [split_last (b :: rest) d; read]) =
+          a :: b :: rest ++ [read]).
   replace (split_init (b :: rest) ++ [split_last (b :: rest) d; read])
     with ((split_init (b :: rest) ++ [split_last (b :: rest) d]) ++ [read]).
   2:{ rewrite <- app_assoc. reflexivity. }
