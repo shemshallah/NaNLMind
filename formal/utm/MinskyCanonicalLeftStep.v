@@ -180,3 +180,77 @@ Proof.
 Qed.
 
 Print Assumptions canonical_left_step_run.
+
+(** ** A left one-row family with arbitrary source tape data
+
+    The same fixed two-bit instruction as the right witness family, but
+    through the q20/q17 left return.  The data shift pops the written
+    cell, so the next data list is the old one. *)
+
+Definition canonical_left_witness_family
+    (data : list nat) (bprev : bool) : canonical_left_step :=
+  {| cls_post := [5; 2];
+     cls_pre := [];
+     cls_bprev := bprev;
+     cls_data := data;
+     cls_data_q6 := data ++ [source_bit bprev];
+     cls_data' := data;
+     cls_symbol := 2;
+     cls_remaining := [];
+     cls_prefix := [6] ++ source_bit bprev :: rev data;
+     cls_hit := true;
+     cls_next_bit := false;
+     cls_next_tail := [1; 0; 0; 0; 1; 0];
+     cls_q16map := [4];
+     cls_bits := [false; true];
+     cls_action_init := [false];
+     cls_tbuffer := [];
+     cls_bnext := false;
+     cls_rest := [1; 0];
+     cls_d := bprev;
+     cls_bit := true;
+     cls_tail := [0];
+     cls_s21 := 0;
+     cls_rest21 := [5];
+     cls_tail' := [0; 0; 0; 1; 0] |}.
+
+Lemma canonical_left_witness_family_ok :
+  forall data bprev,
+    canonical_left_step_ok (canonical_left_witness_family data bprev).
+Proof.
+  intros data bprev.
+  unfold canonical_left_witness_family.
+  constructor.
+  - cbn. reflexivity.
+  - cbn. constructor.
+    + unfold canonical_q5_return_pass; auto 12.
+    + constructor.
+  - cbn. reflexivity.
+  - cbn. reflexivity.
+  - cbn. rewrite rev_app_distr. cbn. reflexivity.
+  - cbn. rewrite rev_app_distr. cbn. reflexivity.
+  - cbn. reflexivity.
+  - cbn. rewrite rev_app_distr. cbn. reflexivity.
+  - cbn. reflexivity.
+  - cbn. reflexivity.
+  - cbn. repeat constructor; try (unfold q17_pass; auto 12); constructor.
+  - cbn. repeat constructor; try (unfold q12_pass; auto 12); constructor.
+  - cbn. repeat constructor; try (unfold q14_pass; auto 12); constructor.
+Qed.
+
+Theorem canonical_left_witness_family_run :
+  forall data bprev,
+    run (canonical_left_step_clock
+           (canonical_left_witness_family data bprev))
+        (canonical_left_step_start
+           (canonical_left_witness_family data bprev)) =
+    canonical_left_step_end
+      (canonical_left_witness_family data bprev).
+Proof.
+  intros data bprev.
+  apply canonical_left_step_run.
+  apply canonical_left_witness_family_ok.
+Qed.
+
+Print Assumptions canonical_left_witness_family_ok.
+Print Assumptions canonical_left_witness_family_run.
