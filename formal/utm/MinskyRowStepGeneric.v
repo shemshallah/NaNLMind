@@ -105,6 +105,14 @@ Proof.
     + exact IH.
 Qed.
 
+Lemma Forall_q12_rev_marks :
+  forall bits, Forall q12_pass (rev (map match_mark bits)).
+Proof. intros. apply Forall_rev. apply Forall_q12_match_marks. Qed.
+
+Lemma Forall_q14_rev_marks :
+  forall bits, Forall q14_pass (rev (map match_mark bits)).
+Proof. intros. apply Forall_rev. apply Forall_q14_match_marks. Qed.
+
 Lemma Forall_q5_match_marks :
   forall bits, Forall canonical_q5_return_pass (map match_mark bits).
 Proof.
@@ -239,14 +247,14 @@ Proof.
   - (* line12 *) cbn. constructor.
     + destruct bnext; unfold q12_pass, match_mark; auto 12.
     + rewrite Forall_app. split.
-      * apply Forall_rev. apply Forall_q12_match_marks.
+      * apply Forall_q12_rev_marks.
       * constructor.
         -- unfold q12_pass; auto 12.
         -- constructor.
   - (* line14 *) cbn. constructor.
     + unfold q14_pass; auto 12.
     + rewrite Forall_app. split.
-      * apply Forall_rev. apply Forall_q14_match_marks.
+      * apply Forall_q14_rev_marks.
       * constructor.
         -- destruct bnext; unfold q14_pass, match_mark; auto 12.
         -- constructor.
