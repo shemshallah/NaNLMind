@@ -83,8 +83,7 @@ Proof.
       0 :: 6 :: map q0_stable_control_tag (first :: rest)) ++ [7]).
   2:{
     rewrite map_app. cbn [map app].
-    repeat rewrite rev_app_distr. cbn [rev].
-    rewrite rev_involutive.
+    rewrite rev_app_distr. cbn [rev].
     repeat rewrite <- app_assoc.
     reflexivity.
   }
