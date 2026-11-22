@@ -178,13 +178,13 @@ Proof.
     rewrite (map_entry_rewrite_marks_id
       (match_mark first_init :: map match_mark init_rest ++
        [match_mark pre_last])).
-    2:{ rewrite Forall_app. split.
-        - constructor.
-          + destruct first_init; cbn; auto.
+    2:{ constructor.
+        - destruct first_init; cbn; auto.
+        - rewrite Forall_app. split.
           + apply Forall_marks_two_or_three.
-        - constructor.
-          + destruct pre_last; cbn; auto.
-          + constructor. }
+          + constructor.
+            * destruct pre_last; cbn; auto.
+            * constructor. }
     cbn [map app].
     repeat rewrite map_app.
     repeat rewrite <- app_assoc.
