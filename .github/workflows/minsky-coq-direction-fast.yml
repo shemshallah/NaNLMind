@@ -289,17 +289,6 @@ jobs:
           coqchk -Q formal/utm NaNLM formal/utm/MinskyRowStepWide.vo
           if ! coqc -Q formal/utm NaNLM \
               -w -notation-overridden,-stdlib-vector \
-              formal/utm/MinskyRowStepWideLeft.v \
-              > /tmp/minsky-row-step-wide-left-coq.log 2>&1; then
-            tail -n 100 /tmp/minsky-row-step-wide-left-coq.log
-            while IFS= read -r line; do
-              echo "::error title=Coq wide left row step::$line"
-            done < <(tail -n 100 /tmp/minsky-row-step-wide-left-coq.log)
-            exit 1
-          fi
-          coqchk -Q formal/utm NaNLM formal/utm/MinskyRowStepWideLeft.vo
-          if ! coqc -Q formal/utm NaNLM \
-              -w -notation-overridden,-stdlib-vector \
               formal/utm/MinskyRowStepGenericLeft.v \
               > /tmp/minsky-row-step-left-coq.log 2>&1; then
             tail -n 100 /tmp/minsky-row-step-left-coq.log
@@ -309,6 +298,17 @@ jobs:
             exit 1
           fi
           coqchk -Q formal/utm NaNLM formal/utm/MinskyRowStepGenericLeft.vo
+          if ! coqc -Q formal/utm NaNLM \
+              -w -notation-overridden,-stdlib-vector \
+              formal/utm/MinskyRowStepWideLeft.v \
+              > /tmp/minsky-row-step-wide-left-coq.log 2>&1; then
+            tail -n 100 /tmp/minsky-row-step-wide-left-coq.log
+            while IFS= read -r line; do
+              echo "::error title=Coq wide left row step::$line"
+            done < <(tail -n 100 /tmp/minsky-row-step-wide-left-coq.log)
+            exit 1
+          fi
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyRowStepWideLeft.vo
           if ! coqc -Q formal/utm NaNLM \
               -w -notation-overridden,-stdlib-vector \
               formal/utm/MinskyReturnOrientation.v \
