@@ -196,7 +196,8 @@ Proof.
      source_bit target :: tail)).
   replace (length next_bits + 2)
     with (length [if sacrificial then 3 else 2] +
-          length next_bits + 1) by lia.
+          length next_bits + 1).
+  2:{ cbn [length]. lia. }
   apply (q0_tagged_control_list_dispatches_target
     [if sacrificial then 3 else 2]
     (0 :: 6 :: map q0_stable_control_tag bits ++ 5 :: stored)
