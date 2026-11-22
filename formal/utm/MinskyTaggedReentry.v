@@ -51,6 +51,20 @@ Proof.
     apply (dispatch_left_to_delimiter rest r stored right H).
 Qed.
 
+Lemma q2_rail_direct_reenter_q1_right :
+  forall (a b stored right : list nat),
+    Forall dispatch_left_symbol (a ++ b) ->
+    run (S (length (a ++ b)))
+      (cfg_ml 2 (a ++ b ++ 5 :: stored) right) =
+    entry_config 1 (5 :: stored) (rev (a ++ b) ++ right).
+Proof.
+  intros a b stored right H.
+  replace (a ++ b ++ 5 :: stored)
+    with ((a ++ b) ++ 5 :: stored).
+  2:{ repeat rewrite app_assoc. reflexivity. }
+  apply (q2_rail_direct_reenter_q1 (a ++ b) stored right H).
+Qed.
+
 Theorem tagged_right_dispatch_to_q1 :
   forall (first : bool) (rest next_bits : list bool)
          (old sacrificial : bool) (outer tail : list nat),
@@ -92,12 +106,11 @@ Proof.
   rewrite dispatch_run_add.
   rewrite (q15_right_buffered_native_tagged_list_dispatch
     first rest next_bits old sacrificial false outer tail).
-  repeat rewrite app_assoc.
-  apply (q2_rail_direct_reenter_q1
+  apply (q2_rail_direct_reenter_q1_right
     (rev
       ([if sacrificial then 3 else 2] ++
-       map q0_stable_control_tag next_bits) ++
-     0 :: 6 :: map q0_stable_control_tag ((first :: rest) ++ [true]))
+       map q0_stable_control_tag next_bits))
+    (0 :: 6 :: map q0_stable_control_tag ((first :: rest) ++ [true]))
     (source_bit old :: outer) (2 :: tail)).
   repeat rewrite Forall_app. repeat split;
     try (apply Forall_dispatch_left_tag);
@@ -130,10 +143,9 @@ Proof.
   rewrite dispatch_run_add.
   rewrite (q15_left_false_guard_native_tagged_list_dispatch
     first rest old false outer tail).
-  repeat rewrite app_assoc.
-  apply (q2_rail_direct_reenter_q1
-    (rev (map q0_stable_control_tag (rev (first :: rest))) ++ [0; 6])
-    (source_bit old :: 6 :: outer) (2 :: tail)).
+  apply (q2_rail_direct_reenter_q1_right
+    (rev (map q0_stable_control_tag (rev (first :: rest))))
+    [0; 6] (source_bit old :: 6 :: outer) (2 :: tail)).
   repeat rewrite Forall_app. repeat split;
     try (apply Forall_dispatch_left_tag_rev);
     try (unfold dispatch_left_symbol; auto 12).
