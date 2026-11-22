@@ -191,6 +191,10 @@ jobs:
             -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyCanonicalLeftStep.v
           coqchk -Q formal/utm NaNLM formal/utm/MinskyCanonicalLeftStep.vo
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyRowStepGeneric.v
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyRowStepGeneric.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyHeadRepresentation.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyDirectionCycle.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyVariableBuffer.vo
@@ -283,6 +287,8 @@ jobs:
             formal/utm/MinskyReturnWitness.vo
             formal/utm/MinskyCanonicalLeftStep.v
             formal/utm/MinskyCanonicalLeftStep.vo
+            formal/utm/MinskyRowStepGeneric.v
+            formal/utm/MinskyRowStepGeneric.vo
             formal/utm/MinskyHeadRepresentation.v
             formal/utm/MinskyHeadRepresentation.vo
             formal/utm/MinskyDirectionCycle.v
