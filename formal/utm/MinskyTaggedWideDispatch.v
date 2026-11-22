@@ -49,6 +49,7 @@ Proof.
   replace (length prefix + length bits + 1)
     with (S (length (prefix ++ map q0_stable_control_tag bits))).
   2:{ rewrite app_length, map_length. lia. }
+  rewrite <- app_assoc.
   destruct target.
   - apply (q0_scan_one _ _ _ Hmarked).
   - apply (q0_scan_zero _ _ _ Hmarked).
