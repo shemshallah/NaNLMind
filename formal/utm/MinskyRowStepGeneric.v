@@ -169,18 +169,19 @@ Proof.
         (rev (map match_mark (first_init :: init_rest)))).
       apply Forall_rev. apply Forall_q5_match_marks.
   - (* rail *) cbn.
-    match goal with |- ?G => fail 1 "RAIL GOAL:" G end.
+    rewrite rev_app_distr. cbn [rev]. rewrite rev_involutive.
     rewrite (map_entry_rewrite_marks_id
-      (rev (match_mark pre_last ::
-            rev (map match_mark (first_init :: init_rest))))).
-    2:{ apply Forall_rev. constructor.
-        - destruct pre_last; cbn; auto.
-        - apply Forall_marks_two_or_three. }
-    cbn [rev map app].
+      (match_mark first_init :: map match_mark init_rest ++
+       [match_mark pre_last])).
+    2:{ apply Forall_app. split.
+        - constructor.
+          + destruct first_init; cbn; auto.
+          + apply Forall_marks_two_or_three.
+        - constructor.
+          + destruct pre_last; cbn; auto.
+          + constructor. }
+    cbn [map app].
     repeat rewrite map_app.
-    repeat rewrite rev_app_distr.
-    repeat rewrite rev_involutive.
-    cbn [map rev app].
     repeat rewrite <- app_assoc.
     reflexivity.
   - (* tail *) cbn. reflexivity.
