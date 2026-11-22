@@ -16,7 +16,8 @@ Import ListNotations.
 
 From NaNLM Require Import MinskyTable MinskySourceEncoding
   MinskyConcreteEntry MinskyMatchMacro MinskyHeadMoveMacro
-  MinskyRelocationMacro MinskyCanonicalCopyGeneral
+  MinskyRelocationMacro MinskyActionMacro MinskyCanonicalCopy
+  MinskyCanonicalCopyGeneral MinskyCanonicalDirection
   MinskyCanonicalMatch MinskyCanonicalInstruction.
 
 Record canonical_left_step := {
