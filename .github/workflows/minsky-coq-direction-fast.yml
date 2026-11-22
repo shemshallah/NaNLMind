@@ -243,4 +243,15 @@ jobs:
             exit 1
           fi
           coqchk -Q formal/utm NaNLM formal/utm/MinskyReturnWitness.vo
+          if ! coqc -Q formal/utm NaNLM \
+              -w -notation-overridden,-stdlib-vector \
+              formal/utm/MinskyCanonicalLeftStep.v \
+              > /tmp/canonical-left-step-coq.log 2>&1; then
+            tail -n 100 /tmp/canonical-left-step-coq.log
+            while IFS= read -r line; do
+              echo "::error title=Coq canonical left step::$line"
+            done < <(tail -n 100 /tmp/canonical-left-step-coq.log)
+            exit 1
+          fi
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyCanonicalLeftStep.vo
           echo 'NANLM CANONICAL Q5 MATCH COQCHK PASS'
