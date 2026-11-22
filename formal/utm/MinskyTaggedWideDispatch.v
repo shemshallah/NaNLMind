@@ -14,8 +14,9 @@
 From Coq Require Import List Arith Bool Lia.
 Import ListNotations.
 
-From NaNLM Require Import MinskyTable MinskySourceEncoding MinskyMatchMacro
-  MinskyDirectionCycle MinskyDirectionRelocationCycle MinskyTaggedHalt.
+From NaNLM Require Import MinskyTable MinskyConcreteEntry
+  MinskySourceEncoding MinskyMatchMacro MinskyDirectionCycle
+  MinskyDirectionRelocationCycle MinskyTaggedHalt.
 
 (** ** q0 dispatch over an arbitrary tag list *)
 
