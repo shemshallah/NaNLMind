@@ -129,11 +129,23 @@ Proof.
     repeat rewrite q14_restore_match_mark.
     repeat rewrite <- app_assoc.
     reflexivity.
-  - (* return *) cbn. constructor.
+  - (* return *) cbn.
+    repeat rewrite rev_app_distr.
+    repeat rewrite rev_involutive.
+    cbn [rev].
+    change (Forall q17_pass
+      (source_bit bnext :: 5 ::
+       map source_bit (first_action :: action_tail) ++
+       [source_bit last_state])).
+    constructor.
     + destruct bnext; unfold q17_pass; auto 12.
     + constructor.
       * unfold q17_pass; auto 12.
-      * apply Forall_rev. apply Forall_q17_source_bits.
+      * apply Forall_app. split.
+        -- apply Forall_q17_source_bits.
+        -- constructor.
+           ++ destruct last_state; unfold q17_pass; auto 12.
+           ++ constructor.
   - (* line12 *) cbn. constructor.
     + destruct bnext; unfold q12_pass, match_mark; auto 12.
     + rewrite Forall_app. split.
