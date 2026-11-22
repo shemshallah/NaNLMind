@@ -148,3 +148,37 @@ Qed.
 
 Print Assumptions canonical_witness_family_ok.
 Print Assumptions canonical_witness_family_run.
+
+(** ** Machine-readable example
+
+    A concrete nonempty source tape for the fixed instruction.  The
+    start and end configurations are computed by the kernel. *)
+
+Example canonical_witness_family_example_start :
+  canonical_return_step_start
+    (canonical_witness_family [0; 1] false) =
+  entry_config 5 [5; 6; 0; 1; 0]
+    [2; 3; 4; 0; 1; 0; 0; 1; 0].
+Proof. vm_compute. reflexivity. Qed.
+
+Example canonical_witness_family_example_end :
+  canonical_return_step_end
+    (canonical_witness_family [0; 1] false) =
+  entry_config 5 [5; 0; 0; 1; 0]
+    [6; 2; 4; 0; 1; 0; 0; 1; 0].
+Proof. vm_compute. reflexivity. Qed.
+
+Theorem canonical_witness_family_example_run :
+  run (canonical_return_step_clock
+         (canonical_witness_family [0; 1] false))
+      (entry_config 5 [5; 6; 0; 1; 0]
+        [2; 3; 4; 0; 1; 0; 0; 1; 0]) =
+  entry_config 5 [5; 0; 0; 1; 0]
+    [6; 2; 4; 0; 1; 0; 0; 1; 0].
+Proof.
+  rewrite <- canonical_witness_family_example_start.
+  rewrite <- canonical_witness_family_example_end.
+  apply canonical_witness_family_run.
+Qed.
+
+Print Assumptions canonical_witness_family_example_run.
