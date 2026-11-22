@@ -106,12 +106,27 @@ Proof.
   rewrite dispatch_run_add.
   rewrite (q15_right_buffered_native_tagged_list_dispatch
     first rest next_bits old sacrificial false outer tail).
-  apply (q2_rail_direct_reenter_q1_right
+  rewrite map_app.
+  assert (Hassoc :
+    rev
+      ([if sacrificial then 3 else 2] ++
+       map q0_stable_control_tag next_bits) ++
+    0 :: 6 ::
+    (map q0_stable_control_tag (first :: rest) ++ [7]) ++
+    5 :: source_bit old :: outer =
+    ((rev
+        ([if sacrificial then 3 else 2] ++
+         map q0_stable_control_tag next_bits) ++
+      0 :: 6 :: map q0_stable_control_tag (first :: rest)) ++
+     [7]) ++ 5 :: source_bit old :: outer).
+  { repeat rewrite app_assoc. reflexivity. }
+  rewrite Hassoc.
+  apply (q2_rail_direct_reenter_q1
     (rev
       ([if sacrificial then 3 else 2] ++
-       map q0_stable_control_tag next_bits))
-    (0 :: 6 :: map q0_stable_control_tag ((first :: rest) ++ [true]))
-    (source_bit old :: outer) (2 :: tail)).
+       map q0_stable_control_tag next_bits) ++
+     0 :: 6 :: map q0_stable_control_tag (first :: rest))
+    7 (source_bit old :: outer) (2 :: tail)).
   apply Forall_app. split.
   - apply Forall_rev. rewrite Forall_app. split.
     + destruct sacrificial; unfold dispatch_left_symbol; auto 12.
@@ -148,9 +163,16 @@ Proof.
   rewrite dispatch_run_add.
   rewrite (q15_left_false_guard_native_tagged_list_dispatch
     first rest old false outer tail).
-  apply (q2_rail_direct_reenter_q1_right
-    (rev (map q0_stable_control_tag (rev (first :: rest))))
-    [0; 6] (source_bit old :: 6 :: outer) (2 :: tail)).
+  assert (Hassoc :
+    rev (map q0_stable_control_tag (rev (first :: rest))) ++
+    0 :: 6 :: 5 :: source_bit old :: 6 :: outer =
+    ((rev (map q0_stable_control_tag (rev (first :: rest))) ++ [0]) ++
+     [6]) ++ 5 :: source_bit old :: 6 :: outer).
+  { repeat rewrite app_assoc. reflexivity. }
+  rewrite Hassoc.
+  apply (q2_rail_direct_reenter_q1
+    (rev (map q0_stable_control_tag (rev (first :: rest))) ++ [0])
+    6 (source_bit old :: 6 :: outer) (2 :: tail)).
   apply Forall_app. split.
   - apply Forall_dispatch_left_tag_rev.
   - repeat constructor; unfold dispatch_left_symbol; auto 12.
