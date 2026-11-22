@@ -112,10 +112,15 @@ Proof.
        map q0_stable_control_tag next_bits))
     (0 :: 6 :: map q0_stable_control_tag ((first :: rest) ++ [true]))
     (source_bit old :: outer) (2 :: tail)).
-  repeat rewrite Forall_app. repeat split;
-    try (apply Forall_dispatch_left_tag);
-    try (apply Forall_dispatch_left_tag_rev);
-    try (unfold dispatch_left_symbol; auto 12).
+  apply Forall_app. split.
+  - apply Forall_rev. rewrite Forall_app. split.
+    + destruct sacrificial; unfold dispatch_left_symbol; auto 12.
+    + apply Forall_dispatch_left_tag.
+  - constructor.
+    + unfold dispatch_left_symbol; auto 12.
+    + constructor.
+      * unfold dispatch_left_symbol; auto 12.
+      * apply Forall_dispatch_left_tag.
 Qed.
 
 Print Assumptions tagged_right_dispatch_to_q1.
@@ -146,9 +151,9 @@ Proof.
   apply (q2_rail_direct_reenter_q1_right
     (rev (map q0_stable_control_tag (rev (first :: rest))))
     [0; 6] (source_bit old :: 6 :: outer) (2 :: tail)).
-  repeat rewrite Forall_app. repeat split;
-    try (apply Forall_dispatch_left_tag_rev);
-    try (unfold dispatch_left_symbol; auto 12).
+  apply Forall_app. split.
+  - apply Forall_dispatch_left_tag_rev.
+  - repeat constructor; unfold dispatch_left_symbol; auto 12.
 Qed.
 
 Print Assumptions tagged_left_dispatch_to_q1.
