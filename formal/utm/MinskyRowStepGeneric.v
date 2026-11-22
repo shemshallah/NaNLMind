@@ -169,20 +169,6 @@ Proof.
         (rev (map match_mark (first_init :: init_rest)))).
       apply Forall_rev. apply Forall_q5_match_marks.
   - (* rail *) cbn.
-    change (map entry_rewrite
-        (rev (match_mark pre_last ::
-              rev (map match_mark (first_init :: init_rest)))) ++
-      match_mark last_bit :: [4] ++
-      source_bit first_init ::
-      map match_raw init_rest ++
-      [match_raw pre_last; match_raw last_bit] ++
-      map source_bit (first_action :: action_tail ++ [last_state; bnext]) ++
-      1 :: 0 :: rest_tail =
-      map match_mark (first_init :: init_rest ++ [pre_last; last_bit]) ++
-      [4] ++
-      map match_raw (first_init :: init_rest ++ [pre_last; last_bit]) ++
-      map source_bit (first_action :: action_tail ++ [last_state; bnext]) ++
-      1 :: 0 :: rest_tail).
     rewrite (map_entry_rewrite_marks_id
       (rev (match_mark pre_last ::
             rev (map match_mark (first_init :: init_rest))))).
