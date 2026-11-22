@@ -13,7 +13,8 @@ From Coq Require Import List Arith Bool Lia.
 Import ListNotations.
 
 From NaNLM Require Import MinskyTable MinskySourceEncoding
-  MinskyCanonicalMatch MinskyCanonicalInstruction.
+  MinskyHeadMoveMacro MinskyActionMacro MinskyCanonicalMatch
+  MinskyCanonicalInstruction.
 
 Definition canonical_return_witness : canonical_return_step :=
   {| crs_post := [5; 2];
