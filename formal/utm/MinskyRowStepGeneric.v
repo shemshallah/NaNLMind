@@ -192,7 +192,7 @@ Proof.
   - (* tail *) cbn. reflexivity.
   - (* prefix *) cbn. rewrite rev_app_distr. cbn. reflexivity.
   - (* shift *) cbn. rewrite rev_app_distr. cbn. reflexivity.
-  - (* len *) cbn. exact Hlen.
+  - (* len *) cbn. cbn in Hlen. exact Hlen.
   - (* rest *) cbn. reflexivity.
   - (* restored *) cbn. reflexivity.
   - (* decomp *) cbn. rewrite rev_app_distr. cbn.
