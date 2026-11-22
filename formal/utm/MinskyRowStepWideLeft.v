@@ -9,7 +9,8 @@ Import ListNotations.
 
 From NaNLM Require Import MinskyTable MinskySourceEncoding
   MinskyWideSource MinskyConcreteEntry MinskyCanonicalInstruction
-  MinskyRowStepGeneric MinskyRowStepGenericLeft MinskyRowStepWide.
+  MinskyCanonicalLeftStep MinskyRowStepGeneric
+  MinskyRowStepGenericLeft MinskyRowStepWide.
 
 Definition wide_row_step_left
     (r : WideSourceRow) (data : list nat) (bprev : bool)
