@@ -259,7 +259,9 @@ Proof.
     + unfold q14_pass; auto 12.
     + rewrite Forall_app. split.
       * rewrite rev_app_distr. cbn [rev]. rewrite rev_involutive.
-        cbn [map]. apply Forall_q14_match_marks.
+        change (Forall q14_pass
+          (map match_mark (first_action :: action_tail ++ [last_state]))).
+        apply Forall_q14_match_marks.
       * constructor.
         -- destruct bnext; unfold q14_pass, match_mark; auto 12.
         -- constructor.
