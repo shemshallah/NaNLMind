@@ -145,7 +145,7 @@ Proof.
            (first :: rest ++ [true]) ++
          5 :: source_bit old :: outer) (2 :: tail)).
     rewrite (q15_right_tagged_return_buffer_layout
-      (first :: rest ++ [true]) old outer).
+      (first :: rest) old outer).
     apply q5_q1_q0_buffered_tagged_list_dispatch.
 Qed.
 
