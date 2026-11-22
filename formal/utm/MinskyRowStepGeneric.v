@@ -247,14 +247,22 @@ Proof.
   - (* line12 *) cbn. constructor.
     + destruct bnext; unfold q12_pass, match_mark; auto 12.
     + rewrite Forall_app. split.
-      * apply Forall_q12_rev_marks.
+      * rewrite Forall_app. split.
+        -- apply Forall_q12_rev_marks.
+        -- constructor.
+           ++ destruct first_action; unfold q12_pass, match_mark; auto 12.
+           ++ constructor.
       * constructor.
         -- unfold q12_pass; auto 12.
         -- constructor.
   - (* line14 *) cbn. constructor.
     + unfold q14_pass; auto 12.
     + rewrite Forall_app. split.
-      * apply Forall_q14_rev_marks.
+      * rewrite Forall_app. split.
+        -- apply Forall_q14_rev_marks.
+        -- constructor.
+           ++ destruct first_action; unfold q14_pass, match_mark; auto 12.
+           ++ constructor.
       * constructor.
         -- destruct bnext; unfold q14_pass, match_mark; auto 12.
         -- constructor.
