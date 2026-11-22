@@ -25,16 +25,23 @@ Fixpoint split_init (l : list bool) : list bool :=
   | x :: rest => x :: split_init rest
   end.
 
+Fixpoint split_last (l : list bool) (d : bool) : bool :=
+  match l with
+  | [] => d
+  | [a] => a
+  | _ :: rest => split_last rest d
+  end.
+
 Lemma split_init_last :
   forall (l : list bool) (d : bool),
     l <> [] ->
-    split_init l ++ [last l d] = l.
+    split_init l ++ [split_last l d] = l.
 Proof.
   induction l as [|a [|b rest] IH]; intros d Hne.
   - contradiction.
   - simpl. reflexivity.
   - simpl.
-    change (a :: (split_init (b :: rest) ++ [last (b :: rest) d]) =
+    change (a :: (split_init (b :: rest) ++ [split_last (b :: rest) d]) =
             a :: b :: rest).
     rewrite IH.
     + reflexivity.
@@ -44,12 +51,12 @@ Qed.
 Lemma split_current :
   forall (l : list bool) (d read : bool),
     2 <= length l ->
-    hd d l :: tl (split_init l) ++ [last l d; read] = l ++ [read].
+    hd d l :: tl (split_init l) ++ [split_last l d; read] = l ++ [read].
 Proof.
   intros [|a [|b rest]] d read Hlen; try (cbn in Hlen; lia).
   simpl.
-  replace (split_init (b :: rest) ++ [last (b :: rest) d; read])
-    with ((split_init (b :: rest) ++ [last (b :: rest) d]) ++ [read]).
+  replace (split_init (b :: rest) ++ [split_last (b :: rest) d; read])
+    with ((split_init (b :: rest) ++ [split_last (b :: rest) d]) ++ [read]).
   2:{ rewrite <- app_assoc. reflexivity. }
   assert (Hne : b :: rest <> []) by discriminate.
   rewrite (split_init_last (b :: rest) d Hne).
@@ -59,7 +66,7 @@ Qed.
 Lemma split_action :
   forall (l : list bool) (d last_bit : bool),
     2 <= length l ->
-    hd d l :: tl (split_init l) ++ [last l d; last_bit] = l ++ [last_bit].
+    hd d l :: tl (split_init l) ++ [split_last l d; last_bit] = l ++ [last_bit].
 Proof.
   intros l d last_bit Hlen.
   apply split_current. exact Hlen.
@@ -71,11 +78,11 @@ Definition wide_row_step
   canonical_row_step
     (hd false (wr_current r))
     (tl (split_init (wr_current r)))
-    (last (wr_current r) false)
+    (split_last (wr_current r) false)
     (wr_read r)
     (hd false (wr_next r))
     (tl (split_init (wr_next r)))
-    (last (wr_next r) false)
+    (split_last (wr_next r) false)
     (wr_write r)
     data bprev rest_tail.
 
