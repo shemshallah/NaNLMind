@@ -1637,3 +1637,30 @@ two-bit limitation from the left tagged dispatch.  They still do not
 construct the concrete `encode` from a wide source configuration, the
 running-case invariant, or the halt/mismatch branch.  The claim flag
 remains false.
+
+### One-row running families with arbitrary tape (kernel-checked)
+
+`MinskyReturnWitness.v` and `MinskyCanonicalLeftStep.v` now contain
+right and left one-row families for a fixed two-bit instruction:
+
+```text
+canonical_witness_family data bprev
+canonical_witness_family_ok / _run
+
+canonical_left_witness_family data bprev
+canonical_left_witness_family_ok / _run
+```
+
+The source data list and the previous write bit are arbitrary; only the
+instruction bits are fixed.  The right family shifts
+`data' = data ++ [bprev]`; the left family pops the written cell and
+returns the old data.  Both exact native runs are checked in
+[44977466571](https://github.com/shemshallah/NaNLMind/actions/runs/44977466571)
+and
+[44977821167](https://github.com/shemshallah/NaNLMind/actions/runs/44977821167).
+
+This is the first non-vacuous one-row encoder step in both directions
+with an arbitrary tape suffix.  The remaining generalization is from the
+fixed instruction `[false;true]/[false;false]` to arbitrary `bits` and
+`action` lists, followed by the wide-source lookup instantiation and the
+halt/mismatch branch.  No universality claim is made.
