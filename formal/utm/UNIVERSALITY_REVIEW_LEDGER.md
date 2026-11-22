@@ -1833,3 +1833,34 @@ valid native macro and a useful phase, but it is not by itself the
 `WideSource` encoder.  The tagged q15 layout, which carries `sacrificial`
 (write) and `target` (read) separately, is the intended semantic bridge.
 The claim flag remains false.
+
+### Tagged dispatch continuations (kernel-checked)
+
+`formal/utm/MinskyTaggedContinuation.v` composes the arbitrary-width
+tagged right and left dispatches with the native q3 continuations:
+
+```text
+tagged_right_dispatch_halts
+tagged_left_dispatch_halts
+```
+
+When the source read target is true, the dispatch reaches q3.  If the
+q3 tail is a q3-passable list followed by the end marker 5, the machine
+halts.  This is the concrete halt/lookup-failure branch of the tagged
+layout.
+
+The same module also proves the running true-read continuation:
+
+```text
+tagged_right_dispatch_to_q5
+tagged_left_dispatch_to_q5
+```
+
+which scans q3 to the next X=4 and re-enters q5.
+
+Fast acceptance:
+[45057593387](https://github.com/shemshallah/NaNLMind/actions/runs/45057593387).
+
+The false-read q2 -> q1 continuation is still being normalized; the
+source-program layout and the full q5/q1/q6/q12/q14 -> q15 loop remain
+open.  The claim flag remains false.
