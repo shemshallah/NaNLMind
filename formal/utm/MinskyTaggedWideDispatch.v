@@ -130,24 +130,31 @@ Proof.
   assert (H17 : Forall q17_pass (rev [6; 5])).
   { repeat (constructor; try (unfold q17_pass; auto 12)). }
   rewrite writeback_run_add.
-  match goal with |- ?G => fail 1 "GOAL BEFORE LEFT RELOC:" G end.
-  rewrite (tagged_rail_left_relocates_to_q5
-    first rest 6 [5] old target false outer tail H21 H17).
-  change (run (4 + (length (rev (first :: rest)) + 1))
-    (entry_config 5 (5 :: source_bit old :: 6 :: outer)
-      (6 :: 2 :: rev (map q0_stable_control_tag (first :: rest)) ++
-       source_bit target :: tail)) =
-    if target
-    then entry_config 3
-      (3 :: rev (map q0_stable_control_tag
-              (rev (first :: rest))) ++
-       0 :: 6 :: 5 :: source_bit old :: 6 :: outer) tail
-    else cfg_ml 2
-      (rev (map q0_stable_control_tag
-             (rev (first :: rest))) ++
-       0 :: 6 :: 5 :: source_bit old :: 6 :: outer) (2 :: tail)).
-  rewrite <- map_rev.
-  apply q5_left_false_gate_tagged_list_dispatch.
+  transitivity
+    (run (4 + (length (rev (first :: rest)) + 1))
+      (cfg_ml 5
+        (rev (source_bit old :: rev [6; 5]) ++ 6 :: outer)
+        (2 :: rev (map q0_stable_control_tag (first :: rest)) ++
+         source_bit target :: tail))).
+  - apply (f_equal
+      (run (4 + (length (rev (first :: rest)) + 1)))).
+    apply (tagged_rail_left_relocates_to_q5
+      first rest 6 [5] old target false outer tail H21 H17).
+  - change (run (4 + (length (rev (first :: rest)) + 1))
+      (entry_config 5 (5 :: source_bit old :: 6 :: outer)
+        (6 :: 2 :: rev (map q0_stable_control_tag (first :: rest)) ++
+         source_bit target :: tail)) =
+      if target
+      then entry_config 3
+        (3 :: rev (map q0_stable_control_tag
+                (rev (first :: rest))) ++
+         0 :: 6 :: 5 :: source_bit old :: 6 :: outer) tail
+      else cfg_ml 2
+        (rev (map q0_stable_control_tag
+               (rev (first :: rest))) ++
+         0 :: 6 :: 5 :: source_bit old :: 6 :: outer) (2 :: tail)).
+    rewrite <- map_rev.
+    apply q5_left_false_gate_tagged_list_dispatch.
 Qed.
 
 Print Assumptions q15_left_false_guard_native_tagged_list_dispatch.
