@@ -124,8 +124,9 @@ Proof.
     repeat rewrite rev_involutive. cbn [rev app].
     repeat rewrite <- app_assoc. reflexivity.
   - (* scan *) cbn. constructor.
-    + unfold canonical_q5_return_pass; auto 12.
-    + apply Forall_q5_match_marks.
+    + destruct pre_last; unfold canonical_q5_return_pass, match_mark;
+        auto 12.
+    + apply Forall_rev. apply Forall_q5_match_marks.
   - (* rail *) cbn.
     rewrite map_app, rev_app_distr, rev_involutive.
     cbn [map rev app].
