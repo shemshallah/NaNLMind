@@ -60,3 +60,73 @@ Qed.
 
 Print Assumptions canonical_return_witness_ok.
 Print Assumptions canonical_return_witness_run.
+
+(** ** A one-row family with arbitrary source tape data
+
+    The fixed witness above has empty data.  The same record pattern
+    works for every left data list and every write bit; only the data
+    shift changes.  This is a genuine running step for a fixed two-bit
+    instruction with an arbitrary source tape suffix. *)
+
+Definition canonical_witness_family
+    (data : list nat) (bprev : bool) : canonical_return_step :=
+  {| crs_post := [5; 2];
+     crs_pre := [];
+     crs_bprev := bprev;
+     crs_data := data;
+     crs_data' := data ++ [source_bit bprev];
+     crs_symbol := 2;
+     crs_remaining := [];
+     crs_prefix := [6] ++ source_bit bprev :: rev data;
+     crs_hit := true;
+     crs_next_bit := false;
+     crs_next_tail := [1; 0; 0; 1; 0];
+     crs_q16map := [4];
+     crs_bits := [false; true];
+     crs_action_init := [false];
+     crs_tbuffer := [];
+     crs_bnext := false;
+     crs_rest := [0];
+     crs_s21 := 0;
+     crs_rest21 := [5];
+     crs_hpre := [5];
+     crs_hhit := false;
+     crs_hpost := [];
+     crs_next_bit' := false;
+     crs_next_tail' := [];
+     crs_tail := [0; 0; 1; 0] |}.
+
+Lemma rev_snoc_source_bit :
+  forall (data : list nat) (bprev : bool),
+    rev (data ++ [source_bit bprev]) = source_bit bprev :: rev data.
+Proof.
+  intros data bprev.
+  rewrite rev_app_distr. cbn [rev]. reflexivity.
+Qed.
+
+Lemma canonical_witness_family_ok :
+  forall data bprev,
+    canonical_return_step_ok (canonical_witness_family data bprev).
+Proof.
+  intros data bprev.
+  unfold canonical_witness_family.
+  constructor; cbn [canonical_return_marked];
+    auto 12; try (rewrite rev_snoc_source_bit; reflexivity).
+Qed.
+
+Theorem canonical_witness_family_run :
+  forall data bprev,
+    run (canonical_return_step_clock
+           (canonical_witness_family data bprev))
+        (canonical_return_step_start
+           (canonical_witness_family data bprev)) =
+    canonical_return_step_end
+      (canonical_witness_family data bprev).
+Proof.
+  intros data bprev.
+  apply canonical_return_step_run.
+  apply canonical_witness_family_ok.
+Qed.
+
+Print Assumptions canonical_witness_family_ok.
+Print Assumptions canonical_witness_family_run.
