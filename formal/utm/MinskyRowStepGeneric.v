@@ -198,7 +198,7 @@ Proof.
     2:{ rewrite <- app_assoc. reflexivity. }
     exact Hlen.
   - (* rest *) cbn. reflexivity.
-  - (* restored *) cbn. reflexivity.
+  - (* restored *) cbn. repeat rewrite <- app_assoc. reflexivity.
   - (* decomp *) cbn. rewrite rev_app_distr. cbn.
     repeat rewrite <- app_assoc. reflexivity.
   - (* pre *) cbn. constructor.
