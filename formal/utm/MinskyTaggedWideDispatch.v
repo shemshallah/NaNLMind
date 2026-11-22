@@ -257,66 +257,60 @@ Proof.
     - unfold q17_pass; auto 12.
     - constructor. }
   rewrite writeback_run_add.
-  rewrite (tagged_rail_right_relocates_to_q5
-    true [] 5 [] old sacrificial outer [2]
-    (map q0_stable_control_tag next_bits ++
-     source_bit target :: tail) H21 H15 H17).
-  change (run ((S (length (2 :: 6 ::
-             map q0_stable_control_tag (bits ++ [true]))) +
-           (length (map q0_stable_control_tag
-              (bits ++ [true])) + 2)) +
-          (length next_bits + 2))
-    (cfg_ml 5
-      (rev [2] ++ 6 ::
-       rev (rev [5] ++ 7 ::
-         rev (map q0_stable_control_tag (bits ++ [true]))) ++
-       source_bit old :: outer)
-      (2 :: (if sacrificial then 3 else 2) ::
-       map q0_stable_control_tag next_bits ++
-       source_bit target :: tail)) =
-    if target
-    then entry_config 3
-      (3 :: rev
-        ([if sacrificial then 3 else 2] ++
-         map q0_stable_control_tag next_bits) ++
-       0 :: 6 :: map q0_stable_control_tag (bits ++ [true]) ++
-       5 :: source_bit old :: outer) tail
-    else cfg_ml 2
-      (rev
-        ([if sacrificial then 3 else 2] ++
-         map q0_stable_control_tag next_bits) ++
-       0 :: 6 :: map q0_stable_control_tag (bits ++ [true]) ++
-       5 :: source_bit old :: outer) (2 :: tail)).
-  cbn [rev].
-  change (run ((S (length (2 :: 6 ::
-             map q0_stable_control_tag (bits ++ [true]))) +
-           (length (map q0_stable_control_tag
-              (bits ++ [true])) + 2)) +
-          (length next_bits + 2))
-    (entry_config 5
-      (6 ::
-       (rev (rev [5] ++ 7 ::
-         rev (map q0_stable_control_tag (bits ++ [true]))) ++
-        source_bit old :: outer))
-      (2 :: (if sacrificial then 3 else 2) ::
-       map q0_stable_control_tag next_bits ++
-       source_bit target :: tail)) =
-    if target
-    then entry_config 3
-      (3 :: rev
-        ([if sacrificial then 3 else 2] ++
-         map q0_stable_control_tag next_bits) ++
-       0 :: 6 :: map q0_stable_control_tag (bits ++ [true]) ++
-       5 :: source_bit old :: outer) tail
-    else cfg_ml 2
-      (rev
-        ([if sacrificial then 3 else 2] ++
-         map q0_stable_control_tag next_bits) ++
-       0 :: 6 :: map q0_stable_control_tag (bits ++ [true]) ++
-       5 :: source_bit old :: outer) (2 :: tail)).
-  rewrite (q15_right_tagged_return_buffer_layout
-    (bits ++ [true]) old outer).
-  apply q5_q1_q0_buffered_tagged_list_dispatch.
+  transitivity
+    (run ((S (length (2 :: 6 ::
+              map q0_stable_control_tag (bits ++ [true]))) +
+            (length (map q0_stable_control_tag
+               (bits ++ [true])) + 2)) +
+           (length next_bits + 2))
+      (cfg_ml 5
+        (rev [2] ++ 6 ::
+         rev (rev [5] ++ 7 ::
+           rev (map q0_stable_control_tag (bits ++ [true]))) ++
+         source_bit old :: outer)
+        (2 :: (if sacrificial then 3 else 2) ::
+         map q0_stable_control_tag next_bits ++
+         source_bit target :: tail))).
+  - apply (f_equal
+      (run ((S (length (2 :: 6 ::
+                map q0_stable_control_tag (bits ++ [true]))) +
+              (length (map q0_stable_control_tag
+                 (bits ++ [true])) + 2)) +
+             (length next_bits + 2)))).
+    apply (tagged_rail_right_relocates_to_q5
+      true [] 5 [] old sacrificial outer [2]
+      (map q0_stable_control_tag next_bits ++
+       source_bit target :: tail) H21 H15 H17).
+  - cbn [rev].
+    change (run ((S (length (2 :: 6 ::
+               map q0_stable_control_tag (bits ++ [true]))) +
+             (length (map q0_stable_control_tag
+                (bits ++ [true])) + 2)) +
+            (length next_bits + 2))
+      (entry_config 5
+        (6 ::
+         (rev (rev [5] ++ 7 ::
+           rev (map q0_stable_control_tag (bits ++ [true]))) ++
+          source_bit old :: outer))
+        (2 :: (if sacrificial then 3 else 2) ::
+         map q0_stable_control_tag next_bits ++
+         source_bit target :: tail)) =
+      if target
+      then entry_config 3
+        (3 :: rev
+          ([if sacrificial then 3 else 2] ++
+           map q0_stable_control_tag next_bits) ++
+         0 :: 6 :: map q0_stable_control_tag (bits ++ [true]) ++
+         5 :: source_bit old :: outer) tail
+      else cfg_ml 2
+        (rev
+          ([if sacrificial then 3 else 2] ++
+           map q0_stable_control_tag next_bits) ++
+         0 :: 6 :: map q0_stable_control_tag (bits ++ [true]) ++
+         5 :: source_bit old :: outer) (2 :: tail)).
+    rewrite (q15_right_tagged_return_buffer_layout
+      (bits ++ [true]) old outer).
+    apply q5_q1_q0_buffered_tagged_list_dispatch.
 Qed.
 
 Print Assumptions q15_right_buffered_native_tagged_list_dispatch.
