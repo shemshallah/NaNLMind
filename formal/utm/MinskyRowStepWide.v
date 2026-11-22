@@ -48,8 +48,9 @@ Lemma split_current :
 Proof.
   intros [|a [|b rest]] d read Hlen; try (cbn in Hlen; lia).
   simpl.
-  change (a :: ((split_init (b :: rest) ++ [last (b :: rest) d]) ++
-               [read]) = (a :: b :: rest) ++ [read]).
+  replace (split_init (b :: rest) ++ [last (b :: rest) d; read])
+    with ((split_init (b :: rest) ++ [last (b :: rest) d]) ++ [read]).
+  2:{ rewrite <- app_assoc. reflexivity. }
   assert (Hne : b :: rest <> []) by discriminate.
   rewrite (split_init_last (b :: rest) d Hne).
   reflexivity.
