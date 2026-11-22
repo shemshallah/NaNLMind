@@ -126,7 +126,9 @@ Proof.
   - (* scan *) cbn. constructor.
     + destruct pre_last; unfold canonical_q5_return_pass, match_mark;
         auto 12.
-    + apply Forall_rev. apply Forall_q5_match_marks.
+    + change (Forall canonical_q5_return_pass
+        (rev (map match_mark (first_init :: init_rest)))).
+      apply Forall_rev. apply Forall_q5_match_marks.
   - (* rail *) cbn.
     rewrite map_app, rev_app_distr, rev_involutive.
     cbn [map rev app].
