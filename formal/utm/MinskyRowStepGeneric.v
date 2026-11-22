@@ -178,7 +178,7 @@ Proof.
     rewrite (map_entry_rewrite_marks_id
       (match_mark first_init :: map match_mark init_rest ++
        [match_mark pre_last])).
-    2:{ apply Forall_app. split.
+    2:{ rewrite Forall_app. split.
         - constructor.
           + destruct first_init; cbn; auto.
           + apply Forall_marks_two_or_three.
@@ -200,25 +200,25 @@ Proof.
   - (* pre *) cbn. constructor.
     + unfold q15_pass; auto 12.
     + constructor.
-  - (* post *) cbn. apply Forall_app. split.
+  - (* post *) cbn. rewrite Forall_app. split.
     + apply Forall_q17_source_bits.
     + constructor.
       * destruct last_state; unfold q17_pass; auto 12.
       * constructor.
-  - (* line12 *) cbn. apply Forall_app. split.
+  - (* line12 *) cbn. rewrite Forall_app. split.
     + constructor.
       * destruct bnext; unfold q12_pass, match_mark; auto 12.
-      * apply Forall_app. split.
+      * rewrite Forall_app. split.
         -- apply Forall_q12_match_marks.
         -- constructor.
            ++ unfold q12_pass; auto 12.
            ++ constructor.
     + constructor.
-  - (* line14 *) cbn. apply Forall_app. split.
+  - (* line14 *) cbn. rewrite Forall_app. split.
     + constructor.
       * unfold q14_pass; auto 12.
       * constructor.
-    + apply Forall_app. split.
+    + rewrite Forall_app. split.
       * apply Forall_q14_match_marks.
       * constructor.
         -- destruct bnext; unfold q14_pass, match_mark; auto 12.
