@@ -232,4 +232,15 @@ jobs:
             exit 1
           fi
           coqchk -Q formal/utm NaNLM formal/utm/MinskyCanonicalInstruction.vo
+          if ! coqc -Q formal/utm NaNLM \
+              -w -notation-overridden,-stdlib-vector \
+              formal/utm/MinskyReturnWitness.v \
+              > /tmp/canonical-return-witness-coq.log 2>&1; then
+            tail -n 100 /tmp/canonical-return-witness-coq.log
+            while IFS= read -r line; do
+              echo "::error title=Coq canonical return witness::$line"
+            done < <(tail -n 100 /tmp/canonical-return-witness-coq.log)
+            exit 1
+          fi
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyReturnWitness.vo
           echo 'NANLM CANONICAL Q5 MATCH COQCHK PASS'
