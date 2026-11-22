@@ -203,6 +203,10 @@ jobs:
             -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyReturnOrientation.v
           coqchk -Q formal/utm NaNLM formal/utm/MinskyReturnOrientation.vo
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyTaggedRightWide.v
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyTaggedRightWide.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyHeadRepresentation.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyDirectionCycle.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyVariableBuffer.vo
@@ -301,6 +305,8 @@ jobs:
             formal/utm/MinskyRowStepGenericLeft.vo
             formal/utm/MinskyReturnOrientation.v
             formal/utm/MinskyReturnOrientation.vo
+            formal/utm/MinskyTaggedRightWide.v
+            formal/utm/MinskyTaggedRightWide.vo
             formal/utm/MinskyHeadRepresentation.v
             formal/utm/MinskyHeadRepresentation.vo
             formal/utm/MinskyDirectionCycle.v

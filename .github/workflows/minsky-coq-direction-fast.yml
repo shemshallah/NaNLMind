@@ -287,4 +287,15 @@ jobs:
             exit 1
           fi
           coqchk -Q formal/utm NaNLM formal/utm/MinskyReturnOrientation.vo
+          if ! coqc -Q formal/utm NaNLM \
+              -w -notation-overridden,-stdlib-vector \
+              formal/utm/MinskyTaggedRightWide.v \
+              > /tmp/minsky-tagged-right-coq.log 2>&1; then
+            tail -n 100 /tmp/minsky-tagged-right-coq.log
+            while IFS= read -r line; do
+              echo "::error title=Coq tagged right wide::$line"
+            done < <(tail -n 100 /tmp/minsky-tagged-right-coq.log)
+            exit 1
+          fi
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyTaggedRightWide.vo
           echo 'NANLM CANONICAL Q5 MATCH COQCHK PASS'
