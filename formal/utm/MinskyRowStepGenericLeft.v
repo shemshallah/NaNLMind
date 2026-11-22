@@ -89,6 +89,11 @@ Proof.
       apply Forall_rev. apply Forall_q5_match_marks.
   - (* rail *) cbn.
     rewrite rev_app_distr. cbn [rev]. rewrite rev_involutive.
+    replace ((([] ++ [match_mark first_init]) ++
+              map match_mark init_rest) ++ [match_mark pre_last])
+      with (match_mark first_init :: map match_mark init_rest ++
+            [match_mark pre_last]).
+    2:{ cbn. repeat rewrite <- app_assoc. reflexivity. }
     rewrite (map_entry_rewrite_marks_id
       (match_mark first_init :: map match_mark init_rest ++
        [match_mark pre_last])).
