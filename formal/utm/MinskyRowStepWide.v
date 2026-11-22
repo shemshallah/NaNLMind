@@ -103,7 +103,9 @@ Proof.
   2:{ rewrite Hnext. lia. }
   rewrite (split_current (wr_current r) false (wr_read r)).
   2:{ rewrite Hcur. lia. }
-  rewrite app_length. cbn [length]. rewrite Hcur, Hnext. lia.
+  assert (Hlen : length (wr_next r) = length (wr_current r))
+    by (rewrite Hnext, Hcur; reflexivity).
+  repeat rewrite app_length. cbn [length]. rewrite Hlen. reflexivity.
 Qed.
 
 Theorem wide_row_step_run :
