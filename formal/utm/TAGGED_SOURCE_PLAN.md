@@ -582,3 +582,21 @@ q12/q14 restore scan stops on a 6 tag.  A correct loop must therefore
 introduce the 6/7 state tags after q12/q14, or erase/relocate the q1 pass
 tags before the restore.  This is the exact representation obligation
 blocking the concrete encoder, not a tactic gap.
+
+## q12 leftover tail (proved)
+
+`canonical_q12_restore_with_leftover` shows that q12 stops at the first
+M=6 and q14 carries every symbol after that delimiter untouched into the
+q15 outer tape.  Thus 6/7 tags that lie *after* the first 6 do not have
+to be crossed by q12.
+
+This does not yet close the loop.  The q12 output still carries the
+direction mark 2/3 on the q15 right tape, while the tagged q15 entry
+expects its scan to stop on a raw source target 0/1.  A correct bridge
+must either:
+
+1. place the raw target before the carried mark so q15 stops there, or
+2. prove a q15 variant that stops on a marked target, restores it, and
+   only then dispatches.
+
+No such bridge is currently proved; the concrete encoder remains open.
