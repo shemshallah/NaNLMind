@@ -1706,3 +1706,29 @@ Fast acceptance:
 This is the rightward generic row-step compiler.  The leftward generic
 row step, the wide-source lookup instantiation, the running invariant,
 and the halt/mismatch branch remain open.  The claim flag remains false.
+
+### Generic left one-row step (kernel-checked)
+
+`formal/utm/MinskyRowStepGenericLeft.v` is the leftward analogue of
+the generic right row step:
+
+```text
+canonical_left_row_step
+  first_init init_rest pre_last last_bit
+  first_action action_tail last_state bnext data bprev rest_tail
+```
+
+with `bits = first_init :: init_rest ++ [pre_last; last_bit]`,
+`action = first_action :: action_tail ++ [last_state; bnext]`, and the
+same length equation.  The data shift writes `bprev` and the q20 left
+move pops it, so `data' = data`.
+
+`canonical_left_row_step_ok` discharges every `canonical_left_step_ok`
+field.  Fast acceptance:
+[44999141705](https://github.com/shemshallah/NaNLMind/actions/runs/44999141705).
+
+Together with `MinskyRowStepGeneric.v`, both directions now have a
+generic one-row native step for arbitrary condition/action lists of
+width at least two.  The remaining encoder work is the width-one case,
+the concrete `encode` from `WideSourceConfig`, the lookup invariant, and
+the halt/mismatch branch.  No universality claim is made.
