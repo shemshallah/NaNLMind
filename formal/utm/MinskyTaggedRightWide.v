@@ -79,7 +79,7 @@ Proof.
            rev (map q0_stable_control_tag
              (first :: rest ++ [true]))) ++
          source_bit old :: outer)
-        (2 :: (if sacrificial then 3 else 2) ::
+        ((if sacrificial then 3 else 2) ::
          map q0_stable_control_tag next_bits ++
          source_bit target :: tail))).
   - apply (f_equal
@@ -107,7 +107,7 @@ Proof.
            rev (map q0_stable_control_tag
              (first :: rest ++ [true]))) ++
          source_bit old :: outer)
-        (2 :: (if sacrificial then 3 else 2) ::
+        ((if sacrificial then 3 else 2) ::
          map q0_stable_control_tag next_bits ++
          source_bit target :: tail)).
     apply (tagged_rail_right_relocates_to_q5
