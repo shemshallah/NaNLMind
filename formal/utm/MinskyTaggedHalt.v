@@ -1659,3 +1659,190 @@ Proof.
 Qed.
 
 Print Assumptions q15_left_four_prefix_gate.
+
+(** ** Complete left four-prefix loops
+
+    The four-prefix gate ends at q3/q2.  Composing with the native
+    q3->q5 and q2->q1 reentries closes the left movement loop while the
+    restored 4 travels in the q5/q1 rail. *)
+
+Lemma four_prefix_left_rail_tail :
+  forall (first : bool) (rest_prefix : list bool)
+         (extra next_control : bool),
+    Forall dispatch_left_symbol
+      (map q0_stable_control_tag (first :: rest_prefix) ++
+       [q0_stable_control_tag extra;
+        q0_stable_control_tag next_control; 4; 0; 6]).
+Proof.
+  intros first rest_prefix extra next_control.
+  rewrite Forall_app. split.
+  - apply q0_stable_control_tags_dispatch_left.
+  - constructor.
+    + apply q0_stable_control_tag_dispatch_left.
+    + constructor.
+      * apply q0_stable_control_tag_dispatch_left.
+      * constructor.
+        -- unfold dispatch_left_symbol; auto 12.
+        -- constructor.
+           ++ unfold dispatch_left_symbol; auto 12.
+           ++ constructor.
+              ** unfold dispatch_left_symbol; auto 12.
+              ** constructor.
+Qed.
+
+Lemma four_prefix_left_rail_normalize :
+  forall (first : bool) (rest_prefix : list bool)
+         (extra next_control : bool),
+    rev ([4] ++
+      [q0_stable_control_tag next_control;
+       q0_stable_control_tag extra] ++
+      rev (map q0_stable_control_tag (first :: rest_prefix))) ++ [0; 6] =
+    map q0_stable_control_tag (first :: rest_prefix) ++
+      [q0_stable_control_tag extra;
+       q0_stable_control_tag next_control; 4; 0; 6].
+Proof.
+  intros first rest_prefix extra next_control.
+  rewrite rev_app_distr.
+  rewrite rev_app_distr.
+  cbn [rev].
+  rewrite rev_involutive.
+  repeat rewrite app_nil_l.
+  repeat rewrite app_nil_r.
+  repeat rewrite <- app_assoc.
+  cbn [app].
+  reflexivity.
+Qed.
+
+Lemma four_prefix_left_rail_normalize_q2 :
+  forall (first : bool) (rest_prefix : list bool)
+         (extra next_control : bool),
+    ((rev ([4] ++
+       [q0_stable_control_tag next_control;
+        q0_stable_control_tag extra] ++
+       rev (map q0_stable_control_tag (first :: rest_prefix))) ++ [0]) ++ [6]) =
+    map q0_stable_control_tag (first :: rest_prefix) ++
+      [q0_stable_control_tag extra;
+       q0_stable_control_tag next_control; 4; 0; 6].
+Proof.
+  intros first rest_prefix extra next_control.
+  rewrite <- app_assoc.
+  apply four_prefix_left_rail_normalize.
+Qed.
+
+Lemma four_prefix_left_rail_safe :
+  forall (first : bool) (rest_prefix : list bool)
+         (extra next_control : bool),
+    Forall dispatch_left_symbol
+      ((rev ([4] ++
+        [q0_stable_control_tag next_control;
+         q0_stable_control_tag extra] ++
+        rev (map q0_stable_control_tag (first :: rest_prefix))) ++ [0]) ++ [6]).
+Proof.
+  intros first rest_prefix extra next_control.
+  rewrite four_prefix_left_rail_normalize_q2.
+  apply four_prefix_left_rail_tail.
+Qed.
+
+Theorem q15_left_four_prefix_loop_read1_to_q5 :
+  forall (first : bool) (rest_prefix : list bool)
+         (extra next_control old : bool)
+         (outer symbols suffix : list nat),
+    Forall dispatch_right_symbol symbols ->
+    run ((((S (length (rev (map q0_stable_control_tag
+              (first :: (rest_prefix ++ [extra; next_control]))))) +
+           S (length (map q0_stable_control_tag
+              (first :: (rest_prefix ++ [extra; next_control])) ++ [4])) +
+           S (length (6 :: [5]))) +
+          (1 + S (length (source_bit old :: rev (6 :: [5]))))) +
+         (length [4] +
+          length (rev (map q0_stable_control_tag (first :: rest_prefix))) +
+          7)) +
+        (length symbols + 1))
+      (entry_config 15
+        (4 :: source_bit old :: 6 :: [5] ++
+         2 :: source_bit false :: outer)
+        (rev (map q0_stable_control_tag
+              (first :: (rest_prefix ++ [extra; next_control]))) ++
+         source_bit true :: symbols ++ 4 :: suffix)) =
+    cfg_ml 5
+      (rev symbols ++
+       3 :: rev ([4] ++
+         [q0_stable_control_tag next_control;
+          q0_stable_control_tag extra] ++
+         rev (map q0_stable_control_tag (first :: rest_prefix))) ++
+       0 :: 6 :: 5 :: source_bit old :: 6 :: outer)
+      (4 :: suffix).
+Proof.
+  intros first rest_prefix extra next_control old outer symbols suffix
+    Hsymbols.
+  rewrite dispatch_run_add.
+  rewrite (q15_left_four_prefix_gate
+    first rest_prefix extra next_control old true outer
+    (symbols ++ 4 :: suffix)).
+  apply (q3_scan_to_q5
+    (3 :: rev ([4] ++
+      [q0_stable_control_tag next_control;
+       q0_stable_control_tag extra] ++
+      rev (map q0_stable_control_tag (first :: rest_prefix))) ++
+     0 :: 6 :: 5 :: source_bit old :: 6 :: outer)
+    symbols suffix Hsymbols).
+Qed.
+
+Theorem q15_left_four_prefix_loop_read0_to_q1 :
+  forall (first : bool) (rest_prefix : list bool)
+         (extra next_control old : bool)
+         (outer suffix : list nat),
+    run ((((S (length (rev (map q0_stable_control_tag
+              (first :: (rest_prefix ++ [extra; next_control]))))) +
+           S (length (map q0_stable_control_tag
+              (first :: (rest_prefix ++ [extra; next_control])) ++ [4])) +
+           S (length (6 :: [5]))) +
+          (1 + S (length (source_bit old :: rev (6 :: [5]))))) +
+         (length [4] +
+          length (rev (map q0_stable_control_tag (first :: rest_prefix))) +
+          7)) +
+        S (length
+          ((rev ([4] ++
+            [q0_stable_control_tag next_control;
+             q0_stable_control_tag extra] ++
+            rev (map q0_stable_control_tag (first :: rest_prefix))) ++
+           [0]) ++ [6])))
+      (entry_config 15
+        (4 :: source_bit old :: 6 :: [5] ++
+         2 :: source_bit false :: outer)
+        (rev (map q0_stable_control_tag
+              (first :: (rest_prefix ++ [extra; next_control]))) ++
+         source_bit false :: suffix)) =
+    entry_config 1 (5 :: source_bit old :: 6 :: outer)
+      (rev ((rev ([4] ++
+        [q0_stable_control_tag next_control;
+         q0_stable_control_tag extra] ++
+        rev (map q0_stable_control_tag (first :: rest_prefix))) ++
+        [0]) ++ [6]) ++ 2 :: suffix).
+Proof.
+  intros first rest_prefix extra next_control old outer suffix.
+  rewrite dispatch_run_add.
+  rewrite (q15_left_four_prefix_gate
+    first rest_prefix extra next_control old false outer suffix).
+  replace (rev ([4] ++
+      [q0_stable_control_tag next_control;
+       q0_stable_control_tag extra] ++
+      rev (map q0_stable_control_tag (first :: rest_prefix))) ++
+      0 :: 6 :: 5 :: source_bit old :: 6 :: outer)
+    with ((rev ([4] ++
+      [q0_stable_control_tag next_control;
+       q0_stable_control_tag extra] ++
+      rev (map q0_stable_control_tag (first :: rest_prefix))) ++ [0]) ++
+      6 :: 5 :: source_bit old :: 6 :: outer)
+    by (rewrite <- app_assoc; reflexivity).
+  apply (q2_rail_reenter_q1
+    (rev ([4] ++
+      [q0_stable_control_tag next_control;
+       q0_stable_control_tag extra] ++
+      rev (map q0_stable_control_tag (first :: rest_prefix))) ++ [0])
+    6 (source_bit old :: 6 :: outer) (2 :: suffix)).
+  apply four_prefix_left_rail_safe.
+Qed.
+
+Print Assumptions q15_left_four_prefix_loop_read1_to_q5.
+Print Assumptions q15_left_four_prefix_loop_read0_to_q1.
