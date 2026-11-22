@@ -130,6 +130,7 @@ Proof.
   assert (H17 : Forall q17_pass (rev [6; 5])).
   { repeat (constructor; try (unfold q17_pass; auto 12)). }
   rewrite writeback_run_add.
+  match goal with |- ?G => fail 1 "GOAL BEFORE LEFT RELOC:" G end.
   rewrite (tagged_rail_left_relocates_to_q5
     first rest 6 [5] old target false outer tail H21 H17).
   change (run (4 + (length (rev (first :: rest)) + 1))
