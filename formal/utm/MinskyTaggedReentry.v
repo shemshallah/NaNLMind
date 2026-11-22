@@ -72,22 +72,20 @@ Proof.
   rewrite dispatch_run_add.
   rewrite (q15_right_buffered_native_tagged_list_dispatch
     first rest next_bits old sacrificial false outer tail).
-  replace
-    (rev
+  assert (Hrail :
+    rev
       ([if sacrificial then 3 else 2] ++
        map q0_stable_control_tag next_bits) ++
-     0 :: 6 :: map q0_stable_control_tag ((first :: rest) ++ [true]))
-    with
-    ((rev (match_mark sacrificial ::
-           map q0_stable_control_tag next_bits) ++
-      0 :: 6 :: map q0_stable_control_tag (first :: rest)) ++ [7]).
-  2:{
-    rewrite map_app.
+     0 :: 6 :: map q0_stable_control_tag ((first :: rest) ++ [true]) =
+    (rev (match_mark sacrificial ::
+          map q0_stable_control_tag next_bits) ++
+     0 :: 6 :: map q0_stable_control_tag (first :: rest)) ++ [7]).
+  { rewrite map_app.
     rewrite rev_app_distr.
     cbn [map rev app].
     repeat rewrite <- app_assoc.
-    reflexivity.
-  }
+    reflexivity. }
+  rewrite Hrail.
   apply (q2_rail_reenter_q1
     (rev (match_mark sacrificial ::
           map q0_stable_control_tag next_bits) ++
