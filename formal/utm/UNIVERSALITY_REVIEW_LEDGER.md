@@ -1682,3 +1682,27 @@ native run between them.  Fast acceptance:
 
 This is an executable positive example for the repaired running-step
 interface, not a source-machine simulation or a universality claim.
+
+### Generic right one-row step (kernel-checked)
+
+`formal/utm/MinskyRowStepGeneric.v` now constructs a concrete
+`canonical_return_step` for an arbitrary condition and action:
+
+```text
+bits    = first_init :: init_rest ++ [pre_last; last_bit]
+action  = first_action :: action_tail ++ [last_state; bnext]
+```
+
+under the single length equation
+`|action ++ [bnext]| = |bits|`.  The theorem
+`canonical_row_step_ok` discharges every `canonical_return_step_ok`
+field by list algebra; there is no axiom or admitted lemma.  The rail is
+`[pre_last]` followed by the reversed marks of the earlier condition
+bits, and the q16 backscan is `[4]` followed by the raw bits.
+
+Fast acceptance:
+[44997720933](https://github.com/shemshallah/NaNLMind/actions/runs/44997720933).
+
+This is the rightward generic row-step compiler.  The leftward generic
+row step, the wide-source lookup instantiation, the running invariant,
+and the halt/mismatch branch remain open.  The claim flag remains false.
