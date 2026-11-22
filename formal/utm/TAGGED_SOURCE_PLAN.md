@@ -552,3 +552,33 @@ These start at the 4-prefixed q15 left frame and end at q5/q1 after the
 native q3->q5 or q2->q1 reentry.  They do not construct the upstream
 canonical q12 frame, and they do not yet provide the full source
 encoding or halt reflection.
+
+## Prefetched q1 fetch (proved macro)
+
+`MinskyTaggedReentry.v` closes the q2 -> q1 endpoint of both tagged
+directions:
+
+```text
+tagged_right_dispatch_to_q1
+tagged_left_dispatch_to_q1
+```
+
+`MinskyTaggedPrefetch.v` then composes that endpoint with a supplied
+next condition/action, the q1 comparison, and the q1 -> q6 crossing:
+
+```text
+tagged_right_prefetch_to_q6
+tagged_left_prefetch_to_q6
+```
+
+The q1 pass class now includes the stable 6/7 tags, so the returned tag
+rail can be crossed without a special rewrite.  The encoder can therefore
+precompute the successor row and place it in the q1 rail; no native
+linear search of the description is required by these macros.
+
+The remaining loop is q6 -> q12/q13 -> q14 -> q15.  The q6 copy macro
+can absorb the returned rail as an arbitrary `processed` prefix, but the
+q12/q14 restore scan stops on a 6 tag.  A correct loop must therefore
+introduce the 6/7 state tags after q12/q14, or erase/relocate the q1 pass
+tags before the restore.  This is the exact representation obligation
+blocking the concrete encoder, not a tactic gap.

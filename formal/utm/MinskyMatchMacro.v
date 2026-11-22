@@ -409,7 +409,7 @@ Qed.
 Print Assumptions q0_mismatch_restart.
 Print Assumptions q4_mismatch_restart.
 
-Definition q1_pass (s : nat) : Prop := s = 0 \/ s = 1.
+Definition q1_pass (s : nat) : Prop := s = 0 \/ s = 1 \/ s = 6 \/ s = 7.
 
 Lemma q1_pass_step :
   forall s left right,
@@ -417,10 +417,11 @@ Lemma q1_pass_step :
     step (entry_config 1 left (s :: right)) =
     entry_config 1 (s :: left) right.
 Proof.
-  intros s left right [-> | ->]; reflexivity.
+  intros s left right [-> | [-> | [-> | ->]]]; reflexivity.
 Qed.
 
-(** q1 skips already-read 0/1 cells and picks the next A/B, or X. *)
+(** q1 skips already-read 0/1 cells and stable 6/7 tags, then picks the
+    next A/B, or X. *)
 Lemma q1_scan_pick :
   forall pass left head rest,
     Forall q1_pass pass ->
@@ -462,7 +463,7 @@ Proof.
     apply Forall_app; split.
     + apply IH; exact Hrest.
     + constructor.
-      * destruct Hp as [-> | ->]; unfold dispatch_left_symbol; auto.
+      * destruct Hp as [-> | [-> | [-> | ->]]]; unfold dispatch_left_symbol; auto 12.
       * constructor.
 Qed.
 
@@ -1007,7 +1008,7 @@ Proof.
   induction Hcells as [|s rest Hs Hrest IH].
   - constructor.
   - constructor.
-    + destruct Hs as [-> | ->]; unfold q5_pass; auto.
+    + destruct Hs as [-> | [-> | [-> | ->]]]; unfold q5_pass; auto 12.
     + exact IH.
 Qed.
 

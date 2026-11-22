@@ -1861,6 +1861,40 @@ which scans q3 to the next X=4 and re-enters q5.
 Fast acceptance:
 [45057593387](https://github.com/shemshallah/NaNLMind/actions/runs/45057593387).
 
-The false-read q2 -> q1 continuation is still being normalized; the
-source-program layout and the full q5/q1/q6/q12/q14 -> q15 loop remain
-open.  The claim flag remains false.
+The false-read q2 -> q1 continuation is now also closed by
+`MinskyTaggedReentry.v`; see the next section.
+
+### Tagged q2 reentry and prefetched q1 fetch (kernel-checked)
+
+`formal/utm/MinskyTaggedReentry.v` fixes the q2 endpoint of both tagged
+directions:
+
+```text
+tagged_right_dispatch_to_q1
+tagged_left_dispatch_to_q1
+```
+
+Both start at the literal q15 tagged entry, run the dispatch, the q3/q2
+continuation, and the literal q2 left scan to the Y delimiter, ending at
+a q1 entry with the preprocessed rail.  The q1 pass class
+`q1_pass` in `MinskyMatchMacro.v` was widened from `{0,1}` to
+`{0,1,6,7}`; q1 is the identity-right row on 6/7, so this is a strict
+generalization of the existing match macros, not a new machine rule.
+
+`formal/utm/MinskyTaggedPrefetch.v` composes those endpoints with a
+*prefetched* q1 match and the q1 -> q6 X crossing:
+
+```text
+tagged_right_prefetch_to_q6
+tagged_left_prefetch_to_q6
+```
+
+The caller supplies the next condition/action in the q1 rail.  This is a
+concrete native macro that removes the need for a native linear search
+if the encoder can place the successor row in the rail.  It is not yet a
+total source encoder: the q6 -> q12/q14 -> q15 tagged continuation and
+the concrete rail invariant remain open.  The claim flag remains false.
+
+Fast acceptance: local Coq 8.20.1 `coqc` and `coqchk` for
+`MinskyTaggedReentry.vo` and `MinskyTaggedPrefetch.vo`; GitHub Actions
+acceptance is recorded with the next push.

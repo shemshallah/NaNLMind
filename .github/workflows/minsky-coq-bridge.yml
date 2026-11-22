@@ -249,6 +249,10 @@ jobs:
           coqchk -Q formal/utm NaNLM formal/utm/MinskyTaggedReentry.vo
           coqc -Q formal/utm NaNLM \
             -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyTaggedPrefetch.v
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyTaggedPrefetch.vo
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyRowStepWide.v
           coqchk -Q formal/utm NaNLM formal/utm/MinskyRowStepWide.vo
           coqc -Q formal/utm NaNLM \
@@ -327,6 +331,8 @@ jobs:
             formal/utm/MinskyTaggedContinuation.vo
             formal/utm/MinskyTaggedReentry.v
             formal/utm/MinskyTaggedReentry.vo
+            formal/utm/MinskyTaggedPrefetch.v
+            formal/utm/MinskyTaggedPrefetch.vo
             formal/utm/MinskyRowStepWide.v
             formal/utm/MinskyRowStepWide.vo
             formal/utm/MinskyRowStepWideLeft.v
