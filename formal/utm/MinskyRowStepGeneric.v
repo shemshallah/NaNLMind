@@ -222,8 +222,12 @@ Proof.
     repeat rewrite q14_restore_match_mark.
     repeat rewrite <- app_assoc.
     reflexivity.
-  - (* decomp *) cbn. rewrite rev_app_distr. cbn.
-    repeat rewrite <- app_assoc. reflexivity.
+  - (* decomp *) cbn.
+    repeat rewrite rev_app_distr.
+    repeat rewrite rev_involutive.
+    cbn [rev app].
+    repeat rewrite <- app_assoc.
+    reflexivity.
   - (* pre *) cbn. constructor.
     + unfold q15_pass; auto 12.
     + constructor.
