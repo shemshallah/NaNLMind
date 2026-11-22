@@ -36,6 +36,15 @@ Proof.
   intros. apply Forall_rev. apply Forall_dispatch_left_tag.
 Qed.
 
+Lemma q2_assoc_mark_rail :
+  forall (a tags outer : list nat) (old : nat),
+    a ++ 0 :: 6 :: (tags ++ [7]) ++ 5 :: old :: outer =
+    ((a ++ 0 :: 6 :: tags) ++ [7]) ++ 5 :: old :: outer.
+Proof.
+  intros a tags old outer.
+  induction a; simpl; congruence.
+Qed.
+
 Lemma q2_rail_direct_reenter_q1 :
   forall (rail stored right : list nat),
     Forall dispatch_left_symbol rail ->
@@ -107,35 +116,36 @@ Proof.
   rewrite (q15_right_buffered_native_tagged_list_dispatch
     first rest next_bits old sacrificial false outer tail).
   rewrite map_app.
-  assert (Hassoc :
-    rev
-      ([if sacrificial then 3 else 2] ++
-       map q0_stable_control_tag next_bits) ++
-    0 :: 6 ::
-    (map q0_stable_control_tag (first :: rest) ++ [7]) ++
-    5 :: source_bit old :: outer =
-    ((rev
+  set (a := rev
         ([if sacrificial then 3 else 2] ++
-         map q0_stable_control_tag next_bits) ++
-      0 :: 6 :: map q0_stable_control_tag (first :: rest)) ++
-     [7]) ++ 5 :: source_bit old :: outer).
-  { repeat rewrite app_assoc. reflexivity. }
-  rewrite Hassoc.
+         map q0_stable_control_tag next_bits)).
+  set (tags := map q0_stable_control_tag (first :: rest)).
+  replace (map q0_stable_control_tag [true]) with [7] by reflexivity.
+  replace (a ++ 0 :: 6 :: (tags ++ [7]))
+    with ((a ++ 0 :: 6 :: tags) ++ [7])
+    by (repeat rewrite <- app_assoc; reflexivity).
+  replace (a ++ 0 :: 6 :: (tags ++ [7]) ++
+           5 :: source_bit old :: outer)
+    with (((a ++ 0 :: 6 :: tags) ++ [7]) ++
+          5 :: source_bit old :: outer)
+    by (symmetry; apply q2_assoc_mark_rail).
   apply (q2_rail_direct_reenter_q1
-    (rev
-      ([if sacrificial then 3 else 2] ++
-       map q0_stable_control_tag next_bits) ++
-     0 :: 6 :: map q0_stable_control_tag (first :: rest))
-    7 (source_bit old :: outer) (2 :: tail)).
-  apply Forall_app. split.
-  - apply Forall_rev. rewrite Forall_app. split.
-    + destruct sacrificial; unfold dispatch_left_symbol; auto 12.
-    + apply Forall_dispatch_left_tag.
+    ((a ++ 0 :: 6 :: tags) ++ [7])
+    (source_bit old :: outer) (2 :: tail)).
+  unfold a, tags.
+  apply Forall_app; split.
+  - apply Forall_app; split.
+    + apply Forall_rev. rewrite Forall_app. split.
+      * destruct sacrificial; unfold dispatch_left_symbol; auto 12.
+      * apply Forall_dispatch_left_tag.
+    + constructor.
+      * unfold dispatch_left_symbol; auto 12.
+      * constructor.
+        -- unfold dispatch_left_symbol; auto 12.
+        -- apply Forall_dispatch_left_tag.
   - constructor.
     + unfold dispatch_left_symbol; auto 12.
     + constructor.
-      * unfold dispatch_left_symbol; auto 12.
-      * apply Forall_dispatch_left_tag.
 Qed.
 
 Print Assumptions tagged_right_dispatch_to_q1.
@@ -163,19 +173,27 @@ Proof.
   rewrite dispatch_run_add.
   rewrite (q15_left_false_guard_native_tagged_list_dispatch
     first rest old false outer tail).
-  assert (Hassoc :
-    rev (map q0_stable_control_tag (rev (first :: rest))) ++
-    0 :: 6 :: 5 :: source_bit old :: 6 :: outer =
-    ((rev (map q0_stable_control_tag (rev (first :: rest))) ++ [0]) ++
-     [6]) ++ 5 :: source_bit old :: 6 :: outer).
-  { repeat rewrite app_assoc. reflexivity. }
-  rewrite Hassoc.
+  set (a := rev (map q0_stable_control_tag (rev (first :: rest)))).
+  replace (a ++ 0 :: 6 :: 5 :: source_bit old :: 6 :: outer)
+    with (((a ++ [0]) ++ [6]) ++
+          5 :: source_bit old :: 6 :: outer)
+    by (repeat rewrite <- app_assoc; reflexivity).
+  replace (a ++ [0; 6])
+    with ((a ++ [0]) ++ [6])
+    by (repeat rewrite <- app_assoc; reflexivity).
   apply (q2_rail_direct_reenter_q1
-    (rev (map q0_stable_control_tag (rev (first :: rest))) ++ [0])
-    6 (source_bit old :: 6 :: outer) (2 :: tail)).
-  apply Forall_app. split.
-  - apply Forall_dispatch_left_tag_rev.
-  - repeat constructor; unfold dispatch_left_symbol; auto 12.
+    ((a ++ [0]) ++ [6])
+    (source_bit old :: 6 :: outer) (2 :: tail)).
+  unfold a.
+  apply Forall_app; split.
+  - apply Forall_app; split.
+    + apply Forall_dispatch_left_tag_rev.
+    + constructor.
+      * unfold dispatch_left_symbol; auto 12.
+      * constructor.
+  - constructor.
+    * unfold dispatch_left_symbol; auto 12.
+    * constructor.
 Qed.
 
 Print Assumptions tagged_left_dispatch_to_q1.
