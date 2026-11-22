@@ -33,7 +33,10 @@ Proof.
   induction l as [|a [|b rest] IH]; intros d Hne.
   - contradiction.
   - simpl. reflexivity.
-  - simpl. rewrite IH.
+  - simpl.
+    change (a :: (split_init (b :: rest) ++ [last (b :: rest) d]) =
+            a :: b :: rest).
+    rewrite IH.
     + reflexivity.
     + discriminate.
 Qed.
