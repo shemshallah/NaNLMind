@@ -1732,3 +1732,27 @@ generic one-row native step for arbitrary condition/action lists of
 width at least two.  The remaining encoder work is the width-one case,
 the concrete `encode` from `WideSourceConfig`, the lookup invariant, and
 the halt/mismatch branch.  No universality claim is made.
+
+### q5-return orientation obstruction (kernel-checked)
+
+`formal/utm/MinskyReturnOrientation.v` proves that the raw generic
+row-step end frame cannot be the start of the canonical q5-return macro:
+
+```text
+end left  = rev hpost ++ 6 :: 5 :: bnext :: rev data'
+canonical = rail ++ 5 :: rev tbuffer ++ 6 :: rev data''
+```
+
+The first 5 in the end frame occurs after the 6, so the post-5 prefix is
+`bnext :: rev data'`.  It contains no 6 when `data'` is binary.  But the
+canonical `crs_prefix` requires a 6 in that prefix.  The theorem
+`five_six_swap_not_canonical_prefix` formalizes the contradiction.
+
+Fast acceptance:
+[45031342907](https://github.com/shemshallah/NaNLMind/actions/runs/45031342907).
+
+Consequence: the raw one-row step is a valid single macro but is **not**
+idempotent in the q5-return representation.  The running encoder must use
+an explicit normalization phase or the tagged 6/7 layout.  This is a
+negative result about the raw layout, not about the frozen table.  The
+claim flag remains false.
