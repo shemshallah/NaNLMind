@@ -1900,3 +1900,16 @@ Fast acceptance: local Coq 8.20.1 `coqc` and `coqchk` for
 and fast q15-q22 jobs passed in
 [run 45080600506](https://github.com/shemshallah/NaNLMind/actions/runs/45080600506)
 at `19ff0bc`.
+
+### Tagged q12 restore with a leftover tail (kernel-checked)
+
+`formal/utm/MinskyTaggedRestore.v` proves
+`canonical_q12_restore_with_leftover`: once q12 reaches the first M=6,
+the q14 restore carries every symbol after that delimiter through
+untouched as the q15 frame's outer tape.  In particular, 6/7 tags left
+behind the delimiter do not have to be crossed by q12.
+
+This removes the "q12 cannot pass a tagged rail" obstruction for tags
+that are *after* the first 6.  It does not yet align the q15 right-hand
+mark orientation with the tagged q15 entry; that upstream construction
+remains open, so the claim flag remains false.
