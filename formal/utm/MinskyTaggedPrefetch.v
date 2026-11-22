@@ -27,7 +27,6 @@ Theorem tagged_right_prefetch_to_q6 :
          (pass : list nat) (bits action : list bool) (dir : bool)
          (rest6 : list nat),
     Forall q1_pass pass ->
-    length action = length bits ->
     rev
       (rev
         ([if sacrificial then 3 else 2] ++
@@ -71,7 +70,7 @@ Theorem tagged_right_prefetch_to_q6 :
        source_bit dir :: rest6).
 Proof.
   intros first rest next_bits old sacrificial outer tail pass bits action
-    dir rest6 Hpass Hlen Hrail.
+    dir rest6 Hpass Hrail.
   rewrite dispatch_run_add.
   rewrite (tagged_right_dispatch_to_q1
     first rest next_bits old sacrificial outer tail).
@@ -110,7 +109,6 @@ Theorem tagged_left_prefetch_to_q6 :
          (pass : list nat) (bits action : list bool) (dir : bool)
          (rest6 : list nat),
     Forall q1_pass pass ->
-    length action = length bits ->
     rev
       (rev (map q0_stable_control_tag (rev (first :: rest))) ++ [0; 6]) ++
     2 :: tail =
@@ -135,7 +133,7 @@ Theorem tagged_left_prefetch_to_q6 :
       (map match_mark bits ++ map source_bit action ++
        source_bit dir :: rest6).
 Proof.
-  intros first rest old outer tail pass bits action dir rest6 Hpass Hlen Hrail.
+  intros first rest old outer tail pass bits action dir rest6 Hpass Hrail.
   rewrite dispatch_run_add.
   rewrite (tagged_left_dispatch_to_q1 first rest old outer tail).
   rewrite Hrail.
@@ -164,3 +162,4 @@ Proof.
 Qed.
 
 Print Assumptions tagged_left_prefetch_to_q6.
+
