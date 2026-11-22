@@ -120,7 +120,8 @@ Proof.
     last_state bnext data bprev rest_tail Hlen.
   unfold canonical_row_step.
   constructor.
-  - (* left *) cbn. rewrite <- app_assoc. reflexivity.
+  - (* left *) cbn. repeat rewrite rev_app_distr.
+    repeat rewrite rev_involutive. cbn [rev app]. reflexivity.
   - (* scan *) cbn. constructor.
     + unfold canonical_q5_return_pass; auto 12.
     + apply Forall_q5_match_marks.
