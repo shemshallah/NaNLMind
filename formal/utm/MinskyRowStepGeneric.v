@@ -258,7 +258,8 @@ Proof.
   - (* line14 *) cbn. constructor.
     + unfold q14_pass; auto 12.
     + rewrite Forall_app. split.
-      * apply Forall_q14_match_marks.
+      * rewrite rev_app_distr. cbn [rev]. rewrite rev_involutive.
+        cbn [map]. apply Forall_q14_match_marks.
       * constructor.
         -- destruct bnext; unfold q14_pass, match_mark; auto 12.
         -- constructor.
