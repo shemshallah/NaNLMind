@@ -216,7 +216,9 @@ Proof.
     repeat rewrite map_rev.
     repeat rewrite map_app.
     repeat rewrite map_q14_restore_match_marks.
-    cbn [map rev app].
+    rewrite rev_app_distr. cbn [rev].
+    repeat rewrite q14_restore_match_mark.
+    cbn [q14_restore map rev app].
     repeat rewrite <- app_assoc.
     reflexivity.
   - (* decomp *) cbn. rewrite rev_app_distr. cbn.
