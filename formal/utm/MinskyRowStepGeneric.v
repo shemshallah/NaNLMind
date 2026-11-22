@@ -214,8 +214,9 @@ Proof.
   - (* restored *) cbn.
     repeat rewrite map_app.
     repeat rewrite map_rev.
+    repeat rewrite map_app.
     repeat rewrite map_q14_restore_match_marks.
-    cbn [rev app].
+    cbn [map rev app].
     repeat rewrite <- app_assoc.
     reflexivity.
   - (* decomp *) cbn. rewrite rev_app_distr. cbn.
