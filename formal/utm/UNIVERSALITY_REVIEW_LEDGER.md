@@ -1580,3 +1580,60 @@ macro.  Fast branch acceptance:
 The remaining encoder obligation is the concrete q5-return layout and
 the invariant that the running step preserves it.  The halt-side
 fragment is already proved in `MinskyWideMacroSimulation.v`.
+
+### Running-step data shift and non-vacuity (kernel-checked)
+
+The first packaged running-step interface shared one `data` list between
+the q5 return frame, the q6 entry and the end frame.  That made
+`crso_left` and `crso_prefix` inconsistent: the q5 frame ends with
+`rev pre ++ b :: rev data`, while the next q6 entry needs
+`data' = data ++ [b] ++ pre`.  The repair is explicit:
+
+- `canonical_q5_return_to_q5_right` now takes `data'` and the shift
+  `rev data' = rev pre ++ source_bit bprev :: rev data`;
+- `canonical_q5_return_to_q5_left` takes `data_q6` with both the write
+  shift and the q20 pop `rev data_q6 = source_bit d :: rev data'`;
+- `canonical_return_step` has `crs_data` and `crs_data'`, and
+  `canonical_return_step_ok` has `crso_shift`.
+
+`formal/utm/MinskyReturnWitness.v` gives a concrete inhabitant of
+`canonical_return_step_ok` (state marks `[false;true]`, action
+`[false;false]`) and proves the packaged native run.  Hence the running
+package is non-vacuous.  Fast acceptance:
+[44972476708](https://github.com/shemshallah/NaNLMind/actions/runs/44972476708).
+
+### Packaged left running step (kernel-checked)
+
+`formal/utm/MinskyCanonicalLeftStep.v` packages
+`canonical_q5_return_to_q5_left` as `canonical_left_step`, with start,
+end, exact clock, `canonical_left_step_ok`, and
+`canonical_left_step_run`.  The left shift and the q20 data pop are
+explicit fields.  Fast acceptance:
+[44972476708](https://github.com/shemshallah/NaNLMind/actions/runs/44972476708).
+
+### Arbitrary-width tagged dispatch (kernel-checked)
+
+`formal/utm/MinskyTaggedWideDispatch.v` generalizes the tagged q0/q5
+gates to any finite list of 6/7 tags:
+
+- `q0_tagged_control_list_dispatches_target`,
+- `q5_left_false_gate_tagged_list_dispatch`,
+- `q5_q1_q0_buffered_tagged_list_dispatch`,
+- `q15_left_false_guard_native_tagged_list_dispatch`.
+
+The left four-prefix loops are also checked:
+
+- `q15_left_four_prefix_loop_read1_to_q5`,
+- `q15_left_four_prefix_loop_read0_to_q1`.
+
+The arbitrary-width *right* q15 relocation still needs the same
+association cleanup; the two-tag theorem
+`q15_right_buffered_native_tagged_target_dispatch` remains the checked
+right interface.  Fast acceptance:
+[44972476708](https://github.com/shemshallah/NaNLMind/actions/runs/44972476708).
+
+These results remove the shared-data inconsistency and the fixed
+two-bit limitation from the left tagged dispatch.  They still do not
+construct the concrete `encode` from a wide source configuration, the
+running-case invariant, or the halt/mismatch branch.  The claim flag
+remains false.
