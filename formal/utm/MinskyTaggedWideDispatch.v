@@ -16,7 +16,8 @@ Import ListNotations.
 
 From NaNLM Require Import MinskyTable MinskyConcreteEntry
   MinskyConcreteDispatch MinskySourceEncoding MinskyMatchMacro
-  MinskyDirectionCycle MinskyDirectionRelocationCycle MinskyTaggedHalt.
+  MinskyDirectionDecision MinskyDirectionCycle
+  MinskyDirectionRelocationCycle MinskyTaggedHalt.
 
 (** ** q0 dispatch over an arbitrary tag list *)
 
