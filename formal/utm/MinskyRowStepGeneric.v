@@ -23,6 +23,19 @@ From NaNLM Require Import MinskyTable MinskyConcreteEntry
   MinskyActionMacro MinskyRelocationMacro MinskyCanonicalMatch
   MinskyCanonicalInstruction.
 
+Lemma entry_rewrite_match_mark :
+  forall b, entry_rewrite (match_mark b) = match_mark b.
+Proof. intros []; reflexivity. Qed.
+
+Lemma map_entry_rewrite_match_mark :
+  forall bits,
+    map entry_rewrite (map match_mark bits) = map match_mark bits.
+Proof.
+  induction bits as [|b rest IH]; simpl.
+  - reflexivity.
+  - rewrite entry_rewrite_match_mark, IH. reflexivity.
+Qed.
+
 Lemma Forall_q17_source_bits :
   forall bits, Forall q17_pass (map source_bit bits).
 Proof.
@@ -130,7 +143,11 @@ Proof.
         (rev (map match_mark (first_init :: init_rest)))).
       apply Forall_rev. apply Forall_q5_match_marks.
   - (* rail *) cbn.
-    rewrite map_app, rev_app_distr, rev_involutive.
+    repeat rewrite entry_rewrite_match_mark.
+    repeat rewrite map_entry_rewrite_match_mark.
+    repeat rewrite map_app.
+    repeat rewrite rev_app_distr.
+    repeat rewrite rev_involutive.
     cbn [map rev app].
     repeat rewrite <- app_assoc.
     reflexivity.
