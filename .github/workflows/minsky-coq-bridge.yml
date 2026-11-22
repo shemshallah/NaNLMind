@@ -243,6 +243,10 @@ jobs:
             -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyRowStepWide.v
           coqchk -Q formal/utm NaNLM formal/utm/MinskyRowStepWide.vo
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyRowStepWideLeft.v
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyRowStepWideLeft.vo
           echo 'NANLM MINSKY Q15-Q22 DIRECTION RELOCATION CYCLE PASS'
 
       - name: Upload independent Coq bridge certificate
@@ -313,6 +317,8 @@ jobs:
             formal/utm/MinskyTaggedRightWide.vo
             formal/utm/MinskyRowStepWide.v
             formal/utm/MinskyRowStepWide.vo
+            formal/utm/MinskyRowStepWideLeft.v
+            formal/utm/MinskyRowStepWideLeft.vo
             formal/utm/MinskyHeadRepresentation.v
             formal/utm/MinskyHeadRepresentation.vo
             formal/utm/MinskyDirectionCycle.v
