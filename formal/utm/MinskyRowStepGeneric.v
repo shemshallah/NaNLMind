@@ -62,6 +62,19 @@ Proof.
   - rewrite entry_rewrite_match_mark, IH. reflexivity.
 Qed.
 
+Lemma q14_restore_match_mark :
+  forall b, q14_restore (match_mark b) = source_bit b.
+Proof. intros []; reflexivity. Qed.
+
+Lemma map_q14_restore_match_marks :
+  forall bits,
+    map q14_restore (map match_mark bits) = map source_bit bits.
+Proof.
+  induction bits as [|b rest IH]; simpl.
+  - reflexivity.
+  - rewrite q14_restore_match_mark, IH. reflexivity.
+Qed.
+
 Lemma Forall_q17_source_bits :
   forall bits, Forall q17_pass (map source_bit bits).
 Proof.
@@ -198,7 +211,13 @@ Proof.
     2:{ rewrite <- app_assoc. reflexivity. }
     exact Hlen.
   - (* rest *) cbn. reflexivity.
-  - (* restored *) cbn. repeat rewrite <- app_assoc. reflexivity.
+  - (* restored *) cbn.
+    repeat rewrite map_app.
+    repeat rewrite map_rev.
+    repeat rewrite map_q14_restore_match_marks.
+    cbn [rev app].
+    repeat rewrite <- app_assoc.
+    reflexivity.
   - (* decomp *) cbn. rewrite rev_app_distr. cbn.
     repeat rewrite <- app_assoc. reflexivity.
   - (* pre *) cbn. constructor.
