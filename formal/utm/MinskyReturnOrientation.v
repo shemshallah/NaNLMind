@@ -33,12 +33,12 @@ Proof.
   induction X as [|x xs IH]; intros rest rail prefix HX Hrail Heq.
   - simpl in Heq. destruct rail as [|r rs].
     + simpl in Heq. inversion Heq. reflexivity.
-    + simpl in Heq. inversion Heq as [Hr Htail]. subst r.
-      exfalso. apply Hrail. left. reflexivity.
+    + simpl in Heq. injection Heq as Hhead Htail.
+      exfalso. apply Hrail. left. symmetry. exact Hhead.
   - destruct rail as [|r rs].
-    + simpl in Heq. inversion Heq as [Hx Htail]. subst x.
-      exfalso. apply HX. left. reflexivity.
-    + simpl in Heq. inversion Heq as [Hx Htail]. subst x r.
+    + simpl in Heq. injection Heq as Hhead Htail.
+      exfalso. apply HX. left. exact Hhead.
+    + simpl in Heq. injection Heq as Hhead Htail.
       apply (IH rest rs prefix).
       * intros H. apply HX. right. exact H.
       * intros H. apply Hrail. right. exact H.
