@@ -1780,3 +1780,30 @@ tagged directions now support an arbitrary finite action rail.  The
 remaining tagged obligations are the upstream canonical q12 -> q15
 entry construction and the source-level normalization/halt branch.
 The claim flag remains false.
+
+### Wide row to generic native step (kernel-checked)
+
+`formal/utm/MinskyRowStepWide.v` connects an arbitrary well-formed
+`WideSourceRow` of state width at least two to the generic native step:
+
+```text
+wide_row_step r data bprev rest_tail
+wide_row_step_ok :
+  wide_row_wellformed p r -> 2 <= p ->
+  canonical_return_step_ok (wide_row_step ...)
+wide_row_step_run
+```
+
+The condition split is `wr_current r ++ [wr_read r]`; the action split is
+`wr_next r ++ [wr_write r]`.  The split functions `split_init` and
+`split_last` are concrete, and the only width obligation is
+`|wr_next r| = |wr_current r|`, supplied by well-formedness.
+
+Fast acceptance:
+[45049700811](https://github.com/shemshallah/NaNLMind/actions/runs/45049700811).
+
+This attaches the generic native macro to real source rows with an
+arbitrary tape and program tail.  The one-bit state width is covered by
+the fixed witness families.  The remaining encoder work is the concrete
+program layout that makes the end frame the start frame for the next
+lookup, plus the halt/mismatch branch.  The claim flag remains false.
