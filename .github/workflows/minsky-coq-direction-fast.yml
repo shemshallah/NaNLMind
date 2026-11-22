@@ -113,6 +113,17 @@ jobs:
             exit 1
           fi
           coqchk -Q formal/utm NaNLM formal/utm/MinskyTaggedRightWide.vo
+          if ! coqc -Q formal/utm NaNLM \
+              -w -notation-overridden,-stdlib-vector \
+              formal/utm/MinskyTaggedContinuation.v \
+              > /tmp/tagged-continuation-coq.log 2>&1; then
+            tail -n 100 /tmp/tagged-continuation-coq.log
+            while IFS= read -r line; do
+              echo "::error title=Coq tagged continuation::$line"
+            done < <(tail -n 100 /tmp/tagged-continuation-coq.log)
+            exit 1
+          fi
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyTaggedContinuation.vo
           echo 'NANLM FAST Q15-Q22 COQCHK PASS'
 
       - name: Independently replay left tagged macro and wrong-guard controls
