@@ -121,7 +121,8 @@ Proof.
   unfold canonical_row_step.
   constructor.
   - (* left *) cbn. repeat rewrite rev_app_distr.
-    repeat rewrite rev_involutive. cbn [rev app]. reflexivity.
+    repeat rewrite rev_involutive. cbn [rev app].
+    repeat rewrite app_assoc. reflexivity.
   - (* scan *) cbn. constructor.
     + unfold canonical_q5_return_pass; auto 12.
     + apply Forall_q5_match_marks.
