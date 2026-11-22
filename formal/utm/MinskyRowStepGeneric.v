@@ -236,19 +236,15 @@ Proof.
     + constructor.
       * destruct last_state; unfold q17_pass; auto 12.
       * constructor.
-  - (* line12 *) cbn. rewrite Forall_app. split.
-    + constructor.
-      * destruct bnext; unfold q12_pass, match_mark; auto 12.
-      * rewrite Forall_app. split.
-        -- apply Forall_q12_match_marks.
-        -- constructor.
-           ++ unfold q12_pass; auto 12.
-           ++ constructor.
-    + constructor.
-  - (* line14 *) cbn. rewrite Forall_app. split.
-    + constructor.
-      * unfold q14_pass; auto 12.
+  - (* line12 *) cbn. constructor.
+    + destruct bnext; unfold q12_pass, match_mark; auto 12.
+    + rewrite Forall_app. split.
+      * apply Forall_q12_match_marks.
       * constructor.
+        -- unfold q12_pass; auto 12.
+        -- constructor.
+  - (* line14 *) cbn. constructor.
+    + unfold q14_pass; auto 12.
     + rewrite Forall_app. split.
       * apply Forall_q14_match_marks.
       * constructor.
