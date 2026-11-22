@@ -46,8 +46,7 @@ Lemma canonical_return_witness_ok :
   canonical_return_step_ok canonical_return_witness.
 Proof.
   unfold canonical_return_witness.
-  repeat split; try (vm_compute; reflexivity).
-  all: vm_compute; auto.
+  constructor; vm_compute; auto 12.
 Qed.
 
 Theorem canonical_return_witness_run :
