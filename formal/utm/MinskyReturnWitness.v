@@ -125,6 +125,7 @@ Proof.
   - cbn. auto 12.
   - cbn. auto 12.
   - cbn. auto 12.
+  all: match goal with |- ?G => fail 1 "FAMILY GOAL:" G end.
 Qed.
 
 Theorem canonical_witness_family_run :
