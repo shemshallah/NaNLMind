@@ -1664,3 +1664,21 @@ with an arbitrary tape suffix.  The remaining generalization is from the
 fixed instruction `[false;true]/[false;false]` to arbitrary `bits` and
 `action` lists, followed by the wide-source lookup instantiation and the
 halt/mismatch branch.  No universality claim is made.
+
+### Machine-readable one-row example (kernel-checked)
+
+`MinskyReturnWitness.v` now contains a concrete nonempty-tape instance:
+
+```text
+start = entry_config 5 [5;6;0;1;0]
+          [2;3;4;0;1;0;0;1;0]
+end   = entry_config 5 [5;0;0;1;0]
+          [6;2;4;0;1;0;0;1;0]
+```
+
+and `canonical_witness_family_example_run` proves the exact packaged
+native run between them.  Fast acceptance:
+[44980338256](https://github.com/shemshallah/NaNLMind/actions/runs/44980338256).
+
+This is an executable positive example for the repaired running-step
+interface, not a source-machine simulation or a universality claim.
