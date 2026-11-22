@@ -110,8 +110,21 @@ Lemma canonical_witness_family_ok :
 Proof.
   intros data bprev.
   unfold canonical_witness_family.
-  constructor; cbn [canonical_return_marked];
-    auto 12; try (rewrite rev_snoc_source_bit; reflexivity).
+  constructor.
+  - cbn. reflexivity.
+  - cbn. auto 12.
+  - cbn. auto 12.
+  - cbn. reflexivity.
+  - cbn. rewrite rev_app_distr. cbn. reflexivity.
+  - cbn. rewrite rev_app_distr. cbn. reflexivity.
+  - cbn. reflexivity.
+  - cbn. reflexivity.
+  - cbn. reflexivity.
+  - cbn. reflexivity.
+  - cbn. auto 12.
+  - cbn. auto 12.
+  - cbn. auto 12.
+  - cbn. auto 12.
 Qed.
 
 Theorem canonical_witness_family_run :
