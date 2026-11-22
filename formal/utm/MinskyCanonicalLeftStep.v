@@ -15,8 +15,8 @@ From Coq Require Import List Arith Bool Lia.
 Import ListNotations.
 
 From NaNLM Require Import MinskyTable MinskySourceEncoding
-  MinskyConcreteEntry MinskyMatchMacro MinskyCanonicalMatch
-  MinskyCanonicalInstruction.
+  MinskyConcreteEntry MinskyMatchMacro MinskyHeadMoveMacro
+  MinskyRelocationMacro MinskyCanonicalMatch MinskyCanonicalInstruction.
 
 Record canonical_left_step := {
   cls_post : list nat;
