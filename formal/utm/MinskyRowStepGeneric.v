@@ -193,8 +193,8 @@ Proof.
   - (* prefix *) cbn. rewrite rev_app_distr. cbn. reflexivity.
   - (* shift *) cbn. rewrite rev_app_distr. cbn. reflexivity.
   - (* len *) cbn. cbn in Hlen.
-    repeat rewrite app_assoc in Hlen.
-    repeat rewrite app_assoc.
+    change (S (length (action_tail ++ [last_state; bnext])) =
+            S (length (init_rest ++ [pre_last; last_bit]))).
     exact Hlen.
   - (* rest *) cbn. reflexivity.
   - (* restored *) cbn. reflexivity.
