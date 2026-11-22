@@ -169,6 +169,7 @@ Proof.
         (rev (map match_mark (first_init :: init_rest)))).
       apply Forall_rev. apply Forall_q5_match_marks.
   - (* rail *) cbn.
+    match goal with |- ?G => fail 1 "RAIL GOAL:" G end.
     rewrite (map_entry_rewrite_marks_id
       (rev (match_mark pre_last ::
             rev (map match_mark (first_init :: init_rest))))).
