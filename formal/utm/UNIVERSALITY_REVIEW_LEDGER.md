@@ -1896,5 +1896,7 @@ total source encoder: the q6 -> q12/q14 -> q15 tagged continuation and
 the concrete rail invariant remain open.  The claim flag remains false.
 
 Fast acceptance: local Coq 8.20.1 `coqc` and `coqchk` for
-`MinskyTaggedReentry.vo` and `MinskyTaggedPrefetch.vo`; GitHub Actions
-acceptance is recorded with the next push.
+`MinskyTaggedReentry.vo` and `MinskyTaggedPrefetch.vo`.  The full bridge
+and fast q15-q22 jobs passed in
+[run 45080600506](https://github.com/shemshallah/NaNLMind/actions/runs/45080600506)
+at `19ff0bc`.
