@@ -72,7 +72,6 @@ Proof.
   rewrite dispatch_run_add.
   rewrite (q15_right_buffered_native_tagged_list_dispatch
     first rest next_bits old sacrificial false outer tail).
-  rewrite writeback_run_add.
   replace
     (rev
       ([if sacrificial then 3 else 2] ++
@@ -125,7 +124,6 @@ Proof.
   rewrite dispatch_run_add.
   rewrite (q15_left_false_guard_native_tagged_list_dispatch
     first rest old false outer tail).
-  rewrite writeback_run_add.
   apply (q2_rail_reenter_q1
     (rev (map q0_stable_control_tag (rev (first :: rest))) ++ [0])
     6 (source_bit old :: 6 :: outer) (2 :: tail)).
