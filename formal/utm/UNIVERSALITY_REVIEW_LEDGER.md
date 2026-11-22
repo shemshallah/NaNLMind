@@ -1756,3 +1756,27 @@ idempotent in the q5-return representation.  The running encoder must use
 an explicit normalization phase or the tagged 6/7 layout.  This is a
 negative result about the raw layout, not about the frozen table.  The
 claim flag remains false.
+
+### Arbitrary-width right tagged dispatch (kernel-checked)
+
+`formal/utm/MinskyTaggedRightWide.v` completes the right direction of
+the tagged dispatch:
+
+```text
+q15_right_buffered_native_tagged_list_dispatch
+```
+
+It starts at the q15 right entry with a tagged current-state rail and an
+arbitrary tagged next-state list, runs the q15/q16/q22/q19/q17-q18
+relocation, the buffered q5/q1 gate, and the q0 target dispatch, and
+ends at q3/q2.  The only fixed cells are the one-cell `[2]` return
+buffer and the `[5]` direction marker.
+
+Fast acceptance:
+[45034738248](https://github.com/shemshallah/NaNLMind/actions/runs/45034738248).
+
+Together with the left dispatch in `MinskyTaggedWideDispatch.v`, both
+tagged directions now support an arbitrary finite action rail.  The
+remaining tagged obligations are the upstream canonical q12 -> q15
+entry construction and the source-level normalization/halt branch.
+The claim flag remains false.
