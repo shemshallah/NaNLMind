@@ -121,7 +121,7 @@ Theorem wide_row_step_run :
 Proof.
   intros p r data bprev rest_tail Hwf Hp.
   apply canonical_return_step_run.
-  apply wide_row_step_ok; assumption.
+  apply (wide_row_step_ok p r data bprev rest_tail Hwf Hp).
 Qed.
 
 Print Assumptions wide_row_step_ok.
