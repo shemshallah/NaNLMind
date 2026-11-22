@@ -28,8 +28,8 @@ Fixpoint split_init (l : list bool) : list bool :=
 Fixpoint split_last (l : list bool) (d : bool) : bool :=
   match l with
   | [] => d
-  | [a] => a
-  | _ :: rest => split_last rest d
+  | a :: rest =>
+      if Nat.eqb (length rest) 0 then a else split_last rest d
   end.
 
 Lemma split_init_last :
