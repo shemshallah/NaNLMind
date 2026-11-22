@@ -62,7 +62,6 @@ Proof.
     with ((split_init (b :: rest) ++ [split_last (b :: rest) d]) ++ [read]).
   2:{ rewrite <- app_assoc. reflexivity. }
   assert (Hne : b :: rest <> []) by discriminate.
-  match goal with |- ?G => fail 1 "SPLIT GOAL:" G end.
   rewrite (split_init_last (b :: rest) d Hne).
   reflexivity.
 Qed.
