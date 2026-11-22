@@ -113,6 +113,17 @@ jobs:
             exit 1
           fi
           coqchk -Q formal/utm NaNLM formal/utm/MinskyTaggedRightWide.vo
+          if ! coqc -Q formal/utm NaNLM \
+              -w -notation-overridden,-stdlib-vector \
+              formal/utm/MinskyRowStepWide.v \
+              > /tmp/minsky-row-step-wide-coq.log 2>&1; then
+            tail -n 100 /tmp/minsky-row-step-wide-coq.log
+            while IFS= read -r line; do
+              echo "::error title=Coq wide row step::$line"
+            done < <(tail -n 100 /tmp/minsky-row-step-wide-coq.log)
+            exit 1
+          fi
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyRowStepWide.vo
           echo 'NANLM FAST Q15-Q22 COQCHK PASS'
 
       - name: Independently replay left tagged macro and wrong-guard controls
