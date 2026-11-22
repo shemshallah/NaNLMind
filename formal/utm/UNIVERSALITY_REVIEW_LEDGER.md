@@ -1807,3 +1807,29 @@ arbitrary tape and program tail.  The one-bit state width is covered by
 the fixed witness families.  The remaining encoder work is the concrete
 program layout that makes the end frame the start frame for the next
 lookup, plus the halt/mismatch branch.  The claim flag remains false.
+
+### Wide row to the left native step (kernel-checked)
+
+`formal/utm/MinskyRowStepWideLeft.v` is the leftward analogue:
+
+```text
+wide_row_step_left r data bprev rest_tail
+wide_row_step_left_ok
+wide_row_step_left_run
+```
+
+It uses the same `split_init`/`split_last` extraction and the same
+well-formedness/width obligations.  Fast acceptance:
+[45051589822](https://github.com/shemshallah/NaNLMind/actions/runs/45051589822).
+
+Both native directions now have a one-row step attached to an arbitrary
+well-formed `WideSourceRow` of width at least two.
+
+**Caveat.**  The raw q5-return frame does not distinguish the source
+write bit from the next read bit in the same way as `WideSource`: the
+end frame's last condition bit is the write bit, while the source
+semantics reads the new head cell after the move.  The raw row step is a
+valid native macro and a useful phase, but it is not by itself the
+`WideSource` encoder.  The tagged q15 layout, which carries `sacrificial`
+(write) and `target` (read) separately, is the intended semantic bridge.
+The claim flag remains false.
