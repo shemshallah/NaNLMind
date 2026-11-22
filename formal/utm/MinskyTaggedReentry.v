@@ -2,7 +2,8 @@
 
     When the source read target is false, the arbitrary-width tagged
     right and left dispatches end at q2.  This file composes that q2
-    endpoint with [q2_rail_reenter_q1], producing the q1 next-match entry.
+    endpoint with a direct rail-to-delimiter scan, producing the q1
+    next-match entry.
 
     The q3/true branches are in [MinskyTaggedContinuation].
 *)
@@ -35,6 +36,21 @@ Proof.
   intros. apply Forall_rev. apply Forall_dispatch_left_tag.
 Qed.
 
+Lemma q2_rail_direct_reenter_q1 :
+  forall (rail stored right : list nat),
+    Forall dispatch_left_symbol rail ->
+    run (S (length rail))
+      (cfg_ml 2 (rail ++ 5 :: stored) right) =
+    entry_config 1 (5 :: stored) (rev rail ++ right).
+Proof.
+  intros [|r rest] stored right H.
+  - cbn. reflexivity.
+  - change (run (S (length (r :: rest)))
+      (entry_config 2 (rest ++ 5 :: stored) (r :: right)) =
+      entry_config 1 (5 :: stored) (rev (r :: rest) ++ right)).
+    apply (dispatch_left_to_delimiter rest r stored right H).
+Qed.
+
 Theorem tagged_right_dispatch_to_q1 :
   forall (first : bool) (rest next_bits : list bool)
          (old sacrificial : bool) (outer tail : list nat),
@@ -52,9 +68,11 @@ Theorem tagged_right_dispatch_to_q1 :
             ((first :: rest) ++ [true])) + 2)) +
          (length next_bits + 2))) +
        S (length
-         (rev (match_mark sacrificial ::
-               map q0_stable_control_tag next_bits) ++
-          0 :: 6 :: map q0_stable_control_tag (first :: rest) ++ [7])))
+         (rev
+           ([if sacrificial then 3 else 2] ++
+            map q0_stable_control_tag next_bits) ++
+          0 :: 6 :: map q0_stable_control_tag
+            ((first :: rest) ++ [true]))))
       (entry_config 15
         (source_bit old :: 5 :: 3 :: outer)
         (rev (map q0_stable_control_tag (first :: rest)) ++
@@ -63,34 +81,23 @@ Theorem tagged_right_dispatch_to_q1 :
          source_bit false :: tail)) =
     entry_config 1 (5 :: source_bit old :: outer)
       (rev
-        (rev (match_mark sacrificial ::
-              map q0_stable_control_tag next_bits) ++
-         0 :: 6 :: map q0_stable_control_tag (first :: rest) ++ [7]) ++
+        (rev
+          ([if sacrificial then 3 else 2] ++
+           map q0_stable_control_tag next_bits) ++
+         0 :: 6 :: map q0_stable_control_tag
+           ((first :: rest) ++ [true])) ++
        2 :: tail).
 Proof.
   intros first rest next_bits old sacrificial outer tail.
   rewrite dispatch_run_add.
   rewrite (q15_right_buffered_native_tagged_list_dispatch
     first rest next_bits old sacrificial false outer tail).
-  assert (Hrail :
-    rev
+  apply (q2_rail_direct_reenter_q1
+    (rev
       ([if sacrificial then 3 else 2] ++
        map q0_stable_control_tag next_bits) ++
-     0 :: 6 :: map q0_stable_control_tag ((first :: rest) ++ [true]) =
-    (rev (match_mark sacrificial ::
-          map q0_stable_control_tag next_bits) ++
-     0 :: 6 :: map q0_stable_control_tag (first :: rest)) ++ [7]).
-  { rewrite map_app.
-    rewrite rev_app_distr.
-    cbn [map rev app].
-    repeat rewrite <- app_assoc.
-    reflexivity. }
-  rewrite Hrail.
-  apply (q2_rail_reenter_q1
-    (rev (match_mark sacrificial ::
-          map q0_stable_control_tag next_bits) ++
-     0 :: 6 :: map q0_stable_control_tag (first :: rest))
-    7 (source_bit old :: outer) (2 :: tail)).
+     0 :: 6 :: map q0_stable_control_tag ((first :: rest) ++ [true]))
+    (source_bit old :: outer) (2 :: tail)).
   repeat rewrite Forall_app. repeat split;
     try (apply Forall_dispatch_left_tag);
     try (apply Forall_dispatch_left_tag_rev);
@@ -122,9 +129,9 @@ Proof.
   rewrite dispatch_run_add.
   rewrite (q15_left_false_guard_native_tagged_list_dispatch
     first rest old false outer tail).
-  apply (q2_rail_reenter_q1
-    (rev (map q0_stable_control_tag (rev (first :: rest))) ++ [0])
-    6 (source_bit old :: 6 :: outer) (2 :: tail)).
+  apply (q2_rail_direct_reenter_q1
+    (rev (map q0_stable_control_tag (rev (first :: rest))) ++ [0; 6])
+    (source_bit old :: 6 :: outer) (2 :: tail)).
   repeat rewrite Forall_app. repeat split;
     try (apply Forall_dispatch_left_tag_rev);
     try (unfold dispatch_left_symbol; auto 12).
