@@ -13,7 +13,7 @@ From Coq Require Import List Arith Bool Lia ZArith.
 Import ListNotations.
 
 From NaNLM Require Import MinskyTable MinskySourceEncoding MinskyWideSource
-  MinskyConcreteDispatch MinskyBookLayout MinskyBookLocate MinskyBookLocateRows
+  MinskyConcreteDispatch MinskyMatchMacro MinskyCanonicalInstruction MinskyBookLayout MinskyBookLocate MinskyBookLocateRows
   MinskyBookLocateWide MinskyBookLocateCycle MinskyBookLocateLookup
   MinskyBookEncode MinskyBookRawBuffer MinskyLeftInfinite
   MinskyLeftInfiniteEncode MinskyLeftInfiniteWindow
@@ -452,3 +452,191 @@ Qed.
 Print Assumptions lic_bounded_ok_run.
 Print Assumptions lic_state_length_run.
 Print Assumptions lic_bounded_none_halt_run.
+
+(** ** Positivity of the per-step clock *)
+
+Lemma lic_step_cost_pos :
+  forall (p : nat) (rows : list WideSourceRow) (lo : Z)
+         (c : LeftInfiniteConfig),
+    Forall (wide_row_wellformed p) rows ->
+    length (lic_state c) = p ->
+    lic_hit_state rows c ->
+    1 <= lic_step_cost rows lo c.
+Proof.
+  intros p rows lo c Hwf Hlen [Hh [r Hlookup]].
+  destruct (wide_source_lookup_some_book_first_match_hit p rows
+    (lic_state c) (lic_tape c (lic_head c)) r Hwf Hlen Hlookup)
+    as [steps [hit [after [Hbf _]]]].
+  unfold lic_step_cost. rewrite Hlookup, Hbf.
+  destruct (wr_right r).
+  - unfold lic_q5_right_hit_cost, book_steady_locate_q12_clock_gen,
+      book_q12_perform_right_clock_raw, restore_clock. lia.
+  - unfold lic_q5_left_hit_cost, book_steady_locate_q12_clock_gen,
+      book_q13_perform_left_clock_raw, restore_clock. lia.
+Qed.
+
+Lemma lic_state_length_step :
+  forall (p : nat) (rows : list WideSourceRow) (c : LeftInfiniteConfig),
+    length (lic_state c) = p ->
+    Forall (wide_row_wellformed p) rows ->
+    lic_hit_state rows c ->
+    length (lic_state (left_infinite_step rows c)) = p.
+Proof.
+  intros p rows c Hlen Hwf [Hh [r Hlookup]].
+  assert (Hin_r : In r rows).
+  { pose proof (find_some
+      (fun row => wide_row_matches row (lic_state c)
+         (lic_tape c (lic_head c))) rows Hlookup) as Hfs.
+    exact (proj1 Hfs). }
+  assert (Hwf_r : wide_row_wellformed p r).
+  { rewrite Forall_forall in Hwf. apply Hwf. exact Hin_r. }
+  destruct (left_infinite_right_blocked c r) eqn:Hb.
+  - destruct (left_infinite_step_blocked_fields rows c r Hh Hlookup Hb)
+      as [Hs _]. rewrite Hs. exact Hlen.
+  - destruct (left_infinite_step_running_fields rows c r Hh Hlookup Hb)
+      as [Hs _]. rewrite Hs. exact (proj2 Hwf_r).
+Qed.
+
+Lemma lic_bounded_clock_at_least_steps :
+  forall (n p : nat) (rows : list WideSourceRow) (lo : Z)
+         (c : LeftInfiniteConfig),
+    Forall (wide_row_wellformed p) rows ->
+    length (lic_state c) = p ->
+    (forall k, k < n -> lic_hit_state rows
+       (left_infinite_run k rows c)) ->
+    n <= lic_bounded_clock rows n lo c.
+Proof.
+  induction n as [|n IH]; intros p rows lo c Hwf Hlen Hhit.
+  - cbn [lic_bounded_clock]. lia.
+  - cbn [lic_bounded_clock].
+    assert (Hh : lic_hit_state rows c).
+    { specialize (Hhit 0 (Nat.lt_0_succ n)).
+      cbn [left_infinite_run] in Hhit. exact Hhit. }
+    assert (Hpos : 1 <= lic_step_cost rows lo c)
+      by (apply (lic_step_cost_pos p rows lo c Hwf Hlen Hh)).
+    assert (Hlen' : length (lic_state (left_infinite_step rows c)) = p)
+      by (apply (lic_state_length_step p rows c Hlen Hwf Hh)).
+    assert (Hrec : n <= lic_bounded_clock rows n lo
+        (left_infinite_step rows c)).
+    { apply (IH p rows lo (left_infinite_step rows c) Hwf Hlen').
+      intros k Hk. exact (Hhit (S k) ltac:(lia)). }
+    lia.
+Qed.
+
+Print Assumptions lic_step_cost_pos.
+Print Assumptions lic_bounded_clock_at_least_steps.
+
+Lemma cfg_ml_halted :
+  forall (q : nat) (l r : list nat), c_halted (cfg_ml q l r) = false.
+Proof.
+  intros q l r. unfold cfg_ml. destruct l; reflexivity.
+Qed.
+
+(** ** Constructive search for the first non-hit step *)
+
+Fixpoint lic_first_stop
+    (rows : list WideSourceRow) (k : nat) (c : LeftInfiniteConfig)
+    : option (nat * LeftInfiniteConfig) :=
+  match k with
+  | 0 => None
+  | S k' =>
+      if lic_halted c then Some (0, c)
+      else
+        match wide_source_lookup rows (lic_state c) (lic_tape c (lic_head c)) with
+        | None => Some (1, left_infinite_step rows c)
+        | Some _ =>
+            match lic_first_stop rows k' (left_infinite_step rows c) with
+            | Some (j, c') => Some (S j, c')
+            | None => None
+            end
+        end
+  end.
+
+Lemma lic_first_stop_sound :
+  forall rows k c j c',
+    lic_first_stop rows k c = Some (j, c') ->
+    c' = left_infinite_run j rows c /\ lic_halted c' = true.
+Proof.
+  induction k as [|k IH]; intros c j c' H; [cbn [lic_first_stop] in H; discriminate H|].
+  cbn [lic_first_stop] in H.
+  destruct (lic_halted c) eqn:Eh.
+  - inversion H; subst. split.
+    + cbn [left_infinite_run]. reflexivity.
+    + exact Eh.
+  - destruct (wide_source_lookup rows (lic_state c)
+      (lic_tape c (lic_head c))) as [r|] eqn:El.
+    + destruct (lic_first_stop rows k (left_infinite_step rows c))
+        as [[j' c'']|] eqn:E; [|discriminate H].
+      inversion H; subst.
+      destruct (IH (left_infinite_step rows c) j' c' E) as [Hrun Hhalt].
+      split.
+      * cbn [left_infinite_run]. rewrite <- Hrun. reflexivity.
+      * exact Hhalt.
+    + inversion H; subst. split.
+      * cbn [left_infinite_run]. reflexivity.
+      * apply (left_infinite_step_lookup_none rows c Eh El).
+Qed.
+
+Lemma lic_first_stop_none :
+  forall rows k c,
+    lic_first_stop rows k c = None ->
+    forall j, j < k -> lic_hit_state rows (left_infinite_run j rows c).
+Proof.
+  induction k as [|k IH]; intros c H j Hj; [lia|].
+  cbn [lic_first_stop] in H.
+  destruct (lic_halted c) eqn:Eh; [discriminate H|].
+  destruct (wide_source_lookup rows (lic_state c)
+    (lic_tape c (lic_head c))) as [r|] eqn:El; [|discriminate H].
+  destruct j as [|j'].
+  - cbn [left_infinite_run]. split; [exact Eh|]. exists r. exact El.
+  - cbn [left_infinite_run].
+    destruct (lic_first_stop rows k (left_infinite_step rows c))
+      as [[j c']|] eqn:E.
+    + discriminate H.
+    + apply (IH (left_infinite_step rows c) E j'). lia.
+Qed.
+
+Print Assumptions lic_first_stop_sound.
+Print Assumptions lic_first_stop_none.
+
+(** ** Native halting within the bounded clock implies source halting *)
+
+Theorem lic_bounded_native_halt_implies_source_halt :
+  forall (t p : nat) (lo : Z) (c : LeftInfiniteConfig)
+         (rows : list WideSourceRow),
+    Forall (wide_row_wellformed p) rows ->
+    rows <> [] ->
+    length (lic_state c) = p ->
+    lic_bounded_ok lo t c ->
+    c_halted (run t (lic_q5_encode lo c (lic_book_rows rows) [])) = true ->
+    exists k, lic_halted (left_infinite_run k rows c) = true.
+Proof.
+  intros t p lo c rows Hwf Hne Hlen Hbounded Hnative.
+  destruct (lic_first_stop rows t c) as [[j c']|] eqn:E.
+  - destruct (lic_first_stop_sound rows t c j c' E) as [Hrun Hhalt].
+    exists j. rewrite <- Hrun. exact Hhalt.
+  - assert (Hhit : forall k, k < t -> lic_hit_state rows
+        (left_infinite_run k rows c))
+      by (apply (lic_first_stop_none rows t c E)).
+    assert (Hclock : t <= lic_bounded_clock rows t lo c)
+      by (apply (lic_bounded_clock_at_least_steps t p rows lo c Hwf Hlen Hhit)).
+    assert (Hhalt_clock :
+      c_halted (run (lic_bounded_clock rows t lo c)
+        (lic_q5_encode lo c (lic_book_rows rows) [])) = true).
+    { replace (lic_bounded_clock rows t lo c)
+        with (t + (lic_bounded_clock rows t lo c - t)) by lia.
+      rewrite dispatch_run_add.
+      rewrite (dispatch_halted_run
+        (lic_bounded_clock rows t lo c - t)
+        (run t (lic_q5_encode lo c (lic_book_rows rows) [])) Hnative).
+      exact Hnative. }
+    rewrite (lic_bounded_hit_run t p lo c rows Hwf Hne Hlen Hbounded Hhit)
+      in Hhalt_clock.
+    assert (Hnot : c_halted (lic_q5_encode lo (left_infinite_run t rows c)
+      (lic_book_rows rows) []) = false).
+    { unfold lic_q5_encode, book_q5_raw.
+      apply cfg_ml_halted. }
+    rewrite Hnot in Hhalt_clock. discriminate Hhalt_clock.
+Qed.
+
+Print Assumptions lic_bounded_native_halt_implies_source_halt.
