@@ -15,6 +15,39 @@ engineering/research plan derived from the current kernel-checked tree.
 - The tagged movement/dispatch, q2->q1 reentry, q1 prefetch, q12
   leftover-tail and exact q12->tagged-q15 interface lemmas.
 
+## Source model (literature-confirmed)
+
+The frozen table is Minsky's direct interpreter of a **2-symbol,
+left-infinite-tape Turing machine with an arbitrary finite state set**.
+For a fixed state width `k`, a description row is
+
+```text
+X bin_k(q) read(1) bin_k(q') write(1) direction(1)
+```
+
+and has `2k+3` symbols.  The project's 7-bit rows are exactly the
+`k = 2` special case (at most four simulated states); `WideSource` with
+arbitrary `p` is the correct generalisation.  The machine is a strong
+UTM: it simulates one binary-TM quintuple per locate/copy/restore/perform
+cycle and halts when the locate phase reaches the final `Y` without a
+match.
+
+The 7x4 tag-system machine is a different construction.  A standard
+strong 4-state/2-symbol UTM is not known, so the fixed-small-UTM route is
+not a shortcut.
+
+The primary source is Minsky, *Computation: Finite and Infinite
+Machines*, Ch. 7, Fig. 7.2-9, pp. 132-145.  The exact tape layout is
+
+```text
+...000 pseudo_tape M 0^b Y bin_k(q) s description Y 0...
+```
+
+with the head starting on the first `X` of the description in state 6.
+The condition `bin_k(q) s` is stored to the right of `Y`; the pseudo-tape
+and its `M` marker are to the left.  This separation is the key layout
+constraint for the perform phase.
+
 ## The three concrete blockers
 
 ### Blocker A: q1 prefetch rail is not q6-copy compatible
