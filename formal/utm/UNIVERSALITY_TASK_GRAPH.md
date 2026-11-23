@@ -68,8 +68,21 @@ description record (`2/3`), not a `6/7` tag rail; q16 restores it in
 place, and q19 starts on the source side and captures the new head cell.
 The old q12 "tag poison" is bypassed by the correct split frame.
 
-Remaining in the running cycle: the locate/match scan and the q5 -> q12
-selected-row copy/restore half, then the concrete encoder.
+The right perform cycle is now closed end-to-end:
+
+```text
+book_q6_to_q12
+book_q6_to_q5_right
+```
+
+`book_q6_to_q5_right` runs the literal q6 copy/direction, q12/q14
+restore, q15/q16 tagged record restore, q21/q22 old-head write, q19 new
+head relocation and q17/q18 return to q5, with the full book clock and
+all frame/passability hypotheses.  `MinskyBookLeft.v` also proves the
+general-tag left q15 -> q20/q5 perform macro.
+
+Remaining in the running cycle: the q5/q1 multi-row locate/match scan,
+the left q13 -> q5 composition, and the concrete encoder.
 
 ## Experimental verdict on the prefetch route
 
