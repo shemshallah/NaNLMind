@@ -735,8 +735,9 @@ Theorem lic_bounded_source_halt_implies_native_halt :
     rows <> [] ->
     length (lic_state c) = p ->
     lic_bounded_ok lo (S n) c ->
-    (forall k, k < S n -> lic_hit_state rows
+    (forall k, k < n -> lic_hit_state rows
        (left_infinite_run k rows c)) ->
+    lic_halted (left_infinite_run n rows c) = false ->
     lic_halted (left_infinite_run (S n) rows c) = true ->
     exists steps last,
       run (lic_bounded_clock rows n lo c +
@@ -751,45 +752,36 @@ Theorem lic_bounded_source_halt_implies_native_halt :
         (left_infinite_step rows (left_infinite_run n rows c))
         steps last []) = true.
 Proof.
-  intros n p lo c rows Hwf Hne Hlen Hbounded Hhit Hhalt.
-  assert (Hhitn : lic_hit_state rows (left_infinite_run n rows c))
-    by (apply (Hhit n); lia).
-  destruct Hhitn as [Hhalted_n [r Hlookup_n]].
-  assert (Hboundary : left_infinite_right_blocked
-      (left_infinite_run n rows c) r = false).
-  { unfold left_infinite_right_blocked.
-    destruct (wr_right r) eqn:Hright.
-    - destruct (Z.eqb (lic_head (left_infinite_run n rows c))
-        (lic_R (left_infinite_run n rows c))) eqn:E.
-      + apply Z.eqb_eq in E.
-        assert (Hlt := lic_bounded_head_lt_R lo (S n) n c rows
-          ltac:(lia) Hbounded).
-        rewrite (lic_R_run n rows c) in E.
-        lia.
-      + reflexivity.
-    - reflexivity. }
+  intros n p lo c rows Hwf Hne Hlen Hbounded Hhit
+    Hnot_halted_n Hhalt.
+  assert (Hstep_halted : lic_halted
+    (left_infinite_step rows (left_infinite_run n rows c)) = true).
+  { rewrite <- left_infinite_run_succ. exact Hhalt. }
   assert (Hrun_none : wide_source_lookup rows
       (lic_state (left_infinite_run n rows c))
       (lic_tape (left_infinite_run n rows c)
         (lic_head (left_infinite_run n rows c))) = None).
-  { destruct (wide_source_lookup rows
+  { unfold left_infinite_step in Hstep_halted.
+    rewrite Hnot_halted_n in Hstep_halted.
+    destruct (wide_source_lookup rows
       (lic_state (left_infinite_run n rows c))
       (lic_tape (left_infinite_run n rows c)
-        (lic_head (left_infinite_run n rows c)))) as [r'|] eqn:E.
-    - injection Hlookup_n as ->.
-      exfalso.
-      assert (Hfalse : lic_halted
-        (left_infinite_step rows (left_infinite_run n rows c)) = false).
-      { destruct (left_infinite_step_running_fields rows
-          (left_infinite_run n rows c) r Hhalted_n E Hboundary)
-          as [_ [_ [_ [_ Hh]]]].
-        exact Hh. }
-      rewrite left_infinite_run_succ in Hhalt.
-      rewrite Hfalse in Hhalt. discriminate Hhalt.
+        (lic_head (left_infinite_run n rows c)))) as [r|] eqn:E.
+    - destruct (left_infinite_right_blocked
+        (left_infinite_run n rows c) r) eqn:Eb.
+      + exfalso.
+        assert (Hlt := lic_bounded_head_lt_R lo (S n) n c rows
+          ltac:(lia) Hbounded).
+        unfold left_infinite_right_blocked in Eb.
+        apply Bool.andb_true_iff in Eb. destruct Eb as [_ Heq].
+        apply Z.eqb_eq in Heq.
+        rewrite (lic_R_run n rows c) in Heq.
+        lia.
+      + discriminate Hstep_halted.
     - reflexivity. }
   apply (lic_bounded_none_halt_run n p lo c rows Hwf Hne Hlen
     (lic_bounded_ok_weaken lo (S n) n c ltac:(lia) Hbounded)
-    ltac:(intros k Hk; apply Hhit; lia) Hhalted_n Hrun_none).
+    Hhit Hnot_halted_n Hrun_none).
 Qed.
 
 Print Assumptions lic_head_run_bound.
@@ -885,3 +877,137 @@ Qed.
 Print Assumptions lic_pad_hit_run.
 Print Assumptions lic_pad_none_halt_run.
 Print Assumptions lic_pad_native_halt_implies_source_halt.
+
+(** ** First halting time *)
+
+Definition lic_halts_at_first
+    (rows : list WideSourceRow) (c : LeftInfiniteConfig) (n : nat) : Prop :=
+  lic_halted (left_infinite_run n rows c) = true /\
+  forall k, k < n -> lic_halted (left_infinite_run k rows c) = false.
+
+Lemma lic_first_halt_exists :
+  forall n rows c,
+    lic_halted (left_infinite_run n rows c) = true ->
+    exists k, k <= n /\ lic_halts_at_first rows c k.
+Proof.
+  induction n as [|n IH]; intros rows c H.
+  - exists 0. split; [lia|]. split.
+    + cbn [left_infinite_run] in H. exact H.
+    + intros k Hk. lia.
+  - destruct (lic_halted c) eqn:Eh.
+    + exists 0. split; [lia|]. split; [exact Eh|].
+      intros k Hk. lia.
+    + cbn [left_infinite_run] in H.
+      destruct (IH rows (left_infinite_step rows c) H) as [k [Hle Hfirst]].
+      exists (S k). split; [lia|]. split.
+      * change (lic_halted
+          (left_infinite_run k rows (left_infinite_step rows c)) = true).
+        exact (proj1 Hfirst).
+      * intros j Hj. destruct j as [|j'].
+        -- cbn [left_infinite_run]. exact Eh.
+        -- change (lic_halted
+            (left_infinite_run j' rows (left_infinite_step rows c)) = false).
+           apply (proj2 Hfirst j'). lia.
+Qed.
+
+Lemma lic_running_step_hit :
+  forall rows c,
+    lic_halted c = false ->
+    lic_halted (left_infinite_step rows c) = false ->
+    lic_hit_state rows c.
+Proof.
+  intros rows c Hh Hstep.
+  unfold lic_hit_state. split; [exact Hh|].
+  unfold left_infinite_step in Hstep. rewrite Hh in Hstep.
+  destruct (wide_source_lookup rows (lic_state c)
+    (lic_tape c (lic_head c))) as [r|] eqn:E.
+  - exists r. reflexivity.
+  - cbn in Hstep. discriminate Hstep.
+Qed.
+
+Lemma lic_first_halt_hit_prefix :
+  forall k rows c,
+    lic_halts_at_first rows c k ->
+    forall i, S i < k -> lic_hit_state rows
+      (left_infinite_run i rows c).
+Proof.
+  intros k rows c [Hhalt Hfirst] i Hi.
+  apply (lic_running_step_hit rows (left_infinite_run i rows c)).
+  - apply Hfirst. lia.
+  - rewrite <- left_infinite_run_succ. apply Hfirst. exact Hi.
+Qed.
+
+Print Assumptions lic_first_halt_exists.
+Print Assumptions lic_first_halt_hit_prefix.
+
+(** ** Padded encoder for a source run of a fixed length *)
+
+Definition lic_encode_pad
+    (rows : list WideSourceRow) (n : nat)
+    (c : LeftInfiniteConfig) : Config :=
+  if lic_halted c
+  then dispatch_halt_at_y [] []
+  else lic_q5_encode (lic_pad_lo c n) (lic_pad_cfg c n)
+         (lic_book_rows rows) [].
+
+Lemma lic_encode_pad_halted :
+  forall rows n c,
+    lic_halted c = true ->
+    c_halted (lic_encode_pad rows n c) = true.
+Proof.
+  intros rows n c Hh. unfold lic_encode_pad. rewrite Hh.
+  unfold dispatch_halt_at_y. reflexivity.
+Qed.
+
+Theorem lic_pad_source_halt_to_native :
+  forall (n p : nat) (rows : list WideSourceRow) (c : LeftInfiniteConfig),
+    Forall (wide_row_wellformed p) rows ->
+    rows <> [] ->
+    length (lic_state c) = p ->
+    left_infinite_ok c ->
+    lic_halted (left_infinite_run n rows (lic_pad_cfg c n)) = true ->
+    exists t, c_halted (run t (lic_encode_pad rows n c)) = true.
+Proof.
+  intros n p rows c Hwf Hne Hlen Hok Hhalt.
+  destruct (lic_first_halt_exists n rows (lic_pad_cfg c n) Hhalt)
+    as [k [Hk Hfirst]].
+  destruct k as [|k'].
+  - (* already halted *)
+    exists 0. change (c_halted (lic_encode_pad rows n c) = true).
+    rewrite (lic_encode_pad_halted rows n c (proj1 Hfirst)).
+    reflexivity.
+  - (* first halt at S k' *)
+    assert (Hnot_halted_k : lic_halted
+      (left_infinite_run k' rows (lic_pad_cfg c n)) = false).
+    { apply (proj2 Hfirst). lia. }
+    assert (Hhalt_S : lic_halted
+      (left_infinite_run (S k') rows (lic_pad_cfg c n)) = true).
+    { exact (proj1 Hfirst). }
+    assert (Hhit : forall i, i < k' -> lic_hit_state rows
+      (left_infinite_run i rows (lic_pad_cfg c n))).
+    { intros i Hi. apply (lic_first_halt_hit_prefix (S k') rows
+        (lic_pad_cfg c n) Hfirst i). lia. }
+    assert (Hbounded : lic_bounded_ok (lic_pad_lo c n) (S k')
+      (lic_pad_cfg c n)).
+    { apply (lic_bounded_ok_weaken (lic_pad_lo c n) n (S k')
+        (lic_pad_cfg c n)).
+      - lia.
+      - apply (lic_pad_cfg_bounded c n Hok). }
+    destruct (lic_bounded_source_halt_implies_native_halt k' p
+      (lic_pad_lo c n) (lic_pad_cfg c n) rows Hwf Hne
+      ltac:(rewrite lic_state_pad_cfg; exact Hlen)
+      Hbounded Hhit Hnot_halted_k Hhalt_S)
+      as [steps [last [Hrun Hhalted]]].
+    exists (lic_bounded_clock rows k' (lic_pad_lo c n) (lic_pad_cfg c n) +
+      (S (length (lic_state
+            (left_infinite_run k' rows (lic_pad_cfg c n)))) +
+       (book_failures_clock [] steps +
+        book_halt_clock (map bf_row steps) last))).
+    assert (Hc_running : lic_halted c = false).
+    { specialize (proj2 Hfirst 0 ltac:(lia)).
+      cbn [left_infinite_run]. auto. }
+    unfold lic_encode_pad. rewrite Hc_running.
+    rewrite Hrun. exact Hhalted.
+Qed.
+
+Print Assumptions lic_pad_source_halt_to_native.
