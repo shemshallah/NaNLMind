@@ -396,3 +396,31 @@ raw_ptape_* / raw_last_* / raw_read_*
 
 the general `wide_source_lookup` ↔ `book_first_match` correspondence, and
 the resulting generalized non-boundary/boundary macro step.
+
+## Window and lookup progress
+
+`MinskyLeftInfiniteWindow.v` proves the right-step window package:
+
+```text
+raw_buf_right_step
+raw_ptape_right_step
+raw_ptape_prefix_right_step
+raw_last_right_step
+raw_read_right_step
+raw_buf_left_step
+```
+
+`MinskyLeftInfiniteLookup.v` proves the pointwise row-match equivalence and
+hit extraction:
+
+```text
+source_row_to_book_matches
+book_first_match_hit_is_source_row
+```
+
+`MinskyLeftInfiniteLeftCheck.v` proves the concrete left mapping is correct;
+`lic_q5_encode` already handles the ptape/w_tape split.
+
+The remaining general items are the left ptape window identity
+`raw_ptape_left_step`, the full lookup prefix/failure packaging, and the
+resulting generalized right/left/boundary/halt macro steps.
