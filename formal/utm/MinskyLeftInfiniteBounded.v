@@ -794,3 +794,94 @@ Qed.
 
 Print Assumptions lic_head_run_bound.
 Print Assumptions lic_bounded_source_halt_implies_native_halt.
+
+(** ** Corollaries for the padded source configuration
+
+    [lic_pad_cfg c n] extends the tape's right endpoint to
+    [max R (head + n + 2)] and keeps the tape function.  It is the
+    canonical right-unbounded finite window for an [n]-step run. *)
+
+Corollary lic_pad_hit_run :
+  forall (n p : nat) (rows : list WideSourceRow) (c : LeftInfiniteConfig),
+    Forall (wide_row_wellformed p) rows ->
+    rows <> [] ->
+    length (lic_state c) = p ->
+    left_infinite_ok c ->
+    (forall k, k < n -> lic_hit_state rows
+       (left_infinite_run k rows (lic_pad_cfg c n))) ->
+    run (lic_bounded_clock rows n (lic_pad_lo c n) (lic_pad_cfg c n))
+      (lic_q5_encode (lic_pad_lo c n) (lic_pad_cfg c n)
+        (lic_book_rows rows) []) =
+    lic_q5_encode (lic_pad_lo c n)
+      (left_infinite_run n rows (lic_pad_cfg c n))
+      (lic_book_rows rows) [].
+Proof.
+  intros n p rows c Hwf Hne Hlen Hok Hhit.
+  apply (lic_bounded_hit_run n p (lic_pad_lo c n) (lic_pad_cfg c n)
+    rows Hwf Hne).
+  - rewrite lic_state_pad_cfg. exact Hlen.
+  - apply (lic_pad_cfg_bounded c n Hok).
+  - exact Hhit.
+Qed.
+
+Corollary lic_pad_none_halt_run :
+  forall (n p : nat) (rows : list WideSourceRow) (c : LeftInfiniteConfig),
+    Forall (wide_row_wellformed p) rows ->
+    rows <> [] ->
+    length (lic_state c) = p ->
+    left_infinite_ok c ->
+    (forall k, k < n -> lic_hit_state rows
+       (left_infinite_run k rows (lic_pad_cfg c n))) ->
+    lic_halted (left_infinite_run n rows (lic_pad_cfg c n)) = false ->
+    wide_source_lookup rows
+      (lic_state (left_infinite_run n rows (lic_pad_cfg c n)))
+      (lic_tape (left_infinite_run n rows (lic_pad_cfg c n))
+        (lic_head (left_infinite_run n rows (lic_pad_cfg c n)))) = None ->
+    exists steps last,
+      run (lic_bounded_clock rows n (lic_pad_lo c n) (lic_pad_cfg c n) +
+           (S (length (lic_state
+                (left_infinite_run n rows (lic_pad_cfg c n)))) +
+            (book_failures_clock [] steps +
+             book_halt_clock (map bf_row steps) last)))
+        (lic_q5_encode (lic_pad_lo c n) (lic_pad_cfg c n)
+          (lic_book_rows rows) []) =
+      lic_halt_encode (lic_pad_lo c n)
+        (left_infinite_step rows
+          (left_infinite_run n rows (lic_pad_cfg c n)))
+        steps last [] /\
+      c_halted (lic_halt_encode (lic_pad_lo c n)
+        (left_infinite_step rows
+          (left_infinite_run n rows (lic_pad_cfg c n)))
+        steps last []) = true.
+Proof.
+  intros n p rows c Hwf Hne Hlen Hok Hhit Hhalted Hnone.
+  apply (lic_bounded_none_halt_run n p (lic_pad_lo c n) (lic_pad_cfg c n)
+    rows Hwf Hne).
+  - rewrite lic_state_pad_cfg. exact Hlen.
+  - apply (lic_pad_cfg_bounded c n Hok).
+  - exact Hhit.
+  - exact Hhalted.
+  - exact Hnone.
+Qed.
+
+Corollary lic_pad_native_halt_implies_source_halt :
+  forall (t p : nat) (rows : list WideSourceRow) (c : LeftInfiniteConfig),
+    Forall (wide_row_wellformed p) rows ->
+    rows <> [] ->
+    length (lic_state c) = p ->
+    left_infinite_ok c ->
+    c_halted (run t (lic_q5_encode (lic_pad_lo c t) (lic_pad_cfg c t)
+      (lic_book_rows rows) [])) = true ->
+    exists k, lic_halted (left_infinite_run k rows (lic_pad_cfg c t)) = true.
+Proof.
+  intros t p rows c Hwf Hne Hlen Hok Hnative.
+  apply (lic_bounded_native_halt_implies_source_halt t p
+    (lic_pad_lo c t) (lic_pad_cfg c t) rows Hwf Hne).
+  - rewrite lic_state_pad_cfg. exact Hlen.
+  - apply (lic_pad_cfg_bounded c t Hok).
+  - exact Hnative.
+Qed.
+
+Print Assumptions lic_pad_hit_run.
+Print Assumptions lic_pad_none_halt_run.
+Print Assumptions lic_pad_native_halt_implies_source_halt.

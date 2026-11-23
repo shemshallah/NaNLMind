@@ -527,3 +527,44 @@ path is the remaining boundary obligation; the 129-step trace is a guide
 for an induction over the description rows, not a proof.
 
 Claim remains false.
+
+## Bounded-window simulation (proved)
+
+`MinskyLeftInfiniteBounded.v` proves the unconditional finite-run core:
+
+```text
+lic_pad_cfg / lic_pad_lo / lic_pad_R
+lic_bounded_ok
+lic_bounded_hit_run
+lic_bounded_none_halt_run
+lic_bounded_native_halt_implies_source_halt
+lic_bounded_source_halt_implies_native_halt
+lic_pad_hit_run
+lic_pad_none_halt_run
+lic_pad_native_halt_implies_source_halt
+```
+
+For a window `lo = head - n - 2` and right endpoint
+`R = max R (head + n + 2)`:
+
+- an `n`-step hit-only source run is simulated exactly by the frozen
+  table, at macro boundaries, with the explicit sum clock;
+- a hit prefix followed by a no-match step reaches the halted encoder;
+- native halting within the clock implies the padded source halts.
+
+The one-step macros are the sentinel-augmented description macros; the
+window is deep enough that neither the left edge nor the right wall is
+reached during the `n` steps.
+
+## Remaining for the fixed-configuration theorem
+
+The bounded theorems choose the padding from the run length.  To obtain
+a single `encode p rows c` for an arbitrary source configuration, two
+pieces are still missing:
+
+1. the empty-buffer right-boundary q19/q3 halt frame (general theorem);
+2. the left-window shift at `lo = head - 1` (one blank pad cell).
+
+With those, the fixed-configuration `macro_cost`/`encode` premises of
+`conditional_left_source_native_halting_equivalence` can be discharged.
+Claim remains false.
