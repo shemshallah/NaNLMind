@@ -233,3 +233,76 @@ Proof.
 Qed.
 
 Print Assumptions lic_left_hit_run.
+
+Lemma lic_left_ok_run :
+  forall (n : nat) (lo : Z) (c : LeftInfiniteConfig)
+         (rows : list WideSourceRow),
+    lic_left_ok lo n c ->
+    (forall k, k < n -> lic_hit_state rows
+       (left_infinite_run k rows c)) ->
+    lic_left_ok lo 0 (left_infinite_run n rows c).
+Proof.
+  induction n as [|n IH]; intros lo c rows Hleft Hhit.
+  - cbn [left_infinite_run]. exact Hleft.
+  - assert (H0 : lic_hit_state rows c).
+    { specialize (Hhit 0 (Nat.lt_0_succ n)).
+      cbn [left_infinite_run] in Hhit. exact Hhit. }
+    destruct H0 as [Hh [r Hlookup]].
+    cbn [left_infinite_run].
+    destruct (wr_right r) eqn:Hright.
+    + apply IH.
+      * apply (lic_left_ok_right lo n c rows r Hleft Hh Hlookup Hright).
+      * intros k Hk. exact (Hhit (S k) ltac:(lia)).
+    + apply IH.
+      * apply (lic_left_ok_left lo n c rows r Hleft Hh Hlookup Hright).
+      * intros k Hk. exact (Hhit (S k) ltac:(lia)).
+Qed.
+
+Theorem lic_left_none_halt_run :
+  forall (n p : nat) (lo : Z) (c : LeftInfiniteConfig)
+         (rows : list WideSourceRow),
+    Forall (wide_row_wellformed p) rows ->
+    rows <> [] ->
+    length (lic_state c) = p ->
+    lic_left_ok lo n c ->
+    (forall k, k < n -> lic_hit_state rows
+       (left_infinite_run k rows c)) ->
+    (forall k, k < n ->
+       (lic_head (left_infinite_run k rows c) < lic_R c)%Z) ->
+    lic_halted (left_infinite_run n rows c) = false ->
+    wide_source_lookup rows
+      (lic_state (left_infinite_run n rows c))
+      (lic_tape (left_infinite_run n rows c)
+        (lic_head (left_infinite_run n rows c))) = None ->
+    exists steps last,
+      run (lic_bounded_clock rows n lo c +
+           (S (length (lic_state (left_infinite_run n rows c))) +
+            (book_failures_clock [] steps +
+             book_halt_clock (map bf_row steps) last)))
+        (lic_q5_encode lo c (lic_book_rows rows) []) =
+      lic_halt_encode lo
+        (left_infinite_step rows (left_infinite_run n rows c))
+        steps last [] /\
+      c_halted (lic_halt_encode lo
+        (left_infinite_step rows (left_infinite_run n rows c))
+        steps last []) = true.
+Proof.
+  intros n p lo c rows Hwf Hne Hlen Hleft Hhit HheadR Hhalted Hnone.
+  assert (Hleft0 : lic_left_ok lo 0 (left_infinite_run n rows c))
+    by (apply (lic_left_ok_run n lo c rows Hleft Hhit)).
+  assert (Hlo : (lo < lic_head (left_infinite_run n rows c))%Z).
+  { destruct Hleft0 as [Hlo _]. cbn [Z.of_nat] in Hlo. lia. }
+  assert (Hlen0 : length (lic_state (left_infinite_run n rows c)) = p)
+    by (apply (lic_state_length_run n p c rows Hlen Hwf Hhit)).
+  destruct (lic_book_rows_none_halt_step p lo
+    (left_infinite_run n rows c) rows [] Hlo Hhalted Hwf Hlen0 Hne Hnone)
+    as [steps [last [Hbf [Hrun Hhaltedc]]]].
+  exists steps, last. split.
+  - rewrite (dispatch_run_add (lic_bounded_clock rows n lo c)
+      (S (length (lic_state (left_infinite_run n rows c))) +
+       (book_failures_clock [] steps +
+        book_halt_clock (map bf_row steps) last))).
+    rewrite (lic_left_hit_run n p lo c rows Hwf Hne Hlen Hleft Hhit HheadR).
+    exact Hrun.
+  - exact Hhaltedc.
+Qed.
