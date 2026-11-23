@@ -125,8 +125,21 @@ the next cell after the q15 rail is `X=4` or the final `Y`, not a raw
 source bit.  The planned fix is to absorb the leading `X` into the q15
 tag rail and use the first raw bit of the next row as the stop cell.
 
-Remaining overall: close that Hright equation, package the full
-q5 -> locate -> q12 -> q5 cycle, and build the concrete encoder.
+`formal/utm/MinskyBookEncode.v` now defines the source-row to book-row
+map and proves:
+
+```text
+source_row_action_length
+source_rows_cond_length
+book_initial_q5_to_locate_state
+```
+
+so a nonempty encoded source program starting at the literal initial q5
+frame reaches the row-list locate state.
+
+Remaining overall: close the q12 `Hright` equation, package the full
+q5 -> locate -> q12 -> q5 cycle, and build the total finite-window
+encoder.
 
 ## Experimental verdict on the prefetch route
 
