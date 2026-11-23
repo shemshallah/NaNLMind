@@ -15,7 +15,7 @@ Import ListNotations.
 
 From NaNLM Require Import MinskyTable MinskySourceEncoding MinskyWideSource
   MinskyBookLocateRows MinskyBookEncode MinskyLeftInfinite
-  MinskyLeftInfiniteEncoding.
+  MinskyLeftInfiniteEncoding MinskyLeftInfiniteLeftDepth.
 
 Local Open Scope nat_scope.
 
@@ -249,6 +249,38 @@ Proof.
   apply Forall_app. split.
   - apply source_rows_to_book_lift_first_bit.
   - constructor; [apply lic_sentinel_row_lift_first_bit|constructor].
+Qed.
+
+Lemma lic_lift_cfg_ok :
+  forall c,
+    left_infinite_ok (lic_lift_cfg c) <-> left_infinite_ok c.
+Proof.
+  intros c. unfold left_infinite_ok, lic_lift_cfg. cbn. reflexivity.
+Qed.
+
+Lemma lic_lift_cfg_head :
+  forall c, lic_head (lic_lift_cfg c) = lic_head c.
+Proof. reflexivity. Qed.
+
+Lemma lic_lift_cfg_R :
+  forall c, lic_R (lic_lift_cfg c) = lic_R c.
+Proof. reflexivity. Qed.
+
+Lemma lic_lift_cfg_tape :
+  forall c, lic_tape (lic_lift_cfg c) = lic_tape c.
+Proof. reflexivity. Qed.
+
+Lemma lic_lift_cfg_state_length :
+  forall c,
+    length (lic_state (lic_lift_cfg c)) = S (S (length (lic_state c))).
+Proof. reflexivity. Qed.
+
+Lemma lic_left_ok_lift :
+  forall lo n c,
+    lic_left_ok lo n (lic_lift_cfg c) <-> lic_left_ok lo n c.
+Proof.
+  intros lo n c. unfold lic_left_ok.
+  rewrite lic_lift_cfg_head. rewrite lic_lift_cfg_ok. reflexivity.
 Qed.
 
 Print Assumptions left_infinite_run_lift.
