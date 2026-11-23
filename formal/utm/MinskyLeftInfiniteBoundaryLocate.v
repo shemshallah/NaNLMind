@@ -222,3 +222,11 @@ Proof.
 Qed.
 
 Print Assumptions book_q1_mismatch_restart_gen_pass.
+
+Lemma app_singleton_cons :
+  forall (A : Type) (l : list A) (x : A) (m : list A),
+    (l ++ [x]) ++ m = l ++ x :: m.
+Proof.
+  intros. rewrite <- (app_assoc l [x] m). reflexivity.
+Qed.
+
