@@ -14,7 +14,8 @@ From Coq Require Import List Arith Bool Lia.
 Import ListNotations.
 
 From NaNLM Require Import MinskyTable MinskySourceEncoding MinskyWideSource
-  MinskyLeftInfinite.
+  MinskyBookLocateRows MinskyBookEncode MinskyLeftInfinite
+  MinskyLeftInfiniteEncoding.
 
 Local Open Scope nat_scope.
 
@@ -206,6 +207,48 @@ Proof.
   - reflexivity.
   - unfold lic_lift_rows. simpl. unfold wide_source_lookup. simpl.
     apply IH.
+Qed.
+
+Lemma source_row_to_book_lift_first_bit :
+  forall r,
+    exists s,
+      br_cond (source_row_to_book (lic_lift_row r)) = false :: s.
+Proof.
+  intros r. unfold source_row_to_book, lic_lift_row, lic_lift_state.
+  cbn. eexists. reflexivity.
+Qed.
+
+Lemma source_rows_to_book_lift_first_bit :
+  forall rows,
+    Forall (fun br => exists s, br_cond br = false :: s)
+      (source_rows_to_book (lic_lift_rows rows)).
+Proof.
+  induction rows as [|r rest IH]; simpl.
+  - constructor.
+  - constructor.
+    + apply source_row_to_book_lift_first_bit.
+    + exact IH.
+Qed.
+
+Lemma lic_sentinel_row_lift_first_bit :
+  forall rows,
+    exists s,
+      br_cond (lic_sentinel_row (lic_lift_rows rows)) = false :: s.
+Proof.
+  intros rows. destruct rows as [|r0 rest].
+  - simpl. exists []. reflexivity.
+  - simpl. apply source_row_to_book_lift_first_bit.
+Qed.
+
+Lemma lic_book_rows_lift_first_bit :
+  forall rows,
+    Forall (fun br => exists s, br_cond br = false :: s)
+      (lic_book_rows (lic_lift_rows rows)).
+Proof.
+  intros rows. unfold lic_book_rows.
+  apply Forall_app. split.
+  - apply source_rows_to_book_lift_first_bit.
+  - constructor; [apply lic_sentinel_row_lift_first_bit|constructor].
 Qed.
 
 Print Assumptions left_infinite_run_lift.

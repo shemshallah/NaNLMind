@@ -13,20 +13,20 @@ From NaNLM Require Import MinskyBookLocateRows MinskyBookLocateLookup
   MinskyLeftInfiniteFirstMatchApp.
 
 Lemma book_mismatch_ev_first_bit :
-  forall (s : list bool) (c : bool) (rest : list bool),
-    book_mismatch_ev (true :: s) (false :: c :: rest) <> None.
+  forall (s rest : list bool),
+    book_mismatch_ev (true :: s) (false :: rest) <> None.
 Proof.
-  intros s c rest H. cbn [book_mismatch_ev] in H. discriminate H.
+  intros s rest H. cbn [book_mismatch_ev] in H. discriminate H.
 Qed.
 
 Lemma book_row_matches_first_bit_false :
-  forall (src_tail row_tail : list bool) (r : book_row) (c : bool),
-    br_cond r = false :: c :: row_tail ->
+  forall (src_tail row_tail : list bool) (r : book_row),
+    br_cond r = false :: row_tail ->
     book_row_matches (true :: src_tail) r = false.
 Proof.
-  intros src_tail row_tail r c Hrow.
+  intros src_tail row_tail r Hrow.
   unfold book_row_matches. rewrite Hrow.
-  destruct (Nat.eqb (length (false :: c :: row_tail))
+  destruct (Nat.eqb (length (false :: row_tail))
     (length (true :: src_tail))) eqn:E.
   - cbn [andb]. cbn [book_mismatch_ev]. reflexivity.
   - reflexivity.
@@ -36,17 +36,17 @@ Lemma book_first_match_first_bit_halt :
   forall (src : list bool) (rows : list book_row),
     rows <> [] ->
     (exists s, src = true :: s) ->
-    (forall r, In r rows -> exists c s, br_cond r = false :: c :: s) ->
+    (forall r, In r rows -> exists s, br_cond r = false :: s) ->
     exists steps last, book_first_match src rows = book_lookup_halt steps last.
 Proof.
   intros src rows. induction rows as [|r rest IH];
     intros Hne Hsrc Hrow.
   - contradiction.
   - destruct Hsrc as [s Hsrc].
-    destruct (Hrow r (or_introl eq_refl)) as [c [srest Hcond]].
+    destruct (Hrow r (or_introl eq_refl)) as [srest Hcond].
     assert (Hbm : book_row_matches src r = false).
     { rewrite Hsrc.
-      apply (book_row_matches_first_bit_false s srest r c Hcond). }
+      apply (book_row_matches_first_bit_false s srest r Hcond). }
     rewrite book_first_match_cons.
     rewrite Hbm.
     destruct rest as [|r' rest'].
@@ -57,7 +57,7 @@ Proof.
         exists [], (book_failure_of_split src r good bad src_rest row_rest Hp).
         unfold book_lookup_cons, book_lookup_cons_of.
         rewrite E. reflexivity.
-      * exfalso. apply (book_mismatch_ev_first_bit s c srest).
+      * exfalso. apply (book_mismatch_ev_first_bit s srest).
         rewrite Hsrc, Hcond in E. exact E.
     + (* another row follows *)
       assert (Hrows' : r' :: rest' <> []) by discriminate.
@@ -70,7 +70,7 @@ Proof.
         exists (book_failure_of_split src r good bad src_rest row_rest Hp :: steps), last.
         unfold book_lookup_cons, book_lookup_cons_of.
         rewrite E. rewrite Hbf. reflexivity.
-      * exfalso. apply (book_mismatch_ev_first_bit s c srest).
+      * exfalso. apply (book_mismatch_ev_first_bit s srest).
         rewrite Hsrc, Hcond in E. exact E.
 Qed.
 
