@@ -109,3 +109,31 @@ Proof.
 Qed.
 
 Print Assumptions canonical_q12_restore_to_tagged_entry.
+
+(** ** Negative guard: restored action bits are never in the q15/q21 pass set
+
+    The q15/q21 movement prefix must consist only of 4/5/6/7.  q14
+    restores every marked action bit to raw 0/1, so any nonempty copied
+    action block injects a forbidden symbol into that prefix.  This is
+    why a pure action-order swap cannot repair the q12 bridge. *)
+
+Definition q15q21_pass (s : nat) : Prop :=
+  s = 4 \/ s = 5 \/ s = 6 \/ s = 7.
+
+Lemma q14_restored_action_not_passable :
+  forall (a : list bool),
+    a <> [] ->
+    exists s,
+      In s (map q14_restore (map match_mark a)) /\
+      ~ q15q21_pass s.
+Proof.
+  intros [|b rest] Hne.
+  - contradiction.
+  - exists (q14_restore (match_mark b)).
+    split.
+    + left. reflexivity.
+    + destruct b; cbn; unfold q15q21_pass;
+        intros [H | [H | [H | H]]]; discriminate H.
+Qed.
+
+Print Assumptions q14_restored_action_not_passable.
