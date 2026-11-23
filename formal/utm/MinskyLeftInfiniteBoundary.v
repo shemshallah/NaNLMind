@@ -470,3 +470,18 @@ Proof.
 Qed.
 
 Print Assumptions q5_scan_empty_boundary.
+
+(** ** The remaining list identity
+
+    The `left_pre` route for the pass-aware restart reduces the only
+    remaining subgoal to this cons/append identity.  In Coq 8.20
+    [app_assoc] is the right-to-left orientation, hence [<- app_assoc]. *)
+
+Lemma cons_app_assoc :
+  forall (A : Type) (a : list A) (x : A) (b c : list A),
+    (a ++ x :: b) ++ c = a ++ x :: (b ++ c).
+Proof.
+  intros. rewrite <- app_assoc. cbn [app]. reflexivity.
+Qed.
+
+Print Assumptions cons_app_assoc.
