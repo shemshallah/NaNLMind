@@ -1011,3 +1011,87 @@ Proof.
 Qed.
 
 Print Assumptions lic_pad_source_halt_to_native.
+
+(** ** No premature halt within a bounded hit-only clock *)
+
+Theorem lic_bounded_no_premature_halt :
+  forall (n p : nat) (lo : Z) (c : LeftInfiniteConfig)
+         (rows : list WideSourceRow),
+    Forall (wide_row_wellformed p) rows ->
+    rows <> [] ->
+    length (lic_state c) = p ->
+    lic_bounded_ok lo n c ->
+    (forall k, k < n -> lic_hit_state rows
+       (left_infinite_run k rows c)) ->
+    forall t,
+      t <= lic_bounded_clock rows n lo c ->
+      c_halted (run t
+        (lic_q5_encode lo c (lic_book_rows rows) [])) = true ->
+      False.
+Proof.
+  intros n p lo c rows Hwf Hne Hlen Hbounded Hhit t Ht Hhalt.
+  assert (Hhalt_clock : c_halted
+    (run (lic_bounded_clock rows n lo c)
+      (lic_q5_encode lo c (lic_book_rows rows) [])) = true).
+  { replace (lic_bounded_clock rows n lo c)
+      with (t + (lic_bounded_clock rows n lo c - t)) by lia.
+    rewrite dispatch_run_add.
+    rewrite (dispatch_halted_run
+      (lic_bounded_clock rows n lo c - t)
+      (run t (lic_q5_encode lo c (lic_book_rows rows) [])) Hhalt).
+    exact Hhalt. }
+  rewrite (lic_bounded_hit_run n p lo c rows Hwf Hne Hlen Hbounded Hhit)
+    in Hhalt_clock.
+  unfold lic_q5_encode, book_q5_raw in Hhalt_clock.
+  rewrite cfg_ml_halted in Hhalt_clock.
+  discriminate Hhalt_clock.
+Qed.
+
+Print Assumptions lic_bounded_no_premature_halt.
+
+(** ** Clock-bounded native halt implies source halt *)
+
+Lemma lic_first_stop_bound :
+  forall rows n c j c',
+    lic_first_stop rows n c = Some (j, c') ->
+    j <= n.
+Proof.
+  induction n as [|n IH]; intros c j c' H.
+  - cbn [lic_first_stop] in H. discriminate H.
+  - cbn [lic_first_stop] in H.
+    destruct (lic_halted c) eqn:Eh.
+    + inversion H; subst. lia.
+    + destruct (wide_source_lookup rows (lic_state c)
+        (lic_tape c (lic_head c))) as [r|] eqn:El.
+      * destruct (lic_first_stop rows n (left_infinite_step rows c))
+          as [[j' c'']|] eqn:E2; [|discriminate H].
+        inversion H; subst.
+        pose proof (IH (left_infinite_step rows c) j' c' E2). lia.
+      * inversion H; subst. lia.
+Qed.
+
+Theorem lic_bounded_clock_native_halt_implies_source_halt :
+  forall (n p : nat) (lo : Z) (c : LeftInfiniteConfig)
+         (rows : list WideSourceRow),
+    Forall (wide_row_wellformed p) rows ->
+    rows <> [] ->
+    length (lic_state c) = p ->
+    lic_bounded_ok lo n c ->
+    forall t,
+      t <= lic_bounded_clock rows n lo c ->
+      c_halted (run t
+        (lic_q5_encode lo c (lic_book_rows rows) [])) = true ->
+      exists k, k <= n /\ lic_halted
+        (left_infinite_run k rows c) = true.
+Proof.
+  intros n p lo c rows Hwf Hne Hlen Hbounded t Ht Hhalt.
+  destruct (lic_first_stop rows n c) as [[j c']|] eqn:E.
+  - assert (Hle : j <= n) by (apply (lic_first_stop_bound rows n c j c' E)).
+    destruct (lic_first_stop_sound rows n c j c' E) as [Hrun Hhalted].
+    exists j. split; [exact Hle|rewrite <- Hrun; exact Hhalted].
+  - exfalso.
+    apply (lic_bounded_no_premature_halt n p lo c rows Hwf Hne Hlen
+      Hbounded (lic_first_stop_none rows n c E) t Ht Hhalt).
+Qed.
+
+Print Assumptions lic_bounded_clock_native_halt_implies_source_halt.
