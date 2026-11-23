@@ -333,6 +333,34 @@ jobs:
           coqchk -Q formal/utm NaNLM formal/utm/MinskyLeftInfiniteLeftCheck.vo
           coqc -Q formal/utm NaNLM \
             -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyLeftInfiniteHalt.v
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyLeftInfiniteHalt.vo
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyLeftInfiniteHaltBook.v
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyLeftInfiniteHaltBook.vo
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyLeftInfiniteStepRight.v
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyLeftInfiniteStepRight.vo
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyLeftInfiniteStepLeft.v
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyLeftInfiniteStepLeft.vo
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyLeftInfiniteFirstMatchApp.v
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyLeftInfiniteFirstMatchApp.vo
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyLeftInfiniteEncoding.v
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyLeftInfiniteEncoding.vo
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyLeftInfiniteBounded.v
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyLeftInfiniteBounded.vo
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyBookEncode.v
           coqchk -Q formal/utm NaNLM formal/utm/MinskyBookEncode.vo
           coqc -Q formal/utm NaNLM \
@@ -461,6 +489,20 @@ jobs:
             formal/utm/MinskyLeftInfiniteEncode.vo
             formal/utm/MinskyLeftInfiniteLeftCheck.v
             formal/utm/MinskyLeftInfiniteLeftCheck.vo
+            formal/utm/MinskyLeftInfiniteHalt.v
+            formal/utm/MinskyLeftInfiniteHalt.vo
+            formal/utm/MinskyLeftInfiniteHaltBook.v
+            formal/utm/MinskyLeftInfiniteHaltBook.vo
+            formal/utm/MinskyLeftInfiniteStepRight.v
+            formal/utm/MinskyLeftInfiniteStepRight.vo
+            formal/utm/MinskyLeftInfiniteStepLeft.v
+            formal/utm/MinskyLeftInfiniteStepLeft.vo
+            formal/utm/MinskyLeftInfiniteFirstMatchApp.v
+            formal/utm/MinskyLeftInfiniteFirstMatchApp.vo
+            formal/utm/MinskyLeftInfiniteEncoding.v
+            formal/utm/MinskyLeftInfiniteEncoding.vo
+            formal/utm/MinskyLeftInfiniteBounded.v
+            formal/utm/MinskyLeftInfiniteBounded.vo
             formal/utm/MinskyBookEncode.v
             formal/utm/MinskyBookEncode.vo
             formal/utm/MinskyTaggedRestore.v
