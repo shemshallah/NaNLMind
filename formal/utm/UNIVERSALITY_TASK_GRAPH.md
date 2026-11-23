@@ -264,3 +264,37 @@ which is not q15-passable.  The literal table has no pre-q15
    experiment.
 3. `q12_to_q19_tagged`: compose the exact q12->tagged interface with
    the four-prefix movement under the explicit passability hypotheses.
+
+
+## November 22 macro-level status (update)
+
+The running instruction cycle is now proved in both directions for a
+nonempty next row:
+
+```text
+book_steady_q5_locate_to_q5_right
+book_steady_q5_locate_to_q5_left
+```
+
+The right branch absorbs the next row's `X` into the q15 tag rail and
+stops at its first raw condition bit.  The last-row case is handled by a
+sentinel row:
+
+```text
+book_sentinel_restore_frame_tail
+book_q5_after_perform_right_sentinel_halt
+book_steady_q5_locate_perform_right_sentinel_halt
+```
+
+The remaining macro-level items are:
+
+1. the two-boolean input-side q5->q12 adapter (`w_read` vs `w_tape`) for
+   arbitrary write-bit iteration;
+2. the left sentinel halt composition;
+3. a computable lookup-witness compiler turning a source condition and
+   row list into the `steps`/sentinel witnesses;
+4. the total finite-window encoder and buffer/window invariant.
+
+The first two are proof engineering on the established frames.  The
+third is a small decision procedure.  The fourth is the remaining
+representation/global-invariant problem.
