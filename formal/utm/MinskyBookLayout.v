@@ -12,7 +12,7 @@
 From Coq Require Import List Arith Bool Lia.
 Import ListNotations.
 
-From NaNLM Require Import MinskyTable MinskyConcreteEntry
+From NaNLM Require Import MinskyTable MinskyConcreteEntry MinskyActionMacro
   MinskyConcreteDispatch MinskySourceEncoding MinskyMatchMacro
   MinskyHeadMoveMacro MinskyDirectionDecision MinskyTaggedHalt.
 
@@ -114,3 +114,59 @@ Proof.
 Qed.
 
 Print Assumptions q15_q22_right_to_q5_book.
+
+(** ** Book-layout q12 -> q5 perform composition
+
+    q12/q14 restores the current record and enters q15 with the record
+    marks on the right.  The book q15 perform macro scans those marks,
+    q16 restores them, q21/q22 writes the old head, q19 moves to the new
+    source cell, and q17/q18 return to q5. *)
+
+From NaNLM Require Import MinskyCanonicalRestore.
+
+Theorem book_q12_restore_to_q5_right :
+  forall (s : nat) (remaining tbuffer data : list nat)
+         (marked : list nat) (mark : nat) (record_tail : list nat)
+         (tags : list nat) (old : bool)
+         (dir_head : nat) (dir_remaining : list nat)
+         (bit target : bool) (between suffix : list nat),
+    Forall q12_pass (s :: remaining ++ 5 :: rev tbuffer) ->
+    Forall q14_pass (tbuffer ++ [5] ++ rev remaining ++ [s]) ->
+    map q14_restore
+      (rev (tbuffer ++ [5] ++ rev remaining ++ [s])) =
+      source_bit old :: dir_head :: dir_remaining ->
+    Forall q21_pass (dir_head :: dir_remaining) ->
+    rev (dir_head :: dir_remaining) = source_bit bit :: between ->
+    Forall q17_pass between ->
+    marked ++ mark :: record_tail =
+      rev tags ++ source_bit target :: suffix ->
+    Forall q15_pass (rev tags) ->
+    Forall q16_pass (tags ++ [4]) ->
+    run ((S (length (s :: remaining ++ 5 :: rev tbuffer)) +
+          S (length (tbuffer ++ [5] ++ rev remaining ++ [s]))) +
+         ((S (length (rev tags)) +
+           S (length (tags ++ [4])) +
+           S (length (dir_head :: dir_remaining))) +
+          (S (length ([] : list nat)) + S (length between))))
+      (cfg_ml 12
+        (s :: remaining ++ 5 :: rev tbuffer ++ 6 :: rev data)
+        (4 :: marked ++ mark :: record_tail)) =
+    cfg_ml 5
+      (rev between ++ 6 :: source_bit old :: rev data)
+      ((if bit then 3 else 2) ::
+       4 :: map q16_restore (rev tags) ++
+       source_bit target :: suffix).
+Proof.
+  intros s remaining tbuffer data marked mark record_tail tags
+    old dir_head dir_remaining bit target between suffix
+    H12 H14 Hrestored H21 Hsplit H17 Hright H15 H16.
+  rewrite dispatch_run_add.
+  rewrite (canonical_q12_restore_to_q15_mark
+    s remaining tbuffer data marked mark record_tail H12 H14).
+  rewrite Hrestored, Hright.
+  apply (q15_q22_right_to_q5_book tags
+    dir_head dir_remaining old target (rev data) suffix
+    bit between H15 H16 H21 H17 Hsplit).
+Qed.
+
+Print Assumptions book_q12_restore_to_q5_right.
