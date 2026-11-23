@@ -317,3 +317,47 @@ Proof.
     exact Hrun.
   - exact Hhaltedc.
 Qed.
+
+(** ** No premature halt for a left-depth hit run *)
+
+Theorem lic_left_no_premature_halt :
+  forall (n p : nat) (lo : Z) (c : LeftInfiniteConfig)
+         (rows : list WideSourceRow),
+    Forall (wide_row_wellformed p) rows ->
+    rows <> [] ->
+    length (lic_state c) = p ->
+    lic_left_ok lo n c ->
+    (forall k, k < n -> lic_hit_state rows
+       (left_infinite_run k rows c)) ->
+    (forall k, k < n -> forall r,
+       wide_source_lookup rows
+         (lic_state (left_infinite_run k rows c))
+         (lic_tape (left_infinite_run k rows c)
+            (lic_head (left_infinite_run k rows c))) = Some r ->
+       wr_right r = true ->
+       (lic_head (left_infinite_run k rows c) < lic_R c)%Z) ->
+    forall t,
+      t <= lic_bounded_clock rows n lo c ->
+      c_halted (run t
+        (lic_q5_encode lo c (lic_book_rows rows) [])) = true ->
+      False.
+Proof.
+  intros n p lo c rows Hwf Hne Hlen Hleft Hhit Hwall t Ht Hhalt.
+  assert (Hhalt_clock : c_halted
+    (run (lic_bounded_clock rows n lo c)
+      (lic_q5_encode lo c (lic_book_rows rows) [])) = true).
+  { replace (lic_bounded_clock rows n lo c)
+      with (t + (lic_bounded_clock rows n lo c - t)) by lia.
+    rewrite dispatch_run_add.
+    rewrite (dispatch_halted_run
+      (lic_bounded_clock rows n lo c - t)
+      (run t (lic_q5_encode lo c (lic_book_rows rows) [])) Hhalt).
+    exact Hhalt. }
+  rewrite (lic_left_hit_run n p lo c rows Hwf Hne Hlen Hleft Hhit Hwall)
+    in Hhalt_clock.
+  unfold lic_q5_encode, book_q5_raw in Hhalt_clock.
+  rewrite cfg_ml_halted in Hhalt_clock.
+  discriminate Hhalt_clock.
+Qed.
+
+Print Assumptions lic_left_no_premature_halt.
