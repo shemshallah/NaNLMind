@@ -424,3 +424,23 @@ book_first_match_hit_is_source_row
 The remaining general items are the left ptape window identity
 `raw_ptape_left_step`, the full lookup prefix/failure packaging, and the
 resulting generalized right/left/boundary/halt macro steps.
+
+## Left window package complete
+
+`MinskyLeftInfiniteWindow.v` now proves the full left window mapping:
+
+```text
+raw_buf_left_step
+raw_ptape_left_step
+raw_ptape_prefix_left_step
+raw_last_left_step
+raw_read_left_step
+```
+
+together with the right package.  `MinskyLeftInfiniteLeftCheck.v`
+confirms the concrete left encoder equality.
+
+The only remaining lookup/encoder work is the first-match packaging and
+the halted/boundary frame identification.  The induction step is
+definitional once `book_mismatch_ev` is known to be `Some` for a
+nonmatching well-formed row.
