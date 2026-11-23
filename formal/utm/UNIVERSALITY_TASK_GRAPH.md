@@ -725,3 +725,43 @@ bit is `target`, `c0`, `w_read`, or `hit_w`, then composing the source
 `lic_q5_encode_lifted_boundary_step`.
 
 Claim remains false.
+
+## Lifted boundary halt and forward assembly
+
+`MinskyLeftInfiniteBoundaryLookup.v` proves the first-bit mismatch halt:
+
+```text
+book_mismatch_ev_first_bit
+book_row_matches_first_bit_false
+book_first_match_first_bit_halt
+```
+
+`MinskyLeftInfiniteBoundaryLifted.v` uses it to compute the boundary
+failure witnesses:
+
+```text
+lic_q5_encode_lifted_boundary_halt
+lic_q5_encode_lifted_boundary_halt_state
+```
+
+The latter is the source-row instantiation: the rotated `hit_init` is
+`lic_lift_state (wr_next r)`, the description is
+`lic_book_rows (lic_lift_rows rows)`, and the run reaches
+`boundary_halt_encode_from_failed [6] [] steps last ...` with
+`c_halted = true`.
+
+The forward halting assembly is in progress:
+
+```text
+lic_lifted_source_halt_to_native
+```
+
+using the first-halt decomposition, `lic_left_hit_run` for the prefix,
+`lic_left_none_halt_run` for a no-match halt, and
+`lic_q5_encode_lifted_boundary_halt_state` for the wall.
+
+Remaining after that:
+1. the reverse direction (native halt within the macro clock implies
+   the lifted source halts), using the same three macros;
+2. the left-depth/right-wall invariant packaging in the final theorem;
+3. the final spec claim, still false until 1 and 2 are closed.
