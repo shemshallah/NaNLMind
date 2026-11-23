@@ -1960,3 +1960,49 @@ Consequences:
 This does not invalidate the macro theorems; it invalidates the claim
 that the current macro cycles plus a fixed eight-cell buffer already
 form a total encoder.  The claim flag remains false.
+
+## November 23 update: bounded-window simulation and encoder macros
+
+New kernel-checked modules (all pass `coqc` and `coqchk`; no
+`Admitted`/`Axiom`/`Parameter`):
+
+- `MinskyLeftInfiniteStepRight.v` — general non-boundary right-hit
+  macro for `lic_q5_encode` and the computed-first-match wrapper.
+- `MinskyLeftInfiniteStepLeft.v` — general non-boundary left-hit macro,
+  corrected left frame equality, and the `left_next_lo` window rule.
+- `MinskyLeftInfiniteHalt.v` — halted encoder `lic_halt_encode`,
+  no-match macro, and boundary frame connection.
+- `MinskyLeftInfiniteLookupFull.v`,
+  `MinskyLeftInfiniteLookup.v` — full `wide_source_lookup` ↔
+  `book_first_match` hit/halt packaging.
+- `MinskyLeftInfiniteFirstMatchApp.v` — hit/halt preservation under an
+  appended row suffix.
+- `MinskyLeftInfiniteEncoding.v` — duplicate-sentinel running
+  description, and explicit right/left/no-match macros for it.
+- `MinskyLeftInfiniteBounded.v` — padded-window finite-run simulation:
+
+```text
+lic_bounded_hit_run
+lic_bounded_none_halt_run
+lic_bounded_native_halt_implies_source_halt
+lic_bounded_source_halt_implies_native_halt
+lic_pad_hit_run
+lic_pad_none_halt_run
+lic_pad_native_halt_implies_source_halt
+```
+
+These prove, unconditionally, that for any source run of `n` steps that
+does not reach the right wall and does not fail lookup, the frozen table
+simulates it exactly with a window `head - n - 2` and a padded right
+endpoint.  They do not yet give a single `encode p rows c` independent of
+`n`.
+
+Still open:
+
+1. the empty-buffer right-boundary q19/q3 general halt frame (a focused
+   agent is working in `MinskyLeftInfiniteBoundary.v`);
+2. the left-window shift at `lo = head - 1` (blank pad representation);
+3. the fixed-configuration encoder/`macro_cost` assembly and the three
+   premises of `conditional_left_source_native_halting_equivalence`.
+
+`claimed` remains false.
