@@ -616,3 +616,50 @@ clock:
 
 This avoids the false condition `t <= padding` and is the intended bridge
 after the boundary macro and the left-window pad.
+
+## Empty-buffer boundary macro complete
+
+`MinskyLeftInfiniteBoundaryLocate.v` now proves the full general
+empty-buffer wall halt:
+
+```text
+book_locate_state_wide_pass
+book_locate_first_failed_row_pass
+book_locate_failed_rows_wide_pass
+book_locate_last_mismatch_halt_wide_pass
+book_locate_rows_to_halt_wide_pass
+q5_empty_boundary_locate_halt
+book_q12_empty_boundary_halt
+```
+
+The q19 path rotates the next state:
+
+```text
+tl hit_init ++ [hd hit_init]
+```
+
+and then either hits a source row or fails.  For soundness at the wall,
+the compiled state encoding must make the rotated state a no-match.
+The intended fix is a two-bit marker: compile every state `s` as
+`false :: true :: s`.  Then the rotated state starts with `true`, while
+every lifted row condition starts with `false`, so the q19 retry always
+takes the no-match halt branch.
+
+A marker-lift module is the next boundary-side proof:
+`lic_lift_row`, `lic_lift_cfg`, commutation of `left_infinite_step` and
+`left_infinite_run`, and `wide_source_lookup_lifted_rotated = None`.
+
+## Halted-frame path dependence
+
+The boundary halt frame has the extra q5 marker `6` before the
+`5 :: left` tail; the ordinary no-match frame has `extra = []`.  A total
+`encode` must either
+
+- prove the two halted source configurations cannot collide, or
+- define a single canonical halted frame reachable from both paths by a
+  checked post-halt run.
+
+This is the remaining encoder-side obstruction for the fixed total
+`encode`/`macro_cost` premises.
+
+Claim remains false.
