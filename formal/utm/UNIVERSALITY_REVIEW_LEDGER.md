@@ -1913,3 +1913,17 @@ This removes the "q12 cannot pass a tagged rail" obstruction for tags
 that are *after* the first 6.  It does not yet align the q15 right-hand
 mark orientation with the tagged q15 entry; that upstream construction
 remains open, so the claim flag remains false.
+
+### Exact q12 -> tagged q15 interface (kernel-checked)
+
+`canonical_q12_restore_to_tagged_entry` states the precise bridge
+obligation: if the encoder supplies the q12 start with a `6/7` tag rail,
+a raw target mark, and a restored prefix `source_bit old :: dirs`, then
+q12/q14 land exactly on the tagged q15 entry used by the movement
+macros.
+
+The remaining proof is therefore isolated to one construction: produce
+that q12 start from the running native phase.  The q6/direction phase
+only emits `2/3` marks, so it cannot supply the `6/7` rail directly;
+a genuinely different tag-introduction path is required.  The claim flag
+remains false.

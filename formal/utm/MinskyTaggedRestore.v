@@ -75,3 +75,37 @@ Proof.
 Qed.
 
 Print Assumptions canonical_q12_restore_leftover_witness.
+
+(** ** Exact q12 -> tagged q15 interface
+
+    If the encoder can supply the q12 start with a 6/7 tag rail
+    [rev tags], a raw target mark, and a restored left prefix of the form
+    [source_bit old :: dirs], then q12/q14 land exactly on the tagged q15
+    entry used by the movement macros.  The remaining obligation is to
+    produce that q12 start from the prefetched q1/q6 phase. *)
+Corollary canonical_q12_restore_to_tagged_entry :
+  forall s remaining tbuffer data tags dirs old target suffix,
+    Forall q12_pass (s :: remaining ++ 5 :: rev tbuffer) ->
+    Forall q14_pass (tbuffer ++ [5] ++ rev remaining ++ [s]) ->
+    map q14_restore
+      (rev (tbuffer ++ [5] ++ rev remaining ++ [s])) =
+      source_bit old :: dirs ->
+    run (S (length (s :: remaining ++ 5 :: rev tbuffer)) +
+         S (length (tbuffer ++ [5] ++ rev remaining ++ [s])))
+      (cfg_ml 12
+        (s :: remaining ++ 5 :: rev tbuffer ++ 6 :: rev data)
+        (4 :: rev tags ++ source_bit target :: suffix)) =
+    entry_config 15
+      (4 :: source_bit old :: dirs ++ 3 :: rev data)
+      (rev tags ++ source_bit target :: suffix).
+Proof.
+  intros s remaining tbuffer data tags dirs old target suffix
+    H12 H14 Hleft.
+  pose proof (canonical_q12_restore_to_q15_mark
+    s remaining tbuffer data (rev tags) (source_bit target) suffix
+    H12 H14) as H.
+  rewrite Hleft in H.
+  exact H.
+Qed.
+
+Print Assumptions canonical_q12_restore_to_tagged_entry.
