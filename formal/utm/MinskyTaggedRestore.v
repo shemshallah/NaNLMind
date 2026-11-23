@@ -45,3 +45,33 @@ Qed.
 
 Print Assumptions canonical_q12_restore_with_leftover.
 
+
+(** A concrete non-vacuity witness: the leftover 6/7 tags survive after
+    the q15 direction marker 3. *)
+Example canonical_q12_restore_leftover_witness :
+  run (S (length (2 :: [] ++ 5 :: ([] : list nat))) +
+       S (length (([] : list nat) ++ [5] ++ rev ([] : list nat) ++ [2])))
+    (cfg_ml 12
+      (2 :: [] ++ 5 :: ([] : list nat) ++
+       6 :: [6; 7] ++ 5 :: rev [0])
+      (4 :: [2] ++ 3 :: ([] : list nat))) =
+  entry_config 15
+    (4 :: map q14_restore
+      (rev (([] : list nat) ++ [5] ++ rev ([] : list nat) ++ [2])) ++
+     3 :: [6; 7] ++ 5 :: rev [0])
+    ([2] ++ 3 :: ([] : list nat)).
+Proof.
+  apply (canonical_q12_restore_with_leftover 2 [] [] [0] [2] 3 [] [6; 7]).
+  - cbn. constructor.
+    + unfold q12_pass; auto 12.
+    + constructor.
+      * unfold q12_pass; auto 12.
+      * constructor.
+  - cbn. constructor.
+    + unfold q14_pass; auto 12.
+    + constructor.
+      * unfold q14_pass; auto 12.
+      * constructor.
+Qed.
+
+Print Assumptions canonical_q12_restore_leftover_witness.
