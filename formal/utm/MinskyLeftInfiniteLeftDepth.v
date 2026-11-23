@@ -106,7 +106,12 @@ Theorem lic_left_hit_run :
     lic_left_ok lo n c ->
     (forall k, k < n -> lic_hit_state rows
        (left_infinite_run k rows c)) ->
-    (forall k, k < n ->
+    (forall k, k < n -> forall r,
+       wide_source_lookup rows
+         (lic_state (left_infinite_run k rows c))
+         (lic_tape (left_infinite_run k rows c)
+            (lic_head (left_infinite_run k rows c))) = Some r ->
+       wr_right r = true ->
        (lic_head (left_infinite_run k rows c) < lic_R c)%Z) ->
     run (lic_bounded_clock rows n lo c)
       (lic_q5_encode lo c (lic_book_rows rows) []) =
@@ -114,7 +119,7 @@ Theorem lic_left_hit_run :
       (lic_book_rows rows) [].
 Proof.
   intros n. induction n as [|n IH];
-    intros p lo c rows Hwf Hne Hlen Hleft Hhit HheadR.
+    intros p lo c rows Hwf Hne Hlen Hleft Hhit Hwall.
   - reflexivity.
   - assert (H0 : lic_hit_state rows c).
     { specialize (Hhit 0 (Nat.lt_0_succ n)).
@@ -135,7 +140,8 @@ Proof.
         (lic_bounded_clock rows n lo (left_infinite_step rows c))).
       rewrite (lic_book_rows_right_hit_step p lo c rows r [] steps hit after
         ltac:(lia) Hh Hwf Hlen Hne Hlookup Hright
-        ltac:(exact (HheadR 0 (Nat.lt_0_succ n))) Hbf Hhitrow).
+        ltac:(exact (Hwall 0 (Nat.lt_0_succ n) r Hlookup Hright))
+        Hbf Hhitrow).
       eapply IH.
       * exact Hwf.
       * exact Hne.
@@ -151,15 +157,15 @@ Proof.
             ltac:(unfold left_infinite_right_blocked; rewrite Hright;
               destruct (Z.eqb (lic_head c) (lic_R c)) eqn:E;
               [apply Z.eqb_eq in E;
-               assert (Hlt := HheadR 0 (Nat.lt_0_succ n));
+               assert (Hlt := Hwall 0 (Nat.lt_0_succ n) r Hlookup Hright);
                cbn [left_infinite_run] in Hlt; lia|reflexivity]))
             as [Hs _]. exact Hs. }
         rewrite Hstate. exact (proj2 Hwf_r).
       * apply (lic_left_ok_right lo n c rows r
           (conj Hlo Hok) Hh Hlookup Hright).
       * intros k Hk. exact (Hhit (S k) ltac:(lia)).
-      * intros k Hk.
-        pose proof (HheadR (S k) ltac:(lia)) as H.
+      * intros k Hk r0 Hlk Hright0.
+        pose proof (Hwall (S k) ltac:(lia) r0 Hlk Hright0) as H.
         cbn [left_infinite_run] in H.
         change (lic_head (left_infinite_run k rows
           (left_infinite_step rows c)) <
@@ -223,8 +229,8 @@ Proof.
       * apply (lic_left_ok_left lo n c rows r
           (conj Hlo Hok) Hh Hlookup Hright).
       * intros k Hk. exact (Hhit (S k) ltac:(lia)).
-      * intros k Hk.
-        pose proof (HheadR (S k) ltac:(lia)) as H.
+      * intros k Hk r0 Hlk Hright0.
+        pose proof (Hwall (S k) ltac:(lia) r0 Hlk Hright0) as H.
         cbn [left_infinite_run] in H.
         change (lic_head (left_infinite_run k rows
           (left_infinite_step rows c)) <
@@ -267,7 +273,12 @@ Theorem lic_left_none_halt_run :
     lic_left_ok lo n c ->
     (forall k, k < n -> lic_hit_state rows
        (left_infinite_run k rows c)) ->
-    (forall k, k < n ->
+    (forall k, k < n -> forall r,
+       wide_source_lookup rows
+         (lic_state (left_infinite_run k rows c))
+         (lic_tape (left_infinite_run k rows c)
+            (lic_head (left_infinite_run k rows c))) = Some r ->
+       wr_right r = true ->
        (lic_head (left_infinite_run k rows c) < lic_R c)%Z) ->
     lic_halted (left_infinite_run n rows c) = false ->
     wide_source_lookup rows
@@ -287,7 +298,7 @@ Theorem lic_left_none_halt_run :
         (left_infinite_step rows (left_infinite_run n rows c))
         steps last []) = true.
 Proof.
-  intros n p lo c rows Hwf Hne Hlen Hleft Hhit HheadR Hhalted Hnone.
+  intros n p lo c rows Hwf Hne Hlen Hleft Hhit Hwall Hhalted Hnone.
   assert (Hleft0 : lic_left_ok lo 0 (left_infinite_run n rows c))
     by (apply (lic_left_ok_run n lo c rows Hleft Hhit)).
   assert (Hlo : (lo < lic_head (left_infinite_run n rows c))%Z).
@@ -302,7 +313,7 @@ Proof.
       (S (length (lic_state (left_infinite_run n rows c))) +
        (book_failures_clock [] steps +
         book_halt_clock (map bf_row steps) last))).
-    rewrite (lic_left_hit_run n p lo c rows Hwf Hne Hlen Hleft Hhit HheadR).
+    rewrite (lic_left_hit_run n p lo c rows Hwf Hne Hlen Hleft Hhit Hwall).
     exact Hrun.
   - exact Hhaltedc.
 Qed.
