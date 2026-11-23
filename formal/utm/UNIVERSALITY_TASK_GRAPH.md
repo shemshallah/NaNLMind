@@ -463,3 +463,67 @@ packaging are now both kernel-checked.
 Remaining: the general non-boundary right/left macro composition
 (using the raw cycles + window packages + this lookup packaging) and the
 halted/boundary encoder frame identification.
+
+## Sentinel-augmented running description (proved)
+
+`MinskyLeftInfiniteEncoding.v` now closes the non-boundary running
+description used by the final encoder:
+
+```text
+lic_sentinel_row
+lic_book_rows = source_rows_to_book rows ++ [duplicate first row]
+lic_book_rows_first_match_hit
+lic_book_rows_first_match_halt
+lic_book_rows_right_hit_step
+lic_book_rows_left_hit_step
+lic_book_rows_none_halt_step
+```
+
+The duplicate sentinel has the same length-`p+1` condition as a real
+source row.  It therefore
+
+- is harmless on a hit path: if its condition matches, the real first
+  source row matches strictly earlier;
+- supplies a genuine failure record on a no-match path, so the q5 locate
+  phase still reaches the q3/Y halt frame.
+
+The first-match append lemmas are in
+`MinskyLeftInfiniteFirstMatchApp.v`:
+
+```text
+book_first_match_hit_app
+book_first_match_halt_app
+```
+
+The arbitrary-description halt macro is in
+`MinskyLeftInfiniteHaltBook.v`:
+
+```text
+lic_q5_encode_none_halt_book_macro
+```
+
+## Exact remaining soundness gap: empty-buffer boundary
+
+A right move with `raw_buf c = []` is the only case not covered by the
+running macros.  The sentinel-retry path is **not** sound in general:
+after the perform the new condition is `wr_next hit ++ [false]`, and a
+source row with that condition would be matched by the retry scan even
+though `left_infinite_step` halts at the wall.
+
+The native table does have a terminating q19/q3 path for the empty
+buffer.  A concrete kernel computation (`test_row` with condition
+`[false;false]`, action `[true;false]`, right move, empty buffer) halts
+after 129 steps at a `dispatch_halt_at_y` frame with
+
+```text
+left  = [1;0;1;0;2;4;3;2;3;2;2;4;1;6;5;0;0]
+right = [5]
+```
+
+This frame is *different* from the sentinel-retry frame
+(`book_sentinel_halt_left`); the q19 path captures the first raw action
+bit and relocates it to the source side.  A general theorem for this
+path is the remaining boundary obligation; the 129-step trace is a guide
+for an induction over the description rows, not a proof.
+
+Claim remains false.
