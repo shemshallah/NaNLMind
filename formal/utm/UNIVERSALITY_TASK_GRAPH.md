@@ -354,3 +354,45 @@ The only remaining macro-level gap is the boundary right move at
 beyond `R`, define the boundary step to move onto it and halt, and
 compose the raw right perform cycle with the already-proved sentinel
 halt path.  This avoids the 46k-step q3/Y trace.
+
+## Encoder and concrete one-step (proved)
+
+`MinskyLeftInfiniteEncode.v` now defines the q5 encoder:
+
+```text
+lic_q5_encode
+lic_q5_encode_is_book_q5_raw
+lic_q5_encode_rep
+lic_q5_encode_rep_global
+```
+
+and closes the restored-rail frame algebra:
+
+```text
+book_q5_raw_right_frame_eq
+book_q5_raw_left_frame_eq
+book_cycle_restored_raw_desc
+map_q16_restore_cycle_region
+book_raw_desc_append_rows
+```
+
+A fully concrete non-boundary right-hit instance is proved:
+
+```text
+p1r_first_match
+p1r_start_encode
+p1r_right_hit_macro
+```
+
+So the encoder, lookup compiler, perform cycle, and q5 iteration frame
+compose on a real source step.
+
+The remaining general obligations are only the window arithmetic:
+
+```text
+raw_buf_right_step / raw_buf_left_step
+raw_ptape_* / raw_last_* / raw_read_*
+```
+
+the general `wide_source_lookup` ↔ `book_first_match` correspondence, and
+the resulting generalized non-boundary/boundary macro step.
