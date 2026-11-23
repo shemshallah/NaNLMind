@@ -12,7 +12,8 @@
 From Coq Require Import List Arith Bool Lia.
 Import ListNotations.
 
-From NaNLM Require Import MinskyTable MinskyConcreteEntry MinskyActionMacro
+From NaNLM Require Import MinskyTable MinskyConcreteEntry MinskyActionMacro MinskyCanonicalCopyGeneral
+  MinskyCanonicalInstruction
   MinskyConcreteDispatch MinskySourceEncoding MinskyMatchMacro
   MinskyHeadMoveMacro MinskyDirectionDecision MinskyTaggedHalt.
 
@@ -170,3 +171,51 @@ Proof.
 Qed.
 
 Print Assumptions book_q12_restore_to_q5_right.
+
+
+(** ** Book frame vocabulary *)
+
+Definition book_buf (b : nat) : list nat := repeat 0 b.
+
+Definition book_return_rail (init : list bool) (b : nat) : list nat :=
+  rev (map source_bit init) ++ [5] ++ rev (book_buf b).
+
+Definition book_q15_rail
+    (bits init : list bool) (w : bool) (dir_mark : nat)
+    (desc_tail : list nat) : list nat :=
+  map match_mark bits ++ map match_mark (init ++ [w]) ++
+  [dir_mark] ++ desc_tail.
+
+Definition book_q6_left
+    (bits : list bool) (b : nat) (ptape : list nat) : list nat :=
+  4 :: rev (map source_bit bits) ++
+  5 :: rev (book_buf b) ++ 6 :: rev ptape.
+
+Corollary book_q6_to_q12 :
+  forall (bits init : list bool) (w dir : bool)
+         (b : nat) (ptape desc_tail : list nat)
+         (trailing : bool) (tail : list nat),
+    length bits = length (init ++ [w]) ->
+    run (copy_all_clock bits (init ++ [w]) [] (map match_mark bits) +
+         direction_clock
+           (map match_mark bits ++ map match_mark (init ++ [w]))
+           (map match_mark (init ++ [w])))
+      (entry_config 6
+        (book_q6_left bits b ptape)
+        (map match_mark bits ++ map source_bit (init ++ [w]) ++
+         source_bit dir :: desc_tail ++
+         source_bit trailing :: tail)) =
+    cfg_ml (if dir then 12 else 13)
+      (rev (map match_mark (init ++ [w])) ++
+       5 :: rev (book_buf b) ++ 6 :: rev ptape)
+      ((4 :: (map match_mark bits ++ map match_mark (init ++ [w]))) ++
+            (if dir then 3 else 2) :: desc_tail ++
+            source_bit trailing :: tail).
+Proof.
+  intros bits init w dir b ptape desc_tail trailing tail Hlen.
+  exact (canonical_q6_copy_direction_to_q12
+    bits (init ++ [w]) (book_buf b) ptape dir
+    (desc_tail ++ source_bit trailing :: tail) (eq_sym Hlen)).
+Qed.
+
+Print Assumptions book_q6_to_q12.
