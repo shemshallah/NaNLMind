@@ -1927,3 +1927,36 @@ that q12 start from the running native phase.  The q6/direction phase
 only emits `2/3` marks, so it cannot supply the `6/7` rail directly;
 a genuinely different tag-introduction path is required.  The claim flag
 remains false.
+
+### November 23 buffer-exhaustion counterexample (critical)
+
+The book-layout macro cycles are now closed for one instruction, but the
+finite `0^b` buffer is not yet a total encoder invariant.  A concrete
+literal-table probe exposed the gap.
+
+Source program (p = 5): states `q0..q19`, each reading `0`, writing `0`,
+moving right, with `q19,0 -> q19,0,R`; the source never halts.  The
+native book tape has `p=5`, data `[0;0;0]`, `M`, an eight-cell zero
+t-buffer, `Y`, condition, description, final `Y`.  The literal 23x8
+table halts after 46,176 steps, while the source run does not halt.
+
+The q19 captures show the source head advancing through the t-buffer
+(`head 2,3,...,11`), then q19 reads `Y=5` at head 12, passes it, and the
+machine eventually halts via the `q3/Y` entry.  This is premature
+halting relative to the intended two-sided source semantics.
+
+Consequences:
+
+- the current `0^8` book layout is only valid for a bounded right
+  excursion; the perform cycle's `b -> b-1` decreases the buffer and has
+  no refill theorem;
+- Minsky's published format is for a **left-infinite** simulated tape;
+  the project's `WideSource` uses a two-sided `Z -> bool` tape, which is
+  stronger than the table's finite-buffer layout;
+- a total universality proof must either use a one-sided source model
+  with a rightmost cell (matching the published tape format) or add a
+  native buffer-extension/refill phase.
+
+This does not invalidate the macro theorems; it invalidates the claim
+that the current macro cycles plus a fixed eight-cell buffer already
+form a total encoder.  The claim flag remains false.
