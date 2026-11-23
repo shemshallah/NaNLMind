@@ -324,3 +324,33 @@ boundary:   right move with buf = [] halts
 
 This is now the only macro-level representation task before the global
 encoder.
+
+## Raw-buffer cycles (proved)
+
+`MinskyBookRawBuffer.v` removes the zero-buffer restriction:
+
+```text
+book_q6_to_q5_right_raw
+book_q6_to_q5_left_raw
+book_steady_q5_locate_to_q5_right_raw_gen
+book_steady_q5_locate_to_q5_left_raw_gen
+book_global_source_rep
+raw_q6_conditional_left_halting_equivalence
+```
+
+with exact updates:
+
+```text
+right move: target = hd buf, new buffer = tl buf
+left move:  new buffer = source_bit w :: buf
+```
+
+The passability audit shows q19/q20 need no new nonempty-scan variant:
+the target is always the first raw buffer cell; q15/q16 remain confined
+to the marked description rail.
+
+The only remaining macro-level gap is the boundary right move at
+`buf = []`.  The planned fix is to encode one extra sentinel blank cell
+beyond `R`, define the boundary step to move onto it and halt, and
+compose the raw right perform cycle with the already-proved sentinel
+halt path.  This avoids the 46k-step q3/Y trace.
