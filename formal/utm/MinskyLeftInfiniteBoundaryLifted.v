@@ -39,7 +39,7 @@ Theorem lic_q5_encode_lifted_boundary_halt :
     br_cond next = c0 :: creast ->
     (exists s, tl hit_init ++ [hd false hit_init] = true :: s) ->
     (forall r, In r (map bf_row steps ++ hit :: next :: rest) ->
-       exists c s, br_cond r = false :: c :: s) ->
+       exists s, br_cond r = false :: s) ->
     exists steps_fail last_fail,
       run (lic_q5_empty_boundary_clock lo c steps hit hit_init hit_w
              steps_fail last_fail)
