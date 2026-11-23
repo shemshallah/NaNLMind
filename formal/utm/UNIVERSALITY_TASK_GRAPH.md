@@ -48,6 +48,27 @@ The condition `bin_k(q) s` is stored to the right of `Y`; the pseudo-tape
 and its `M` marker are to the left.  This separation is the key layout
 constraint for the perform phase.
 
+## Experimental verdict on the prefetch route
+
+An exhaustive small-frame search and literal-table traces confirm the
+current prefetch route is not repairable by reordering action bits or
+raw targets:
+
+- 32,256 prefetch endpoints checked; 19,456 q19/q20 captures, **0**
+  correct intended-target captures.
+- 26,624 q15-after-q12 frames checked; **0** had no `2/3` mark before
+  the first raw target.
+- The q12 corollary `canonical_q12_restore_to_tagged_entry` works
+  exactly when the q12 start already has a `6/7` rail.  The canonical
+  q6/direction phase cannot produce that rail: it always writes `2/3`,
+  and the literal table has no pre-q15 `2/3 -> 6/7` conversion.
+
+The failure is structural: q15 scans the nonempty `2/3` prefix, q16
+restores it to `0/1`, and q19/q20 stop on that restored cell before the
+target.  The book layout, where the pseudo-tape is left of `Y` and the
+condition/description is right of `Y`, is the remaining candidate for
+keeping that prefix out of the q19 scan path.
+
 ## The three concrete blockers
 
 ### Blocker A: q1 prefetch rail is not q6-copy compatible
