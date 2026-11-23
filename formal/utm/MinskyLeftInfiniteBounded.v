@@ -1095,3 +1095,22 @@ Proof.
 Qed.
 
 Print Assumptions lic_bounded_clock_native_halt_implies_source_halt.
+
+(** ** Monotonicity of the bounded clock *)
+
+Lemma lic_bounded_clock_mono :
+  forall (n m : nat) (rows : list WideSourceRow) (lo : Z)
+         (c : LeftInfiniteConfig),
+    n <= m ->
+    lic_bounded_clock rows n lo c <=
+    lic_bounded_clock rows m lo c.
+Proof.
+  induction n as [|n IH]; intros m rows lo c Hle.
+  - cbn [lic_bounded_clock]. lia.
+  - destruct m as [|m]; [lia|].
+    cbn [lic_bounded_clock].
+    assert (H := IH m rows lo (left_infinite_step rows c) ltac:(lia)).
+    lia.
+Qed.
+
+Print Assumptions lic_bounded_clock_mono.
