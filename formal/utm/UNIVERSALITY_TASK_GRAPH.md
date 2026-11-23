@@ -298,3 +298,29 @@ The remaining macro-level items are:
 The first two are proof engineering on the established frames.  The
 third is a small decision procedure.  The fourth is the remaining
 representation/global-invariant problem.
+
+## Left-infinite correction and raw-buffer task
+
+`MinskyLeftInfinite.v` now provides the correct one-sided source model:
+a right move from the rightmost cell halts, and the conditional halting
+theorem mirrors the wide-source theorem with explicit `encode`/`cost`
+premises.
+
+`MinskyLeftCycleAudit.v` proves the existing left perform cycle does not
+return to a zero-buffer normal form.  Concretely, a left move with write
+bit `1` produces buffer `[1;0]`, not `0^b`; the next locate cannot use
+`book_buf b`.  The general identity is proved in
+`book_left_output_source_frame`.
+
+The current critical task is therefore to generalize the perform and
+locate cycles from `book_buf b = 0^b` to an arbitrary raw right-buffer
+`buf : list nat`, with updates:
+
+```text
+right move: target = hd buf,  new buffer = tl buf
+left move:  new buffer = source_bit w :: buf
+boundary:   right move with buf = [] halts
+```
+
+This is now the only macro-level representation task before the global
+encoder.
