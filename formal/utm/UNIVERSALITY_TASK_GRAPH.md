@@ -48,6 +48,29 @@ The condition `bin_k(q) s` is stored to the right of `Y`; the pseudo-tape
 and its `M` marker are to the left.  This separation is the key layout
 constraint for the perform phase.
 
+## Book-layout perform half is now kernel-checked
+
+The actual fixture trace showed that Minsky's machine uses a split tape:
+source data left of `Y`, condition/description right of `Y`.  The
+canonical q15/q19 frames conflated these regions, which caused the
+q19 premature capture.  The correct frame is now formalized in
+`MinskyBookLayout.v`:
+
+```text
+q15_q22_right_to_q19_tags
+q15_q22_right_to_q5_book
+book_q12_restore_to_q5_right
+```
+
+These prove the complete perform half q12 -> q15 -> q16 -> q21/q22 ->
+q19 -> q17/q18 -> q5 using the book layout.  The q15 rail is the marked
+description record (`2/3`), not a `6/7` tag rail; q16 restores it in
+place, and q19 starts on the source side and captures the new head cell.
+The old q12 "tag poison" is bypassed by the correct split frame.
+
+Remaining in the running cycle: the locate/match scan and the q5 -> q12
+selected-row copy/restore half, then the concrete encoder.
+
 ## Experimental verdict on the prefetch route
 
 An exhaustive small-frame search and literal-table traces confirm the
