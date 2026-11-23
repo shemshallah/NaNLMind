@@ -663,3 +663,30 @@ This is the remaining encoder-side obstruction for the fixed total
 `encode`/`macro_cost` premises.
 
 Claim remains false.
+
+## Why a total config-to-frame encoder is impossible
+
+The wall halt frame has `extra = [6]`; the lookup-failure frame has
+`extra = []`.  The two halted source configurations can coincide:
+
+- boundary path: state `s`, head `R`, read `0`, row matches, writes `1`,
+  right at the wall -> halted state `s`, head `R`, cell `R = 1`;
+- lookup-failure path: state `s`, head `R`, read `1`, no row matches ->
+  halted state `s`, head `R`, cell `R = 1`.
+
+Both halted `LeftInfiniteConfig`s are identical, but the native frames
+differ.  Hence the conditional theorem's total `encode : config ->
+Config` cannot be instantiated with path-dependent halt frames.
+
+The correct final theorem should be a **run equivalence from a chosen
+initial encoding**, not a total re-encoder on halted configs:
+
+- source halts -> choose the left-depth/clock parameter `K` from the
+  run, encode once, and reach the appropriate halt frame;
+- native halts -> use the macro run equations up to the first halted
+  macro step; no re-encoding of the halted config is needed.
+
+The left-depth parameter should be separate from the right endpoint:
+the right endpoint is the source's actual wall `R`, while the left
+window is `head - K` with `K` large enough for the simulated run.  This
+avoids changing the wall semantics when the run is long.
