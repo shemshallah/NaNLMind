@@ -690,3 +690,38 @@ The left-depth parameter should be separate from the right endpoint:
 the right endpoint is the source's actual wall `R`, while the left
 window is `head - K` with `K` large enough for the simulated run.  This
 avoids changing the wall semantics when the run is long.
+
+## Left-depth window and boundary premises
+
+`MinskyLeftInfiniteLeftDepth.v` proves the run theorem with the source's
+actual right wall and a separate left window `lo`:
+
+```text
+lic_left_ok
+lic_left_ok_right / lic_left_ok_left / lic_left_ok_halt
+lic_left_hit_run
+lic_left_ok_run
+lic_left_none_halt_run
+```
+
+`lic_left_hit_run` requires `head < R` for every hit step; a right move at
+`R` is the boundary macro.  `lic_left_none_halt_run` handles a no-match
+halt at the end of a hit prefix.
+
+`MinskyLeftInfiniteBoundaryPremises.v` proves the q12 passability and
+restored-frame block for the empty wall:
+
+```text
+book_q12_empty_boundary_premises
+```
+
+It supplies `H12`, `H14`, `Hrestored`, `H21`, `Hsplit`, `H17`, `Hright`,
+`H15`, `H16` from the lifted action prefix.
+
+The remaining boundary packaging is the exact read-bit width of the q5
+retry condition (`hit_init` is the `p`-bit action prefix; book row
+conditions are `p+1` bits).  The agent is resolving whether the extra
+bit is `target`, `c0`, `w_read`, or `hit_w`, then composing the source
+`lic_q5_encode_lifted_boundary_step`.
+
+Claim remains false.
