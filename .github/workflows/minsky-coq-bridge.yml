@@ -305,6 +305,10 @@ jobs:
           coqchk -Q formal/utm NaNLM formal/utm/MinskyLeftCycleAudit.vo
           coqc -Q formal/utm NaNLM \
             -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyBookRawBuffer.v
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyBookRawBuffer.vo
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyBookEncode.v
           coqchk -Q formal/utm NaNLM formal/utm/MinskyBookEncode.vo
           coqc -Q formal/utm NaNLM \
@@ -419,6 +423,8 @@ jobs:
             formal/utm/MinskyLeftInfinite.vo
             formal/utm/MinskyLeftCycleAudit.v
             formal/utm/MinskyLeftCycleAudit.vo
+            formal/utm/MinskyBookRawBuffer.v
+            formal/utm/MinskyBookRawBuffer.vo
             formal/utm/MinskyBookEncode.v
             formal/utm/MinskyBookEncode.vo
             formal/utm/MinskyTaggedRestore.v
