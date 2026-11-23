@@ -5,8 +5,8 @@ Import ListNotations.
 
 From NaNLM Require Import MinskyTable MinskyConcreteEntry
   MinskyConcreteDispatch MinskySourceEncoding MinskyMatchMacro
-  MinskyActionMacro MinskyCanonicalRestore MinskyHeadMoveMacro
-  MinskyDirectionDecision MinskyRelocationMacro MinskyBookLeft
+  MinskyActionMacro MinskyCanonicalCopyGeneral MinskyCanonicalInstruction MinskyCanonicalDirection MinskyCanonicalRestore MinskyHeadMoveMacro
+  MinskyDirectionDecision MinskyRelocationMacro MinskyBookLeft MinskyBookLayout
   MinskyBookCycle.
 
 Theorem book_q13_restore_to_q5_left :
@@ -57,3 +57,4 @@ Proof.
 Qed.
 
 Print Assumptions book_q13_restore_to_q5_left.
+
