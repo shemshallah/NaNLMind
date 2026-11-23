@@ -568,3 +568,25 @@ pieces are still missing:
 With those, the fixed-configuration `macro_cost`/`encode` premises of
 `conditional_left_source_native_halting_equivalence` can be discharged.
 Claim remains false.
+
+## Padding invariance bridge (partial)
+
+`MinskyLeftInfinitePadding.v` proves the generic address bridge:
+
+```text
+zipper_run_halt_eq_of_embed_eq
+```
+
+If two zipper configurations have the same state/halt and their embedded
+address tapes at a common head coordinate are equal, then their halt
+flags agree after any fixed fuel.
+
+The encoder-side obligation is **not** global embed equality: adding an
+explicit q5 padding cell writes symbol `0` (a simulated blank), while an
+absent native cell reads the native blank `2`.  The correct remaining
+lemma is a *reachable-window* agreement: the frozen table's run for the
+macro clock depends only on the tape cells actually scanned, and the
+extra q5 padding lies beyond that scan.  The address equality above is
+only a sufficient bridge once a common explicit padding is chosen.
+
+Claim remains false.
