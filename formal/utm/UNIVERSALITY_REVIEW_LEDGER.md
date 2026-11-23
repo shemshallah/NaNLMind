@@ -2048,3 +2048,42 @@ increased.  The address tape bisimulation in
 blank-support invariant for the left padding still has to be stated.
 
 Claim remains false.
+
+## November 23: full empty-buffer boundary macro and marker lift
+
+Kernel-checked on main:
+
+- `MinskyLeftInfiniteBoundaryLocate.v`:
+  pass-aware locate/halt chain and the full empty-buffer q12→q19→q5
+  wall macro `book_q12_empty_boundary_halt`, ending at
+  `boundary_halt_encode_from [6] steps last ...`.
+- `MinskyLeftInfiniteLift.v`:
+  two-bit state marker `false :: true :: s`; the lift commutes with
+  `left_infinite_step`/`left_infinite_run`:
+  - `left_infinite_step_lift`
+  - `left_infinite_run_lift`
+  - `left_infinite_halts_lift`
+  - `wide_source_lookup_lifted_rotated = None`
+
+The q19 wall retry condition is `tl hit_init ++ [hd hit_init]`.  Under
+the marker lift it starts with `true`, while every lifted row condition
+starts with `false`, so the retry always takes the no-match halt branch.
+This removes the spurious-match unsoundness of the sentinel-retry
+approach at the wall.
+
+Bounded clock soundness is also on main:
+
+- `lic_bounded_no_premature_halt`
+- `lic_bounded_clock_native_halt_implies_source_halt`
+- `lic_bounded_clock_mono`
+
+Remaining:
+1. compose the lifted boundary q12 frame into the source-level
+   `lic_q5_encode` boundary step (the q12/q5 frame identities are the
+   same as the nonempty right frame equality);
+2. resolve the halted-frame path dependence (`extra = [6]` at the wall
+   versus `extra = []` for lookup failure), either by a common canonical
+   halt frame or a collision proof;
+3. left-window pad and fixed `encode`/`macro_cost` assembly.
+
+Claim remains false.
