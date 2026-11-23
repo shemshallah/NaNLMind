@@ -285,6 +285,10 @@ jobs:
           coqchk -Q formal/utm NaNLM formal/utm/MinskyBookLocateRows.vo
           coqc -Q formal/utm NaNLM \
             -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyBookEncode.v
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyBookEncode.vo
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyTaggedRestore.v
           coqchk -Q formal/utm NaNLM formal/utm/MinskyTaggedRestore.vo
           coqc -Q formal/utm NaNLM \
@@ -385,6 +389,8 @@ jobs:
             formal/utm/MinskyBookLocate.vo
             formal/utm/MinskyBookLocateRows.v
             formal/utm/MinskyBookLocateRows.vo
+            formal/utm/MinskyBookEncode.v
+            formal/utm/MinskyBookEncode.vo
             formal/utm/MinskyTaggedRestore.v
             formal/utm/MinskyTaggedRestore.vo
             formal/utm/MinskyRowStepWide.v
