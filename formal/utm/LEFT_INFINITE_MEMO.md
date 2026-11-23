@@ -1660,3 +1660,92 @@ Therefore the fix is **neither (a) nor (b)**: `lic_q5_encode` is already
 correct for the left frame, and no left q5 normalization is needed.  The
 remaining left one-step gap is the separate `raw_ptape_left_step` window
 identity of section 10.3, not the frame equality.
+
+## 14. Left window package closed
+
+`formal/utm/MinskyLeftInfiniteWindow.v` now proves the full left ptape
+package as well:
+
+```coq
+raw_ptape_left_step :
+  lic_halted c = false ->
+  wide_source_lookup rows (lic_state c) (lic_tape c (lic_head c)) = Some r ->
+  wr_right r = false ->
+  lo <= lic_head c ->
+  raw_ptape (left_infinite_step rows c) lo = raw_ptape_prefix c lo.
+
+raw_ptape_prefix_left_step :
+  ... ->
+  raw_ptape_prefix (left_infinite_step rows c) lo =
+  removelast (raw_ptape_prefix c lo).
+
+raw_last_left_step :
+  ... ->
+  raw_last (left_infinite_step rows c) lo =
+  last_raw (raw_ptape_prefix c lo).
+
+raw_read_left_step :
+  ... -> lo < lic_head c ->
+  lic_tape (left_infinite_step rows c) (lic_head c - 1) =
+  raw_last c lo.
+```
+
+Supporting lemmas: `snoc_neq_nil`, `tl_app`, `rev_tl_rev`,
+`raw_ptape_prefix_removelast`, `removelast_map_seq_pos`,
+`raw_ptape_length_pos`, `last_raw`, `last_app_singleton`,
+`last_map_seq`, `raw_ptape_last_tape`, `raw_last_eq_tape`,
+`source_bit_inj`.
+
+Together with section 10.1 and `raw_buf_left_step`, every right and left
+window mapping for a non-boundary move is now kernel-checked.  The file
+passes `coqchk`.
+
+The concrete left frame check of section 13 also confirms the left
+output frame equals `lic_q5_encode` for the user's instance.
+
+## 15. Final remaining gap
+
+The first remaining proof obligation is the **full first-match lookup
+packaging**:
+
+```coq
+wide_source_lookup rows state bit = Some r
+<->
+exists steps hit after,
+  book_first_match (state ++ [bit]) (source_rows_to_book rows) =
+    book_lookup_hit steps hit after /\
+  hit = source_row_to_book r /\
+  source_rows_to_book rows = map bf_row steps ++ hit :: after /\
+  Forall (fun st => bf_src st = state ++ [bit]) steps
+```
+
+under `Forall (wide_row_wellformed p) rows` and `length state = p`, plus
+the `None`/`book_lookup_halt` analogue with the last failure.
+
+`MinskyLeftInfiniteLookup.v` already proves the pointwise equivalence
+`source_row_to_book_matches` and the direction
+`book_first_match_hit_is_source_row`.  The missing induction step is the
+first-failed-row case:
+
+- from `wide_row_matches r0 state bit = false`,
+- build the `book_failure` witness for `source_row_to_book r0` using
+  `book_mismatch_ev_some_of_neq` (the wellformedness/length hypothesis
+  supplies the length equality),
+- unfold `book_lookup_cons` and show it returns
+  `book_lookup_hit (f :: steps) hit after`.
+
+Once that is packaged, the general non-boundary right/left macro
+composition follows by applying the raw cycles
+(`book_steady_q5_locate_to_q5_right_raw_gen` /
+`book_steady_q5_locate_to_q5_left_raw_gen`), the frame equalities of
+section 9.2, and the window packages of sections 10.1/10.2/14.
+For the left macro, the window update is:
+
+- keep `lo` if `lo < head - 1`;
+- use `lo - 1` if `lo = head - 1`, so the new q5 ptape is nonempty.
+
+The general boundary/halt connection to `lic_q5_encode` remains the
+second exact gap: `MinskyLeftInfiniteSentinel.v` proves the sentinel
+macro and `fresh_boundary_new_condition_no_match`, but the halted
+`dispatch_halt_at_y` frame still has to be identified with the encoder's
+halted branch.
