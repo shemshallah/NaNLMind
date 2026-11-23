@@ -81,8 +81,12 @@ head relocation and q17/q18 return to q5, with the full book clock and
 all frame/passability hypotheses.  `MinskyBookLeft.v` also proves the
 general-tag left q15 -> q20/q5 perform macro.
 
+`formal/utm/MinskyBookLeftCycle.v` now also proves the left perform
+composition `book_q13_restore_to_q5_left` (q13 -> q14 -> q15 -> q16 ->
+q21/q22 -> q20 -> q17/q18 -> q5).
+
 Remaining in the running cycle: the q5/q1 multi-row locate/match scan,
-the left q13 -> q5 composition, and the concrete encoder.
+the q6 -> q13 left cycle packaging, and the concrete encoder.
 
 ## Experimental verdict on the prefetch route
 

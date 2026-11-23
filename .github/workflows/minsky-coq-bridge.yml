@@ -273,6 +273,10 @@ jobs:
           coqchk -Q formal/utm NaNLM formal/utm/MinskyBookCycle.vo
           coqc -Q formal/utm NaNLM \
             -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyBookLeftCycle.v
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyBookLeftCycle.vo
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyTaggedRestore.v
           coqchk -Q formal/utm NaNLM formal/utm/MinskyTaggedRestore.vo
           coqc -Q formal/utm NaNLM \
@@ -367,6 +371,8 @@ jobs:
             formal/utm/MinskyBookLeft.vo
             formal/utm/MinskyBookCycle.v
             formal/utm/MinskyBookCycle.vo
+            formal/utm/MinskyBookLeftCycle.v
+            formal/utm/MinskyBookLeftCycle.vo
             formal/utm/MinskyTaggedRestore.v
             formal/utm/MinskyTaggedRestore.vo
             formal/utm/MinskyRowStepWide.v
