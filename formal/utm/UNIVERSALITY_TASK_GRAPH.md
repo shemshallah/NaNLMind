@@ -86,8 +86,27 @@ composition `book_q13_restore_to_q5_left` and the full left cycle
 `book_q6_to_q5_left` (q6 -> q13 -> q14 -> q15 -> q16 -> q21/q22 -> q20
 -> q17/q18 -> q5).
 
-Both q6 -> q5 perform cycles are now closed.  Remaining in the running
-cycle: the q5/q1 multi-row locate/match scan and the concrete encoder.
+Both q6 -> q5 perform cycles are now closed.
+
+`formal/utm/MinskyBookLocate.v` now proves the first genuine find step:
+
+```text
+book_q5_scan_general
+book_q1_mismatch_restart
+book_locate_two_rows_to_q6
+book_q6_region_to_q12
+book_locate_two_rows_to_q12
+```
+
+A two-row description locates the first row, mismatches, restarts, matches
+the second row, and reaches the exact q6/q12 frame.  The mismatch uses a
+new book-frame restart adapter because the canonical first-mismatch
+theorems assume adjacent marked/raw copies; the book layout has the row
+`X` delimiter between them.
+
+Remaining in the running cycle: generalize the locate block to an
+arbitrary row list, handle no-match/halt, add the steady-state q5 entry,
+and build the concrete encoder.
 
 ## Experimental verdict on the prefetch route
 
