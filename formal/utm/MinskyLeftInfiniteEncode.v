@@ -292,33 +292,34 @@ Print Assumptions book_q5_raw_right_frame_eq.
 
 Lemma book_q5_raw_left_frame_eq :
   forall (init : list bool) (buf ptape_prefix : list nat)
-         (w_tape : bool) (w_read : bool)
+         (w_tape_left w_read : bool)
          (steps : list book_failure) (hit next : book_row)
          (rest : list book_row) (hit_init : list bool) (hit_w c0 : bool)
          (creast : list bool) (tail : list nat),
     br_cond hit = init ++ [w_read] ->
     br_action hit = hit_init ++ [hit_w] ->
     br_cond next = c0 :: creast ->
-    book_q5_raw init (source_bit hit_w :: buf) w_tape
-      ptape_prefix w_tape
+    book_q5_raw init (source_bit hit_w :: buf) w_tape_left
+      ptape_prefix w_read
       (map bf_row steps ++ hit :: next :: rest) tail
     = cfg_ml 5
         (rev (source_bit hit_w ::
               rev (book_return_rail_raw init buf)) ++
-         6 :: rev (ptape_prefix ++ [source_bit w_tape]))
-        (match_mark w_tape :: 4 ::
+         6 :: rev (ptape_prefix ++ [source_bit w_tape_left]))
+        (match_mark w_read :: 4 ::
          map q16_restore
            (rev (book_cycle_tags steps (init ++ [w_read]) hit)) ++
          source_bit c0 ::
          book_after_suffix creast next rest ++ 5 :: tail).
 Proof.
-  intros init buf ptape_prefix w_tape w_read steps hit next rest
+  intros init buf ptape_prefix w_tape_left w_read steps hit next rest
     hit_init hit_w c0 creast tail Hcond Hact Hnext.
   unfold book_q5_raw.
+  rewrite rev_snoc_cons_nat.
+  cbn [map q16_restore].
   rewrite <- (book_cycle_restored_raw_desc_tail steps (init ++ [w_read])
     hit next rest c0 creast (5 :: tail) Hcond Hnext).
   rewrite book_return_rail_raw_rev.
-  rewrite rev_snoc_cons_nat.
   cbn [app].
   repeat rewrite <- app_assoc.
   reflexivity.

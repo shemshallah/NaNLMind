@@ -813,14 +813,850 @@ raw_left_sanity_buffer :
 
 So the old buffer `[0;1]` becomes `[1;0;1] = source_bit true :: [0;1]`.
 
-### 7.10 Remaining exact gap
+### 7.10 Remaining exact gap (superseded by section 8)
 
-The only native phase not yet generalized/proved is the **boundary-right
-halt**: when `buf = []` and a right move is requested, the abstract
-`left_infinite_step` halts in place, while the literal table passes `Y`
-(`q19_crosses_y`) and then follows the q3/Y trace.  A total encoder must
-prove, for every reachable `buf = []` frame and matched right-moving row,
-that the literal table reaches a halted configuration in some
-`boundary_cost`, and that its encode is the encode of the halted abstract
-configuration.  The ledger's 46,176-step p=5 instance is the concrete
-witness; no general theorem exists yet.
+The only native phase not yet generalized/proved in this zero-buffer
+account is the **boundary-right halt**: when `buf = []` and a right move
+is requested, the abstract `left_infinite_step` halts in place, while the
+literal table passes `Y` (`q19_crosses_y`) and then follows the q3/Y
+trace.  Section 8 avoids this trace by always encoding one extra
+sentinel blank cell beyond `R` and using the existing sentinel-halt
+theorem.  The remaining sentinel-side gap is the running-case encoder
+representation, not the boundary run equation.
+
+## 8. Sentinel boundary (new file, kernel-checked)
+
+`formal/utm/MinskyLeftInfiniteSentinel.v` implements the sentinel-cell
+approach: always encode one extra blank cell beyond `R`, and let the
+boundary right move consume it and halt.  It compiles with Coq 8.20.1 and
+passes `coqchk`; no existing file was edited.
+
+This avoids the q3/Y trace entirely.  The native boundary macro is a
+direct corollary of the existing
+
+```coq
+book_steady_q5_locate_perform_right_sentinel_halt_gen
+```
+
+with `b = 2`: the q5 input buffer is `tl (book_buf 2) = [0]`, the one
+sentinel blank.  The right perform consumes it, the new condition is
+`hit_init ++ [false]`, the sentinel description row mismatches at bit 0,
+and the machine reaches `dispatch_halt_at_y`.
+
+### 8.1 The sentinel step
+
+```coq
+Definition source_blank_at (t : Z -> bool) (h : Z) : Z -> bool :=
+  fun z => if Z.eqb z h then false else t z.
+
+Definition left_infinite_step_sentinel
+    (rows : list WideSourceRow) (c : LeftInfiniteConfig)
+    : LeftInfiniteConfig :=
+  if lic_halted c then c else
+  match wide_source_lookup rows (lic_state c)
+                          (lic_tape c (lic_head c)) with
+  | None => (* halt as before *) ...
+  | Some row =>
+      if left_infinite_right_blocked c row then
+        {| lic_state := wr_next row;
+           lic_head := (lic_head c + 1)%Z;
+           lic_tape := source_blank_at
+             (source_write_at (lic_tape c) (lic_head c) (wr_write row))
+             (lic_head c + 1)%Z;
+           lic_R := (lic_R c + 1)%Z;
+           lic_halted := true |}
+      else (* normal step *) ...
+  end.
+```
+
+Proved:
+
+```coq
+left_infinite_step_sentinel_halted
+left_infinite_step_sentinel_boundary_fields
+left_infinite_step_sentinel_boundary_blank
+left_infinite_step_sentinel_boundary_head_eq_R
+left_infinite_step_sentinel_ok
+sentinel_boundary_step_halts :
+  ... blocked right row ... ->
+  lic_halted (left_infinite_step_sentinel rows c) = true /\
+  lic_head (left_infinite_step_sentinel rows c) = head c + 1 /\
+  lic_R (left_infinite_step_sentinel rows c) = R c + 1 /\
+  lic_tape (left_infinite_step_sentinel rows c) (head c + 1) = false.
+```
+
+So the final source head is `R+1`, the new `R` is `R+1`, the new head
+cell is blank, and `halted = true`.
+
+### 8.2 Sentinel-augmented invariant
+
+```coq
+Definition raw_buf_sentinel (c : LeftInfiniteConfig) : list nat :=
+  raw_buf c ++ [0].
+
+Definition book_global_source_rep_sentinel
+    (c : LeftInfiniteConfig) (lo : Z) (ptape buf : list nat) : Prop :=
+  (lo <= lic_head c)%Z /\
+  left_infinite_ok c /\
+  ptape = raw_ptape c lo /\
+  buf = raw_buf_sentinel c.
+```
+
+Proved:
+
+```coq
+raw_buf_sentinel_length :
+  left_infinite_ok c ->
+  length (raw_buf_sentinel c) =
+  S (Z.to_nat (lic_R c - lic_head c)).
+
+raw_buf_sentinel_at_boundary :
+  lic_head c = lic_R c -> raw_buf_sentinel c = [0].
+
+book_global_source_rep_sentinel_boundary :
+  book_global_source_rep_sentinel c lo ptape buf ->
+  (buf = [0] <-> lic_head c = lic_R c).
+
+book_global_source_rep_sentinel_buffer_length.
+```
+
+So a boundary config is exactly the one whose encoded raw buffer is the
+single sentinel `[0]`.
+
+### 8.3 Boundary macro step and encoder
+
+```coq
+Definition boundary_sentinel_sf (hit_init creast : list bool) : book_failure :=
+  book_sentinel_failure (hit_init ++ [false]) creast
+    (app_singleton_bool_neq_nil hit_init false).
+
+Definition boundary_sentinel_pre_frame ... : Config :=
+  cfg_ml 5
+    (rev (tl (book_buf 2) ++ [5] ++ map source_bit init) ++
+     6 :: source_bit w_tape :: rev ptape)
+    (match_mark w_read :: 4 ::
+     book_raw_desc
+       (map bf_row steps ++ hit ::
+        [book_sentinel_row (hit_init ++ [false]) creast]) ++
+     5 :: tail).
+
+Definition boundary_sentinel_halt_frame ... : Config :=
+  dispatch_halt_at_y
+    (book_sentinel_halt_left retry_steps
+       (boundary_sentinel_sf hit_init creast)
+       0 (ptape ++ [source_bit w_tape] ++ [source_bit hit_w]) tail) tail.
+
+Definition boundary_right_sentinel_cost
+    (init : list bool) (w_read w_tape : bool)
+    (steps : list book_failure) (hit : book_row)
+    (hit_init : list bool) (hit_w : bool)
+    (retry_steps : list book_failure) (creast : list bool) : nat :=
+  book_steady_locate_q12_clock_gen init w_read w_tape steps hit +
+  book_q12_perform_right_clock hit_init hit_w 2
+    (book_cycle_tags steps (init ++ [w_read]) hit)
+    (tl (book_buf (2 - 1)) ++ [5] ++ map source_bit hit_init) +
+  (S (length hit_init) +
+   (book_failures_clock [] retry_steps +
+    book_halt_clock (map bf_row retry_steps)
+      (boundary_sentinel_sf hit_init creast))).
+```
+
+The sentinel row's mismatch is explicit:
+
+```coq
+boundary_sentinel_row_mismatch :
+  br_cond (book_sentinel_row (hit_init ++ [false]) creast) <>
+  hit_init ++ [false].
+```
+
+The exact boundary theorem:
+
+```coq
+Theorem boundary_right_sentinel_macro_step :
+  forall init w_read w_tape ptape tail steps hit hit_init hit_w creast
+         retry_steps,
+    Forall (fun st => bf_src st = init ++ [w_read]) steps ->
+    br_cond hit = init ++ [w_read] ->
+    length (br_action hit) = length (init ++ [w_read]) ->
+    br_action hit = hit_init ++ [hit_w] ->
+    br_dir hit = true ->
+    Forall (fun st => bf_src st = hit_init ++ [false]) retry_steps ->
+    map bf_row (retry_steps ++ [boundary_sentinel_sf hit_init creast]) =
+    map bf_row steps ++ hit ::
+      [book_sentinel_row (hit_init ++ [false]) creast] ->
+    run (boundary_right_sentinel_cost init w_read w_tape steps hit
+           hit_init hit_w retry_steps creast)
+      (boundary_sentinel_pre_frame init w_read w_tape ptape tail
+        steps hit hit_init creast) =
+    boundary_sentinel_halt_frame ptape w_tape hit_w tail retry_steps
+      hit_init creast.
+```
+
+Halt reflection:
+
+```coq
+Definition encode_sentinel
+    (pre halt : LeftInfiniteConfig -> Config)
+    (c : LeftInfiniteConfig) : Config :=
+  if lic_halted c then halt c else pre c.
+
+Lemma encode_sentinel_reflects_halt :
+  (forall c, lic_halted c = false -> c_halted (pre c) = false) ->
+  (forall c, c_halted (halt c) = true) ->
+  c_halted (encode_sentinel pre halt c) = lic_halted c.
+
+Corollary encode_sentinel_halt_frame_reflects :
+  ... ->
+  c_halted (encode_sentinel pre
+    (fun _ => boundary_sentinel_halt_frame ...) c) = lic_halted c.
+```
+
+The halted branch is exactly the `dispatch_halt_at_y` frame, so
+`c_halted` is `true`.
+
+### 8.4 Concrete p=1 full boundary macro
+
+```coq
+Definition p1_start : LeftInfiniteConfig := ...
+Definition p1_row : WideSourceRow := ...
+Definition p1_encode_running : Config := ...
+Definition p1_encode_halted : Config := ...
+Definition p1_encode (c : LeftInfiniteConfig) : Config :=
+  if lic_halted c then p1_encode_halted else p1_encode_running.
+
+Example p1_encode_reflects_halt :
+  forall c, c_halted (p1_encode c) = lic_halted c.
+
+Example p1_boundary_step_fields :
+  lic_halted (left_infinite_step_sentinel [p1_row] p1_start) = true /\
+  lic_head  ... = 1%Z /\
+  lic_R     ... = 1%Z /\
+  lic_tape  ... 1%Z = false.
+
+Example p1_boundary_macro :
+  run (boundary_right_sentinel_cost [false] false false [] p1_hit
+         [true] false [p1_retry_failure] [])
+      (p1_encode p1_start) =
+  p1_encode (left_infinite_step_sentinel [p1_row] p1_start).
+```
+
+All are `Closed under the global context`.
+
+### 8.5 Remaining exact gap: running-case encoder representation
+
+The frame-level boundary macro step is complete.  A total encoder still
+has to prove the running-case representation connection:
+
+For every reachable boundary configuration `c` with `raw_buf_sentinel c
+= [0]` and a matched right-moving row, there must be witnesses
+
+```text
+init, w_read, w_tape, ptape, tail,
+steps, hit, hit_init, hit_w, creast, retry_steps
+```
+
+such that
+
+1. `encode p rows c = boundary_sentinel_pre_frame ...`;
+2. the description is the actual source program followed by the sentinel
+   row: the seventh hypothesis
+   ```coq
+   map bf_row (retry_steps ++ [boundary_sentinel_sf hit_init creast]) =
+   map bf_row steps ++ hit ::
+     [book_sentinel_row (hit_init ++ [false]) creast];
+   ```
+3. `hit` is the row matching the current condition and its action is
+   `hit_init ++ [hit_w]`;
+4. `retry_steps` are the locate failures for the new condition
+   `hit_init ++ [false]`;
+5. `encode p rows (left_infinite_step_sentinel rows c)` is
+   `boundary_sentinel_halt_frame ...`.
+
+Condition 2 is the first exact blocking goal: it is the computable
+lookup-witness decomposition
+
+```coq
+map bf_row (retry_steps ++ [boundary_sentinel_sf hit_init creast]) =
+map bf_row steps ++ hit ::
+  [book_sentinel_row (hit_init ++ [false]) creast]
+```
+
+for the actual program and the new condition.  It is a finite lookup
+computation (`book_first_match` gives the witnesses), not a 46k-step
+table trace.  The p=1 example shows the concrete witness shape; the
+remaining work is to package the general `book_first_match`-to-
+`boundary_sentinel_pre_frame` adapter and the halt-frame equality.
+
+### 8.6 Fresh sentinel state: removing the real-row match obstruction
+
+The first sentinel step kept the performed row's next state.  A real row
+with that state and read bit `0` could then match the new condition, so
+the native locate phase would execute it instead of halting.  This was
+the first blocking invariant.
+
+The fresh variant removes it:
+
+```coq
+Definition sentinel_state (p : nat) : list bool :=
+  repeat false (S p).
+
+Lemma sentinel_state_length :
+  forall p, length (sentinel_state p) = S p.
+
+Lemma sentinel_state_neq_current :
+  wide_row_wellformed p r -> wr_current r <> sentinel_state p.
+
+Lemma sentinel_state_no_match_row :
+  wide_row_wellformed p r ->
+  wide_row_matches r (sentinel_state p) bit = false.
+
+Lemma sentinel_state_no_match :
+  Forall (wide_row_wellformed p) rows ->
+  wide_source_lookup rows (sentinel_state p) bit = None.
+```
+
+The boundary step variant is
+
+```coq
+Definition left_infinite_step_sentinel_fresh
+    (p : nat) (rows : list WideSourceRow) (c : LeftInfiniteConfig)
+    : LeftInfiniteConfig :=
+  ... boundary case:
+    lic_state := sentinel_state p;
+    lic_head := head c + 1;
+    lic_tape := source_blank_at (source_write_at ...) (head c + 1);
+    lic_R := R c + 1;
+    lic_halted := true.
+```
+
+Proved:
+
+```coq
+left_infinite_step_sentinel_fresh_halted
+left_infinite_step_sentinel_fresh_boundary_fields
+left_infinite_step_sentinel_fresh_boundary_blank
+left_infinite_step_sentinel_fresh_boundary_head_eq_R
+left_infinite_step_sentinel_fresh_ok
+
+fresh_boundary_new_condition_no_match :
+  Forall (wide_row_wellformed p) rows ->
+  lic_halted c = false ->
+  wide_source_lookup rows (lic_state c) (lic_tape c (lic_head c)) = Some row ->
+  left_infinite_right_blocked c row = true ->
+  wide_source_lookup rows
+    (lic_state (left_infinite_step_sentinel_fresh p rows c))
+    (lic_tape (left_infinite_step_sentinel_fresh p rows c)
+       (lic_head (left_infinite_step_sentinel_fresh p rows c))) = None.
+```
+
+Because the new state has width `p+1` and all program rows have width
+`p`, the new condition `sentinel_state p ++ [false]` cannot match any
+real row.  The locate phase therefore fails on every real row by the
+length check and must reach the description sentinel row.
+
+This is the version to use for a total encoder.  The remaining gap is
+now only the computable lookup-witness packaging:
+
+```coq
+book_first_match (sentinel_state p ++ [false])
+  (source_rows_to_book rows ++ [book_sentinel_row (sentinel_state p ++ [false]) creast])
+= book_lookup_halt retry_steps last
+```
+
+and the resulting equality
+
+```coq
+map bf_row
+  (retry_steps ++ [book_sentinel_failure (sentinel_state p ++ [false]) creast ...])
+=
+map bf_row steps ++ hit ::
+  [book_sentinel_row (sentinel_state p ++ [false]) creast]
+```
+
+needed by `boundary_right_sentinel_macro_step` with
+`hit_init = sentinel_state p`.  `sentinel_state_no_match` guarantees the
+lookup-failure side is true; the packaging is finite computation over
+the row list, not a table trace.  The concrete p=1 instance
+`p1_boundary_macro` is the executed witness of this shape.
+
+## 9. Iteration frames and the q5 encoder (new file, kernel-checked)
+
+`formal/utm/MinskyLeftInfiniteEncode.v` closes the frame equalities that
+turn the raw cycle outputs into the next `book_q5_raw` frame, defines
+`lic_q5_encode`, and proves a concrete non-boundary right-hit macro step.
+It compiles with Coq 8.20.1 and passes `coqchk`; no existing file was
+edited.
+
+### 9.1 Restored-rail algebra
+
+```coq
+book_cycle_restored_raw_desc :
+  br_cond hit = bits ->
+  br_cond next = c0 :: creast ->
+  map q16_restore (rev (book_cycle_tags steps bits hit)) ++
+    source_bit c0 :: book_after_suffix creast next rest
+  = book_raw_desc (map bf_row steps ++ hit :: next :: rest).
+
+book_cycle_restored_raw_desc_tail :
+  ... ->
+  map q16_restore (rev (book_cycle_tags steps bits hit)) ++
+    source_bit c0 :: (book_after_suffix creast next rest ++ tail)
+  = book_raw_desc (map bf_row steps ++ hit :: next :: rest) ++ tail.
+
+book_cycle_restored_raw_desc_left :
+  ... ->
+  map q16_restore (rev (book_cycle_tags steps bits hit ++ [4])) ++
+    source_bit c0 :: (book_after_suffix creast next rest ++ tail)
+  = 4 :: (book_raw_desc (map bf_row steps ++ hit :: next :: rest) ++ tail).
+```
+
+Supporting lemmas: `map_q16_restore_marked_prefix`,
+`map_q16_restore_cycle_region`, `book_raw_desc_append_rows`,
+`book_raw_desc_nil_prefix`.
+
+### 9.2 Frame equalities
+
+Right:
+
+```coq
+book_q5_raw_right_frame_eq :
+  br_cond hit = init ++ [w_read] ->
+  br_action hit = hit_init ++ [hit_w] ->
+  br_cond next = c0 :: creast ->
+  book_q5_raw hit_init (tl buf) hit_w
+    (ptape ++ [source_bit w_tape])
+    (raw_to_bool (hd 0 buf))
+    (map bf_row steps ++ hit :: next :: rest) tail
+  = cfg_ml 5
+      (rev (tl buf ++ [5] ++ map source_bit hit_init) ++
+       6 :: source_bit hit_w :: rev (ptape ++ [source_bit w_tape]))
+      (match_mark (raw_to_bool (hd 0 buf)) :: 4 ::
+       map q16_restore
+         (rev (book_cycle_tags steps (init ++ [w_read]) hit)) ++
+       source_bit c0 :: book_after_suffix creast next rest ++ 5 :: tail).
+```
+
+This is the exact right raw cycle output of
+`book_steady_q5_locate_to_q5_right_raw_gen`, with the next `book_q5_raw`
+frame on the left: new buffer `tl buf`, new `w_tape = hit_w`, new ptape
+`ptape ++ [source_bit w_tape]`, new read bit
+`raw_to_bool (hd 0 buf)`, and full row list
+`map bf_row steps ++ hit :: next :: rest`.
+
+Left:
+
+```coq
+book_q5_raw_left_frame_eq :
+  br_cond hit = init ++ [w_read] ->
+  br_action hit = hit_init ++ [hit_w] ->
+  br_cond next = c0 :: creast ->
+  book_q5_raw init (source_bit hit_w :: buf) w_tape
+    ptape_prefix w_tape
+    (map bf_row steps ++ hit :: next :: rest) tail
+  = cfg_ml 5
+      (rev (source_bit hit_w :: rev (book_return_rail_raw init buf)) ++
+       6 :: rev (ptape_prefix ++ [source_bit w_tape]))
+      (match_mark w_tape :: 4 ::
+       map q16_restore
+         (rev (book_cycle_tags steps (init ++ [w_read]) hit)) ++
+       source_bit c0 :: book_after_suffix creast next rest ++ 5 :: tail).
+```
+
+The right-tape equality is also exported as
+`book_q5_raw_left_right_tape`.  The left frame has new buffer
+`source_bit hit_w :: buf`, new `w_tape = w_tape` (the last cell of the
+input ptape), and new read bit `w_tape`.
+
+### 9.3 The q5 encoder
+
+```coq
+Definition raw_ptape_prefix (c) (lo) : list nat := ...
+Definition raw_last (c) (lo) : bool := ...
+
+Definition lic_q5_encode
+    (lo : Z) (c : LeftInfiniteConfig) (rows : list book_row)
+    (tail : list nat) : Config :=
+  book_q5_raw (lic_state c) (raw_buf c) (raw_last c lo)
+    (raw_ptape_prefix c lo) (lic_tape c (lic_head c)) rows tail.
+
+Lemma lic_q5_encode_is_book_q5_raw.
+```
+
+Representation:
+
+```coq
+Definition book_q5_source_rep (c) (lo) (ptape) (w_tape) (buf) : Prop :=
+  (lo < lic_head c)%Z /\
+  left_infinite_ok c /\
+  ptape ++ [source_bit w_tape] = raw_ptape c lo /\
+  buf = raw_buf c.
+
+lic_q5_encode_rep :
+  (lo < lic_head c)%Z -> left_infinite_ok c ->
+  book_q5_source_rep c lo (raw_ptape_prefix c lo)
+    (raw_last c lo) (raw_buf c).
+
+lic_q5_encode_rep_global :
+  (lo < lic_head c)%Z -> left_infinite_ok c ->
+  book_global_source_rep c lo (raw_ptape c lo) (raw_buf c).
+```
+
+`raw_ptape_nonempty` and `raw_ptape_prefix_last` prove the split
+`raw_ptape c lo = raw_ptape_prefix c lo ++
+ [source_bit (raw_last c lo)]` when `lo < head`.  The hypothesis
+`lo < head` is essential: at `lo = head` the q5 frame needs an implicit
+blank cell to the left of `M`, which is the left-boundary case.
+
+### 9.4 Concrete non-boundary right-hit instance
+
+```coq
+p1r_r1, p1r_r2 : WideSourceRow
+p1r_rows = [p1r_r1; p1r_r2]
+p1r_book_rows = source_rows_to_book p1r_rows
+p1r_start = {| state = [false]; head = 0; tape = fun _ => false;
+               R = 2; halted = false |}
+
+p1r_first_match :
+  book_first_match ([false] ++ [false]) p1r_book_rows =
+  book_lookup_hit [] (source_row_to_book p1r_r1)
+    [source_row_to_book p1r_r2].
+
+p1r_start_encode :
+  lic_q5_encode (-1) p1r_start p1r_book_rows [] =
+  book_q5_raw [false] [0;0] false [] false p1r_book_rows [].
+
+p1r_right_hit_macro :
+  run (book_steady_locate_q12_clock_gen [false] false false []
+         (source_row_to_book p1r_r1) +
+       book_q12_perform_right_clock_raw [false] false [0;0]
+         (book_cycle_tags [] ([false] ++ [false])
+            (source_row_to_book p1r_r1))
+         (tl [0;0] ++ [5] ++ map source_bit [false]))
+      (lic_q5_encode (-1) p1r_start p1r_book_rows []) =
+  lic_q5_encode (-1) (left_infinite_step p1r_rows p1r_start)
+    p1r_book_rows [].
+```
+
+This is the full non-boundary right-hit macro for p=1: the buffer
+`[0;0]` becomes `[0]`, the ptape becomes `[0]`, `w_tape` is the write
+bit `false`, and the new read bit is `false`.
+
+### 9.5 First remaining gap: general step-to-window mapping
+
+The frame equalities and the encoder are complete.  The general
+non-boundary right-hit macro needs the following mapping lemmas, which
+are the first exact gap:
+
+```coq
+raw_buf_right_step :
+  wide_source_lookup rows (lic_state c) (lic_tape c (lic_head c)) = Some r ->
+  wr_right r = true ->
+  lic_head c < lic_R c ->
+  raw_buf (left_infinite_step rows c) = tl (raw_buf c).
+
+raw_ptape_right_step :
+  ... ->
+  lo <= lic_head c ->
+  raw_ptape (left_infinite_step rows c) lo =
+  raw_ptape c lo ++ [source_bit (wr_write r)].
+
+raw_ptape_prefix_right_step :
+  ... ->
+  raw_ptape_prefix (left_infinite_step rows c) lo =
+  raw_ptape c lo.
+
+raw_last_right_step :
+  ... ->
+  raw_last (left_infinite_step rows c) lo = wr_write r.
+
+raw_read_right_step :
+  ... ->
+  lic_tape (left_infinite_step rows c) (lic_head c + 1) =
+  raw_to_bool (hd 0 (raw_buf c)).
+```
+
+These are `seq`/`Z.to_nat` arithmetic identities, not table traces.
+`raw_buf_right_step` is the first blocking one: it is the list identity
+
+```text
+  map (fun k => tape (head + 1 + k)) (seq 0 (R - head))
+= tail (map (fun k => tape (head + 1 + k))
+          (seq 0 (R - head)))
+```
+
+under `head < R`, i.e. `Z.to_nat (R - head) =
+S (Z.to_nat (R - (head+1)))`.  The analogous left-step package is
+
+```coq
+raw_buf_left_step :
+  ... ->
+  raw_buf (left_infinite_step rows c) = source_bit (wr_write r) :: raw_buf c.
+```
+
+and the left ptape prefix drops its last cell.
+
+The second gap is the source-lookup/book-first-match correspondence:
+
+```coq
+wide_source_lookup rows state bit = Some r
+<->
+book_first_match (state ++ [bit]) (source_rows_to_book rows) =
+  book_lookup_hit steps (source_row_to_book r) after
+```
+
+with the failure witnesses.  `p1r_first_match` is the concrete p=1
+instance; the general compiler is the remaining lookup packaging.
+
+Boundary and halt cases are treated separately:
+
+- boundary right: `MinskyLeftInfiniteSentinel.v`,
+  `left_infinite_step_sentinel` / `_fresh`, and
+  `boundary_right_sentinel_macro_step`;
+- lookup failure: `left_infinite_step` halts, so the encoder must use a
+  halted frame (the `encode_sentinel`/`wide_encode_halt` pattern);
+- left move: the left frame equality is proved, but the left
+  step-to-window mapping package is the analogue of the right gap.
+
+## 10. Window arithmetic (new file, kernel-checked)
+
+`formal/utm/MinskyLeftInfiniteWindow.v` proves the right-step window
+mapping and the left buffer update.  It compiles with Coq 8.20.1 and
+passes `coqchk`.
+
+### 10.1 Right step (`head < R`, `wr_right r = true`)
+
+```coq
+raw_buf_right_step :
+  lic_halted c = false ->
+  wide_source_lookup rows (lic_state c) (lic_tape c (lic_head c)) = Some r ->
+  wr_right r = true ->
+  lic_head c < lic_R c ->
+  raw_buf (left_infinite_step rows c) = tl (raw_buf c).
+
+raw_ptape_right_step :
+  ... -> lo <= lic_head c ->
+  raw_ptape (left_infinite_step rows c) lo =
+  raw_ptape c lo ++ [source_bit (wr_write r)].
+
+raw_ptape_prefix_right_step :
+  ... -> lo <= lic_head c ->
+  raw_ptape_prefix (left_infinite_step rows c) lo = raw_ptape c lo.
+
+raw_last_right_step :
+  ... -> lo <= lic_head c ->
+  raw_last (left_infinite_step rows c) lo = wr_write r.
+
+raw_read_right_step :
+  ... ->
+  lic_tape (left_infinite_step rows c) (lic_head c + 1) =
+  raw_to_bool (hd 0 (raw_buf c)).
+```
+
+Supporting lemmas: `tail_map_seq`, `map_seq_snoc`,
+`Z_to_nat_sub_succ`, `Z_to_nat_succ_sub`, `Z_to_nat_add_one`,
+`raw_buf_nonempty`, `raw_buf_hd`, `source_write_at_below`,
+`raw_to_bool_source_bit_bool`.
+
+### 10.2 Left buffer
+
+```coq
+raw_buf_left_step :
+  lic_halted c = false ->
+  wide_source_lookup rows (lic_state c) (lic_tape c (lic_head c)) = Some r ->
+  wr_right r = false ->
+  lic_head c <= lic_R c ->
+  raw_buf (left_infinite_step rows c) =
+  source_bit (wr_write r) :: raw_buf c.
+```
+
+This is the exact left buffer prepend.
+
+### 10.3 Remaining left ptape package
+
+Not yet proved:
+
+```coq
+raw_ptape_left_step :
+  ... -> lo <= lic_head c ->
+  raw_ptape (left_infinite_step rows c) lo = raw_ptape_prefix c lo.
+
+raw_ptape_prefix_left_step :
+  ... -> raw_ptape_prefix (left_infinite_step rows c) lo =
+           (drop-last of raw_ptape_prefix c lo).
+
+raw_last_left_step :
+  ... -> raw_last (left_infinite_step rows c) lo = ...
+```
+
+The first blocking case is `raw_ptape_left_step`; it needs the
+`seq`/`Z.to_nat` identity for the left window `head - 1 - lo`, plus the
+`removelast`/`rev` list identity.  The right package and the left buffer
+are closed.
+
+## 11. Row-match/lookup progress (new file, kernel-checked)
+
+`formal/utm/MinskyLeftInfiniteLookup.v` proves the pointwise source/book
+match equivalence:
+
+```coq
+source_row_to_book_matches :
+  wide_row_matches r state bit =
+  book_row_matches (state ++ [bit]) (source_row_to_book r).
+```
+
+and extracts a source hit from a book hit:
+
+```coq
+book_first_match_hit_is_source_row :
+  book_first_match (state ++ [bit]) (source_rows_to_book rows) =
+  book_lookup_hit steps hit after ->
+  exists r,
+    In r rows /\
+    hit = source_row_to_book r /\
+    wide_row_matches r state bit = true.
+```
+
+Supporting lemmas: `app_singleton_inj`, `app_singleton_neq`,
+`book_mismatch_ev_some_of_neq`.
+
+### 11.1 Remaining exact lookup gap
+
+The full first-match correspondence is not yet packaged:
+
+```coq
+wide_source_lookup rows state bit = Some r
+<->
+exists steps hit after,
+  book_first_match (state ++ [bit]) (source_rows_to_book rows) =
+    book_lookup_hit steps hit after /\
+  hit = source_row_to_book r /\
+  source_rows_to_book rows = map bf_row steps ++ hit :: after /\
+  Forall (fun st => bf_src st = state ++ [bit]) steps
+```
+
+and the None/halt analogue with `book_lookup_halt steps last` and the
+failure witnesses.  The pointwise match equivalence and the hit
+extraction are proved; the remaining work is the prefix-order/failure
+witness packaging (the first exact goal).  `p1r_first_match` in
+`MinskyLeftInfiniteEncode.v` is the concrete p=1 witness.
+
+## 12. General macro composition status
+
+The frame equalities (`book_q5_raw_right_frame_eq`,
+`book_q5_raw_left_frame_eq`), the encoder (`lic_q5_encode`,
+`lic_q5_encode_rep`), the right window package, the left buffer update,
+and the concrete p=1 right-hit macro (`p1r_right_hit_macro`) are
+kernel-checked.
+
+The general right-hit macro still needs the full lookup packaging of
+section 11.1 and the left ptape package of section 10.3.  The general
+left macro additionally needs the window update: for a left step, if
+`lo < head - 1`, keep `lo`; if `lo = head - 1`, use `lo - 1` (one extra
+blank cell to the left) so the new q5 ptape is nonempty.  The exact
+remaining frame is:
+
+```coq
+raw_ptape_left_step :
+  ... -> lo <= lic_head c ->
+  raw_ptape (left_infinite_step rows c) lo = raw_ptape_prefix c lo.
+```
+
+Boundary/halt: `MinskyLeftInfiniteSentinel.v` proves
+`left_infinite_step_sentinel_fresh`,
+`fresh_boundary_new_condition_no_match`, and
+`boundary_right_sentinel_macro_step`.  Connecting that halt frame to
+`lic_q5_encode` is the remaining encoder frame; the sentinel theorem
+already produces the exact `dispatch_halt_at_y` frame.
+
+## 13. Concrete left-window check: the frame is correct
+
+`formal/utm/MinskyLeftInfiniteLeftCheck.v` tests the exact configuration:
+
+```text
+head = 2, R = 2, lo = 0, tape all false, state = [false]
+raw_ptape_prefix = [cell0], raw_last = cell1, raw_buf = []
+```
+
+with a left row writing `true` and next state `[false]`.  It compiles
+with Coq 8.20.1 and passes `coqchk`.
+
+### 13.1 Input and successor encodes
+
+```coq
+lg_input_encode :
+  lic_q5_encode 0 lg_start (source_rows_to_book lg_rows) [] =
+  book_q5_raw [false] [] false [0] false
+    (source_rows_to_book lg_rows) [].
+
+lg_successor_encode :
+  lic_q5_encode 0 (left_infinite_step lg_rows lg_start)
+    (source_rows_to_book lg_rows) [] =
+  book_q5_raw [false] [1] false [] false
+    (source_rows_to_book lg_rows) [].
+```
+
+The successor has buffer `[true]`, ptape `[]`, and `w_tape = cell0`.
+The input q5 ptape is `[cell0]`, and the input q5 `w_tape` is `cell1`.
+
+### 13.2 The frame instance
+
+```coq
+lg_left_frame :
+  book_q5_raw [false] [1] false [] false
+    (source_rows_to_book lg_rows) []
+  = cfg_ml 5
+      (rev (source_bit true ::
+            rev (book_return_rail_raw [false] [])) ++
+       6 :: rev ([] ++ [source_bit false]))
+      (...).
+
+lg_successor_matches_frame :
+  lic_q5_encode 0 (left_infinite_step lg_rows lg_start)
+    (source_rows_to_book lg_rows) [] =
+  cfg_ml 5 ... .
+```
+
+So the left output frame **does** equal
+`lic_q5_encode 0 (left_infinite_step lg_rows lg_start)` for this
+instance.
+
+### 13.3 Resolution of the apparent off-by-one
+
+The apparent mismatch comes from reading the parameters of
+`book_q5_raw_left_frame_eq` as if `ptape_prefix` were the *input* q5
+ptape and `w_tape_left` were the *input* q5 `w_tape`.
+
+In the lemma:
+
+```coq
+book_q5_raw init (source_bit hit_w :: buf) w_tape_left
+  ptape_prefix w_read ...
+```
+
+the output q5 frame is `ptape_prefix` / `w_tape_left`.  The cycle
+output's **input** q5 ptape appears as
+
+```text
+ptape_prefix ++ [source_bit w_tape_left]
+```
+
+in the physical tape.  For the input ptape `[cell0]`, the only correct
+split is
+
+```text
+ptape_prefix = [],   w_tape_left = cell0.
+```
+
+The old q5 `w_tape` (cell1) is not the new `w_tape`; it is the new read
+bit `w_read` (the content of the new head cell).  Thus the output is
+
+```text
+book_q5_raw [false] [true] false [] false rows tail,
+```
+
+exactly the successor encode.
+
+Therefore the fix is **neither (a) nor (b)**: `lic_q5_encode` is already
+correct for the left frame, and no left q5 normalization is needed.  The
+remaining left one-step gap is the separate `raw_ptape_left_step` window
+identity of section 10.3, not the frame equality.

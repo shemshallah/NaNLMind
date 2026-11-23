@@ -309,8 +309,24 @@ jobs:
           coqchk -Q formal/utm NaNLM formal/utm/MinskyBookRawBuffer.vo
           coqc -Q formal/utm NaNLM \
             -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyLeftInfiniteWindow.v
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyLeftInfiniteWindow.vo
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyLeftInfiniteLookup.v
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyLeftInfiniteLookup.vo
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyLeftInfiniteSentinel.v
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyLeftInfiniteSentinel.vo
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyLeftInfiniteEncode.v
           coqchk -Q formal/utm NaNLM formal/utm/MinskyLeftInfiniteEncode.vo
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyLeftInfiniteLeftCheck.v
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyLeftInfiniteLeftCheck.vo
           coqc -Q formal/utm NaNLM \
             -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyBookEncode.v
@@ -429,8 +445,16 @@ jobs:
             formal/utm/MinskyLeftCycleAudit.vo
             formal/utm/MinskyBookRawBuffer.v
             formal/utm/MinskyBookRawBuffer.vo
+            formal/utm/MinskyLeftInfiniteWindow.v
+            formal/utm/MinskyLeftInfiniteWindow.vo
+            formal/utm/MinskyLeftInfiniteLookup.v
+            formal/utm/MinskyLeftInfiniteLookup.vo
+            formal/utm/MinskyLeftInfiniteSentinel.v
+            formal/utm/MinskyLeftInfiniteSentinel.vo
             formal/utm/MinskyLeftInfiniteEncode.v
             formal/utm/MinskyLeftInfiniteEncode.vo
+            formal/utm/MinskyLeftInfiniteLeftCheck.v
+            formal/utm/MinskyLeftInfiniteLeftCheck.vo
             formal/utm/MinskyBookEncode.v
             formal/utm/MinskyBookEncode.vo
             formal/utm/MinskyTaggedRestore.v
