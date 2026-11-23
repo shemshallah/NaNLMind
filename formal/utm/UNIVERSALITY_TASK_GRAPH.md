@@ -104,9 +104,29 @@ new book-frame restart adapter because the canonical first-mismatch
 theorems assume adjacent marked/raw copies; the book layout has the row
 `X` delimiter between them.
 
-Remaining in the running cycle: generalize the locate block to an
-arbitrary row list, handle no-match/halt, add the steady-state q5 entry,
-and build the concrete encoder.
+`formal/utm/MinskyBookLocateRows.v` now proves the full row-list locate
+phase:
+
+```text
+book_locate_failed_row
+book_locate_failed_rows
+book_locate_hit_row
+book_locate_rows_to_q6
+book_locate_rows_to_halt
+book_q5_steady_to_locate_state
+book_locate_rows_to_q12
+book_steady_q5_locate_to_q12
+```
+
+It includes the recursive failed-row invariant, the no-match/halt path,
+and the steady-state q5 entry produced by the perform cycle.  The only
+remaining composition gap is the q12 `Hright` trailing-cell equation:
+the next cell after the q15 rail is `X=4` or the final `Y`, not a raw
+source bit.  The planned fix is to absorb the leading `X` into the q15
+tag rail and use the first raw bit of the next row as the stop cell.
+
+Remaining overall: close that Hright equation, package the full
+q5 -> locate -> q12 -> q5 cycle, and build the concrete encoder.
 
 ## Experimental verdict on the prefetch route
 
