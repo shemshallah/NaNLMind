@@ -590,3 +590,29 @@ extra q5 padding lies beyond that scan.  The address equality above is
 only a sufficient bridge once a common explicit padding is chosen.
 
 Claim remains false.
+
+## Padded halting-equivalence shape
+
+The bounded-window theorems suggest the correct native side for the
+padded family is **clock-bounded**, not padding-bounded:
+
+```text
+exists n t,
+  t <= lic_bounded_clock rows n (lic_pad_lo c n) (lic_pad_cfg c n) /\
+  c_halted (run t (lic_encode_pad rows n c)) = true
+```
+
+The forward direction is `lic_pad_source_halt_to_native` (the first halt
+is at `k <= n`, and the native clock is monotone).  The converse does
+**not** need `t <= n`; it needs a macro-boundary analysis inside the
+clock:
+
+- if `run clock(k)` is halted, the bounded hit-run theorem identifies it
+  with `lic_q5_encode (run k c)`, so the source is halted;
+- a halt strictly between `clock(k)` and `clock(k+1)` is impossible
+  because the macro step theorem ends in a running q5 frame unless the
+  source step itself halts;
+- the first no-match/boundary step within `n` gives the source halt.
+
+This avoids the false condition `t <= padding` and is the intended bridge
+after the boundary macro and the left-window pad.
