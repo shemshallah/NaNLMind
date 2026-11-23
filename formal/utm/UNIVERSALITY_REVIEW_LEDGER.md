@@ -2087,3 +2087,30 @@ Remaining:
 3. left-window pad and fixed `encode`/`macro_cost` assembly.
 
 Claim remains false.
+
+## November 23: lifted boundary and left-depth soundness
+
+Kernel-checked on main:
+
+- `MinskyLeftInfiniteBoundaryLookup.v`:
+  `book_first_match_first_bit_halt` — the p-bit reversed source
+  `tl hit_init ++ [hd hit_init]` starts with `true`, every lifted row
+  condition starts with `false`, and the first-bit mismatch is a valid
+  `book_failure` (not `book_lookup_bad`).
+- `MinskyLeftInfiniteBoundaryLifted.v`:
+  `lic_q5_encode_lifted_boundary_halt` and
+  `lic_q5_encode_lifted_boundary_halt_state` — the source-row boundary
+  run with the failure witnesses computed.
+- `MinskyLeftInfiniteLeftDepth.v`:
+  `lic_left_hit_run`, `lic_left_none_halt_run`,
+  `lic_left_no_premature_halt` — actual right wall, separate left
+  window, per-step right-move wall condition.
+
+The forward lifted halting assembly is in progress.  The reverse
+direction will use `lic_left_no_premature_halt` plus the first-stop scan:
+if the native halts within the macro clock, the scan either finds a
+source halt or the run is entirely hit/left/right; the latter contradicts
+the no-premature-halt theorem.  A boundary halt at the last scanned step
+is itself a source halt.
+
+Claim remains false.
