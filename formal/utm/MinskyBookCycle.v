@@ -9,7 +9,7 @@ Import ListNotations.
 
 From NaNLM Require Import MinskyTable MinskyConcreteEntry
   MinskyConcreteDispatch MinskySourceEncoding MinskyMatchMacro
-  MinskyActionMacro MinskyHeadMoveMacro MinskyDirectionDecision MinskyRelocationMacro MinskyCanonicalCopyGeneral MinskyCanonicalInstruction MinskyBookLayout.
+  MinskyActionMacro MinskyCanonicalRestore MinskyHeadMoveMacro MinskyDirectionDecision MinskyRelocationMacro MinskyCanonicalCopyGeneral MinskyCanonicalInstruction MinskyBookLayout.
 
 Lemma q14_restore_match_mark :
   forall b, q14_restore (match_mark b) = source_bit b.
@@ -259,3 +259,4 @@ Proof.
 Qed.
 
 Print Assumptions book_q6_to_q5_right.
+
