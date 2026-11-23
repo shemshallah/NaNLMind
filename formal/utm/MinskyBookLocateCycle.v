@@ -27,7 +27,7 @@ From NaNLM Require Import MinskyTable MinskyConcreteEntry MinskyConcreteDispatch
   MinskyCanonicalDirection MinskyCanonicalInstruction MinskyHeadMoveMacro
   MinskyCanonicalRestore MinskyDirectionDecision MinskyRelocationMacro
   MinskyBookLayout MinskyBookCycle MinskyBookLeftCycle
-  MinskyBookLocate MinskyBookLocateRows.
+  MinskyBookLocate MinskyBookLocateRows MinskyBookLocateWide.
 
 (** ** Frame abbreviations *)
 
@@ -1041,3 +1041,840 @@ Proof.
 Qed.
 
 Print Assumptions book_steady_q5_locate_perform_right_sentinel_halt.
+
+(** ** Two-boolean input-side q5 -> q12 *)
+
+Definition book_steady_locate_q12_clock_gen
+    (init : list bool) (w_read w_tape : bool)
+    (steps : list book_failure) (hit : book_row) : nat :=
+  S (length init) +
+  (book_failures_clock [] steps +
+   book_hit_clock (init ++ [w_read]) (map bf_row steps) +
+   (copy_all_clock (init ++ [w_read]) (br_action hit) []
+      (book_cycle_region steps ++ map match_mark (init ++ [w_read])) +
+    direction_clock
+      (book_cycle_region steps ++ map match_mark (init ++ [w_read]) ++
+       map match_mark (br_action hit))
+      (map match_mark (br_action hit)))).
+
+Theorem book_steady_q5_locate_to_q12_gen :
+  forall (init : list bool) (w_read w_tape : bool) (b : nat)
+         (ptape tail : list nat) (steps : list book_failure)
+         (hit : book_row) (after : list book_row),
+    1 <= b ->
+    Forall (fun st => bf_src st = init ++ [w_read]) steps ->
+    br_cond hit = init ++ [w_read] ->
+    length (br_action hit) = length (init ++ [w_read]) ->
+    run (book_steady_locate_q12_clock_gen init w_read w_tape steps hit)
+      (cfg_ml 5
+        (rev (tl (book_buf b) ++ [5] ++ map source_bit init) ++
+         6 :: source_bit w_tape :: rev ptape)
+        (match_mark w_read :: 4 ::
+         book_raw_desc (map bf_row steps ++ hit :: after) ++ 5 :: tail))
+    = cfg_ml (if br_dir hit then 12 else 13)
+        (rev (map match_mark (br_action hit)) ++
+         5 :: rev (book_buf (b - 1)) ++
+         6 :: rev (ptape ++ [source_bit w_tape]))
+        (4 ::
+         ((book_cycle_region steps ++ map match_mark (init ++ [w_read])) ++
+          map match_mark (br_action hit)) ++
+         book_cycle_dir_mark hit ::
+         book_raw_tail after ++ 5 :: tail).
+Proof.
+  intros init w_read w_tape b ptape tail steps hit after
+    Hb Hsteps Hcond Hlen.
+  rewrite (dispatch_run_add (S (length init))
+    (book_failures_clock [] steps +
+     book_hit_clock (init ++ [w_read]) (map bf_row steps) +
+     (copy_all_clock (init ++ [w_read]) (br_action hit) []
+        (book_cycle_region steps ++ map match_mark (init ++ [w_read])) +
+      direction_clock
+        (book_cycle_region steps ++ map match_mark (init ++ [w_read]) ++
+         map match_mark (br_action hit))
+        (map match_mark (br_action hit))))).
+  assert (Hne : map bf_row steps ++ hit :: after <> []).
+  { apply app_cons_book_row_neq_nil. }
+  rewrite (book_q5_steady_to_locate_state_gen init w_read w_tape b ptape tail
+    (map bf_row steps ++ hit :: after) Hb Hne).
+  cbn [app].
+  apply (book_locate_rows_to_q12 (init ++ [w_read]) [] steps hit after
+    (b - 1) (ptape ++ [source_bit w_tape]) tail Hsteps Hcond Hlen).
+Qed.
+
+Print Assumptions book_steady_q5_locate_to_q12_gen.
+
+Theorem book_steady_q5_locate_to_q5_right_gen :
+  forall (init : list bool) (w_read w_tape : bool) (b : nat) (ptape tail : list nat)
+         (steps : list book_failure) (hit : book_row)
+         (next : book_row) (rest : list book_row)
+         (hit_init : list bool) (hit_w : bool)
+         (c0 : bool) (creast : list bool),
+    2 <= b ->
+    Forall (fun st => bf_src st = init ++ [w_read]) steps ->
+    br_cond hit = init ++ [w_read] ->
+    length (br_action hit) = length (init ++ [w_read]) ->
+    br_action hit = hit_init ++ [hit_w] ->
+    br_dir hit = true ->
+    br_cond next = c0 :: creast ->
+    Forall q21_pass (book_return_rail hit_init (b - 1)) ->
+    Forall q17_pass
+      (tl (book_buf (b - 1)) ++ [5] ++ map source_bit hit_init) ->
+    run (book_steady_locate_q12_clock_gen init w_read w_tape steps hit +
+         book_q12_perform_right_clock hit_init hit_w b
+           (book_cycle_tags steps (init ++ [w_read]) hit)
+           (tl (book_buf (b - 1)) ++ [5] ++ map source_bit hit_init))
+      (cfg_ml 5
+        (rev (tl (book_buf b) ++ [5] ++ map source_bit init) ++
+         6 :: source_bit w_tape :: rev ptape)
+        (match_mark w_read :: 4 ::
+         book_raw_desc (map bf_row steps ++ hit :: next :: rest) ++
+         5 :: tail))
+    = cfg_ml 5
+        (rev (tl (book_buf (b - 1)) ++ [5] ++ map source_bit hit_init) ++
+         6 :: source_bit hit_w :: rev (ptape ++ [source_bit w_tape]))
+        (2 :: 4 ::
+         map q16_restore
+           (rev (book_cycle_tags steps (init ++ [w_read]) hit)) ++
+         source_bit c0 ::
+         book_after_suffix creast next rest ++ 5 :: tail).
+Proof.
+  intros init w_read w_tape b ptape tail steps hit next rest hit_init hit_w c0 creast
+    Hb Hsteps Hcond Hlen Hact Hdir Hnext H21 H17.
+  set (between :=
+    tl (book_buf (b - 1)) ++ [5] ++ map source_bit hit_init).
+  set (dirs := book_return_rail hit_init (b - 1)).
+  set (tags := book_cycle_tags steps (init ++ [w_read]) hit).
+  change (run (book_steady_locate_q12_clock_gen init w_read w_tape steps hit +
+               book_q12_perform_right_clock hit_init hit_w b tags between)
+    (cfg_ml 5
+      (rev (tl (book_buf b) ++ [5] ++ map source_bit init) ++
+       6 :: source_bit w_tape :: rev ptape)
+      (match_mark w_read :: 4 ::
+       book_raw_desc (map bf_row steps ++ hit :: next :: rest) ++
+       5 :: tail))
+    = cfg_ml 5
+        (rev (tl (book_buf (b - 1)) ++ [5] ++ map source_bit hit_init) ++
+         6 :: source_bit hit_w :: rev (ptape ++ [source_bit w_tape]))
+        (2 :: 4 :: map q16_restore (rev tags) ++
+         source_bit c0 :: book_after_suffix creast next rest ++ 5 :: tail)).
+  rewrite (dispatch_run_add
+    (book_steady_locate_q12_clock_gen init w_read w_tape steps hit)
+    (book_q12_perform_right_clock hit_init hit_w b tags between)).
+  unfold book_steady_locate_q12_clock, book_cycle_region.
+  assert (Hb1 : 1 <= b) by lia.
+  rewrite (book_steady_q5_locate_to_q12_gen init w_read w_tape b ptape tail steps hit
+    (next :: rest) Hb1 Hsteps Hcond Hlen).
+  (* The q12 frame. *)
+  rewrite Hdir.
+  rewrite Hact.
+  rewrite rev_match_mark_snoc_rows.
+  (* Passability hypotheses. *)
+  assert (H12 : Forall q12_pass
+    (match_mark hit_w :: rev (map match_mark hit_init) ++
+     5 :: rev (book_buf (b - 1)))).
+  { constructor.
+    - apply q12_pass_match_mark.
+    - apply Forall_app. split.
+      + apply Forall_rev, Forall_q12_match_marks.
+      + constructor.
+        * unfold q12_pass; auto 10.
+        * apply Forall_rev, Forall_q12_book_buf. }
+  assert (H14 : Forall q14_pass
+    (book_buf (b - 1) ++ [5] ++
+     rev (rev (map match_mark hit_init)) ++ [match_mark hit_w])).
+  { apply Forall_app. split.
+    - apply Forall_q14_book_buf.
+    - apply Forall_app. split.
+      + constructor; [unfold q14_pass; auto 10 | constructor].
+      + apply Forall_app. split.
+        * rewrite rev_involutive. apply Forall_q14_match_marks.
+        * constructor; [apply q14_pass_match_mark | constructor]. }
+  assert (Hin5 : In 5 dirs).
+  { unfold dirs, book_return_rail. apply in_or_app. right. left. reflexivity. }
+  assert (Hdirs_ne : dirs <> []).
+  { intro H. rewrite H in Hin5. exact (in_nil Hin5). }
+  assert (Hdirs_eq : hd 0 dirs :: tl dirs = dirs)
+    by (destruct dirs as [|d ds]; [contradiction|reflexivity]).
+  assert (H21' : Forall q21_pass (hd 0 dirs :: tl dirs)).
+  { rewrite Hdirs_eq. exact H21. }
+  assert (Hrestored :
+    map q14_restore
+      (rev (book_buf (b - 1) ++ [5] ++
+            rev (rev (map match_mark hit_init)) ++ [match_mark hit_w])) =
+    source_bit hit_w :: hd 0 dirs :: tl dirs).
+  { rewrite (book_restored_frame hit_init (b - 1) hit_w).
+    rewrite Hdirs_eq. reflexivity. }
+  assert (Hsplit : rev (hd 0 dirs :: tl dirs) =
+                   source_bit false :: between).
+  { rewrite Hdirs_eq. unfold dirs, between.
+    apply book_return_split. lia. }
+  assert (H15 : Forall q15_pass (rev tags)).
+  { unfold tags. rewrite book_cycle_tags_rev_eq.
+    apply Forall_q15_cycle_rail. }
+  assert (H16 : Forall q16_pass (tags ++ [4])).
+  { unfold tags. apply Forall_q16_cycle_tags_snoc. }
+  assert (Hright :
+    ((book_cycle_region steps ++ map match_mark (init ++ [w_read])) ++
+     map match_mark (hit_init ++ [hit_w])) ++
+    book_cycle_dir_mark hit ::
+      (book_raw_tail (next :: rest) ++ 5 :: tail) =
+    rev tags ++ source_bit c0 ::
+      (book_after_suffix creast next rest ++ 5 :: tail)).
+  { unfold tags. rewrite book_cycle_tags_rev_eq.
+    unfold book_cycle_marked.
+    rewrite <- Hact.
+    rewrite book_raw_tail_cons.
+    rewrite (book_raw_desc_cons_cond next c0 creast rest Hnext).
+    unfold book_cycle_dir_mark.
+    cbn [app].
+    repeat rewrite <- app_assoc.
+    cbn [app].
+    reflexivity. }
+  unfold book_q12_perform_right_clock, restore_clock.
+  unfold book_cycle_region, book_cycle_dir_mark.
+  fold dirs.
+  rewrite <- Hdirs_eq.
+  eapply (book_q12_restore_to_q5_right
+    (match_mark hit_w) (rev (map match_mark hit_init))
+    (book_buf (b - 1)) (ptape ++ [source_bit w_tape])
+    ((book_cycle_region steps ++ map match_mark (init ++ [w_read])) ++
+     map match_mark (hit_init ++ [hit_w]))
+    (book_cycle_dir_mark hit)
+    (book_raw_tail (next :: rest) ++ 5 :: tail)
+    tags hit_w (hd 0 dirs) (tl dirs) false c0
+    between (book_after_suffix creast next rest ++ 5 :: tail)
+    H12 H14 Hrestored H21' Hsplit H17 Hright H15 H16).
+Qed.
+
+Theorem book_steady_q5_locate_to_q5_left_gen :
+  forall (init : list bool) (w_read w_tape : bool) (b : nat) (ptape tail : list nat)
+         (steps : list book_failure) (hit : book_row)
+         (next : book_row) (rest : list book_row)
+         (hit_init : list bool) (hit_w : bool)
+         (c0 : bool) (creast : list bool),
+    2 <= b ->
+    Forall (fun st => bf_src st = init ++ [w_read]) steps ->
+    br_cond hit = init ++ [w_read] ->
+    length (br_action hit) = length (init ++ [w_read]) ->
+    br_action hit = hit_init ++ [hit_w] ->
+    br_dir hit = false ->
+    br_cond next = c0 :: creast ->
+    Forall q21_pass (book_return_rail hit_init (b - 1)) ->
+    Forall q17_pass
+      (source_bit hit_w :: rev (book_return_rail hit_init (b - 1))) ->
+    run (book_steady_locate_q12_clock_gen init w_read w_tape steps hit +
+         book_q13_perform_left_clock hit_init hit_w b
+           (book_cycle_tags steps (init ++ [w_read]) hit))
+      (cfg_ml 5
+        (rev (tl (book_buf b) ++ [5] ++ map source_bit init) ++
+         6 :: source_bit w_tape :: rev ptape)
+        (match_mark w_read :: 4 ::
+         book_raw_desc (map bf_row steps ++ hit :: next :: rest) ++
+         5 :: tail))
+    = cfg_ml 5
+        (rev (source_bit hit_w ::
+              rev (hd 0 (book_return_rail hit_init (b - 1)) ::
+                   tl (book_return_rail hit_init (b - 1)))) ++
+         6 :: rev ptape)
+        ((if w_tape then 3 else 2) ::
+         map q16_restore
+           (rev (book_cycle_tags steps (init ++ [w_read]) hit ++ [4])) ++
+         source_bit c0 ::
+         book_after_suffix creast next rest ++ 5 :: tail).
+Proof.
+  intros init w_read w_tape b ptape tail steps hit next rest hit_init hit_w c0 creast
+    Hb Hsteps Hcond Hlen Hact Hdir Hnext H21 Hreturn.
+  set (dirs := book_return_rail hit_init (b - 1)).
+  set (tags := book_cycle_tags steps (init ++ [w_read]) hit).
+  rewrite (dispatch_run_add
+    (book_steady_locate_q12_clock_gen init w_read w_tape steps hit)
+    (book_q13_perform_left_clock hit_init hit_w b tags)).
+  unfold book_steady_locate_q12_clock, book_cycle_region.
+  assert (Hb1 : 1 <= b) by lia.
+  rewrite (book_steady_q5_locate_to_q12_gen init w_read w_tape b ptape tail steps hit
+    (next :: rest) Hb1 Hsteps Hcond Hlen).
+  rewrite Hdir.
+  rewrite Hact.
+  rewrite rev_match_mark_snoc_rows.
+  assert (H12 : Forall q12_pass
+    (match_mark hit_w :: rev (map match_mark hit_init) ++
+     5 :: rev (book_buf (b - 1)))).
+  { constructor.
+    - apply q12_pass_match_mark.
+    - apply Forall_app. split.
+      + apply Forall_rev, Forall_q12_match_marks.
+      + constructor.
+        * unfold q12_pass; auto 10.
+        * apply Forall_rev, Forall_q12_book_buf. }
+  assert (H14 : Forall q14_pass
+    (book_buf (b - 1) ++ [5] ++
+     rev (rev (map match_mark hit_init)) ++ [match_mark hit_w])).
+  { apply Forall_app. split.
+    - apply Forall_q14_book_buf.
+    - apply Forall_app. split.
+      + constructor; [unfold q14_pass; auto 10 | constructor].
+      + apply Forall_app. split.
+        * rewrite rev_involutive. apply Forall_q14_match_marks.
+        * constructor; [apply q14_pass_match_mark | constructor]. }
+  assert (Hin5 : In 5 dirs).
+  { unfold dirs, book_return_rail. apply in_or_app. right. left. reflexivity. }
+  assert (Hdirs_ne : dirs <> []).
+  { intro H. rewrite H in Hin5. exact (in_nil Hin5). }
+  assert (Hdirs_eq : hd 0 dirs :: tl dirs = dirs)
+    by (destruct dirs as [|d ds]; [contradiction|reflexivity]).
+  assert (H21' : Forall q21_pass (hd 0 dirs :: tl dirs)).
+  { rewrite Hdirs_eq. exact H21. }
+  assert (Hrestored :
+    map q14_restore
+      (rev (book_buf (b - 1) ++ [5] ++
+            rev (rev (map match_mark hit_init)) ++ [match_mark hit_w])) =
+    source_bit hit_w :: hd 0 dirs :: tl dirs).
+  { rewrite (book_restored_frame hit_init (b - 1) hit_w).
+    rewrite Hdirs_eq. reflexivity. }
+  assert (Hrestored' :
+    source_bit hit_w :: hd 0 dirs :: tl dirs =
+    source_bit hit_w :: hd 0 dirs :: tl dirs)
+    by reflexivity.
+  assert (Hdata : rev (ptape ++ [source_bit w_tape]) = source_bit w_tape :: rev ptape).
+  { rewrite rev_app_distr. cbn [rev]. reflexivity. }
+  assert (H15 : Forall q15_pass (rev tags)).
+  { unfold tags. rewrite book_cycle_tags_rev_eq.
+    apply Forall_q15_cycle_rail. }
+  assert (H16 : Forall q16_pass (tags ++ [4])).
+  { unfold tags. apply Forall_q16_cycle_tags_snoc. }
+  assert (Hright :
+    ((book_cycle_region steps ++ map match_mark (init ++ [w_read])) ++
+     map match_mark (hit_init ++ [hit_w])) ++
+    book_cycle_dir_mark hit ::
+      (book_raw_tail (next :: rest) ++ 5 :: tail) =
+    rev tags ++ source_bit c0 ::
+      (book_after_suffix creast next rest ++ 5 :: tail)).
+  { unfold tags. rewrite book_cycle_tags_rev_eq.
+    unfold book_cycle_marked.
+    rewrite <- Hact.
+    rewrite book_raw_tail_cons.
+    rewrite (book_raw_desc_cons_cond next c0 creast rest Hnext).
+    unfold book_cycle_dir_mark.
+    cbn [app].
+    repeat rewrite <- app_assoc.
+    cbn [app].
+    reflexivity. }
+  assert (Hreturn' : Forall q17_pass
+    (source_bit hit_w :: rev (hd 0 dirs :: tl dirs))).
+  { rewrite Hdirs_eq. exact Hreturn. }
+  (* Normalize the q13 frame and clock for the application. *)
+  unfold book_q13_perform_left_clock, restore_clock.
+  unfold book_cycle_region, book_cycle_dir_mark.
+  fold dirs.
+  rewrite <- Hdirs_eq.
+  apply (book_q13_restore_to_q5_left
+    (match_mark hit_w) (rev (map match_mark hit_init))
+    (book_buf (b - 1)) (ptape ++ [source_bit w_tape])
+    ((book_cycle_region steps ++ map match_mark (init ++ [w_read])) ++
+     map match_mark (hit_init ++ [hit_w]))
+    (book_cycle_dir_mark hit)
+    (book_raw_tail (next :: rest) ++ 5 :: tail)
+    tags (source_bit hit_w :: hd 0 dirs :: tl dirs)
+    hit_w (hd 0 dirs) (tl dirs) w_tape c0 (rev ptape)
+    (book_after_suffix creast next rest ++ 5 :: tail)
+    H12 H14 Hrestored Hrestored' Hdata Hright H15 H16 H21' Hreturn').
+Qed.
+
+
+
+(** ** Left sentinel halt composition
+
+    The left perform leaves the buffer prefix
+
+      [rev (book_buf (b-1)) ++ source_bit hit_w ++ 6 :: rev ptape]
+
+    rather than the standard [rev (book_buf buf) ++ 6 :: rev ptape].
+    The generalized locate phase [book_locate_state_wide] accepts this
+    arbitrary suffix.  The retried source word is the action prefix
+    followed by the old read bit, [hit_init ++ [w]]. *)
+
+Definition book_sentinel_halt_left_wide
+    (retry_steps : list book_failure) (sf : book_failure)
+    (left : list nat) : list nat :=
+  rev (map source_bit (bf_row_rest sf) ++
+       map source_bit (br_action (bf_row sf)) ++
+       [source_bit (br_dir (bf_row sf))]) ++
+  match_mark (negb (bf_bit sf)) ::
+  rev (map match_mark (bf_src_rest sf) ++
+       (book_marked_prefix (map bf_row retry_steps) ++ [4]) ++
+       map match_mark (bf_good sf)) ++
+  match_raw (bf_bit sf) :: rev (map match_raw (bf_good sf)) ++
+  5 :: left.
+
+Lemma book_left_perform_buffer :
+  forall (hit_init : list bool) (hit_w : bool) (b : nat)
+         (ptape : list nat),
+    rev (source_bit hit_w :: rev (book_return_rail hit_init (b - 1))) ++
+    6 :: rev ptape =
+    rev (map source_bit hit_init) ++ 5 ::
+      (rev (book_buf (b - 1)) ++ [source_bit hit_w] ++ 6 :: rev ptape).
+Proof.
+  intros. unfold book_return_rail.
+  rewrite rev_app_distr. cbn [rev].
+  rewrite rev_app_distr. cbn [rev].
+  rewrite rev_involutive.
+  rewrite rev_involutive.
+  repeat rewrite <- app_assoc.
+  reflexivity.
+Qed.
+
+Lemma rev_snoc_cons_nat :
+  forall (l : list nat) (x : nat), rev (l ++ [x]) = x :: rev l.
+Proof.
+  intros. rewrite rev_app_distr. cbn [rev]. reflexivity.
+Qed.
+
+Lemma book_raw_tail_map_app_singleton :
+  forall (steps : list book_failure) (f : book_failure),
+    book_raw_tail (map bf_row (steps ++ [f])) =
+    4 :: book_raw_desc (map bf_row (steps ++ [f])).
+Proof.
+  intros. rewrite map_app. cbn [map].
+  rewrite book_raw_tail_app_singleton. reflexivity.
+Qed.
+
+Lemma book_left_sentinel_restore :
+  forall (steps : list book_failure) (hit : book_row)
+         (bits newsrc creast : list bool) (w : bool) (tail : list nat),
+    br_cond hit = bits ->
+    match_mark w ::
+    map q16_restore (rev (book_cycle_tags steps bits hit ++ [4])) ++
+    source_bit (negb (hd false newsrc)) ::
+    book_after_suffix creast (book_sentinel_row newsrc creast) [] ++ tail =
+    match_mark w ::
+    4 :: book_raw_desc (map bf_row steps ++ hit ::
+      [book_sentinel_row newsrc creast]) ++ tail.
+Proof.
+  intros steps hit bits newsrc creast w tail Hcond.
+  rewrite rev_snoc_cons_nat.
+  cbn [map q16_restore].
+  rewrite <- (book_sentinel_restore_frame_tail steps hit bits newsrc creast
+    tail Hcond).
+  reflexivity.
+Qed.
+
+Print Assumptions book_left_sentinel_restore.
+
+Theorem book_q5_after_perform_left_sentinel_halt :
+  forall (init : list bool) (w : bool) (b : nat) (ptape tail : list nat)
+         (steps : list book_failure) (hit : book_row)
+         (hit_init : list bool) (hit_w : bool) (creast : list bool)
+         (retry_steps : list book_failure),
+    2 <= b ->
+    Forall (fun st => bf_src st = hit_init ++ [w]) retry_steps ->
+    map bf_row
+      (retry_steps ++
+       [book_sentinel_failure (hit_init ++ [w]) creast
+          (app_singleton_bool_neq_nil hit_init w)]) =
+    map bf_row steps ++ hit ::
+      [book_sentinel_row (hit_init ++ [w]) creast] ->
+    run (S (length hit_init) +
+         (book_failures_clock [] retry_steps +
+          book_halt_clock (map bf_row retry_steps)
+            (book_sentinel_failure (hit_init ++ [w]) creast
+               (app_singleton_bool_neq_nil hit_init w))))
+      (cfg_ml 5
+        (rev (source_bit hit_w ::
+              rev (book_return_rail hit_init (b - 1))) ++
+         6 :: rev ptape)
+        (match_mark w :: 4 ::
+         book_raw_desc
+           (map bf_row steps ++ hit ::
+            [book_sentinel_row (hit_init ++ [w]) creast]) ++
+         5 :: tail))
+    = dispatch_halt_at_y
+        (book_sentinel_halt_left_wide retry_steps
+           (book_sentinel_failure (hit_init ++ [w]) creast
+              (app_singleton_bool_neq_nil hit_init w))
+           (rev (book_buf (b - 1)) ++ [source_bit hit_w] ++
+            6 :: rev ptape))
+        tail.
+Proof.
+  intros init w b ptape tail steps hit hit_init hit_w creast retry_steps
+    Hb Hretry Hrows.
+  set (newsrc := hit_init ++ [w]).
+  set (sf := book_sentinel_failure newsrc creast
+               (app_singleton_bool_neq_nil hit_init w)).
+  fold newsrc sf in Hrows.
+  rewrite <- Hrows.
+  rewrite (book_left_perform_buffer hit_init hit_w b ptape).
+  rewrite (dispatch_run_add (S (length hit_init))
+    (book_failures_clock [] retry_steps +
+     book_halt_clock (map bf_row retry_steps) sf)).
+  rewrite (book_q5_steady_to_q1 hit_init w
+    (rev (book_buf (b - 1)) ++ [source_bit hit_w] ++ 6 :: rev ptape)
+    (book_raw_desc (map bf_row (retry_steps ++ [sf])) ++ 5 :: tail)).
+  replace (entry_config 1
+    (5 :: (rev (book_buf (b - 1)) ++ [source_bit hit_w] ++ 6 :: rev ptape))
+    (map match_mark (hit_init ++ [w]) ++
+     4 :: book_raw_desc (map bf_row (retry_steps ++ [sf])) ++ 5 :: tail))
+    with (book_locate_state_wide newsrc []
+      (map bf_row (retry_steps ++ [sf]))
+      (rev (book_buf (b - 1)) ++ [source_bit hit_w] ++ 6 :: rev ptape) tail).
+  2:{ subst newsrc. unfold book_locate_state_wide.
+      cbn [book_marked_prefix app].
+      rewrite book_raw_tail_map_app_singleton.
+      reflexivity. }
+  assert (Hretry' : Forall (fun st => bf_src st = newsrc)
+    (retry_steps ++ [sf])).
+  { apply Forall_app. split.
+    - unfold newsrc. exact Hretry.
+    - constructor.
+      + unfold sf, newsrc. apply book_sentinel_failure_src.
+      + constructor. }
+  apply (book_locate_rows_to_halt_wide newsrc [] retry_steps sf
+    (rev (book_buf (b - 1)) ++ [source_bit hit_w] ++ 6 :: rev ptape) tail
+    Hretry').
+Qed.
+
+Print Assumptions book_q5_after_perform_left_sentinel_halt.
+
+Lemma book_return_rail_neq_nil :
+  forall (init : list bool) (b : nat), book_return_rail init b <> [].
+Proof.
+  intros init b H.
+  assert (Hin : In 5 (book_return_rail init b)).
+  { unfold book_return_rail. apply in_or_app. right. left. reflexivity. }
+  rewrite H in Hin. exact (in_nil Hin).
+Qed.
+
+Theorem book_steady_q5_locate_perform_left_sentinel_halt :
+  forall (init : list bool) (w : bool) (b : nat) (ptape tail : list nat)
+         (steps : list book_failure) (hit : book_row)
+         (hit_init : list bool) (hit_w : bool) (creast : list bool)
+         (retry_steps : list book_failure),
+    2 <= b ->
+    Forall (fun st => bf_src st = init ++ [w]) steps ->
+    br_cond hit = init ++ [w] ->
+    length (br_action hit) = length (init ++ [w]) ->
+    br_action hit = hit_init ++ [hit_w] ->
+    br_dir hit = false ->
+    Forall q21_pass (book_return_rail hit_init (b - 1)) ->
+    Forall q17_pass
+      (source_bit hit_w :: rev (book_return_rail hit_init (b - 1))) ->
+    Forall (fun st => bf_src st = hit_init ++ [w]) retry_steps ->
+    map bf_row
+      (retry_steps ++
+       [book_sentinel_failure (hit_init ++ [w]) creast
+          (app_singleton_bool_neq_nil hit_init w)]) =
+    map bf_row steps ++ hit ::
+      [book_sentinel_row (hit_init ++ [w]) creast] ->
+    run (book_steady_locate_q12_clock init w steps hit +
+         book_q13_perform_left_clock hit_init hit_w b
+           (book_cycle_tags steps (init ++ [w]) hit) +
+         (S (length hit_init) +
+          (book_failures_clock [] retry_steps +
+           book_halt_clock (map bf_row retry_steps)
+             (book_sentinel_failure (hit_init ++ [w]) creast
+                (app_singleton_bool_neq_nil hit_init w)))))
+      (cfg_ml 5
+        (rev (tl (book_buf b) ++ [5] ++ map source_bit init) ++
+         6 :: source_bit w :: rev ptape)
+        (match_mark w :: 4 ::
+         book_raw_desc
+           (map bf_row steps ++ hit ::
+            [book_sentinel_row (hit_init ++ [w]) creast]) ++
+         5 :: tail))
+    = dispatch_halt_at_y
+        (book_sentinel_halt_left_wide retry_steps
+           (book_sentinel_failure (hit_init ++ [w]) creast
+              (app_singleton_bool_neq_nil hit_init w))
+           (rev (book_buf (b - 1)) ++ [source_bit hit_w] ++
+            6 :: rev ptape))
+        tail.
+Proof.
+  intros init w b ptape tail steps hit hit_init hit_w creast retry_steps
+    Hb Hsteps Hcond Hlen Hact Hdir H21 H17 Hretry Hrows.
+  set (newsrc := hit_init ++ [w]).
+  set (sentinel := book_sentinel_row newsrc creast).
+  set (sf := book_sentinel_failure newsrc creast
+               (app_singleton_bool_neq_nil hit_init w)).
+  fold newsrc sf in Hrows.
+  rewrite (dispatch_run_add
+    (book_steady_locate_q12_clock init w steps hit +
+     book_q13_perform_left_clock hit_init hit_w b
+       (book_cycle_tags steps (init ++ [w]) hit))
+    (S (length hit_init) +
+     (book_failures_clock [] retry_steps +
+      book_halt_clock (map bf_row retry_steps) sf))).
+  rewrite (book_steady_q5_locate_to_q5_left init w b ptape tail steps hit
+    sentinel [] hit_init hit_w (negb (hd false newsrc)) creast
+    Hb Hsteps Hcond Hlen Hact Hdir eq_refl H21 H17).
+  unfold sentinel.
+  change (run
+    (S (length hit_init) +
+     (book_failures_clock [] retry_steps +
+      book_halt_clock (map bf_row retry_steps) sf))
+    (cfg_ml 5
+      (rev (source_bit hit_w ::
+            rev (hd 0 (book_return_rail hit_init (b - 1)) ::
+                 tl (book_return_rail hit_init (b - 1)))) ++
+       6 :: rev ptape)
+      (match_mark w ::
+       map q16_restore
+         (rev (book_cycle_tags steps (init ++ [w]) hit ++ [4])) ++
+       source_bit (negb (hd false newsrc)) ::
+       book_after_suffix creast (book_sentinel_row newsrc creast) [] ++
+       5 :: tail))
+    = dispatch_halt_at_y
+        (book_sentinel_halt_left_wide retry_steps sf
+           (rev (book_buf (b - 1)) ++ [source_bit hit_w] ++
+            6 :: rev ptape)) tail).
+  rewrite (book_left_sentinel_restore steps hit (init ++ [w]) newsrc creast
+    w (5 :: tail) Hcond).
+  assert (Hdirs_eq :
+    hd 0 (book_return_rail hit_init (b - 1)) ::
+    tl (book_return_rail hit_init (b - 1)) =
+    book_return_rail hit_init (b - 1)).
+  { destruct (book_return_rail hit_init (b - 1)) as [|d ds] eqn:Hdirs;
+      [|reflexivity].
+    exfalso. apply (book_return_rail_neq_nil hit_init (b - 1)).
+    rewrite Hdirs. reflexivity. }
+  rewrite Hdirs_eq.
+  apply (book_q5_after_perform_left_sentinel_halt init w b ptape tail steps
+    hit hit_init hit_w creast retry_steps Hb Hretry Hrows).
+Qed.
+
+Print Assumptions book_steady_q5_locate_perform_left_sentinel_halt.
+
+(** The left perform retries the action prefix [hit_init] followed by
+    the old read bit.  When the action prefix is the original source
+    prefix, this is exactly [newsrc = init ++ [w]]. *)
+
+Corollary book_steady_q5_locate_perform_left_sentinel_halt_init :
+  forall (init : list bool) (w : bool) (b : nat) (ptape tail : list nat)
+         (steps : list book_failure) (hit : book_row)
+         (hit_w : bool) (creast : list bool)
+         (retry_steps : list book_failure),
+    2 <= b ->
+    Forall (fun st => bf_src st = init ++ [w]) steps ->
+    br_cond hit = init ++ [w] ->
+    length (br_action hit) = length (init ++ [w]) ->
+    br_action hit = init ++ [hit_w] ->
+    br_dir hit = false ->
+    Forall q21_pass (book_return_rail init (b - 1)) ->
+    Forall q17_pass
+      (source_bit hit_w :: rev (book_return_rail init (b - 1))) ->
+    Forall (fun st => bf_src st = init ++ [w]) retry_steps ->
+    map bf_row
+      (retry_steps ++
+       [book_sentinel_failure (init ++ [w]) creast
+          (app_singleton_bool_neq_nil init w)]) =
+    map bf_row steps ++ hit ::
+      [book_sentinel_row (init ++ [w]) creast] ->
+    run (book_steady_locate_q12_clock init w steps hit +
+         book_q13_perform_left_clock init hit_w b
+           (book_cycle_tags steps (init ++ [w]) hit) +
+         (S (length init) +
+          (book_failures_clock [] retry_steps +
+           book_halt_clock (map bf_row retry_steps)
+             (book_sentinel_failure (init ++ [w]) creast
+                (app_singleton_bool_neq_nil init w)))))
+      (cfg_ml 5
+        (rev (tl (book_buf b) ++ [5] ++ map source_bit init) ++
+         6 :: source_bit w :: rev ptape)
+        (match_mark w :: 4 ::
+         book_raw_desc
+           (map bf_row steps ++ hit ::
+            [book_sentinel_row (init ++ [w]) creast]) ++
+         5 :: tail))
+    = dispatch_halt_at_y
+        (book_sentinel_halt_left_wide retry_steps
+           (book_sentinel_failure (init ++ [w]) creast
+              (app_singleton_bool_neq_nil init w))
+           (rev (book_buf (b - 1)) ++ [source_bit hit_w] ++
+            6 :: rev ptape))
+        tail.
+Proof.
+  intros init w b ptape tail steps hit hit_w creast retry_steps
+    Hb Hsteps Hcond Hlen Hact Hdir H21 H17 Hretry Hrows.
+  eapply (book_steady_q5_locate_perform_left_sentinel_halt
+    init w b ptape tail steps hit init hit_w creast retry_steps);
+    eauto.
+Qed.
+
+Print Assumptions book_steady_q5_locate_perform_left_sentinel_halt_init.
+
+(** ** Fully two-boolean left sentinel halt
+
+    The left perform reads the old read bit [w_read] from the source and
+    retries the action prefix followed by the ptape bit [w_tape]. *)
+
+Theorem book_steady_q5_locate_perform_left_sentinel_halt_gen :
+  forall (init : list bool) (w_read w_tape : bool) (b : nat)
+         (ptape tail : list nat) (steps : list book_failure)
+         (hit : book_row) (hit_init : list bool) (hit_w : bool)
+         (creast : list bool) (retry_steps : list book_failure),
+    2 <= b ->
+    Forall (fun st => bf_src st = init ++ [w_read]) steps ->
+    br_cond hit = init ++ [w_read] ->
+    length (br_action hit) = length (init ++ [w_read]) ->
+    br_action hit = hit_init ++ [hit_w] ->
+    br_dir hit = false ->
+    Forall q21_pass (book_return_rail hit_init (b - 1)) ->
+    Forall q17_pass
+      (source_bit hit_w :: rev (book_return_rail hit_init (b - 1))) ->
+    Forall (fun st => bf_src st = hit_init ++ [w_tape]) retry_steps ->
+    map bf_row
+      (retry_steps ++
+       [book_sentinel_failure (hit_init ++ [w_tape]) creast
+          (app_singleton_bool_neq_nil hit_init w_tape)]) =
+    map bf_row steps ++ hit ::
+      [book_sentinel_row (hit_init ++ [w_tape]) creast] ->
+    run (book_steady_locate_q12_clock_gen init w_read w_tape steps hit +
+         book_q13_perform_left_clock hit_init hit_w b
+           (book_cycle_tags steps (init ++ [w_read]) hit) +
+         (S (length hit_init) +
+          (book_failures_clock [] retry_steps +
+           book_halt_clock (map bf_row retry_steps)
+             (book_sentinel_failure (hit_init ++ [w_tape]) creast
+                (app_singleton_bool_neq_nil hit_init w_tape)))))
+      (cfg_ml 5
+        (rev (tl (book_buf b) ++ [5] ++ map source_bit init) ++
+         6 :: source_bit w_tape :: rev ptape)
+        (match_mark w_read :: 4 ::
+         book_raw_desc
+           (map bf_row steps ++ hit ::
+            [book_sentinel_row (hit_init ++ [w_tape]) creast]) ++
+         5 :: tail))
+    = dispatch_halt_at_y
+        (book_sentinel_halt_left_wide retry_steps
+           (book_sentinel_failure (hit_init ++ [w_tape]) creast
+              (app_singleton_bool_neq_nil hit_init w_tape))
+           (rev (book_buf (b - 1)) ++ [source_bit hit_w] ++
+            6 :: rev ptape))
+        tail.
+Proof.
+  intros init w_read w_tape b ptape tail steps hit hit_init hit_w creast
+    retry_steps Hb Hsteps Hcond Hlen Hact Hdir H21 H17 Hretry Hrows.
+  set (newsrc := hit_init ++ [w_tape]).
+  set (sentinel := book_sentinel_row newsrc creast).
+  set (sf := book_sentinel_failure newsrc creast
+               (app_singleton_bool_neq_nil hit_init w_tape)).
+  fold newsrc sf in Hrows.
+  rewrite (dispatch_run_add
+    (book_steady_locate_q12_clock_gen init w_read w_tape steps hit +
+     book_q13_perform_left_clock hit_init hit_w b
+       (book_cycle_tags steps (init ++ [w_read]) hit))
+    (S (length hit_init) +
+     (book_failures_clock [] retry_steps +
+      book_halt_clock (map bf_row retry_steps) sf))).
+  rewrite (book_steady_q5_locate_to_q5_left_gen init w_read w_tape b ptape
+    tail steps hit sentinel [] hit_init hit_w (negb (hd false newsrc)) creast
+    Hb Hsteps Hcond Hlen Hact Hdir eq_refl H21 H17).
+  unfold sentinel.
+  change (run
+    (S (length hit_init) +
+     (book_failures_clock [] retry_steps +
+      book_halt_clock (map bf_row retry_steps) sf))
+    (cfg_ml 5
+      (rev (source_bit hit_w ::
+            rev (hd 0 (book_return_rail hit_init (b - 1)) ::
+                 tl (book_return_rail hit_init (b - 1)))) ++
+       6 :: rev ptape)
+      (match_mark w_tape ::
+       map q16_restore
+         (rev (book_cycle_tags steps (init ++ [w_read]) hit ++ [4])) ++
+       source_bit (negb (hd false newsrc)) ::
+       book_after_suffix creast (book_sentinel_row newsrc creast) [] ++
+       5 :: tail))
+    = dispatch_halt_at_y
+        (book_sentinel_halt_left_wide retry_steps sf
+           (rev (book_buf (b - 1)) ++ [source_bit hit_w] ++
+            6 :: rev ptape)) tail).
+  rewrite (book_left_sentinel_restore steps hit (init ++ [w_read]) newsrc
+    creast w_tape (5 :: tail) Hcond).
+  assert (Hdirs_eq :
+    hd 0 (book_return_rail hit_init (b - 1)) ::
+    tl (book_return_rail hit_init (b - 1)) =
+    book_return_rail hit_init (b - 1)).
+  { destruct (book_return_rail hit_init (b - 1)) as [|d ds] eqn:Hdirs;
+      [|reflexivity].
+    exfalso. apply (book_return_rail_neq_nil hit_init (b - 1)).
+    rewrite Hdirs. reflexivity. }
+  rewrite Hdirs_eq.
+  apply (book_q5_after_perform_left_sentinel_halt init w_tape b ptape tail
+    steps hit hit_init hit_w creast retry_steps Hb Hretry Hrows).
+Qed.
+
+Print Assumptions book_steady_q5_locate_perform_left_sentinel_halt_gen.
+
+(** ** Fully two-boolean right sentinel halt *)
+
+Theorem book_steady_q5_locate_perform_right_sentinel_halt_gen :
+  forall (init : list bool) (w_read w_tape : bool) (b : nat)
+         (ptape tail : list nat) (steps : list book_failure)
+         (hit : book_row) (hit_init : list bool) (hit_w : bool)
+         (creast : list bool) (retry_steps : list book_failure),
+    2 <= b ->
+    Forall (fun st => bf_src st = init ++ [w_read]) steps ->
+    br_cond hit = init ++ [w_read] ->
+    length (br_action hit) = length (init ++ [w_read]) ->
+    br_action hit = hit_init ++ [hit_w] ->
+    br_dir hit = true ->
+    Forall q21_pass (book_return_rail hit_init (b - 1)) ->
+    Forall q17_pass
+      (tl (book_buf (b - 1)) ++ [5] ++ map source_bit hit_init) ->
+    Forall (fun st => bf_src st = hit_init ++ [false]) retry_steps ->
+    map bf_row
+      (retry_steps ++
+       [book_sentinel_failure (hit_init ++ [false]) creast
+          (app_singleton_bool_neq_nil hit_init false)]) =
+    map bf_row steps ++ hit ::
+      [book_sentinel_row (hit_init ++ [false]) creast] ->
+    run (book_steady_locate_q12_clock_gen init w_read w_tape steps hit +
+         book_q12_perform_right_clock hit_init hit_w b
+           (book_cycle_tags steps (init ++ [w_read]) hit)
+           (tl (book_buf (b - 1)) ++ [5] ++ map source_bit hit_init) +
+         (S (length hit_init) +
+          (book_failures_clock [] retry_steps +
+           book_halt_clock (map bf_row retry_steps)
+             (book_sentinel_failure (hit_init ++ [false]) creast
+                (app_singleton_bool_neq_nil hit_init false)))))
+      (cfg_ml 5
+        (rev (tl (book_buf b) ++ [5] ++ map source_bit init) ++
+         6 :: source_bit w_tape :: rev ptape)
+        (match_mark w_read :: 4 ::
+         book_raw_desc
+           (map bf_row steps ++ hit ::
+            [book_sentinel_row (hit_init ++ [false]) creast]) ++
+         5 :: tail))
+    = dispatch_halt_at_y
+        (book_sentinel_halt_left retry_steps
+           (book_sentinel_failure (hit_init ++ [false]) creast
+              (app_singleton_bool_neq_nil hit_init false))
+           (b - 2) (ptape ++ [source_bit w_tape] ++ [source_bit hit_w])
+           tail)
+        tail.
+Proof.
+  intros init w_read w_tape b ptape tail steps hit hit_init hit_w creast
+    retry_steps Hb Hsteps Hcond Hlen Hact Hdir H21 H17 Hretry Hrows.
+  set (newsrc := hit_init ++ [false]).
+  set (sentinel := book_sentinel_row newsrc creast).
+  set (sf := book_sentinel_failure newsrc creast
+               (app_singleton_bool_neq_nil hit_init false)).
+  rewrite (dispatch_run_add
+    (book_steady_locate_q12_clock_gen init w_read w_tape steps hit +
+     book_q12_perform_right_clock hit_init hit_w b
+       (book_cycle_tags steps (init ++ [w_read]) hit)
+       (tl (book_buf (b - 1)) ++ [5] ++ map source_bit hit_init))
+    (S (length hit_init) +
+     (book_failures_clock [] retry_steps +
+      book_halt_clock (map bf_row retry_steps) sf))).
+  rewrite (book_steady_q5_locate_to_q5_right_gen init w_read w_tape b ptape
+    tail steps hit sentinel [] hit_init hit_w (negb (hd false newsrc)) creast
+    Hb Hsteps Hcond Hlen Hact Hdir eq_refl H21 H17).
+  subst sentinel.
+  rewrite (book_sentinel_restore_frame_tail steps hit (init ++ [w_read])
+    newsrc creast (5 :: tail) Hcond).
+  fold sf.
+  apply (book_q5_after_perform_right_sentinel_halt init w_tape b ptape tail
+    steps hit hit_init hit_w creast retry_steps Hb Hretry Hrows).
+Qed.
+
+Print Assumptions book_steady_q5_locate_perform_right_sentinel_halt_gen.
