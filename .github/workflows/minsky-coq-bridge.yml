@@ -389,6 +389,10 @@ jobs:
           coqchk -Q formal/utm NaNLM formal/utm/MinskyLeftInfiniteBoundaryPremises.vo
           coqc -Q formal/utm NaNLM \
             -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyLeftInfiniteBoundaryFinal.v
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyLeftInfiniteBoundaryFinal.vo
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyBookEncode.v
           coqchk -Q formal/utm NaNLM formal/utm/MinskyBookEncode.vo
           coqc -Q formal/utm NaNLM \
@@ -545,6 +549,8 @@ jobs:
             formal/utm/MinskyLeftInfiniteBoundaryBook.vo
             formal/utm/MinskyLeftInfiniteBoundaryPremises.v
             formal/utm/MinskyLeftInfiniteBoundaryPremises.vo
+            formal/utm/MinskyLeftInfiniteBoundaryFinal.v
+            formal/utm/MinskyLeftInfiniteBoundaryFinal.vo
             formal/utm/MinskyBookEncode.v
             formal/utm/MinskyBookEncode.vo
             formal/utm/MinskyTaggedRestore.v
