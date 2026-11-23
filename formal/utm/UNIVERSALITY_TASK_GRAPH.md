@@ -444,3 +444,22 @@ The only remaining lookup/encoder work is the first-match packaging and
 the halted/boundary frame identification.  The induction step is
 definitional once `book_mismatch_ev` is known to be `Some` for a
 nonmatching well-formed row.
+
+## Full lookup packaging (proved)
+
+`MinskyLeftInfiniteLookupFull.v` proves:
+
+```text
+wide_source_lookup_some_book_hit
+wide_source_lookup_none_book_halt
+book_mismatch_some_of_nonmatch
+```
+
+For a source hit it produces the computed `steps`, `hit`, `after` with
+`hit = source_row_to_book r`; for a miss it produces the book halt
+result and failure list.  The pointwise match and the `Some`/`None`
+packaging are now both kernel-checked.
+
+Remaining: the general non-boundary right/left macro composition
+(using the raw cycles + window packages + this lookup packaging) and the
+halted/boundary encoder frame identification.
