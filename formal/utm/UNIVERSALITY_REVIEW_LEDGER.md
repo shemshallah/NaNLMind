@@ -2006,3 +2006,45 @@ Still open:
    premises of `conditional_left_source_native_halting_equivalence`.
 
 `claimed` remains false.
+
+## November 23 late update: boundary trace and first-halt padding
+
+`MinskyLeftInfiniteBoundary.v` (kernel-checked, no axioms) now contains
+the empty-buffer q19/q3 trace:
+
+```text
+q19_empty_relocation
+q15_q22_right_to_q5_book_empty
+book_q12_restore_to_q5_right_empty
+q5_scan_empty_boundary
+boundary_halt_encode_from
+book_q1_mismatch_halt_gen_extra
+boundary_test_run_129
+```
+
+The concrete p=1 wall halt is the kernel-checked 129-step run
+`boundary_test_run_129`, not a table axiom.  The only missing boundary
+lemma is the first failed-row phase with a leading q1 pass list; the
+pass must be included in the q0/q4 backward scan, so the output is a
+`pass`-aware locate state, not yet the standard one.
+
+`MinskyLeftInfiniteBounded.v` additionally proves:
+
+```text
+lic_halts_at_first
+lic_first_halt_exists
+lic_first_halt_hit_prefix
+lic_encode_pad
+lic_pad_source_halt_to_native
+```
+
+For a padded source run of length `n` that halts, the fixed table halts
+from `lic_encode_pad rows n c`.  Combined with
+`lic_pad_native_halt_implies_source_halt`, the remaining bridge to a
+fixed/padded halting equivalence is padding invariance: the halt flag at
+a fixed fuel is unchanged when the initial right/left blank padding is
+increased.  The address tape bisimulation in
+`MinskyAddressRefinement.v` is the intended tool; the encoder-side
+blank-support invariant for the left padding still has to be stated.
+
+Claim remains false.
