@@ -1459,3 +1459,46 @@ Proof.
     Hpc5 Hr7 Hr9 Hr1 Hr4 Hr8 Hr5 Hr6 Hr13 Hmem Hhalt Hmemtab
     Hrow0 Hrow1 Hfrom Hread_neq).
 Qed.
+
+Lemma run_until_extend_stopped :
+  forall f extra prog stop vm,
+    orb (stop (vm_pc (run_until f prog stop vm)))
+        (vm_halted (run_until f prog stop vm)) = true ->
+    run_until (f + extra) prog stop vm = run_until f prog stop vm.
+Proof.
+  intros f extra prog stop vm H.
+  rewrite (run_until_split f extra).
+  rewrite (run_until_stop extra prog stop (run_until f prog stop vm) H).
+  reflexivity.
+Qed.
+
+Lemma scan_none_at_end :
+  forall (vm : VM) i state sym start m,
+    scan_ready vm i state sym start m ->
+    vm_reg vm 8 = 184 ->
+    vm_pc (run_until 2 scan_block scan_stop vm) = 13.
+Proof.
+  intros vm i state sym start m Hready Hr8_184.
+  unfold scan_ready in Hready.
+  destruct Hready as [Hpc [Hr1 [Hr4 [Hr5 [Hr6 [Hr8 [Hr13 [Hmem Hhalt]]]]]]]].
+  set (v1 := exec_instr scan_block vm).
+  rewrite (run_one_false 1 scan_block scan_stop vm).
+  2:{ unfold scan_stop. rewrite Hpc, Hhalt. cbn. reflexivity. }
+  fold v1.
+  assert (Hpc1 : vm_pc v1 = 1) by (unfold v1; apply scan_pc_after_0; exact Hpc).
+  assert (Hzf1 : vm_zf v1 = true).
+  { unfold v1. rewrite (scan_zf_after_0 vm Hpc).
+    rewrite Hr8_184, Hr6, Nat.eqb_refl. reflexivity. }
+  assert (Hlf1 : vm_lf v1 = false).
+  { unfold v1. rewrite (scan_lf_after_0 vm Hpc).
+    rewrite Hr8_184, Hr6. apply Nat.ltb_irrefl. }
+  assert (Hh1 : vm_halted v1 = false).
+  { unfold v1. rewrite (exec_instr_not_halted vm 0 (iCMP 8 6) Hpc eq_refl
+      ltac:(discriminate)). exact Hhalt. }
+  rewrite (run_one_false 0 scan_block scan_stop v1).
+  2:{ unfold scan_stop. rewrite Hpc1, Hh1. cbn. reflexivity. }
+  cbn [run_until].
+  assert (Hpc13 : vm_pc (exec_instr scan_block v1) = 13).
+  { rewrite (scan_pc_after_1 v1 Hpc1), Hzf1, Hlf1. cbn. reflexivity. }
+  exact Hpc13.
+Qed.
