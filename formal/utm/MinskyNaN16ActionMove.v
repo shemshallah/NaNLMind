@@ -176,3 +176,124 @@ Proof.
     exact Hr2_5. }
   split; [exact Hpc6|split; [exact Hr2_6|exact Hhalt6]].
 Qed.
+
+Lemma action_move_other :
+  forall (vm : VM) (head move : nat),
+    vm_pc vm = 5 ->
+    vm_reg vm 2 = head ->
+    vm_reg vm 9 = move ->
+    vm_reg vm 13 = 1 ->
+    vm_halted vm = false ->
+    vm_zf vm = false ->
+    Nat.eqb move 2 = false ->
+    let vm' := run_until 6 action_block action_move_stop vm in
+    vm_pc vm' = 14 /\
+    vm_reg vm' 2 = head /\
+    vm_halted vm' = false.
+Proof.
+  intros vm head move Hpc Hr2 Hr9 Hr13 Hhalt Hzf E2.
+  set (v1 := exec_instr action_block vm).
+  set (v2 := exec_instr action_block v1).
+  set (v3 := exec_instr action_block v2).
+  set (v4 := exec_instr action_block v3).
+  set (v5 := exec_instr action_block v4).
+  rewrite (run_one_false 5 action_block action_move_stop vm).
+  2:{ unfold action_move_stop. rewrite Hpc, Hhalt. cbn. reflexivity. }
+  fold v1.
+  assert (Hpc1 : vm_pc v1 = 6)
+    by (unfold v1; rewrite (action_exec_pc vm 5 (iJMP pEQ 10) Hpc eq_refl);
+        rewrite Hzf; cbn; reflexivity).
+  assert (Hhalt1 : vm_halted v1 = false).
+  { unfold v1. rewrite (action_not_halted vm 5 (iJMP pEQ 10) Hpc eq_refl
+      ltac:(discriminate)). exact Hhalt. }
+  assert (Hr2_1 : vm_reg v1 2 = head).
+  { unfold v1. rewrite (action_reg_preserved_JMP vm 5 pEQ 10 2 Hpc eq_refl). exact Hr2. }
+  assert (Hr9_1 : vm_reg v1 9 = move).
+  { unfold v1. rewrite (action_reg_preserved_JMP vm 5 pEQ 10 9 Hpc eq_refl). exact Hr9. }
+  rewrite (run_one_false 4 action_block action_move_stop v1).
+  2:{ unfold action_move_stop. rewrite Hpc1, Hhalt1. cbn. reflexivity. }
+  fold v2.
+  assert (Hpc2 : vm_pc v2 = 7)
+    by (unfold v2; rewrite (action_exec_pc v1 6 (iMOVI 10 2) Hpc1 eq_refl);
+        cbn; reflexivity).
+  assert (Hhalt2 : vm_halted v2 = false).
+  { unfold v2. rewrite (action_not_halted v1 6 (iMOVI 10 2) Hpc1 eq_refl
+      ltac:(discriminate)). exact Hhalt1. }
+  assert (Hr2_2 : vm_reg v2 2 = head).
+  { unfold v2. rewrite (action_reg_preserved_MOVI v1 6 10 2 2 Hpc1 eq_refl ltac:(lia)).
+    exact Hr2_1. }
+  assert (Hr9_2 : vm_reg v2 9 = move).
+  { unfold v2. rewrite (action_reg_preserved_MOVI v1 6 10 2 9 Hpc1 eq_refl ltac:(lia)).
+    exact Hr9_1. }
+  assert (Hr10_2 : vm_reg v2 10 = 2).
+  { unfold v2. rewrite (action_MOVI_reg v1 6 10 2 Hpc1 eq_refl). reflexivity. }
+  rewrite (run_one_false 3 action_block action_move_stop v2).
+  2:{ unfold action_move_stop. rewrite Hpc2, Hhalt2. cbn. reflexivity. }
+  fold v3.
+  assert (Hpc3 : vm_pc v3 = 8)
+    by (unfold v3; rewrite (action_exec_pc v2 7 (iCMP 9 10) Hpc2 eq_refl);
+        cbn; reflexivity).
+  assert (Hhalt3 : vm_halted v3 = false).
+  { unfold v3. rewrite (action_not_halted v2 7 (iCMP 9 10) Hpc2 eq_refl
+      ltac:(discriminate)). exact Hhalt2. }
+  assert (Hzf3 : vm_zf v3 = false).
+  { unfold v3. rewrite (action_CMP_zf v2 7 9 10 Hpc2 eq_refl).
+    rewrite Hr9_2, Hr10_2. exact E2. }
+  assert (Hr2_3 : vm_reg v3 2 = head).
+  { unfold v3. rewrite (action_reg_preserved_CMP v2 7 9 10 2 Hpc2 eq_refl). exact Hr2_2. }
+  rewrite (run_one_false 2 action_block action_move_stop v3).
+  2:{ unfold action_move_stop. rewrite Hpc3, Hhalt3. cbn. reflexivity. }
+  fold v4.
+  assert (Hpc4 : vm_pc v4 = 9)
+    by (unfold v4; rewrite (action_exec_pc v3 8 (iJMP pEQ 12) Hpc3 eq_refl);
+        rewrite Hzf3; cbn; reflexivity).
+  assert (Hhalt4 : vm_halted v4 = false).
+  { unfold v4. rewrite (action_not_halted v3 8 (iJMP pEQ 12) Hpc3 eq_refl
+      ltac:(discriminate)). exact Hhalt3. }
+  assert (Hr2_4 : vm_reg v4 2 = head).
+  { unfold v4. rewrite (action_reg_preserved_JMP v3 8 pEQ 12 2 Hpc3 eq_refl). exact Hr2_3. }
+  rewrite (run_one_false 1 action_block action_move_stop v4).
+  2:{ unfold action_move_stop. rewrite Hpc4, Hhalt4. cbn. reflexivity. }
+  fold v5.
+  assert (Hpc5 : vm_pc v5 = 14)
+    by (unfold v5; rewrite (action_exec_pc v4 9 (iJMP pALWAYS 14) Hpc4 eq_refl);
+        cbn; reflexivity).
+  assert (Hhalt5 : vm_halted v5 = false).
+  { unfold v5. rewrite (action_not_halted v4 9 (iJMP pALWAYS 14) Hpc4 eq_refl
+      ltac:(discriminate)). exact Hhalt4. }
+  assert (Hr2_5 : vm_reg v5 2 = head).
+  { unfold v5. rewrite (action_reg_preserved_JMP v4 9 pALWAYS 14 2 Hpc4 eq_refl).
+    exact Hr2_4. }
+  cbn [run_until action_move_stop orb].
+  rewrite Hpc5. cbn.
+  split; [exact Hpc5|split; [exact Hr2_5|exact Hhalt5]].
+Qed.
+
+Lemma action_move :
+  forall (vm : VM) (head move : nat),
+    vm_pc vm = 5 ->
+    vm_reg vm 2 = head ->
+    vm_reg vm 9 = move ->
+    vm_reg vm 13 = 1 ->
+    vm_halted vm = false ->
+    vm_zf vm = Nat.eqb move 0 ->
+    vm_lf vm = Nat.ltb move 0 ->
+    let vm' := run_until 6 action_block action_move_stop vm in
+    vm_pc vm' = 14 /\
+    vm_reg vm' 2 = action_new_head head move /\
+    vm_halted vm' = false.
+Proof.
+  intros vm head move Hpc Hr2 Hr9 Hr13 Hhalt Hzf Hlf.
+  destruct (Nat.eqb move 0) eqn:E0.
+  - apply Nat.eqb_eq in E0.
+    rewrite E0 in Hr9.
+    unfold action_new_head. rewrite E0. cbn.
+    apply action_move_zero; [exact Hpc|exact Hr2|exact Hr9|exact Hr13|exact Hhalt|exact Hzf].
+  - destruct (Nat.eqb move 2) eqn:E2.
+    + apply Nat.eqb_eq in E2.
+      rewrite E2 in Hr9.
+      unfold action_new_head. rewrite E0, E2. cbn.
+      apply action_move_right; [exact Hpc|exact Hr2|exact Hr9|exact Hr13|exact Hhalt|exact Hzf].
+    + unfold action_new_head. rewrite E0, E2. cbn.
+      apply (action_move_other vm head move); [exact Hpc|exact Hr2|exact Hr9|exact Hr13|exact Hhalt|exact Hzf|exact E2].
+Qed.
