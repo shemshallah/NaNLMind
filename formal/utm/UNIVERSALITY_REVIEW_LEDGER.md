@@ -2240,9 +2240,9 @@ MinskyNaN16Prelude*.v      literal prelude, both halt branches
 The runner has validated the cone through `native_step_refines`; a later
 run validates `ActionRun` and `StepSpec`.  **Not yet done:**
 
-1. the step-entry composition (prelude + reset + `native_step`); the local
-   proot runs out of memory on the composed goal, so this is WIP, not in
-   the checked chain;
+1. the step-entry composition (prelude + reset + `native_step`); both the
+   local proot and a 30-minute GitHub probe failed to finish the composed
+   goal, so the probe was canceled and removed from the checked chain;
 2. a single contiguous `.nas` step program or a checked block
    transcription gate;
 3. `run100` iteration over the step routine;
