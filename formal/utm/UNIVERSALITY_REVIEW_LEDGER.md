@@ -2209,3 +2209,42 @@ The existential window is essential.  A single total
 `encode p rows c` independent of the run time is not claimed and is not
 true for this table: a right-wall halt and a lookup-failure halt can
 have the same halted source configuration but different native frames.
+
+## November 24 NaN16 VM layer (in progress)
+
+The table-level theorem above is unchanged and remains the certified
+universality claim.  A separate, lower VM layer is being built for the
+literal NaN16 fixture `mth/tests/mth_minsky_test.nas`.
+
+Checked locally (all `Print Assumptions` closed under the global context):
+
+```text
+MinskyNaN16VM.v            ISA subset, scan block, scan_ready, table_mem_at
+MinskyNaN16ScanLoop.v      184-row scan loop, hit and no-match exits
+MinskyNaN16Action.v        action block, action_run, preservation lemmas
+MinskyNaN16ActionPrefix.v  pc 0 -> 5
+MinskyNaN16ActionMove.v    pc 5 -> 14, exact fuel 3/6/5, with r0/r7/mem frame
+MinskyNaN16ActionSuffix.v  pc 14 -> 22, both halt branches, full memory
+MinskyNaN16ActionRefines.v action_refines (pc 0 -> 22, pointwise action_run)
+MinskyNaN16ScanFrame.v     r0/r2/r3/r13/mem/halted scan frame
+MinskyNaN16ScanPhase.v     scan_phase with hit/no-match exits
+MinskyNaN16Lookup.v        scan_index_from vs nan16_lookup bridge
+MinskyNaN16StepHit.v       step_hit_phase (scan -> action -> pc 22)
+MinskyNaN16StepNone.v      no_trans_run / step_none_phase
+MinskyNaN16Step.v          native_step and native_step_refines
+```
+
+The dedicated runner is validating this cone.  **Not yet done:**
+
+1. the literal step prelude/normalization (partially scaffolded in
+   `MinskyNaN16Prelude.v`, no run theorem yet);
+2. a single contiguous `.nas` step program or a checked block
+   transcription gate;
+3. `run100` iteration over the step routine;
+4. the VM-memory/window representation of `AddressConfig` and the
+   one-step source refinement to `nan16_address_step`/`MinskyTable.step`;
+5. the raw VM-level certificate and any change to the spec claim.
+
+No VM-level universality claim is made by this section.  The spec
+`claim` for the Coq table remains separate and must not be read as a
+NaN16 execution claim.
