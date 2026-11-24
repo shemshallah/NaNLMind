@@ -105,3 +105,29 @@ Definition action_ready
 Definition action_new_head (head mv : nat) : nat :=
   if Nat.eqb mv 0 then head - 1
   else if Nat.eqb mv 2 then head + 1 else head.
+
+(** ** Computable action result *)
+
+Definition action_run
+    (row_addr tape_addr head : nat) (m : Mem) (row : list nat) : nat * Mem :=
+  let write := nth 2 row 0 in
+  let mv := nth 3 row 1 in
+  let to := nth 4 row 1 in
+  let halt := nth 5 row 1 in
+  let m1 := set_mem m tape_addr write in
+  let head' := action_new_head head mv in
+  let m2 := set_mem m1 action_head_addr head' in
+  let m3 := set_mem m2 action_state_addr to in
+  let m4 := if Nat.eqb halt 0 then m3 else set_mem m3 action_halt_addr 1 in
+  (head', m4).
+
+Definition smoke_row : list nat := [3; 4; 7; 2; 6; 1; 0; 0].
+
+Example action_run_smoke :
+  let res := action_run 100 200 50 smoke_mem smoke_row in
+  fst res = 51 /\
+  snd res 200 = 7 /\
+  snd res action_head_addr = 51 /\
+  snd res action_state_addr = 6 /\
+  snd res action_halt_addr = 1.
+Proof. vm_compute. repeat split; reflexivity. Qed.
