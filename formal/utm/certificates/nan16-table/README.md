@@ -223,3 +223,28 @@ These cover `pc 5 -> 14`: `CMP r9,r1`, `JMP[NE]`, `LD r9,r7,1`,
 `CMP r9,r4`, `JMP[NE]`, `JMP 14`.  The next lemma is the 7-step
 `scan_hit_suffix` using `run_one_false` plus these projections.  The full
 `step`/`run100` and VM-level certificate are still open.
+
+## Layer 2: hit suffix proved
+
+`MinskyNaN16VM.v` now contains the complete hit suffix:
+
+```coq
+scan_hit_suffix :
+  vm_pc vm = 5 ->
+  vm_reg vm 7 = start + 8*i ->
+  vm_reg vm 9 = m (start + 8*i) ->
+  vm_reg vm 1 = state ->
+  vm_reg vm 4 = sym ->
+  vm_mem vm = m ->
+  vm_halted vm = false ->
+  table_mem_at (start + 8*i) (row::rest) m ->
+  0 < length row -> 1 < length row ->
+  nth 0 row 0 = state ->
+  nth 1 row 0 = sym ->
+  vm_pc (run_until 7 scan_block scan_stop vm) = 14.
+```
+
+This is the full `CMP -> JMP[NE] -> LD -> CMP -> JMP[NE] -> JMP 14`
+path, with the memory/register projections for every step.  Next is the
+miss suffix (`pc 5 -> 0`) and the generic `scan_ready` prefix, then the
+184-row scan induction and the action/`run100` phases.
