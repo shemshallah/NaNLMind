@@ -7,6 +7,7 @@ on:
     paths:
       - 'formal/utm/MinskyNaN16VM.v'
       - 'formal/utm/MinskyNaN16ScanLoop.v'
+      - 'formal/utm/MinskyNaN16Action.v'
       - '.github/workflows/minsky-nan16-vm.yml'
 
 permissions:
