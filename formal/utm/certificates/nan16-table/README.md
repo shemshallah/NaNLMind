@@ -488,6 +488,10 @@ MinskyNaN16ActionRun.v
 MinskyNaN16StepSpec.v
   NState / vm_to_nstate / nstep / nstate_rel
   native_step_spec_active (native_step refines nstep pointwise)
+
+MinskyNaN16StepEntrySpec.v
+  restart / step_entry
+  step_entry_spec (prelude -> native step, refines nstep)
 ```
 
 `Print Assumptions prelude_ready`, `prelude_halted`,
@@ -501,9 +505,10 @@ The dedicated runner passed compile + `coqchk` for the chain through
 run 45493008714  compile/coqchk success
 ```
 
-A step-entry composition (`MinskyNaN16StepEntrySpec.v`) is WIP: the local
-proot runs out of memory on the large composed goal, so it is not part of
-the checked chain.
+`step_entry_spec` is closed under the global context.  The key engineering
+fix was to make `native_step` and `nstep` **opaque** and compose only
+through their proved specifications; the previous transparent composition
+was the 83-minute reduction blowup.
 
 The signed-tape window encoding is checked locally:
 
@@ -518,9 +523,8 @@ step refinement.
 
 Remaining for the `.nas` step/run100 certificate:
 
-1. a literal `step` program/prelude assembly (or checked block transcription)
-   tying the scan/action/no-trans phases to the `.nas` text;
-2. `run100` iteration of the step routine;
-3. the source address/tape refinement connecting the VM state to
-   `nan16_address_step`/`MinskyTable.step`;
-4. the checked `.nas` transcription gate and the final VM-level certificate.
+1. `run100` iteration of `step_entry` (entry-invariant preservation and
+   `nstate_rel` induction);
+2. the source address/tape refinement connecting `nstep` to
+   `nan16_address_step`/`MinskyTable.step` through the window lemmas;
+3. the checked `.nas` transcription gate and the final VM-level certificate.
