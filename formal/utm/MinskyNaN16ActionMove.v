@@ -297,3 +297,13 @@ Proof.
     + unfold action_new_head. rewrite E0, E2. cbn.
       apply (action_move_other vm head move); [exact Hpc|exact Hr2|exact Hr9|exact Hr13|exact Hhalt|exact Hzf|exact E2].
 Qed.
+
+Lemma run_until_move_stop_at_14 :
+  forall (fuel : nat) (vm : VM),
+    vm_pc vm = 14 ->
+    vm_halted vm = false ->
+    run_until fuel action_block action_move_stop vm = vm.
+Proof.
+  intros. apply run_until_stop.
+  unfold action_move_stop. rewrite H, H0. cbn. reflexivity.
+Qed.
