@@ -389,3 +389,27 @@ MinskyNaN16Action.v
 The next theorem is `action_refines`: execute the 24-instruction
 `action_block` symbolically and prove it realizes `action_run` (moved
 head, written tape cell, stored head/state/halt cells).
+
+## Layer 2: action prefix proof (in progress)
+
+`formal/utm/MinskyNaN16ActionPrefix.v` proves the common five-step action
+prefix:
+
+```text
+pc 0 LD r9,r7,2      (* write symbol *)
+pc 1 ST r9,r3,0      (* tape[head] := write *)
+pc 2 LD r9,r7,3      (* move+1 *)
+pc 3 MOVI r10,0
+pc 4 CMP r9,r10      (* move decision flags *)
+```
+
+using `row_at`, `set_mem`, and the one-step action preservation lemmas:
+
+```text
+action_reg_preserved_ST/CMP/JMP/LD/MOVI/SUB/ADD
+action_mem_preserved_LD/MOVI/CMP/JMP/SUB/ADD
+```
+
+The dedicated runner is checking the prefix module.  The next steps are the
+pc5 move branch, the common pc14..22 suffix, full `action_refines`,
+`step_refines`, `run100`, and the `.nas` transcription gate.
