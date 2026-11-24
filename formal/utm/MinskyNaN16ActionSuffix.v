@@ -162,3 +162,140 @@ Proof.
   { unfold v5. rewrite (action_mem_preserved_CMP v4 18 9 0 Hpc4 eq_refl). exact Hmem4. }
   repeat split; assumption.
 Qed.
+
+Lemma action_suffix :
+  forall (vm : VM) row_addr head m row,
+    vm_pc vm = 14 ->
+    vm_reg vm 0 = 0 ->
+    vm_reg vm 2 = head ->
+    vm_reg vm 7 = row_addr ->
+    vm_mem vm = m ->
+    vm_halted vm = false ->
+    row_at row_addr row m ->
+    length row = 8 ->
+    action_head_addr <> row_addr + 4 ->
+    action_state_addr <> row_addr + 5 ->
+    action_head_addr <> row_addr + 5 ->
+    let vm' := run_until 8 action_block action_stop vm in
+    vm_pc vm' = 22 /\
+    vm_mem vm' action_head_addr = head /\
+    vm_mem vm' action_state_addr = nth 4 row 0 /\
+    vm_mem vm' action_halt_addr =
+      (if Nat.eqb (nth 5 row 0) 0 then m action_halt_addr else 1) /\
+    vm_halted vm' = false.
+Proof.
+  intros vm row_addr head m row Hpc Hr0 Hr2 Hr7 Hmem Hhalt Hrow Hlen
+    Hhead4 Hstate5 Hhead5.
+  set (vm5 := run_until 5 action_block action_stop vm).
+  pose proof (action_suffix_prefix vm row_addr head m row Hpc Hr0 Hr2 Hr7
+    Hmem Hhalt Hrow Hlen Hhead4 Hstate5 Hhead5) as Hpre.
+  cbn zeta in Hpre. fold vm5 in Hpre.
+  destruct Hpre as [Hpc5 [Hr9_5 [Hr0_5 [Hr2_5 [Hr7_5 [Hmem5 [Hhalt5 [Hzf5 Hlf5]]]]]]]].
+  replace 8 with (5 + 3) by lia.
+  rewrite (run_until_split 5 3 action_block action_stop vm).
+  fold vm5.
+  destruct (Nat.eqb (nth 5 row 0) 0) eqn:Eh.
+  - (* halt = 0: jump directly to pc22 *)
+    set (v6 := exec_instr action_block vm5).
+    rewrite (run_one_false 2 action_block action_stop vm5).
+    2:{ unfold action_stop. rewrite Hpc5, Hhalt5. cbn. reflexivity. }
+    fold v6.
+    assert (Hpc6 : vm_pc v6 = 22)
+      by (unfold v6; rewrite (action_exec_pc vm5 19 (iJMP pEQ 22) Hpc5 eq_refl);
+          rewrite Hzf5; cbn; reflexivity).
+    assert (Hhalt6 : vm_halted v6 = false).
+    { unfold v6. rewrite (action_not_halted vm5 19 (iJMP pEQ 22) Hpc5 eq_refl
+        ltac:(discriminate)). exact Hhalt5. }
+    rewrite (run_until_stop 2 action_block action_stop v6).
+    2:{ rewrite Hpc6, Hhalt6. unfold action_stop. cbn. reflexivity. }
+    assert (Hmem6 : vm_mem v6 = set_mem (set_mem m action_head_addr head)
+      action_state_addr (nth 4 row 0)).
+    { unfold v6. rewrite (action_mem_preserved_JMP vm5 19 pEQ 22 Hpc5 eq_refl).
+      exact Hmem5. }
+    assert (Hhead6 : vm_mem v6 action_head_addr = head).
+    { rewrite Hmem6.
+      rewrite (set_mem_neq (set_mem m action_head_addr head)
+        action_state_addr (nth 4 row 0) action_head_addr).
+      - apply set_mem_same.
+      - unfold action_head_addr, action_state_addr. lia. }
+    assert (Hstate6 : vm_mem v6 action_state_addr = nth 4 row 0).
+    { rewrite Hmem6. apply set_mem_same. }
+    assert (Hhalt6mem : vm_mem v6 action_halt_addr = m action_halt_addr).
+    { rewrite Hmem6.
+      rewrite (set_mem_neq (set_mem m action_head_addr head)
+        action_state_addr (nth 4 row 0) action_halt_addr).
+      - rewrite (set_mem_neq m action_head_addr head action_halt_addr).
+        + reflexivity.
+        + unfold action_head_addr, action_halt_addr. lia.
+      - unfold action_state_addr, action_halt_addr. lia. }
+    split; [exact Hpc6|split; [exact Hhead6|split; [exact Hstate6|
+      split; [exact Hhalt6mem|exact Hhalt6]]]].
+  - (* halt != 0: MOVI/ST then pc22 *)
+    set (v6 := exec_instr action_block vm5).
+    set (v7 := exec_instr action_block v6).
+    set (v8 := exec_instr action_block v7).
+    rewrite (run_one_false 2 action_block action_stop vm5).
+    2:{ unfold action_stop. rewrite Hpc5, Hhalt5. cbn. reflexivity. }
+    fold v6.
+    assert (Hpc6 : vm_pc v6 = 20)
+      by (unfold v6; rewrite (action_exec_pc vm5 19 (iJMP pEQ 22) Hpc5 eq_refl);
+          rewrite Hzf5; cbn; reflexivity).
+    assert (Hhalt6 : vm_halted v6 = false).
+    { unfold v6. rewrite (action_not_halted vm5 19 (iJMP pEQ 22) Hpc5 eq_refl
+        ltac:(discriminate)). exact Hhalt5. }
+    assert (Hmem6 : vm_mem v6 = set_mem (set_mem m action_head_addr head)
+      action_state_addr (nth 4 row 0)).
+    { unfold v6. rewrite (action_mem_preserved_JMP vm5 19 pEQ 22 Hpc5 eq_refl).
+      exact Hmem5. }
+    rewrite (run_one_false 1 action_block action_stop v6).
+    2:{ unfold action_stop. rewrite Hpc6, Hhalt6. cbn. reflexivity. }
+    fold v7.
+    assert (Hpc7 : vm_pc v7 = 21)
+      by (unfold v7; rewrite (action_exec_pc v6 20 (iMOVI 9 1) Hpc6 eq_refl);
+          cbn; reflexivity).
+    assert (Hhalt7 : vm_halted v7 = false).
+    { unfold v7. rewrite (action_not_halted v6 20 (iMOVI 9 1) Hpc6 eq_refl
+        ltac:(discriminate)). exact Hhalt6. }
+    assert (Hr0_7 : vm_reg v7 0 = 0).
+    { unfold v7. rewrite (action_reg_preserved_MOVI v6 20 9 1 0 Hpc6 eq_refl ltac:(lia)).
+      unfold v6. rewrite (action_reg_preserved_JMP vm5 19 pEQ 22 0 Hpc5 eq_refl).
+      exact Hr0_5. }
+    assert (Hr9_7 : vm_reg v7 9 = 1).
+    { unfold v7. rewrite (action_MOVI_reg v6 20 9 1 Hpc6 eq_refl). reflexivity. }
+    assert (Hmem7 : vm_mem v7 = vm_mem v6).
+    { unfold v7. rewrite (action_mem_preserved_MOVI v6 20 9 1 Hpc6 eq_refl).
+      reflexivity. }
+    rewrite (run_one_false 0 action_block action_stop v7).
+    2:{ unfold action_stop. rewrite Hpc7, Hhalt7. cbn. reflexivity. }
+    cbn [run_until].
+    fold v8.
+    assert (Hpc8 : vm_pc v8 = 22)
+      by (unfold v8; rewrite (action_exec_pc v7 21 (iST 9 0 action_halt_addr) Hpc7 eq_refl);
+          cbn; reflexivity).
+    assert (Hhalt8 : vm_halted v8 = false).
+    { unfold v8. rewrite (action_not_halted v7 21 (iST 9 0 action_halt_addr) Hpc7 eq_refl
+        ltac:(discriminate)). exact Hhalt7. }
+    assert (Hmem8 : vm_mem v8 = set_mem (set_mem (set_mem m action_head_addr head)
+      action_state_addr (nth 4 row 0)) action_halt_addr 1).
+    { unfold v8. rewrite (action_ST_mem v7 21 9 0 action_halt_addr Hpc7 eq_refl).
+      rewrite Hr0_7, Hr9_7, Hmem7, Hmem6. cbn. reflexivity. }
+    assert (Hhead8 : vm_mem v8 action_head_addr = head).
+    { rewrite Hmem8.
+      rewrite (set_mem_neq (set_mem (set_mem m action_head_addr head)
+        action_state_addr (nth 4 row 0)) action_halt_addr 1 action_head_addr).
+      - rewrite (set_mem_neq (set_mem m action_head_addr head)
+          action_state_addr (nth 4 row 0) action_head_addr).
+        + apply set_mem_same.
+        + unfold action_head_addr, action_state_addr. lia.
+      - unfold action_head_addr, action_halt_addr. lia. }
+    assert (Hstate8 : vm_mem v8 action_state_addr = nth 4 row 0).
+    { rewrite Hmem8.
+      rewrite (set_mem_neq (set_mem (set_mem m action_head_addr head)
+        action_state_addr (nth 4 row 0)) action_halt_addr 1 action_state_addr).
+      - apply set_mem_same.
+      - unfold action_state_addr, action_halt_addr. lia. }
+    assert (Hhalt8mem : vm_mem v8 action_halt_addr = 1).
+    { rewrite Hmem8. apply set_mem_same. }
+    split; [exact Hpc8|split; [exact Hhead8|split; [exact Hstate8|
+      split; [exact Hhalt8mem|exact Hhalt8]]]].
+Qed.
