@@ -691,6 +691,7 @@ Lemma scan_hit_suffix :
     vm_reg vm 9 = m (start + 8 * i) ->
     vm_reg vm 1 = state ->
     vm_reg vm 4 = sym ->
+    vm_reg vm 8 = i ->
     vm_mem vm = m ->
     vm_halted vm = false ->
     table_mem_at (start + 8 * i) (row :: rest) m ->
@@ -698,10 +699,12 @@ Lemma scan_hit_suffix :
     1 < length row ->
     nth 0 row 0 = state ->
     nth 1 row 0 = sym ->
-    vm_pc (run_until 7 scan_block scan_stop vm) = 14.
+    vm_pc (run_until 7 scan_block scan_stop vm) = 14 /\
+    vm_reg (run_until 7 scan_block scan_stop vm) 7 = start + 8 * i /\
+    vm_reg (run_until 7 scan_block scan_stop vm) 8 = i.
 Proof.
   intros vm i state sym start row rest m
-    Hpc Hr7 Hr9 Hr1 Hr4 Hmem Hhalt Hmemtab Hrow0 Hrow1 Hfrom Hread.
+    Hpc Hr7 Hr9 Hr1 Hr4 Hr8 Hmem Hhalt Hmemtab Hrow0 Hrow1 Hfrom Hread.
   set (v1 := exec_instr scan_block vm).
   set (v2 := exec_instr scan_block v1).
   set (v3 := exec_instr scan_block v2).
@@ -795,7 +798,23 @@ Proof.
   cbn [run_until scan_stop orb].
   rewrite Hpc6, Hh6.
   cbn.
-  exact Hpc6.
+  split.
+  - exact Hpc6.
+  - split.
+    + unfold v6. unfold exec_instr. rewrite Hpc5. cbn [nth_error scan_block]. cbn.
+      unfold v5. unfold exec_instr. rewrite Hpc4. cbn [nth_error scan_block]. cbn.
+      unfold v4. unfold exec_instr. rewrite Hpc3. cbn [nth_error scan_block]. cbn.
+      unfold v3. unfold exec_instr. rewrite Hpc2. cbn [nth_error scan_block]. cbn.
+      unfold v2. unfold exec_instr. rewrite Hpc1. cbn [nth_error scan_block]. cbn.
+      unfold v1. unfold exec_instr. rewrite Hpc. cbn [nth_error scan_block]. cbn.
+      exact Hr7.
+    + unfold v6. unfold exec_instr. rewrite Hpc5. cbn [nth_error scan_block]. cbn.
+      unfold v5. unfold exec_instr. rewrite Hpc4. cbn [nth_error scan_block]. cbn.
+      unfold v4. unfold exec_instr. rewrite Hpc3. cbn [nth_error scan_block]. cbn.
+      unfold v3. unfold exec_instr. rewrite Hpc2. cbn [nth_error scan_block]. cbn.
+      unfold v2. unfold exec_instr. rewrite Hpc1. cbn [nth_error scan_block]. cbn.
+      unfold v1. unfold exec_instr. rewrite Hpc. cbn [nth_error scan_block]. cbn.
+      exact Hr8.
 Qed.
 
 Lemma scan_pc_after_11 :
@@ -1399,7 +1418,9 @@ Lemma scan_iter_hit :
     1 < length row ->
     nth 0 row 0 = state ->
     nth 1 row 0 = sym ->
-    vm_pc (run_until 12 scan_block scan_stop vm) = 14.
+    vm_pc (run_until 12 scan_block scan_stop vm) = 14 /\
+    vm_reg (run_until 12 scan_block scan_stop vm) 7 = start + 8 * i /\
+    vm_reg (run_until 12 scan_block scan_stop vm) 8 = i.
 Proof.
   intros vm i state sym start row rest m Hlt Hready Hmemtab
     Hrow0 Hrow1 Hfrom Hread.
@@ -1411,7 +1432,7 @@ Proof.
   fold vm5 in H5.
   destruct H5 as [Hpc5 [Hr7 [Hr9 [Hr1 [Hr4 [Hr8 [Hr5 [Hr6 [Hr13 [Hmem Hhalt]]]]]]]]]].
   exact (scan_hit_suffix vm5 i state sym start row rest m
-    Hpc5 Hr7 Hr9 Hr1 Hr4 Hmem Hhalt Hmemtab Hrow0 Hrow1 Hfrom Hread).
+    Hpc5 Hr7 Hr9 Hr1 Hr4 Hr8 Hmem Hhalt Hmemtab Hrow0 Hrow1 Hfrom Hread).
 Qed.
 
 Lemma scan_iter_miss_from :
