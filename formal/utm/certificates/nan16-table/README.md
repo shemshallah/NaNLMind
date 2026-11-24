@@ -492,9 +492,29 @@ MinskyNaN16StepSpec.v
 
 `Print Assumptions prelude_ready`, `prelude_halted`,
 `native_step_spec_active`, and `action_run_frame` are closed under the
-global context.  A step-entry composition (`MinskyNaN16StepEntrySpec.v`)
-is WIP: the local proot runs out of memory on the large composed goal, so
-it is not part of the checked chain.
+global context.
+
+The dedicated runner passed compile + `coqchk` for the chain through
+`MinskyNaN16StepSpec.v`:
+
+```text
+run 45493008714  compile/coqchk success
+```
+
+A step-entry composition (`MinskyNaN16StepEntrySpec.v`) is WIP: the local
+proot runs out of memory on the large composed goal, so it is not part of
+the checked chain.
+
+The signed-tape window encoding is checked locally:
+
+```text
+MinskyNaN16Window.v
+  win_addr / win_mem / injectivity
+  win_mem_addr / win_mem_write / win_mem_write_at
+```
+
+It is the start of the `AddressConfig` ↔ flat-memory bridge, not yet a
+step refinement.
 
 Remaining for the `.nas` step/run100 certificate:
 
