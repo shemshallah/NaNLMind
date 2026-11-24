@@ -1,0 +1,400 @@
+{
+  "schema": "nanlm.coq-equivalence-certificate/1",
+  "generated_at": "2026-11-24T02:37:23.834658+00:00",
+  "theorem": "NaNLM.MinskyLeftInfiniteClockRun.lic_lifted_halting_equivalence",
+  "supporting_theorem": "NaNLM.MinskyLeftInfiniteClockRun.lic_forward_clock_run",
+  "statement_file": "lic_lifted_halting_equivalence.statement.txt",
+  "proof_term_file": "lic_lifted_halting_equivalence.proofterm.txt",
+  "assumptions_file": "lic_lifted_halting_equivalence.assumptions.txt",
+  "coqchk_log_file": "lic_lifted_halting_equivalence.coqchk.txt.gz",
+  "coqchk_log_sha256": "cacf9f42d6c24b588cf091a44d0ecfcbf07df0a29a9f9ec88847a6e54daa02bf",
+  "coqchk_full_log_sha256": "63df4f75934fd3fa5bda03e7e122144b106211091b4ee4e2a5963f0fac99ea4d",
+  "coqchk_log_sha256_note": "The full log contains absolute paths and is machine-specific; the gzipped log is included as the raw transcript.",
+  "coqchk_status": "Modules were successfully checked",
+  "assumptions": [],
+  "assumptions_text": "Closed under the global context",
+  "module_context_axioms": [
+    "Coq.Logic.FunctionalExtensionality.functional_extensionality_dep"
+  ],
+  "module_context_axioms_note": "This axiom appears in the coqchk context summary for the whole loaded module cone. It is used by a theorem in MinskyLeftInfinite.v, not by the certified theorem: Print Assumptions for lic_lifted_halting_equivalence is closed.",
+  "coq_version": "8.20.1",
+  "source_sha256": "3a2f7c1da821c71e5e58871e4694150a6e4f2ecbbed87384601b4d00270e3a92",
+  "vo_sha256": "1400472a72cc1f293b0a28d6157e9ad5575efcf37ee71d65d2efb8c70245a385",
+  "universality_source_sha256": "d8342d708a7403f7bb314cd484747d81da3f7f922fc4c78c61a67bf0b24f1b5c",
+  "project_dependencies": [
+    {
+      "module": "MinskyActionMacro",
+      "source": "formal/utm/MinskyActionMacro.v",
+      "source_sha256": "0482d24ceddeb81f16524e325fff530b954dc17fdae5ed74a85cbe55859a027b",
+      "vo_sha256": "a1df3841768288e3a6a9bc99a000d38052b9f1aef7784c44a99eb324d9874467"
+    },
+    {
+      "module": "MinskyBookCycle",
+      "source": "formal/utm/MinskyBookCycle.v",
+      "source_sha256": "32bd9dc6658abe5c9a53df9e51e0837240ff55e4ba715484b7ea45ebaa3e23a6",
+      "vo_sha256": "bd871aec2a1714afdfc4c7f00fdbb88f4da5d6ffa995e168be09196fa68e5cb8"
+    },
+    {
+      "module": "MinskyBookEncode",
+      "source": "formal/utm/MinskyBookEncode.v",
+      "source_sha256": "cf9f47b3e9315bd6a7d7b2f4181f79422dc028badc939975150571ca87f175f9",
+      "vo_sha256": "996fee073c98c8465db5af0cd56cf363a499f7af691f6e281287e0418d456fdf"
+    },
+    {
+      "module": "MinskyBookLayout",
+      "source": "formal/utm/MinskyBookLayout.v",
+      "source_sha256": "a8479f66ead08b08dfa8b5be2badfd686a72fb3ccef9f705c8ab384d8d92cb77",
+      "vo_sha256": "3d29bea848ffac37f1c7840c50e4eabb8b92b128bdbb347c2d3b85123c171d11"
+    },
+    {
+      "module": "MinskyBookLeft",
+      "source": "formal/utm/MinskyBookLeft.v",
+      "source_sha256": "7b737293310bfd1f50418da6b9510913db7b7765a132b44a190e175d417ef789",
+      "vo_sha256": "9ffcc21471bd3b7c9d0d1a0ce7a00771d76e690e9b04739f00d9f32ff66f566b"
+    },
+    {
+      "module": "MinskyBookLeftCycle",
+      "source": "formal/utm/MinskyBookLeftCycle.v",
+      "source_sha256": "2408d5615d6ccc9df83645528a2df9f3070b36d40c10225636f93ca5e6bd2b34",
+      "vo_sha256": "d117e6a66299f8bb5bfa3094422ce8fdfb28bfd813c35d02f46824d8d8082f80"
+    },
+    {
+      "module": "MinskyBookLocate",
+      "source": "formal/utm/MinskyBookLocate.v",
+      "source_sha256": "a11551836fec8a1add9046c16eea6d73224d53a561c140393bd0780f98dadc03",
+      "vo_sha256": "1f5a3b51156940fce4356e825add8d0ece0dda6dd5ee06ae813f76aec9af077e"
+    },
+    {
+      "module": "MinskyBookLocateCycle",
+      "source": "formal/utm/MinskyBookLocateCycle.v",
+      "source_sha256": "2d8718e30c4bd3c1d141077c1014fff96cb55d595acb031aaf1b72174b0bf810",
+      "vo_sha256": "eec213ad8ea5b0764b2aef100edd1c7a2e8066371aa190623e5bae6fd6e949db"
+    },
+    {
+      "module": "MinskyBookLocateLookup",
+      "source": "formal/utm/MinskyBookLocateLookup.v",
+      "source_sha256": "78bcbff9e2b4a35de754da4a8b4500338c1322617c3a4712f78fe49f751837ed",
+      "vo_sha256": "029f4749e349bd8b3f0617018099c57d3f22f402c7dec96cd4ba8452d0f3d52c"
+    },
+    {
+      "module": "MinskyBookLocateRows",
+      "source": "formal/utm/MinskyBookLocateRows.v",
+      "source_sha256": "7a6ed0c32559f43ded875382010bd69d23f0457e064a66185fa8e9be9b575074",
+      "vo_sha256": "ca606b90c1468ec2ded24aeb4acb9495057e1b6496c432c69271f59169dcdfbd"
+    },
+    {
+      "module": "MinskyBookLocateWide",
+      "source": "formal/utm/MinskyBookLocateWide.v",
+      "source_sha256": "5a61fe38fc986024c480a6c8164effc3d26dd328975fc98ff04146ae9c8ca717",
+      "vo_sha256": "f3f192b3aeae98293888f1ae59f31e4f67136f05fe3483dcc632a50e6c8144cb"
+    },
+    {
+      "module": "MinskyBookRawBuffer",
+      "source": "formal/utm/MinskyBookRawBuffer.v",
+      "source_sha256": "185f4275890eee7857d4583c7d9dda5557cdef83d770750980e1f7b6d589b161",
+      "vo_sha256": "af6cbf026d26f564f637ccace738f036cc6aa5bffe04ae3624592f63a9af3f1f"
+    },
+    {
+      "module": "MinskyCanonicalCopy",
+      "source": "formal/utm/MinskyCanonicalCopy.v",
+      "source_sha256": "9ac510ef82ae051df3e85ea2553ae12a201704f97d0bbdb5d63298ca90642b02",
+      "vo_sha256": "5518b0e16ceb9f15e923e717bb606b8bde29abd585bc35942c44dcc3e9ee4537"
+    },
+    {
+      "module": "MinskyCanonicalCopyGeneral",
+      "source": "formal/utm/MinskyCanonicalCopyGeneral.v",
+      "source_sha256": "63ea5f4dd3db8e19e4f4bffa8f56ad2f0b5e1fc4a6aef5fb5ffe5d83279feddc",
+      "vo_sha256": "5f102a4bde4ee7df43a1e4a4ab61f18a1a7633f3179135c906952a86c36ed0d9"
+    },
+    {
+      "module": "MinskyCanonicalDecision",
+      "source": "formal/utm/MinskyCanonicalDecision.v",
+      "source_sha256": "134351ae13580a3138b07d3434753daf4fcd056973bb547833fd2b45b90a56c6",
+      "vo_sha256": "702c405c4d6c2fb6ec1d76bd8bf45e0048b9a5640a76e741d0bf0ae4bb5ecbe7"
+    },
+    {
+      "module": "MinskyCanonicalDirection",
+      "source": "formal/utm/MinskyCanonicalDirection.v",
+      "source_sha256": "ccc475f0b2e6401fd9410b225773303f2450ce75dbd5e5a0b4b0eee4b03fce89",
+      "vo_sha256": "1a4884fe59fa14f6af9d5001aa149b609d269f1b360f587963c0b7b4cc512ae5"
+    },
+    {
+      "module": "MinskyCanonicalFetch",
+      "source": "formal/utm/MinskyCanonicalFetch.v",
+      "source_sha256": "74d3d40df11fe99a4f0835e77803d5aa23ced343f1245b961c3172e5fdad0e14",
+      "vo_sha256": "ff553065f687d4bfc2cc99c1a7dc9ffc7923c02380d17d46d91a766b206bb0fa"
+    },
+    {
+      "module": "MinskyCanonicalInstruction",
+      "source": "formal/utm/MinskyCanonicalInstruction.v",
+      "source_sha256": "0934bab0c9538304b0c60b57eefb7c89ff36c5b66a58c70400053414c41a2980",
+      "vo_sha256": "52dcf39ec22f8284f51bdf02e0198892273600bdc30c960c051872930339fc7d"
+    },
+    {
+      "module": "MinskyCanonicalMatch",
+      "source": "formal/utm/MinskyCanonicalMatch.v",
+      "source_sha256": "e58272c7d7819ce1920734a154709bf781f157263774cfdd3921e2f281a33bd1",
+      "vo_sha256": "b3025485f94255c705d4c7be3fbd7d6677793fa52e6ba0f954640401b2870061"
+    },
+    {
+      "module": "MinskyCanonicalRestore",
+      "source": "formal/utm/MinskyCanonicalRestore.v",
+      "source_sha256": "3ddedf5a0c37daeddad8fa278de8e67251a389ca5b8968935baffe7af51cb2bc",
+      "vo_sha256": "cdd56c91b1b47924355fb266064697c135030ecaa3b9461378d59a3d4d984cb6"
+    },
+    {
+      "module": "MinskyConcreteDispatch",
+      "source": "formal/utm/MinskyConcreteDispatch.v",
+      "source_sha256": "bfd12da3d5d416090c0818dc0b8a87825668b4810c361929c2001f18ff0c340b",
+      "vo_sha256": "26224f19c0b2dcf5262f268f7f971ee17cb9f5effa86cb37d89aaf5f8330b1ed"
+    },
+    {
+      "module": "MinskyConcreteEntry",
+      "source": "formal/utm/MinskyConcreteEntry.v",
+      "source_sha256": "fde096451222dbaa7fbdde174000077846cec78843b23d789e9ae479dd899b92",
+      "vo_sha256": "e53b417146bb6f77c35edda94e1b4f058c7e9a6de8b3aaaaf6808fa09bea9ad4"
+    },
+    {
+      "module": "MinskyConcreteProgramScan",
+      "source": "formal/utm/MinskyConcreteProgramScan.v",
+      "source_sha256": "26f702145c41804a73ce88223ee44a183817a3f1e91d99e5575031df73c201ac",
+      "vo_sha256": "8f064febd71ac59b7b8080773cd813fefd221e18f7b260f4b65831e0d8743d30"
+    },
+    {
+      "module": "MinskyDirectionCycle",
+      "source": "formal/utm/MinskyDirectionCycle.v",
+      "source_sha256": "49026f73a3276111fb249fcb70e2e3bd71661a6bf867abe39914605582192c01",
+      "vo_sha256": "badf60d616ad4b263887a02589f20800fd358851b25000d5530d07fbcff17517"
+    },
+    {
+      "module": "MinskyDirectionDecision",
+      "source": "formal/utm/MinskyDirectionDecision.v",
+      "source_sha256": "872606605295c6782a952ca68aeb06082f4a1af9c9140eaf5a24ae4faf67d1c8",
+      "vo_sha256": "fbc83eb44d1f6bb0687408c6334808976617796a5ced40d9f544c47bc90f3a23"
+    },
+    {
+      "module": "MinskyDirectionRelocationCycle",
+      "source": "formal/utm/MinskyDirectionRelocationCycle.v",
+      "source_sha256": "8846e29270ed95e574ef17847e65ee58139c309e47f7359b33008a055c3285b0",
+      "vo_sha256": "062e7cde929c99b4b0e0bba1cca5abde497c1d49aa6861e956ff0b6c1a9752e6"
+    },
+    {
+      "module": "MinskyHeadMoveMacro",
+      "source": "formal/utm/MinskyHeadMoveMacro.v",
+      "source_sha256": "e0d2b40e515ccd085aafa6565b1045dd2c6af637eb96c87dadc0bfe34f58ec81",
+      "vo_sha256": "3c299f63b015680853e7baedae350b9ebc1d449f8a588a36534c7a34dcfaa92b"
+    },
+    {
+      "module": "MinskyLeftInfinite",
+      "source": "formal/utm/MinskyLeftInfinite.v",
+      "source_sha256": "3d0cc2fc24b2603026894292ca417c49674b9301000d5db7715677729fe4f3f2",
+      "vo_sha256": "6aae5537a3557a357675a8683c6a71aa615eee99f92aeaee1c6b631cf6af019e"
+    },
+    {
+      "module": "MinskyLeftInfiniteBoundary",
+      "source": "formal/utm/MinskyLeftInfiniteBoundary.v",
+      "source_sha256": "23785432e3398ac6f4808f9063bfc982fec7caae8b03bf8518d0b8c964cc3d23",
+      "vo_sha256": "18237fa9b960594995e1441e0f9dfc024aca939d8f776b2ac525ba114a09f876"
+    },
+    {
+      "module": "MinskyLeftInfiniteBoundaryBook",
+      "source": "formal/utm/MinskyLeftInfiniteBoundaryBook.v",
+      "source_sha256": "f815808c8ad315f4dd2748c3e9f46cefdae38540089ac2446c9c48595b6e22b3",
+      "vo_sha256": "674d33de30665414c6854c689a6860bcacab270d5cb6bbc0534a0ee4a53dfda7"
+    },
+    {
+      "module": "MinskyLeftInfiniteBoundaryFinal",
+      "source": "formal/utm/MinskyLeftInfiniteBoundaryFinal.v",
+      "source_sha256": "d01adf132bc6590a336a4a85f732ec1637c0256c986ebefa3208936188833906",
+      "vo_sha256": "f6b9ab0e7bad9b0365642d390b1ea448c610e161207fc80330adea25e6fc56b9"
+    },
+    {
+      "module": "MinskyLeftInfiniteBoundaryLifted",
+      "source": "formal/utm/MinskyLeftInfiniteBoundaryLifted.v",
+      "source_sha256": "c302b675061bb2bcacad9b2132c736fe541b86eff39aaf96eaefb29d86d8222a",
+      "vo_sha256": "832dc7df9eabfeaea3dae3521dfcde3e21439841a323c3fbf9e50c9054951c98"
+    },
+    {
+      "module": "MinskyLeftInfiniteBoundaryLocate",
+      "source": "formal/utm/MinskyLeftInfiniteBoundaryLocate.v",
+      "source_sha256": "5ca2871e9de6d26cba6824f31c02edb4628e31c0156e74999d235634a4fdc77f",
+      "vo_sha256": "7ab9787c9eca7dd0513a199fd3f1bd0a977d1b805ab117865556701a4bbea29a"
+    },
+    {
+      "module": "MinskyLeftInfiniteBoundaryLookup",
+      "source": "formal/utm/MinskyLeftInfiniteBoundaryLookup.v",
+      "source_sha256": "345337c9061e2911b06b1bd02154c77affe6fd81f5a960f1276b966d6d3a89e2",
+      "vo_sha256": "61fa14dfd297728e9a96e4355120bccef3486b67501dfa02a2ef11a9a90e4c69"
+    },
+    {
+      "module": "MinskyLeftInfiniteBoundaryPremises",
+      "source": "formal/utm/MinskyLeftInfiniteBoundaryPremises.v",
+      "source_sha256": "b6a7dc59bed789c855d6a0d994c3c4a1d04af98d6585680ee0f8daef9f77659e",
+      "vo_sha256": "28505c2d3914fd51dbcd09ce315b915d3bb6443caa2796f7f13f165c0cad51a5"
+    },
+    {
+      "module": "MinskyLeftInfiniteBounded",
+      "source": "formal/utm/MinskyLeftInfiniteBounded.v",
+      "source_sha256": "41a6fc75f533148c694de77af6cddd4d9f4ce827b0b802e96799439718da5d45",
+      "vo_sha256": "8dcc4df63a967ac2d2afa92dca5c6e1bba40f15a98656e2f55fe895eda94a2b0"
+    },
+    {
+      "module": "MinskyLeftInfiniteClockInd",
+      "source": "formal/utm/MinskyLeftInfiniteClockInd.v",
+      "source_sha256": "6fe4ae9c741b53ee3e58ef1235f3287b9b7c53320f820098b379883dda1f7485",
+      "vo_sha256": "3b5c7cecc12972bab5d84ee95cbc5d5508dabb55298d6140fcdd9de1d37dc585"
+    },
+    {
+      "module": "MinskyLeftInfiniteEncode",
+      "source": "formal/utm/MinskyLeftInfiniteEncode.v",
+      "source_sha256": "5789ea07d36318e8be1356fd18657cbd421bf7b44c1e0e0307439dfcd912117f",
+      "vo_sha256": "c6d26b66c43dea2184238d7068f255b7679d021a33e4a3835588975967da2ec7"
+    },
+    {
+      "module": "MinskyLeftInfiniteEncoding",
+      "source": "formal/utm/MinskyLeftInfiniteEncoding.v",
+      "source_sha256": "9f53e46ba3931b527c650fa415290025ff9b70d843ed6f878ab93f4efeee435a",
+      "vo_sha256": "446f3ca8947c7276ac58eb42c20210501fc48b97e1f47cd0185af13ce1d03e1e"
+    },
+    {
+      "module": "MinskyLeftInfiniteFirstMatchApp",
+      "source": "formal/utm/MinskyLeftInfiniteFirstMatchApp.v",
+      "source_sha256": "93a618d7d4b0b7b3f11b2284b7cb05874db81f1e55f61640cd2ead66e553b10a",
+      "vo_sha256": "3814e48a5e10613bf2d46e9dea14806b9bb11cbff3723d9e5c4bba8cd0302721"
+    },
+    {
+      "module": "MinskyLeftInfiniteHalt",
+      "source": "formal/utm/MinskyLeftInfiniteHalt.v",
+      "source_sha256": "2fcdd2407306734c2bd2056b43c062f9216c5a279fa509eaa76544f1987f2e45",
+      "vo_sha256": "cd2bffaffb2cf328d9a049cacd096f1d7628a4eb44899b2f9d89c6b02687b44d"
+    },
+    {
+      "module": "MinskyLeftInfiniteHaltBook",
+      "source": "formal/utm/MinskyLeftInfiniteHaltBook.v",
+      "source_sha256": "56d8345cc56f99f248a9fd7a423e472c0af471b0a2e8a11dfd910da3080c1296",
+      "vo_sha256": "b8480d7ab07e273803cfc9648534388fd006b9e857f45ec8eed70f83ba48bc42"
+    },
+    {
+      "module": "MinskyLeftInfiniteLeftDepth",
+      "source": "formal/utm/MinskyLeftInfiniteLeftDepth.v",
+      "source_sha256": "82661f980883ce858c358cd122388a716fae8fc7a40663ea9ead97beb4e7d16e",
+      "vo_sha256": "02632671b378f4b744e80eb97d9b6f536d29301a144daaaaf51354a35fb3bff4"
+    },
+    {
+      "module": "MinskyLeftInfiniteLift",
+      "source": "formal/utm/MinskyLeftInfiniteLift.v",
+      "source_sha256": "0f54081b668a4e98fc0b1fff65002d9043f497bcc23e9e1fd0016973ff225e9f",
+      "vo_sha256": "5b222c5ae2c51f78afa238b476fdc3bd28add4c5bce487410756c285c2819b39"
+    },
+    {
+      "module": "MinskyLeftInfiniteLiftBackward",
+      "source": "formal/utm/MinskyLeftInfiniteLiftBackward.v",
+      "source_sha256": "88179d761afa64eb15cdf3c897cc2b0716b59c9067b11621ed1b2d3d87ac7f9f",
+      "vo_sha256": "a6d4cb557995c2257d0a9c9cb8bed95614738d395f8f3a133d7d9793adfd0070"
+    },
+    {
+      "module": "MinskyLeftInfiniteLiftForward",
+      "source": "formal/utm/MinskyLeftInfiniteLiftForward.v",
+      "source_sha256": "f750666a5bfd8d20c0af5bbcc48708a52a0515fe02a2df2123059aaf6c91a5d0",
+      "vo_sha256": "1dc7da172ebc1300dc21f1cb5ea7ab6803821dcc45a3be73f9c837a4d78eb535"
+    },
+    {
+      "module": "MinskyLeftInfiniteLookup",
+      "source": "formal/utm/MinskyLeftInfiniteLookup.v",
+      "source_sha256": "3c24feb09e8040e715886f723c7766b8f725bdb84a6ba5f280383bc6e65e6861",
+      "vo_sha256": "267acf0d9cf24a118c02ce4f27cbc1ec2e46d3e5b248fc1e9ddebdd81a9da65a"
+    },
+    {
+      "module": "MinskyLeftInfiniteLookupFull",
+      "source": "formal/utm/MinskyLeftInfiniteLookupFull.v",
+      "source_sha256": "25c9a546aa62272bd5211cf430d8fdfc31a959d4a76f062f1ef8b3a62c07f773",
+      "vo_sha256": "a66b99b820c45e168fc7cf942812d44d7a0f17a078d1c29b02d151708d1e3ef9"
+    },
+    {
+      "module": "MinskyLeftInfiniteSentinel",
+      "source": "formal/utm/MinskyLeftInfiniteSentinel.v",
+      "source_sha256": "4262475d545e79e40d9358eb14179ee8cfb8110e0562b72b04f67800b172dedf",
+      "vo_sha256": "5647843c719034f85e7e15660b84fac881c598378e9b6c2a3c74ab39a3ccb5ba"
+    },
+    {
+      "module": "MinskyLeftInfiniteStepLeft",
+      "source": "formal/utm/MinskyLeftInfiniteStepLeft.v",
+      "source_sha256": "1969ed3cd81edc016db85ed71a97595623b19daab0d898a6348552f78713f883",
+      "vo_sha256": "d5903ded585804f93e879ea25ea3073d2117453768e680b32582e1eba406487d"
+    },
+    {
+      "module": "MinskyLeftInfiniteStepRight",
+      "source": "formal/utm/MinskyLeftInfiniteStepRight.v",
+      "source_sha256": "5efb18c2ff0e869684f153c6c5d985ce6a362e91b440d481d5f791d5bfd9ab5e",
+      "vo_sha256": "4dc82295905a2e85586e28a279341dd4a6e2fd29e106d91181705db2af010b75"
+    },
+    {
+      "module": "MinskyLeftInfiniteUniversality",
+      "source": "formal/utm/MinskyLeftInfiniteUniversality.v",
+      "source_sha256": "d8342d708a7403f7bb314cd484747d81da3f7f922fc4c78c61a67bf0b24f1b5c",
+      "vo_sha256": "ae229cbfe78712094ea3f11608cbd42a2c280cb97165332d83e572061517006a"
+    },
+    {
+      "module": "MinskyLeftInfiniteWindow",
+      "source": "formal/utm/MinskyLeftInfiniteWindow.v",
+      "source_sha256": "da2f756cabc4053a2db86fe8065d16842d2a95cca868b6e2d6d3804cdbe2accb",
+      "vo_sha256": "0c4b40862027b4b4335bcd629f2a7d21391e6e20e45d0b3abae601f1e585efd7"
+    },
+    {
+      "module": "MinskyMatchMacro",
+      "source": "formal/utm/MinskyMatchMacro.v",
+      "source_sha256": "131f1b8f566a105e59eded9c14cd77e736fc521e6da93d8101b8257952aae073",
+      "vo_sha256": "a46fd1bb9c70911f6d4287ab462c56c7e090e82bfb9d10f36e21c33ba15d75df"
+    },
+    {
+      "module": "MinskyRelocationMacro",
+      "source": "formal/utm/MinskyRelocationMacro.v",
+      "source_sha256": "fe348e2ec5d968888214ab5e800a6577c11d6baf163cc75e93f13664f7d76147",
+      "vo_sha256": "841f47baeef8f935f3124394dde328d5ba224680ae47232c2616f77a6b318bb7"
+    },
+    {
+      "module": "MinskySourceEncoding",
+      "source": "formal/utm/MinskySourceEncoding.v",
+      "source_sha256": "6e99dce853b0c8e949e42c960bb3ab09f46638a935668ef30313bf5debc13724",
+      "vo_sha256": "3750166d593169026d5421ce20150a268b54abd57692642b3d8cb2ac12b5d5ba"
+    },
+    {
+      "module": "MinskyTable",
+      "source": "formal/utm/MinskyTable.v",
+      "source_sha256": "a4a5a94d409e95508fa1df969660a09063d5b85c187555d0f71978cc6f39e0f6",
+      "vo_sha256": "443a28e37bb1fb4dc09442450db6dd9cc7b5b0111abc5fca37f3df44d8525451"
+    },
+    {
+      "module": "MinskyTableData",
+      "source": "formal/utm/MinskyTableData.v",
+      "source_sha256": "5ce4cb25128a546dc2be385c429a06245deeb6786385241de8d33ff3457d0ef5",
+      "vo_sha256": "e7a323aa6561eedfb12b6d8f9a1439209edc5e103517eb450ca513233da2d360"
+    },
+    {
+      "module": "MinskyTaggedHalt",
+      "source": "formal/utm/MinskyTaggedHalt.v",
+      "source_sha256": "abd3e3ced8817e6e5a2abd96992ea6102a9dd2e1ebcd603ed946c94ce75a32f4",
+      "vo_sha256": "c644a996934259c214790085ad101747aa049696e85a6dca70d2c0537a63b90f"
+    },
+    {
+      "module": "MinskyWideConcreteDispatch",
+      "source": "formal/utm/MinskyWideConcreteDispatch.v",
+      "source_sha256": "64768cc2b3adc83d569dc370e55c78718df41bb807cd0f7c97f6b82de07825e1",
+      "vo_sha256": "821a23d83527819c3e822948877fa4bd71ee4ddb3bda09d669c06ff6fd0be4d6"
+    },
+    {
+      "module": "MinskyWideSource",
+      "source": "formal/utm/MinskyWideSource.v",
+      "source_sha256": "77caa72b5349ae08a1faba3d328b1e8a314d1b266eb2c2d548daa4f72ece4c5b",
+      "vo_sha256": "c9fac9dbfd61b6a2e80d6c54350e62bba1e1d425fde587cd9ec327b8054c0b42"
+    },
+    {
+      "module": "MinskyWritebackMacro",
+      "source": "formal/utm/MinskyWritebackMacro.v",
+      "source_sha256": "67e3892e812a5e8034f3600071b2b24cd60ddd7c21f73b2904ad65fdd5ca871c",
+      "vo_sha256": "f490fc3956a255913e45b9f8ed9575d7548de633364cc591f3739ddf2e20eb9f"
+    }
+  ],
+  "scope": "Fixed 23x8 Minsky table, left-infinite binary-tape source model. Well-formed nonempty source rows, state length p, and left_infinite_ok. Halting equivalence with an existential left-window depth K and native time t, K >= t. No total run-time-independent encode is claimed.",
+  "reproduction": "bash formal/utm/certificates/reproduce.sh"
+}

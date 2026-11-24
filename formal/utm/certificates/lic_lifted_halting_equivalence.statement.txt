@@ -1,0 +1,38 @@
+lic_lifted_halting_equivalence
+     : forall (p : nat) (rows : list MinskyWideSource.WideSourceRow)
+         (c : MinskyLeftInfinite.LeftInfiniteConfig)
+         (_ : @List.Forall MinskyWideSource.WideSourceRow
+                (MinskyWideSource.wide_row_wellformed p) rows)
+         (_ : not
+                (@eq (list MinskyWideSource.WideSourceRow) rows
+                   (@nil MinskyWideSource.WideSourceRow)))
+         (_ : @eq nat (@length bool (MinskyLeftInfinite.lic_state c)) p)
+         (_ : MinskyLeftInfinite.left_infinite_ok c),
+       iff (MinskyLeftInfinite.left_infinite_eventually_halts rows c)
+         (@ex nat
+            (fun K : nat =>
+             @ex nat
+               (fun t : nat =>
+                and (ge K t)
+                  (@eq bool
+                     (MinskyTable.c_halted
+                        (MinskyTable.run t
+                           match
+                             MinskyLeftInfinite.lic_halted c
+                             return MinskyTable.Config
+                           with
+                           | true =>
+                               MinskyConcreteDispatch.dispatch_halt_at_y
+                                 (@nil nat) (@nil nat)
+                           | false =>
+                               MinskyLeftInfiniteEncode.lic_q5_encode
+                                 (BinInt.Z.sub
+                                    (BinInt.Z.sub
+                                       (MinskyLeftInfinite.lic_head c)
+                                       (BinInt.Z.of_nat K))
+                                    (BinNums.Zpos (BinNums.xO BinNums.xH)))
+                                 (MinskyLeftInfiniteLift.lic_lift_cfg c)
+                                 (MinskyLeftInfiniteEncoding.lic_book_rows
+                                    (MinskyLeftInfiniteLift.lic_lift_rows
+                                       rows)) (@nil nat)
+                           end)) true))))

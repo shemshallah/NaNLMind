@@ -1,0 +1,889 @@
+lic_lifted_halting_equivalence =
+fun (p : nat) (rows : list MinskyWideSource.WideSourceRow)
+  (c : MinskyLeftInfinite.LeftInfiniteConfig)
+  (Hwf : @List.Forall MinskyWideSource.WideSourceRow
+           (MinskyWideSource.wide_row_wellformed p) rows)
+  (Hne : not
+           (@eq (list MinskyWideSource.WideSourceRow) rows
+              (@nil MinskyWideSource.WideSourceRow)))
+  (Hlen : @eq nat (@length bool (MinskyLeftInfinite.lic_state c)) p)
+  (Hok : MinskyLeftInfinite.left_infinite_ok c) =>
+@conj
+  (forall _ : MinskyLeftInfinite.left_infinite_eventually_halts rows c,
+   @ex nat
+     (fun K : nat =>
+      @ex nat
+        (fun t : nat =>
+         and (ge K t)
+           (@eq bool
+              (MinskyTable.c_halted
+                 (MinskyTable.run t
+                    match
+                      MinskyLeftInfinite.lic_halted c
+                      return MinskyTable.Config
+                    with
+                    | true =>
+                        MinskyConcreteDispatch.dispatch_halt_at_y 
+                          (@nil nat) (@nil nat)
+                    | false =>
+                        MinskyLeftInfiniteEncode.lic_q5_encode
+                          (BinInt.Z.sub
+                             (BinInt.Z.sub (MinskyLeftInfinite.lic_head c)
+                                (BinInt.Z.of_nat K))
+                             (BinNums.Zpos (BinNums.xO BinNums.xH)))
+                          (MinskyLeftInfiniteLift.lic_lift_cfg c)
+                          (MinskyLeftInfiniteEncoding.lic_book_rows
+                             (MinskyLeftInfiniteLift.lic_lift_rows rows))
+                          (@nil nat)
+                    end)) true))))
+  (forall
+     _ : @ex nat
+           (fun K : nat =>
+            @ex nat
+              (fun t : nat =>
+               and (ge K t)
+                 (@eq bool
+                    (MinskyTable.c_halted
+                       (MinskyTable.run t
+                          match
+                            MinskyLeftInfinite.lic_halted c
+                            return MinskyTable.Config
+                          with
+                          | true =>
+                              MinskyConcreteDispatch.dispatch_halt_at_y
+                                (@nil nat) (@nil nat)
+                          | false =>
+                              MinskyLeftInfiniteEncode.lic_q5_encode
+                                (BinInt.Z.sub
+                                   (BinInt.Z.sub
+                                      (MinskyLeftInfinite.lic_head c)
+                                      (BinInt.Z.of_nat K))
+                                   (BinNums.Zpos (BinNums.xO BinNums.xH)))
+                                (MinskyLeftInfiniteLift.lic_lift_cfg c)
+                                (MinskyLeftInfiniteEncoding.lic_book_rows
+                                   (MinskyLeftInfiniteLift.lic_lift_rows rows))
+                                (@nil nat)
+                          end)) true))),
+   MinskyLeftInfinite.left_infinite_eventually_halts rows c)
+  (fun H : MinskyLeftInfinite.left_infinite_eventually_halts rows c =>
+   match
+     H
+     return
+       (@ex nat
+          (fun K : nat =>
+           @ex nat
+             (fun t : nat =>
+              and (ge K t)
+                (@eq bool
+                   (MinskyTable.c_halted
+                      (MinskyTable.run t
+                         match
+                           MinskyLeftInfinite.lic_halted c
+                           return MinskyTable.Config
+                         with
+                         | true =>
+                             MinskyConcreteDispatch.dispatch_halt_at_y
+                               (@nil nat) (@nil nat)
+                         | false =>
+                             MinskyLeftInfiniteEncode.lic_q5_encode
+                               (BinInt.Z.sub
+                                  (BinInt.Z.sub
+                                     (MinskyLeftInfinite.lic_head c)
+                                     (BinInt.Z.of_nat K))
+                                  (BinNums.Zpos (BinNums.xO BinNums.xH)))
+                               (MinskyLeftInfiniteLift.lic_lift_cfg c)
+                               (MinskyLeftInfiniteEncoding.lic_book_rows
+                                  (MinskyLeftInfiniteLift.lic_lift_rows rows))
+                               (@nil nat)
+                         end)) true))))
+   with
+   | @ex_intro _ _ x x0 =>
+       (fun (k : nat)
+          (Hk : @eq bool
+                  (MinskyLeftInfinite.lic_halted
+                     (MinskyLeftInfinite.left_infinite_run k rows c)) true)
+        =>
+        let lo0 : BinNums.Z :=
+          BinInt.Z.sub
+            (BinInt.Z.sub (MinskyLeftInfinite.lic_head c) (BinInt.Z.of_nat k))
+            (BinNums.Zpos (BinNums.xO BinNums.xH)) in
+        let t : nat :=
+          MinskyLeftInfiniteUniversality.lic_forward_clock rows k lo0 c in
+        let K : nat := PeanoNat.Nat.max k t in
+        let lo : BinNums.Z :=
+          BinInt.Z.sub
+            (BinInt.Z.sub (MinskyLeftInfinite.lic_head c) (BinInt.Z.of_nat K))
+            (BinNums.Zpos (BinNums.xO BinNums.xH)) in
+        let Hlk : ge K k := PeanoNat.Nat.le_max_l k t in
+        let Hlt : ge K t := PeanoNat.Nat.le_max_r k t in
+        let HleftK : MinskyLeftInfiniteLeftDepth.lic_left_ok lo k c :=
+          MinskyLeftInfiniteLeftDepth.lic_left_ok_window K k c Hlk Hok in
+        let Hleft0 : MinskyLeftInfiniteLeftDepth.lic_left_ok lo0 k c :=
+          MinskyLeftInfiniteLeftDepth.lic_left_ok_window k k c
+            (PeanoNat.Nat.le_refl k) Hok in
+        let Hrun :
+          @eq bool
+            (MinskyTable.c_halted
+               (MinskyTable.run
+                  (MinskyLeftInfiniteUniversality.lic_forward_clock rows k lo
+                     c)
+                  match
+                    MinskyLeftInfinite.lic_halted c return MinskyTable.Config
+                  with
+                  | true =>
+                      MinskyConcreteDispatch.dispatch_halt_at_y 
+                        (@nil nat) (@nil nat)
+                  | false =>
+                      MinskyLeftInfiniteEncode.lic_q5_encode lo
+                        (MinskyLeftInfiniteLift.lic_lift_cfg c)
+                        (MinskyLeftInfiniteEncoding.lic_book_rows
+                           (MinskyLeftInfiniteLift.lic_lift_rows rows))
+                        (@nil nat)
+                  end)) true :=
+          lic_forward_clock_run k p lo c rows Hwf Hne Hlen Hok HleftK Hk in
+        let Hrun0 :
+          @eq bool
+            (MinskyTable.c_halted
+               (MinskyTable.run
+                  (MinskyLeftInfiniteUniversality.lic_forward_clock rows k
+                     lo0 c)
+                  match
+                    MinskyLeftInfinite.lic_halted c return MinskyTable.Config
+                  with
+                  | true =>
+                      MinskyConcreteDispatch.dispatch_halt_at_y 
+                        (@nil nat) (@nil nat)
+                  | false =>
+                      MinskyLeftInfiniteEncode.lic_q5_encode lo
+                        (MinskyLeftInfiniteLift.lic_lift_cfg c)
+                        (MinskyLeftInfiniteEncoding.lic_book_rows
+                           (MinskyLeftInfiniteLift.lic_lift_rows rows))
+                        (@nil nat)
+                  end)) true :=
+          @eq_ind nat
+            (MinskyLeftInfiniteUniversality.lic_forward_clock rows k lo c)
+            (fun n : nat =>
+             @eq bool
+               (MinskyTable.c_halted
+                  (MinskyTable.run n
+                     match
+                       MinskyLeftInfinite.lic_halted c
+                       return MinskyTable.Config
+                     with
+                     | true =>
+                         MinskyConcreteDispatch.dispatch_halt_at_y 
+                           (@nil nat) (@nil nat)
+                     | false =>
+                         MinskyLeftInfiniteEncode.lic_q5_encode lo
+                           (MinskyLeftInfiniteLift.lic_lift_cfg c)
+                           (MinskyLeftInfiniteEncoding.lic_book_rows
+                              (MinskyLeftInfiniteLift.lic_lift_rows rows))
+                           (@nil nat)
+                     end)) true) Hrun
+            (MinskyLeftInfiniteUniversality.lic_forward_clock rows k lo0 c)
+            (MinskyLeftInfiniteUniversality.lic_forward_clock_lo_ind rows k
+               lo lo0 c) in
+        @ex_intro nat
+          (fun K0 : nat =>
+           @ex nat
+             (fun t0 : nat =>
+              and (ge K0 t0)
+                (@eq bool
+                   (MinskyTable.c_halted
+                      (MinskyTable.run t0
+                         match
+                           MinskyLeftInfinite.lic_halted c
+                           return MinskyTable.Config
+                         with
+                         | true =>
+                             MinskyConcreteDispatch.dispatch_halt_at_y
+                               (@nil nat) (@nil nat)
+                         | false =>
+                             MinskyLeftInfiniteEncode.lic_q5_encode
+                               (BinInt.Z.sub
+                                  (BinInt.Z.sub
+                                     (MinskyLeftInfinite.lic_head c)
+                                     (BinInt.Z.of_nat K0))
+                                  (BinNums.Zpos (BinNums.xO BinNums.xH)))
+                               (MinskyLeftInfiniteLift.lic_lift_cfg c)
+                               (MinskyLeftInfiniteEncoding.lic_book_rows
+                                  (MinskyLeftInfiniteLift.lic_lift_rows rows))
+                               (@nil nat)
+                         end)) true))) K
+          (@ex_intro nat
+             (fun t0 : nat =>
+              and (ge K t0)
+                (@eq bool
+                   (MinskyTable.c_halted
+                      (MinskyTable.run t0
+                         match
+                           MinskyLeftInfinite.lic_halted c
+                           return MinskyTable.Config
+                         with
+                         | true =>
+                             MinskyConcreteDispatch.dispatch_halt_at_y
+                               (@nil nat) (@nil nat)
+                         | false =>
+                             MinskyLeftInfiniteEncode.lic_q5_encode
+                               (BinInt.Z.sub
+                                  (BinInt.Z.sub
+                                     (MinskyLeftInfinite.lic_head c)
+                                     (BinInt.Z.of_nat K))
+                                  (BinNums.Zpos (BinNums.xO BinNums.xH)))
+                               (MinskyLeftInfiniteLift.lic_lift_cfg c)
+                               (MinskyLeftInfiniteEncoding.lic_book_rows
+                                  (MinskyLeftInfiniteLift.lic_lift_rows rows))
+                               (@nil nat)
+                         end)) true)) t
+             (@conj (ge K t)
+                (@eq bool
+                   (MinskyTable.c_halted
+                      (MinskyTable.run t
+                         match
+                           MinskyLeftInfinite.lic_halted c
+                           return MinskyTable.Config
+                         with
+                         | true =>
+                             MinskyConcreteDispatch.dispatch_halt_at_y
+                               (@nil nat) (@nil nat)
+                         | false =>
+                             MinskyLeftInfiniteEncode.lic_q5_encode
+                               (BinInt.Z.sub
+                                  (BinInt.Z.sub
+                                     (MinskyLeftInfinite.lic_head c)
+                                     (BinInt.Z.of_nat K))
+                                  (BinNums.Zpos (BinNums.xO BinNums.xH)))
+                               (MinskyLeftInfiniteLift.lic_lift_cfg c)
+                               (MinskyLeftInfiniteEncoding.lic_book_rows
+                                  (MinskyLeftInfiniteLift.lic_lift_rows rows))
+                               (@nil nat)
+                         end)) true) Hlt Hrun0))) x x0
+   end)
+  (fun
+     H : @ex nat
+           (fun K : nat =>
+            @ex nat
+              (fun t : nat =>
+               and (ge K t)
+                 (@eq bool
+                    (MinskyTable.c_halted
+                       (MinskyTable.run t
+                          match
+                            MinskyLeftInfinite.lic_halted c
+                            return MinskyTable.Config
+                          with
+                          | true =>
+                              MinskyConcreteDispatch.dispatch_halt_at_y
+                                (@nil nat) (@nil nat)
+                          | false =>
+                              MinskyLeftInfiniteEncode.lic_q5_encode
+                                (BinInt.Z.sub
+                                   (BinInt.Z.sub
+                                      (MinskyLeftInfinite.lic_head c)
+                                      (BinInt.Z.of_nat K))
+                                   (BinNums.Zpos (BinNums.xO BinNums.xH)))
+                                (MinskyLeftInfiniteLift.lic_lift_cfg c)
+                                (MinskyLeftInfiniteEncoding.lic_book_rows
+                                   (MinskyLeftInfiniteLift.lic_lift_rows rows))
+                                (@nil nat)
+                          end)) true))) =>
+   match
+     H return (MinskyLeftInfinite.left_infinite_eventually_halts rows c)
+   with
+   | @ex_intro _ _ x x0 =>
+       (fun (K : nat)
+          (H0 : @ex nat
+                  (fun t : nat =>
+                   and (ge K t)
+                     (@eq bool
+                        (MinskyTable.c_halted
+                           (MinskyTable.run t
+                              match
+                                MinskyLeftInfinite.lic_halted c
+                                return MinskyTable.Config
+                              with
+                              | true =>
+                                  MinskyConcreteDispatch.dispatch_halt_at_y
+                                    (@nil nat) (@nil nat)
+                              | false =>
+                                  MinskyLeftInfiniteEncode.lic_q5_encode
+                                    (BinInt.Z.sub
+                                       (BinInt.Z.sub
+                                          (MinskyLeftInfinite.lic_head c)
+                                          (BinInt.Z.of_nat K))
+                                       (BinNums.Zpos (BinNums.xO BinNums.xH)))
+                                    (MinskyLeftInfiniteLift.lic_lift_cfg c)
+                                    (MinskyLeftInfiniteEncoding.lic_book_rows
+                                       (MinskyLeftInfiniteLift.lic_lift_rows
+                                          rows)) (@nil nat)
+                              end)) true))) =>
+        match
+          H0
+          return (MinskyLeftInfinite.left_infinite_eventually_halts rows c)
+        with
+        | @ex_intro _ _ x1 x2 =>
+            (fun (t : nat)
+               (H1 : and (ge K t)
+                       (@eq bool
+                          (MinskyTable.c_halted
+                             (MinskyTable.run t
+                                match
+                                  MinskyLeftInfinite.lic_halted c
+                                  return MinskyTable.Config
+                                with
+                                | true =>
+                                    MinskyConcreteDispatch.dispatch_halt_at_y
+                                      (@nil nat) (@nil nat)
+                                | false =>
+                                    MinskyLeftInfiniteEncode.lic_q5_encode
+                                      (BinInt.Z.sub
+                                         (BinInt.Z.sub
+                                            (MinskyLeftInfinite.lic_head c)
+                                            (BinInt.Z.of_nat K))
+                                         (BinNums.Zpos
+                                            (BinNums.xO BinNums.xH)))
+                                      (MinskyLeftInfiniteLift.lic_lift_cfg c)
+                                      (MinskyLeftInfiniteEncoding.lic_book_rows
+                                         (MinskyLeftInfiniteLift.lic_lift_rows
+                                            rows)) 
+                                      (@nil nat)
+                                end)) true)) =>
+             match
+               H1
+               return
+                 (MinskyLeftInfinite.left_infinite_eventually_halts rows c)
+             with
+             | @conj _ _ x3 x4 =>
+                 (fun (HKt : ge K t)
+                    (Hnative : @eq bool
+                                 (MinskyTable.c_halted
+                                    (MinskyTable.run t
+                                       match
+                                         MinskyLeftInfinite.lic_halted c
+                                         return MinskyTable.Config
+                                       with
+                                       | true =>
+                                           MinskyConcreteDispatch.dispatch_halt_at_y
+                                             (@nil nat) 
+                                             (@nil nat)
+                                       | false =>
+                                           MinskyLeftInfiniteEncode.lic_q5_encode
+                                             (BinInt.Z.sub
+                                                (BinInt.Z.sub
+                                                 (MinskyLeftInfinite.lic_head
+                                                 c) 
+                                                 (BinInt.Z.of_nat K))
+                                                (BinNums.Zpos
+                                                 (BinNums.xO BinNums.xH)))
+                                             (MinskyLeftInfiniteLift.lic_lift_cfg
+                                                c)
+                                             (MinskyLeftInfiniteEncoding.lic_book_rows
+                                                (MinskyLeftInfiniteLift.lic_lift_rows
+                                                 rows)) 
+                                             (@nil nat)
+                                       end)) true) =>
+                  let b : bool := MinskyLeftInfinite.lic_halted c in
+                  let Eh : @eq bool (MinskyLeftInfinite.lic_halted c) b :=
+                    @eq_refl bool b in
+                  match
+                    b as b0
+                    return
+                      (forall
+                         (_ : @eq bool (MinskyLeftInfinite.lic_halted c) b0)
+                         (_ : @eq bool
+                                (MinskyTable.c_halted
+                                   (MinskyTable.run t
+                                      match b0 return MinskyTable.Config with
+                                      | true =>
+                                          MinskyConcreteDispatch.dispatch_halt_at_y
+                                            (@nil nat) 
+                                            (@nil nat)
+                                      | false =>
+                                          MinskyLeftInfiniteEncode.lic_q5_encode
+                                            (BinInt.Z.sub
+                                               (BinInt.Z.sub
+                                                 (MinskyLeftInfinite.lic_head
+                                                 c) 
+                                                 (BinInt.Z.of_nat K))
+                                               (BinNums.Zpos
+                                                 (BinNums.xO BinNums.xH)))
+                                            (MinskyLeftInfiniteLift.lic_lift_cfg
+                                               c)
+                                            (MinskyLeftInfiniteEncoding.lic_book_rows
+                                               (MinskyLeftInfiniteLift.lic_lift_rows
+                                                 rows)) 
+                                            (@nil nat)
+                                      end)) true),
+                       MinskyLeftInfinite.left_infinite_eventually_halts rows
+                         c)
+                  with
+                  | true =>
+                      fun
+                        (Eh0 : @eq bool (MinskyLeftInfinite.lic_halted c)
+                                 true)
+                        (_ : @eq bool
+                               (MinskyTable.c_halted
+                                  (MinskyTable.run t
+                                     (MinskyConcreteDispatch.dispatch_halt_at_y
+                                        (@nil nat) 
+                                        (@nil nat)))) true) =>
+                      @ex_intro nat
+                        (fun n : nat =>
+                         @eq bool
+                           (MinskyLeftInfinite.lic_halted
+                              (MinskyLeftInfinite.left_infinite_run n rows c))
+                           true) O
+                        (@eq_ind_r bool true
+                           (fun b0 : bool => @eq bool b0 true)
+                           (@eq_refl bool true)
+                           (MinskyLeftInfinite.lic_halted c) Eh0
+                         :
+                         @eq bool
+                           (MinskyLeftInfinite.lic_halted
+                              (MinskyLeftInfinite.left_infinite_run O rows c))
+                           true)
+                  | false =>
+                      fun
+                        (Eh0 : @eq bool (MinskyLeftInfinite.lic_halted c)
+                                 false)
+                        (Hnative0 : @eq bool
+                                      (MinskyTable.c_halted
+                                         (MinskyTable.run t
+                                            (MinskyLeftInfiniteEncode.lic_q5_encode
+                                               (BinInt.Z.sub
+                                                 (BinInt.Z.sub
+                                                 (MinskyLeftInfinite.lic_head
+                                                 c) (BinInt.Z.of_nat K))
+                                                 (BinNums.Zpos
+                                                 (BinNums.xO BinNums.xH)))
+                                               (MinskyLeftInfiniteLift.lic_lift_cfg
+                                                 c)
+                                               (MinskyLeftInfiniteEncoding.lic_book_rows
+                                                 (MinskyLeftInfiniteLift.lic_lift_rows
+                                                 rows)) 
+                                               (@nil nat)))) true) =>
+                      let lo : BinNums.Z :=
+                        BinInt.Z.sub
+                          (BinInt.Z.sub (MinskyLeftInfinite.lic_head c)
+                             (BinInt.Z.of_nat K))
+                          (BinNums.Zpos (BinNums.xO BinNums.xH)) in
+                      let Hleft :
+                        MinskyLeftInfiniteLeftDepth.lic_left_ok lo t c :=
+                        MinskyLeftInfiniteLeftDepth.lic_left_ok_window K t c
+                          HKt Hok in
+                      let Hwf' :
+                        @List.Forall MinskyWideSource.WideSourceRow
+                          (MinskyWideSource.wide_row_wellformed
+                             (Nat.add p (S (S O))))
+                          (MinskyLeftInfiniteLift.lic_lift_rows rows) :=
+                        MinskyLeftInfiniteLift.lic_lift_rows_wellformed p
+                          rows Hwf in
+                      let Hne' :
+                        not
+                          (@eq (list MinskyWideSource.WideSourceRow)
+                             (MinskyLeftInfiniteLift.lic_lift_rows rows)
+                             (@nil MinskyWideSource.WideSourceRow)) :=
+                        match
+                          rows as l
+                          return
+                            (forall
+                               (_ : @List.Forall
+                                      MinskyWideSource.WideSourceRow
+                                      (MinskyWideSource.wide_row_wellformed p)
+                                      l)
+                               (_ : not
+                                      (@eq
+                                         (list MinskyWideSource.WideSourceRow)
+                                         l
+                                         (@nil MinskyWideSource.WideSourceRow)))
+                               (_ : @eq bool
+                                      (MinskyTable.c_halted
+                                         (MinskyTable.run t
+                                            (MinskyLeftInfiniteEncode.lic_q5_encode
+                                               ... ... ... ...))) true)
+                               (_ : @List.Forall
+                                      MinskyWideSource.WideSourceRow
+                                      (MinskyWideSource.wide_row_wellformed
+                                         (Nat.add p (S ...)))
+                                      (MinskyLeftInfiniteLift.lic_lift_rows l)),
+                             not
+                               (@eq (list MinskyWideSource.WideSourceRow)
+                                  (MinskyLeftInfiniteLift.lic_lift_rows l)
+                                  (@nil MinskyWideSource.WideSourceRow)))
+                        with
+                        | @nil _ =>
+                            fun
+                              (_ : @List.Forall
+                                     MinskyWideSource.WideSourceRow
+                                     (MinskyWideSource.wide_row_wellformed p)
+                                     (@nil MinskyWideSource.WideSourceRow))
+                              (Hne0 : not
+                                        (@eq
+                                           (list
+                                              MinskyWideSource.WideSourceRow)
+                                           (@nil
+                                              MinskyWideSource.WideSourceRow)
+                                           (@nil
+                                              MinskyWideSource.WideSourceRow)))
+                              (_ : @eq bool
+                                     (MinskyTable.c_halted
+                                        (MinskyTable.run t
+                                           (MinskyLeftInfiniteEncode.lic_q5_encode
+                                              (BinInt.Z.sub (...) (...))
+                                              (MinskyLeftInfiniteLift.lic_lift_cfg
+                                                 c)
+                                              (MinskyLeftInfiniteEncoding.lic_book_rows
+                                                 (...)) 
+                                              (@nil nat)))) true)
+                              (_ : @List.Forall
+                                     MinskyWideSource.WideSourceRow
+                                     (MinskyWideSource.wide_row_wellformed
+                                        (Nat.add p (S (S O))))
+                                     (MinskyLeftInfiniteLift.lic_lift_rows
+                                        (@nil MinskyWideSource.WideSourceRow)))
+                            =>
+                            False_ind
+                              (not
+                                 (@eq (list MinskyWideSource.WideSourceRow)
+                                    (MinskyLeftInfiniteLift.lic_lift_rows
+                                       (@nil MinskyWideSource.WideSourceRow))
+                                    (@nil MinskyWideSource.WideSourceRow)))
+                              (Hne0
+                                 (@eq_refl
+                                    (list MinskyWideSource.WideSourceRow)
+                                    (@nil MinskyWideSource.WideSourceRow)))
+                        | @cons _ w l =>
+                            (fun (r : MinskyWideSource.WideSourceRow)
+                               (rest : list MinskyWideSource.WideSourceRow)
+                               (_ : @List.Forall
+                                      MinskyWideSource.WideSourceRow
+                                      (MinskyWideSource.wide_row_wellformed p)
+                                      (@cons MinskyWideSource.WideSourceRow r
+                                         rest))
+                               (_ : not
+                                      (@eq
+                                         (list MinskyWideSource.WideSourceRow)
+                                         (@cons
+                                            MinskyWideSource.WideSourceRow r
+                                            rest)
+                                         (@nil MinskyWideSource.WideSourceRow)))
+                               (_ : @eq bool
+                                      (MinskyTable.c_halted
+                                         (MinskyTable.run t
+                                            (MinskyLeftInfiniteEncode.lic_q5_encode
+                                               (...) 
+                                               (...) 
+                                               (...) 
+                                               (...)))) true)
+                               (_ : @List.Forall
+                                      MinskyWideSource.WideSourceRow
+                                      (MinskyWideSource.wide_row_wellformed
+                                         (Nat.add p (S (...))))
+                                      (MinskyLeftInfiniteLift.lic_lift_rows
+                                         (@cons
+                                            MinskyWideSource.WideSourceRow r
+                                            rest))) =>
+                             ((fun
+                                 H2 : @eq
+                                        (list MinskyWideSource.WideSourceRow)
+                                        (@cons MinskyWideSource.WideSourceRow
+                                           ... ...)
+                                        (@nil MinskyWideSource.WideSourceRow)
+                               =>
+                               let H3 : False :=
+                                 @eq_ind
+                                   (list MinskyWideSource.WideSourceRow)
+                                   (@cons MinskyWideSource.WideSourceRow ...
+                                      ...) (... => ...) I
+                                   (@nil MinskyWideSource.WideSourceRow) H2
+                                 in
+                               False_ind False H3)
+                              :
+                              not
+                                (@eq (list MinskyWideSource.WideSourceRow)
+                                   (@cons MinskyWideSource.WideSourceRow
+                                      (MinskyLeftInfiniteLift.lic_lift_row r)
+                                      (MinskyLeftInfiniteLift.lic_lift_rows
+                                         rest))
+                                   (@nil MinskyWideSource.WideSourceRow)))
+                             :
+                             not
+                               (@eq (list MinskyWideSource.WideSourceRow)
+                                  (MinskyLeftInfiniteLift.lic_lift_rows
+                                     (@cons MinskyWideSource.WideSourceRow r
+                                        rest))
+                                  (@nil MinskyWideSource.WideSourceRow))) w l
+                        end Hwf Hne Hnative0 Hwf' in
+                      let Hlen' :
+                        @eq nat
+                          (@length bool
+                             (MinskyLeftInfinite.lic_state
+                                (MinskyLeftInfiniteLift.lic_lift_cfg c)))
+                          (Nat.add p (S (S O))) :=
+                        @eq_ind_r nat
+                          (S
+                             (S
+                                (@length bool
+                                   (MinskyLeftInfinite.lic_state c))))
+                          (fun n : nat => @eq nat n (Nat.add p (S (S O))))
+                          (let heq_lo :
+                             @eq BinNums.Z lo
+                               (BinInt.Z.sub
+                                  (BinInt.Z.sub
+                                     (MinskyLeftInfinite.lic_head c)
+                                     (BinInt.Z.of_nat K))
+                                  (BinNums.Zpos (BinNums.xO BinNums.xH))) :=
+                             @eq_refl BinNums.Z
+                               (BinInt.Z.sub
+                                  (BinInt.Z.sub
+                                     (MinskyLeftInfinite.lic_head c)
+                                     (BinInt.Z.of_nat K))
+                                  (BinNums.Zpos (BinNums.xO BinNums.xH)))
+                             :
+                             @eq BinNums.Z lo
+                               (BinInt.Z.sub
+                                  (BinInt.Z.sub
+                                     (MinskyLeftInfinite.lic_head c)
+                                     (BinInt.Z.of_nat K))
+                                  (BinNums.Zpos (BinNums.xO BinNums.xH))) in
+                           ZifyClasses.rew_iff_rev
+                             (@eq nat
+                                (S
+                                   (S
+                                      (@length bool
+                                         (MinskyLeftInfinite.lic_state c))))
+                                (Nat.add p (S (S O))))
+                             (@eq BinNums.Z
+                                (BinInt.Z.add
+                                   (BinInt.Z.add
+                                      (BinInt.Z.of_nat (@length bool (...)))
+                                      (BinNums.Zpos BinNums.xH))
+                                   (BinNums.Zpos BinNums.xH))
+                                (BinInt.Z.add (BinInt.Z.of_nat p)
+                                   (BinNums.Zpos (BinNums.xO BinNums.xH))))
+                             (ZifyClasses.mkrel nat BinNums.Z 
+                                (@eq nat) BinInt.Z.of_nat 
+                                (@eq BinNums.Z)
+                                (fun x5 y : nat =>
+                                 @iff_sym
+                                   (@eq BinNums.Z 
+                                      (BinInt.Z.of_nat x5)
+                                      (BinInt.Z.of_nat y)) 
+                                   (@eq nat x5 y) 
+                                   (Znat.Nat2Z.inj_iff x5 y))
+                                (S
+                                   (S
+                                      (@length bool
+                                         (MinskyLeftInfinite.lic_state c))))
+                                (BinInt.Z.add
+                                   (BinInt.Z.add
+                                      (BinInt.Z.of_nat (@length bool (...)))
+                                      (BinNums.Zpos BinNums.xH))
+                                   (BinNums.Zpos BinNums.xH))
+                                (ZifyClasses.mkapp nat nat BinNums.Z
+                                   BinNums.Z S BinInt.Z.of_nat
+                                   BinInt.Z.of_nat
+                                   (fun x5 : BinNums.Z =>
+                                    BinInt.Z.add x5 (BinNums.Zpos BinNums.xH))
+                                   Znat.Nat2Z.inj_succ
+                                   (S
+                                      (@length bool
+                                         (MinskyLeftInfinite.lic_state c)))
+                                   (BinInt.Z.add
+                                      (BinInt.Z.of_nat (@length bool (...)))
+                                      (BinNums.Zpos BinNums.xH))
+                                   (ZifyClasses.mkapp nat nat BinNums.Z
+                                      BinNums.Z S BinInt.Z.of_nat
+                                      BinInt.Z.of_nat
+                                      (fun x5 : BinNums.Z =>
+                                       BinInt.Z.add x5
+                                         (BinNums.Zpos BinNums.xH))
+                                      Znat.Nat2Z.inj_succ
+                                      (@length bool
+                                         (MinskyLeftInfinite.lic_state c))
+                                      (BinInt.Z.of_nat (@length bool (...)))
+                                      (@eq_refl BinNums.Z
+                                         (BinInt.Z.of_nat (...)))))
+                                (Nat.add p (S (S O)))
+                                (BinInt.Z.add (BinInt.Z.of_nat p)
+                                   (BinNums.Zpos (BinNums.xO BinNums.xH)))
+                                (ZifyClasses.mkapp2 nat nat nat BinNums.Z
+                                   BinNums.Z BinNums.Z PeanoNat.Nat.add
+                                   BinInt.Z.of_nat BinInt.Z.of_nat
+                                   BinInt.Z.of_nat BinInt.Z.add
+                                   Znat.Nat2Z.inj_add p 
+                                   (BinInt.Z.of_nat p)
+                                   (@eq_refl BinNums.Z (BinInt.Z.of_nat p))
+                                   (S (S O))
+                                   (BinNums.Zpos (BinNums.xO BinNums.xH))
+                                   (@eq_refl BinNums.Z
+                                      (BinNums.Zpos (BinNums.xO BinNums.xH)))))
+                             (let HKt0 :
+                                BinInt.Z.ge (BinInt.Z.of_nat K)
+                                  (BinInt.Z.of_nat t) :=
+                                ZifyClasses.rew_iff 
+                                  (ge K t)
+                                  (BinInt.Z.ge (BinInt.Z.of_nat K)
+                                     (BinInt.Z.of_nat t))
+                                  (ZifyClasses.mkrel nat BinNums.Z ge
+                                     BinInt.Z.of_nat BinInt.Z.ge
+                                     Znat.Nat2Z.inj_ge K 
+                                     (BinInt.Z.of_nat K)
+                                     (@eq_refl BinNums.Z (BinInt.Z.of_nat K))
+                                     t (BinInt.Z.of_nat t)
+                                     (@eq_refl BinNums.Z (BinInt.Z.of_nat t)))
+                                  HKt in
+                              let Hlen0 :
+                                @eq BinNums.Z
+                                  (BinInt.Z.of_nat
+                                     (@length bool
+                                        (MinskyLeftInfinite.lic_state c)))
+                                  (BinInt.Z.of_nat p) :=
+                                ZifyClasses.rew_iff
+                                  (@eq nat
+                                     (@length bool
+                                        (MinskyLeftInfinite.lic_state c)) p)
+                                  (@eq BinNums.Z
+                                     (BinInt.Z.of_nat (@length bool ...))
+                                     (BinInt.Z.of_nat p))
+                                  (ZifyClasses.mkrel nat BinNums.Z 
+                                     (@eq nat) BinInt.Z.of_nat
+                                     (@eq BinNums.Z)
+                                     (fun x5 y : nat =>
+                                      @iff_sym (...) (...) (...))
+                                     (@length bool
+                                        (MinskyLeftInfinite.lic_state c))
+                                     (BinInt.Z.of_nat (@length bool ...))
+                                     (@eq_refl BinNums.Z
+                                        (BinInt.Z.of_nat ...)) p
+                                     (BinInt.Z.of_nat p)
+                                     (@eq_refl BinNums.Z (BinInt.Z.of_nat p)))
+                                  Hlen in
+                              let cstr :
+                                BinInt.Z.le BinNums.Z0 (BinInt.Z.of_nat K) :=
+                                Znat.Nat2Z.is_nonneg K in
+                              let cstr0 :
+                                BinInt.Z.le BinNums.Z0 (BinInt.Z.of_nat p) :=
+                                Znat.Nat2Z.is_nonneg p in
+                              let cstr1 :
+                                BinInt.Z.le BinNums.Z0 (BinInt.Z.of_nat t) :=
+                                Znat.Nat2Z.is_nonneg t in
+                              let cstr2 :
+                                BinInt.Z.le BinNums.Z0 (BinInt.Z.of_nat ...) :=
+                                Znat.Nat2Z.is_nonneg (@length bool ...) in
+                              let __arith :
+                                forall ... ..., @eq BinNums.Z ... ... :=
+                                fun ... => ... ... in
+                              __arith (BinInt.Z.of_nat p)
+                                (BinInt.Z.of_nat ...) Hlen0))
+                          (@length bool
+                             (MinskyLeftInfinite.lic_state
+                                (MinskyLeftInfiniteLift.lic_lift_cfg c)))
+                          (MinskyLeftInfiniteLift.lic_lift_cfg_state_length c)
+                        in
+                      let Hbound :
+                        le t
+                          (MinskyLeftInfiniteBounded.lic_bounded_clock
+                             (MinskyLeftInfiniteLift.lic_lift_rows rows) t lo
+                             (MinskyLeftInfiniteLift.lic_lift_cfg c)) :=
+                        MinskyLeftInfiniteBounded.lic_bounded_clock_at_least_steps_general
+                          t (Nat.add p (S (S O)))
+                          (MinskyLeftInfiniteLift.lic_lift_rows rows) lo
+                          (MinskyLeftInfiniteLift.lic_lift_cfg c) Hwf' Hne'
+                          Hlen' in
+                      let Hnative' :
+                        @eq bool
+                          (MinskyTable.c_halted
+                             (MinskyTable.run t
+                                (MinskyLeftInfiniteEncode.lic_q5_encode lo
+                                   (MinskyLeftInfiniteLift.lic_lift_cfg c)
+                                   (MinskyLeftInfiniteEncoding.lic_book_rows
+                                      (MinskyLeftInfiniteLift.lic_lift_rows
+                                         rows)) (@nil nat)))) true :=
+                        Hnative0 in
+                      let e :
+                        @ex nat
+                          (fun k : nat =>
+                           and (le k t)
+                             (@eq bool
+                                (MinskyLeftInfinite.lic_halted
+                                   (MinskyLeftInfinite.left_infinite_run k
+                                      (MinskyLeftInfiniteLift.lic_lift_rows
+                                         rows)
+                                      (MinskyLeftInfiniteLift.lic_lift_cfg c)))
+                                true)) :=
+                        MinskyLeftInfiniteLiftBackward.lic_lifted_native_halt_to_source
+                          t p lo c rows t Hwf Hne Hlen Hleft Eh0 Hbound
+                          Hnative' in
+                      match
+                        e
+                        return
+                          (MinskyLeftInfinite.left_infinite_eventually_halts
+                             rows c)
+                      with
+                      | @ex_intro _ _ x5 x6 =>
+                          (fun (k : nat)
+                             (H2 : and (le k t)
+                                     (@eq bool
+                                        (MinskyLeftInfinite.lic_halted (...))
+                                        true)) =>
+                           match
+                             H2
+                             return
+                               (MinskyLeftInfinite.left_infinite_eventually_halts
+                                  rows c)
+                           with
+                           | @conj _ _ x7 x8 =>
+                               (fun (_ : le k t) (Hhalt : @eq bool ... true)
+                                =>
+                                @proj2 (..., ...) 
+                                  (..., ...)
+                                  (MinskyLeftInfiniteLift.left_infinite_halts_lift
+                                     rows c) (@ex_intro nat ... k Hhalt)) x7
+                                 x8
+                           end) x5 x6
+                      end
+                  end Eh Hnative) x3 x4
+             end) x1 x2
+        end) x x0
+   end)
+     : forall (p : nat) (rows : list MinskyWideSource.WideSourceRow)
+         (c : MinskyLeftInfinite.LeftInfiniteConfig)
+         (_ : @List.Forall MinskyWideSource.WideSourceRow
+                (MinskyWideSource.wide_row_wellformed p) rows)
+         (_ : not
+                (@eq (list MinskyWideSource.WideSourceRow) rows
+                   (@nil MinskyWideSource.WideSourceRow)))
+         (_ : @eq nat (@length bool (MinskyLeftInfinite.lic_state c)) p)
+         (_ : MinskyLeftInfinite.left_infinite_ok c),
+       iff (MinskyLeftInfinite.left_infinite_eventually_halts rows c)
+         (@ex nat
+            (fun K : nat =>
+             @ex nat
+               (fun t : nat =>
+                and (ge K t)
+                  (@eq bool
+                     (MinskyTable.c_halted
+                        (MinskyTable.run t
+                           match
+                             MinskyLeftInfinite.lic_halted c
+                             return MinskyTable.Config
+                           with
+                           | true =>
+                               MinskyConcreteDispatch.dispatch_halt_at_y
+                                 (@nil nat) (@nil nat)
+                           | false =>
+                               MinskyLeftInfiniteEncode.lic_q5_encode
+                                 (BinInt.Z.sub
+                                    (BinInt.Z.sub
+                                       (MinskyLeftInfinite.lic_head c)
+                                       (BinInt.Z.of_nat K))
+                                    (BinNums.Zpos (BinNums.xO BinNums.xH)))
+                                 (MinskyLeftInfiniteLift.lic_lift_cfg c)
+                                 (MinskyLeftInfiniteEncoding.lic_book_rows
+                                    (MinskyLeftInfiniteLift.lic_lift_rows
+                                       rows)) (@nil nat)
+                           end)) true))))
+
+Arguments lic_lifted_halting_equivalence p%nat_scope 
+  rows%list_scope c _ _ _ _
