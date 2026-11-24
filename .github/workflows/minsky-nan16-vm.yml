@@ -8,6 +8,7 @@ on:
       - 'formal/utm/MinskyNaN16VM.v'
       - 'formal/utm/MinskyNaN16ScanLoop.v'
       - 'formal/utm/MinskyNaN16Action.v'
+      - 'formal/utm/MinskyNaN16ActionPrefix.v'
       - '.github/workflows/minsky-nan16-vm.yml'
 
 permissions:
