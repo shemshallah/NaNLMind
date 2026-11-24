@@ -49,6 +49,7 @@ jobs:
             MinskyNaN16Words
             MinskyNaN16VM
             MinskyNaN16Action
+            MinskyNaN16ActionPrefix
             MinskyNaN16ScanLoop
           "
           for f in $MODULES; do
@@ -73,6 +74,7 @@ jobs:
             MinskyNaN16Words
             MinskyNaN16VM
             MinskyNaN16Action
+            MinskyNaN16ActionPrefix
             MinskyNaN16ScanLoop
           "
           for f in $MODULES; do
@@ -107,6 +109,8 @@ jobs:
             formal/utm/MinskyNaN16VM.vo
             formal/utm/MinskyNaN16Action.v
             formal/utm/MinskyNaN16Action.vo
+            formal/utm/MinskyNaN16ActionPrefix.v
+            formal/utm/MinskyNaN16ActionPrefix.vo
             formal/utm/MinskyNaN16ScanLoop.v
             formal/utm/MinskyNaN16ScanLoop.vo
           if-no-files-found: warn
