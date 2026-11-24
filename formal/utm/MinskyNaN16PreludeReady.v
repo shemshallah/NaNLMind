@@ -309,6 +309,7 @@ Lemma prelude_halted :
     let vm' := run_until 3 (prelude_block table_base) (fun _ => false) vm in
     vm_pc vm' = 11 /\
     vm_reg vm' 1 = vm_mem vm action_halt_addr /\
+    vm_reg vm' 2 = vm_reg vm 2 /\
     vm_reg vm' 0 = 0 /\
     vm_reg vm' 13 = 1 /\
     vm_mem vm' = vm_mem vm /\
@@ -332,6 +333,9 @@ Proof.
   assert (Hr1_1 : vm_reg v1 1 = vm_mem vm action_halt_addr).
   { unfold v1. rewrite (prelude_LD_reg table_base vm 0 1 0 action_halt_addr Hpc eq_refl).
     rewrite Hr0. cbn. reflexivity. }
+  assert (Hr2_1 : vm_reg v1 2 = vm_reg vm 2).
+  { unfold v1, exec_instr. rewrite Hpc. cbn [nth_error prelude_block]. cbn.
+    reflexivity. }
 
   set (v2 := exec_instr (prelude_block table_base) v1).
   rewrite (run_one_false 1 (prelude_block table_base) (fun _ => false) v1).
@@ -350,6 +354,9 @@ Proof.
   assert (Hr1_2 : vm_reg v2 1 = vm_mem vm action_halt_addr).
   { unfold v2, exec_instr. rewrite Hpc1. cbn [nth_error prelude_block]. cbn.
     exact Hr1_1. }
+  assert (Hr2_2 : vm_reg v2 2 = vm_reg vm 2).
+  { unfold v2, exec_instr. rewrite Hpc1. cbn [nth_error prelude_block]. cbn.
+    exact Hr2_1. }
   assert (Hzf2 : vm_zf v2 = false).
   { unfold v2. rewrite (prelude_CMP_zf table_base v1 1 1 0 Hpc1 eq_refl).
     rewrite Hr1_1, Hr0_1. apply Nat.eqb_neq. exact Hne. }
@@ -372,5 +379,8 @@ Proof.
   assert (Hr1_3 : vm_reg v3 1 = vm_mem vm action_halt_addr).
   { unfold v3, exec_instr. rewrite Hpc2. cbn [nth_error prelude_block]. cbn.
     exact Hr1_2. }
+  assert (Hr2_3 : vm_reg v3 2 = vm_reg vm 2).
+  { unfold v3, exec_instr. rewrite Hpc2. cbn [nth_error prelude_block]. cbn.
+    exact Hr2_2. }
   repeat split; assumption.
 Qed.
