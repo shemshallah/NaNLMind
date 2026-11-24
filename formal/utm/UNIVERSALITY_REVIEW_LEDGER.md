@@ -1,9 +1,10 @@
 # Concrete Minsky 23×8 universality: referee-facing proof ledger
 
-Status date: 2026-11-16. **Full universality is NOT established.**
-This ledger distinguishes computational evidence, Coq-verified lemmas, and
-remaining mathematical obligations. It must not be used as a claim of
-Nature-level completion while any critical obligation below is open.
+Status date: 2026-11-23. **The fixed-table left-infinite simulation
+theorem is established and kernel-checked.**  The final theorem
+`lic_lifted_halting_equivalence` is recorded in the closing section.
+Earlier sections retain their historical status and are superseded by
+that section.
 
 ## Frozen target
 
@@ -2154,3 +2155,57 @@ No mathematical obstruction remains, only the explicit-witness refactor.
 
 Claim remains false until that refactor and the final equivalence are
 kernel-checked.
+
+
+## November 23 closure: `lic_lifted_halting_equivalence`
+
+Kernel-checked in `formal/utm/MinskyLeftInfiniteClockRun.v`, with no
+`Admitted`/`Axiom`/`Parameter` (`Print Assumptions` reports "Closed under
+the global context"; `coqchk` reports "Modules were successfully
+checked"):
+
+```coq
+Theorem lic_lifted_halting_equivalence :
+  forall (p : nat) (rows : list WideSourceRow) (c : LeftInfiniteConfig),
+    Forall (wide_row_wellformed p) rows ->
+    rows <> [] ->
+    length (lic_state c) = p ->
+    left_infinite_ok c ->
+    left_infinite_eventually_halts rows c <->
+    exists K t,
+      K >= t /\
+      c_halted (run t
+        (if lic_halted c then dispatch_halt_at_y [] []
+         else lic_q5_encode (lic_head c - Z.of_nat K - 2)
+                (lic_lift_cfg c)
+                (lic_book_rows (lic_lift_rows rows)) [])) = true.
+```
+
+Supporting checked theorems:
+
+- `lic_forward_clock`, `lic_forward_clock_lo_ind`,
+  `lic_forward_clock_run` (the explicit recursive native clock and its
+  halting run);
+- `lic_step_cost_none_eq`, `lic_step_cost_right_eq`,
+  `lic_step_cost_left_eq`, `lic_boundary_clock_of_eq` (branch
+  alignments);
+- `lic_book_rows_first_match_hit_app_bridge`,
+  `lic_book_rows_first_match_hit_snoc` (source/augmented first-match
+  bridge);
+- `lic_step_cost_lo_ind`, `lic_bounded_clock_lo_ind`,
+  `lic_q5_empty_boundary_clock_lo_ind`, `lic_left_ok_window`,
+  `lic_step_cost_pos_wellformed`,
+  `lic_state_length_step_general`,
+  `lic_bounded_clock_at_least_steps_general`.
+
+Scope: the frozen 23x8 `run` is a universal interpreter for the
+left-infinite binary-tape source model on all well-formed inputs
+(`Forall (wide_row_wellformed p) rows`, `rows <> []`,
+`length (lic_state c) = p`, `left_infinite_ok c`).  The source halts iff
+the native table halts from the q5 encoding with a left window `K` and
+native time `t`, `K >= t`.
+
+The existential window is essential.  A single total
+`encode p rows c` independent of the run time is not claimed and is not
+true for this table: a right-wall halt and a lookup-failure halt can
+have the same halted source configuration but different native frames.
