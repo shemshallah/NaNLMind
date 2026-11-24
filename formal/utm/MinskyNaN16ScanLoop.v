@@ -22,7 +22,9 @@ Lemma scan_loop_try :
       end.
 Proof.
   intros i state sym start table.
-  induction table as [|row rest IH]; intros m vm Hlen Hforall Hmemtab Hready.
+  revert i state sym start.
+  induction table as [|row rest IH];
+    intros i state sym start m vm Hlen Hforall Hmemtab Hready.
   - (* empty suffix: i = 184 *)
     simpl in Hlen.
     assert (Hi : i = 184) by lia.
