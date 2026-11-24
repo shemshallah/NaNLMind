@@ -191,7 +191,8 @@ Lemma action_LD_reg :
     vm_reg (exec_instr action_block vm) d =
       vm_mem vm (vm_reg vm a + imm).
 Proof.
-  intros. unfold exec_instr. rewrite H, H0. cbn. reflexivity.
+  intros. unfold exec_instr. rewrite H, H0. cbn.
+  unfold set_reg. rewrite Nat.eqb_refl. reflexivity.
 Qed.
 
 Lemma action_ST_mem :
@@ -210,7 +211,8 @@ Lemma action_MOVI_reg :
     nth_error action_block pc = Some (iMOVI d imm) ->
     vm_reg (exec_instr action_block vm) d = imm.
 Proof.
-  intros. unfold exec_instr. rewrite H, H0. cbn. reflexivity.
+  intros. unfold exec_instr. rewrite H, H0. cbn.
+  unfold set_reg. rewrite Nat.eqb_refl. reflexivity.
 Qed.
 
 Lemma action_SUB_reg :
@@ -220,7 +222,8 @@ Lemma action_SUB_reg :
     vm_reg (exec_instr action_block vm) d =
       vm_reg vm a - vm_reg vm b.
 Proof.
-  intros. unfold exec_instr. rewrite H, H0. cbn. reflexivity.
+  intros. unfold exec_instr. rewrite H, H0. cbn.
+  unfold set_reg. rewrite Nat.eqb_refl. reflexivity.
 Qed.
 
 Lemma action_ADD_reg :
@@ -230,5 +233,6 @@ Lemma action_ADD_reg :
     vm_reg (exec_instr action_block vm) d =
       vm_reg vm a + vm_reg vm b.
 Proof.
-  intros. unfold exec_instr. rewrite H, H0. cbn. reflexivity.
+  intros. unfold exec_instr. rewrite H, H0. cbn.
+  unfold set_reg. rewrite Nat.eqb_refl. reflexivity.
 Qed.
