@@ -72,8 +72,10 @@ Proof.
              (run_until 12 scan_block scan_stop vm)).
            ++ reflexivity.
            ++ rewrite Hpc14. rewrite scan_stop_14. reflexivity.
-        -- cbn [scan_index_from].
-           rewrite Efrom, Eread. simpl. split; [exact Hpc14|split; [exact Hr7_14|exact Hr8_14]].
+        -- assert (Hidx : scan_index_from i state sym (row :: rest) = Some (i, row)).
+           { cbn [scan_index_from]. rewrite Efrom, Eread. cbn [andb]. reflexivity. }
+           rewrite Hidx.
+           split; [exact Hpc14|split; [exact Hr7_14|exact Hr8_14]].
       * (* from matches, read does not: miss_read *)
         assert (Hfrom : nth 0 row 0 = state) by (apply Nat.eqb_eq; exact Efrom).
         assert (Hread_neq : nth 1 row 0 <> sym).
@@ -91,7 +93,10 @@ Proof.
              with (12 + (12 * length rest + 14)) by (clear; simpl; lia).
            rewrite (run_until_split 12 (12 * length rest + 14) scan_block scan_stop vm).
            exact Hrun.
-        -- cbn [scan_index_from]. rewrite Efrom, Eread. simpl. exact Hres.
+        -- assert (Hidx : scan_index_from i state sym (row :: rest) =
+                        scan_index_from (S i) state sym rest).
+           { cbn [scan_index_from]. rewrite Efrom, Eread. cbn [andb]. reflexivity. }
+           rewrite Hidx. exact Hres.
     + (* from does not match: miss_from *)
       assert (Hneq : nth 0 row 0 <> state).
       { intro H. apply Nat.eqb_neq in Efrom. apply Efrom. exact H. }
@@ -118,5 +123,8 @@ Proof.
             ** rewrite Hrun. rewrite Eres in Hres.
                destruct Hres as [Hpc13 _].
                rewrite Hpc13. rewrite scan_stop_13. reflexivity.
-      -- cbn [scan_index_from]. rewrite Efrom. simpl. exact Hres.
+      -- assert (Hidx : scan_index_from i state sym (row :: rest) =
+                      scan_index_from (S i) state sym rest).
+         { cbn [scan_index_from]. rewrite Efrom. cbn [andb]. reflexivity. }
+         rewrite Hidx. exact Hres.
 Qed.
