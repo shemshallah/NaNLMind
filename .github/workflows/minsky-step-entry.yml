@@ -1,0 +1,73 @@
+name: NaN16 step-entry probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'formal/utm/MinskyNaN16StepEntrySpec.v'
+      - '.github/workflows/minsky-step-entry.yml'
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  step-entry:
+    runs-on: ubuntu-latest
+    container:
+      image: coqorg/coq:8.20
+      options: --user root
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Locate pinned Coq 8.20 toolchain
+        run: |
+          set -euo pipefail
+          COQBIN=$(dirname "$(find /home/coq/.opam -name coqc -type f | head -1)")
+          test -x "$COQBIN/coqc"
+          echo "$COQBIN" >> "$GITHUB_PATH"
+          "$COQBIN/coqc" --version
+
+      - name: Compile dependencies and step-entry probe
+        run: |
+          set -euo pipefail
+          MODULES="
+            MinskyTableData
+            MinskyTable
+            MinskyAddressRefinement
+            MinskyChartEncoding
+            MinskyChartScan
+            MinskyNativeBounds
+            MinskyNativePages
+            MinskyNaN16Words
+            MinskyNaN16VM
+            MinskyNaN16Action
+            MinskyNaN16ActionMove
+            MinskyNaN16ActionSuffix
+            MinskyNaN16ActionPrefix
+            MinskyNaN16ActionRefines
+            MinskyNaN16ActionRun
+            MinskyNaN16ScanLoop
+            MinskyNaN16ScanFrame
+            MinskyNaN16ScanPhase
+            MinskyNaN16Lookup
+            MinskyNaN16StepHit
+            MinskyNaN16StepNone
+            MinskyNaN16Step
+            MinskyNaN16StepSpec
+            MinskyNaN16Prelude
+            MinskyNaN16PreludeReady
+            MinskyNaN16StepEntrySpec
+          "
+          for f in $MODULES; do
+            echo "=== coqc $f"
+            coqc -Q formal/utm NaNLM \
+              -w -notation-overridden,-stdlib-vector \
+              "formal/utm/$f.v"
+          done
+          echo "STEP-ENTRY PROBE COMPILED"
