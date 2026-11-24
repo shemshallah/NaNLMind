@@ -17,6 +17,10 @@ on:
       - 'formal/utm/MinskyNaN16Lookup.v'
       - 'formal/utm/MinskyNaN16StepHit.v'
       - 'formal/utm/MinskyNaN16StepNone.v'
+      - 'formal/utm/MinskyNaN16Step.v'
+      - 'formal/utm/MinskyNaN16Prelude.v'
+      - 'formal/utm/MinskyNaN16PreludeReady.v'
+      - 'formal/utm/MinskyNaN16StepEntry.v'
       - '.github/workflows/minsky-nan16-vm.yml'
 
 permissions:
@@ -68,6 +72,10 @@ jobs:
             MinskyNaN16Lookup
             MinskyNaN16StepHit
             MinskyNaN16StepNone
+            MinskyNaN16Step
+            MinskyNaN16Prelude
+            MinskyNaN16PreludeReady
+            MinskyNaN16StepEntry
           "
           for f in $MODULES; do
             echo "=== coqc $f"
@@ -99,6 +107,10 @@ jobs:
             MinskyNaN16Lookup
             MinskyNaN16StepHit
             MinskyNaN16StepNone
+            MinskyNaN16Step
+            MinskyNaN16Prelude
+            MinskyNaN16PreludeReady
+            MinskyNaN16StepEntry
           "
           for f in $MODULES; do
             echo "=== coqchk $f"
@@ -152,4 +164,12 @@ jobs:
             formal/utm/MinskyNaN16StepHit.vo
             formal/utm/MinskyNaN16StepNone.v
             formal/utm/MinskyNaN16StepNone.vo
+            formal/utm/MinskyNaN16Step.v
+            formal/utm/MinskyNaN16Step.vo
+            formal/utm/MinskyNaN16Prelude.v
+            formal/utm/MinskyNaN16Prelude.vo
+            formal/utm/MinskyNaN16PreludeReady.v
+            formal/utm/MinskyNaN16PreludeReady.vo
+            formal/utm/MinskyNaN16StepEntry.v
+            formal/utm/MinskyNaN16StepEntry.vo
           if-no-files-found: warn
