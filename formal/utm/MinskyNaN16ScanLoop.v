@@ -103,10 +103,11 @@ Proof.
       exists vm'.
       split.
       -- replace (12 * length (row :: rest) + 14)
-           with (9 + (12 * length rest + 14) + 3) by (simpl; lia).
-         rewrite (run_until_split 9 (12 * length rest + 14) scan_block scan_stop vm).
-         rewrite (run_until_extend_stopped (9 + (12 * length rest + 14)) 3
+           with (9 + ((12 * length rest + 14) + 3)) by (simpl; lia).
+         rewrite (run_until_split 9 ((12 * length rest + 14) + 3)
            scan_block scan_stop vm).
+         rewrite (run_until_extend_stopped (12 * length rest + 14) 3
+           scan_block scan_stop (run_until 9 scan_block scan_stop vm)).
          ++ exact Hrun.
          ++ destruct (scan_index_from (S i) state sym rest) as [[j r]|] eqn:Eres.
             ** destruct Hres as [Hpc14 _]. rewrite Hpc14. rewrite scan_stop_14. reflexivity.
