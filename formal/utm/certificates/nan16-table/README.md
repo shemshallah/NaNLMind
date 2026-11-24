@@ -248,3 +248,23 @@ This is the full `CMP -> JMP[NE] -> LD -> CMP -> JMP[NE] -> JMP 14`
 path, with the memory/register projections for every step.  Next is the
 miss suffix (`pc 5 -> 0`) and the generic `scan_ready` prefix, then the
 184-row scan induction and the action/`run100` phases.
+
+## Layer 2: first miss path proved
+
+`MinskyNaN16VM.v` now proves `scan_miss_from`: when the row's `from`
+field does not match the source state, the native scan runs
+
+```text
+pc 5 CMP r9,r1
+pc 6 JMP[NE] 11
+pc 11 ADD r8,r8,1
+pc 12 JMP 0
+```
+
+and returns a VM satisfying `scan_ready (S i) state sym start m` at
+`pc=0`, with `r8=i+1`.  The register/memory preservation lemmas for the
+miss path are included.
+
+Next: the second miss path (`from` matches, `read` does not), then the
+generic `scan_ready` prefix, the 184-row induction, the action phase,
+and `run100`.
