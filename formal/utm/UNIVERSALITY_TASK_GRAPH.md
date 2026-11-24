@@ -765,3 +765,41 @@ Remaining after that:
    the lifted source halts), using the same three macros;
 2. the left-depth/right-wall invariant packaging in the final theorem;
 3. the final spec claim, still false until 1 and 2 are closed.
+
+## Forward and backward lifted halting theorems (proved)
+
+`MinskyLeftInfiniteLiftForward.v`:
+
+```text
+lic_lifted_source_halt_to_native
+```
+
+Every halting lifted source run (with left window `lo` and `n` steps)
+has a native halting run from
+`lic_q5_encode lo (lic_lift_cfg c) (lic_book_rows (lic_lift_rows rows))`.
+
+`MinskyLeftInfiniteLiftBackward.v`:
+
+```text
+lic_lifted_native_halt_to_source
+```
+
+A native halt within the bounded clock for `n` lifted source steps
+implies the lifted source halts within `n`.  The first-stop scan either
+finds the halt or the run is an entirely hit/left/right prefix, which
+contradicts `lic_left_no_premature_halt`.
+
+## Remaining: common-bound equivalence
+
+The two theorems have different clock/addressing shapes.  The forward
+native halt time can exceed the source-step clock because the wall
+perform has its own cost; the backward theorem bounds the native time
+by the hit-only clock.  A single-window equivalence additionally hits
+the finite-window growth issue: the left perform clock grows with the
+window depth, so the window cannot be chosen both minimal and larger
+than its own induced run time.  A locality/padding lemma for the q5
+frames, or a different encoding, is still required for a single
+`encode`/`cost` halting equivalence.
+
+The forward simulation and backward soundness are unconditional in
+their stated windows.  Claim remains false.
