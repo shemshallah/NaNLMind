@@ -183,3 +183,52 @@ Proof.
   intros. unfold exec_instr. rewrite H, H0.
   destruct ins; try reflexivity; cbn in H1; contradiction.
 Qed.
+
+Lemma action_LD_reg :
+  forall (vm : VM) (pc d a imm : nat),
+    vm_pc vm = pc ->
+    nth_error action_block pc = Some (iLD d a imm) ->
+    vm_reg (exec_instr action_block vm) d =
+      vm_mem vm (vm_reg vm a + imm).
+Proof.
+  intros. unfold exec_instr. rewrite H, H0. cbn. reflexivity.
+Qed.
+
+Lemma action_ST_mem :
+  forall (vm : VM) (pc d a imm : nat),
+    vm_pc vm = pc ->
+    nth_error action_block pc = Some (iST d a imm) ->
+    vm_mem (exec_instr action_block vm) =
+      set_mem (vm_mem vm) (vm_reg vm a + imm) (vm_reg vm d).
+Proof.
+  intros. unfold exec_instr. rewrite H, H0. cbn. reflexivity.
+Qed.
+
+Lemma action_MOVI_reg :
+  forall (vm : VM) (pc d imm : nat),
+    vm_pc vm = pc ->
+    nth_error action_block pc = Some (iMOVI d imm) ->
+    vm_reg (exec_instr action_block vm) d = imm.
+Proof.
+  intros. unfold exec_instr. rewrite H, H0. cbn. reflexivity.
+Qed.
+
+Lemma action_SUB_reg :
+  forall (vm : VM) (pc d a b : nat),
+    vm_pc vm = pc ->
+    nth_error action_block pc = Some (iSUB d a b) ->
+    vm_reg (exec_instr action_block vm) d =
+      vm_reg vm a - vm_reg vm b.
+Proof.
+  intros. unfold exec_instr. rewrite H, H0. cbn. reflexivity.
+Qed.
+
+Lemma action_ADD_reg :
+  forall (vm : VM) (pc d a b : nat),
+    vm_pc vm = pc ->
+    nth_error action_block pc = Some (iADD d a b) ->
+    vm_reg (exec_instr action_block vm) d =
+      vm_reg vm a + vm_reg vm b.
+Proof.
+  intros. unfold exec_instr. rewrite H, H0. cbn. reflexivity.
+Qed.
