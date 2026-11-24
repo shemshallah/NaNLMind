@@ -165,3 +165,21 @@ without a monolithic `vm_compute`.  The next proof is the 5-step scan prefix
 (`pc 0 -> 5`, `r7 = start + 8*i`, `r9 = m (start + 8*i)`), then the hit/miss
 iteration lemmas and the scan-loop induction.  The full `step`/`run100`
 refinement and the VM-level certificate are still open.
+
+## Layer 2 progress: computed five-step prefix
+
+`MinskyNaN16VM.v` now also proves:
+
+```coq
+scan_prefix5_never_pc :
+  forall i state sym start m,
+    i < 184 ->
+    vm_pc (run_until 5 scan_block never_stop
+      (scan_init i state sym start m)) = 5.
+```
+
+This is a fully computed prefix of the native scan block (CMP, JMP, SHL, ADD,
+LD) with the two initial branch conditions resolved.  The next proof is the
+same prefix with the real `scan_stop`, then the hit/miss iteration and the
+184-row induction.  The full `step`/`run100` and VM-level certificate are still
+open.
