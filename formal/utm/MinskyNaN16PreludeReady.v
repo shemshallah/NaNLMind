@@ -295,3 +295,82 @@ Proof.
   { rewrite Hr2_11. exact Hr3_11. }
   { rewrite Hr3_11. exact Hr4_11. }
 Qed.
+
+(** The prelude when the halt cell is nonzero: three instructions and a
+    jump to the return point at pc 11. *)
+
+Lemma prelude_halted :
+  forall (table_base : nat) (vm : VM),
+    vm_pc vm = 0 ->
+    vm_reg vm 0 = 0 ->
+    vm_reg vm 13 = 1 ->
+    vm_halted vm = false ->
+    vm_mem vm action_halt_addr <> 0 ->
+    let vm' := run_until 3 (prelude_block table_base) (fun _ => false) vm in
+    vm_pc vm' = 11 /\
+    vm_reg vm' 1 = vm_mem vm action_halt_addr /\
+    vm_reg vm' 0 = 0 /\
+    vm_reg vm' 13 = 1 /\
+    vm_mem vm' = vm_mem vm /\
+    vm_halted vm' = false.
+Proof.
+  intros table_base vm Hpc Hr0 Hr13 Hhalt Hne.
+  set (v1 := exec_instr (prelude_block table_base) vm).
+  rewrite (run_one_false 2 (prelude_block table_base) (fun _ => false) vm).
+  2:{ cbn. rewrite Hhalt. reflexivity. }
+  fold v1.
+  assert (Hpc1 : vm_pc v1 = 1).
+  { unfold v1. rewrite (prelude_exec_pc table_base vm 0 (iLD 1 0 action_halt_addr) Hpc eq_refl). cbn. reflexivity. }
+  assert (Hhalt1 : vm_halted v1 = false).
+  { unfold v1. rewrite (prelude_not_halted table_base vm 0 (iLD 1 0 action_halt_addr) Hpc eq_refl ltac:(discriminate)). exact Hhalt. }
+  assert (Hmem1 : vm_mem v1 = vm_mem vm).
+  { unfold v1. apply prelude_exec_mem. }
+  assert (Hr0_1 : vm_reg v1 0 = 0).
+  { unfold v1. rewrite prelude_exec_reg0. exact Hr0. }
+  assert (Hr13_1 : vm_reg v1 13 = 1).
+  { unfold v1. rewrite prelude_exec_reg13. exact Hr13. }
+  assert (Hr1_1 : vm_reg v1 1 = vm_mem vm action_halt_addr).
+  { unfold v1. rewrite (prelude_LD_reg table_base vm 0 1 0 action_halt_addr Hpc eq_refl).
+    rewrite Hr0. cbn. reflexivity. }
+
+  set (v2 := exec_instr (prelude_block table_base) v1).
+  rewrite (run_one_false 1 (prelude_block table_base) (fun _ => false) v1).
+  2:{ cbn. rewrite Hhalt1. reflexivity. }
+  fold v2.
+  assert (Hpc2 : vm_pc v2 = 2).
+  { unfold v2. rewrite (prelude_exec_pc table_base v1 1 (iCMP 1 0) Hpc1 eq_refl). cbn. reflexivity. }
+  assert (Hhalt2 : vm_halted v2 = false).
+  { unfold v2. rewrite (prelude_not_halted table_base v1 1 (iCMP 1 0) Hpc1 eq_refl ltac:(discriminate)). exact Hhalt1. }
+  assert (Hmem2 : vm_mem v2 = vm_mem vm).
+  { unfold v2. rewrite prelude_exec_mem. exact Hmem1. }
+  assert (Hr0_2 : vm_reg v2 0 = 0).
+  { unfold v2. rewrite prelude_exec_reg0. exact Hr0_1. }
+  assert (Hr13_2 : vm_reg v2 13 = 1).
+  { unfold v2. rewrite prelude_exec_reg13. exact Hr13_1. }
+  assert (Hr1_2 : vm_reg v2 1 = vm_mem vm action_halt_addr).
+  { unfold v2, exec_instr. rewrite Hpc1. cbn [nth_error prelude_block]. cbn.
+    exact Hr1_1. }
+  assert (Hzf2 : vm_zf v2 = false).
+  { unfold v2. rewrite (prelude_CMP_zf table_base v1 1 1 0 Hpc1 eq_refl).
+    rewrite Hr1_1, Hr0_1. apply Nat.eqb_neq. exact Hne. }
+
+  set (v3 := exec_instr (prelude_block table_base) v2).
+  rewrite (run_one_false 0 (prelude_block table_base) (fun _ => false) v2).
+  2:{ cbn. rewrite Hhalt2. reflexivity. }
+  cbn [run_until]. fold v3.
+  assert (Hpc3 : vm_pc v3 = 11).
+  { unfold v3. rewrite (prelude_exec_pc table_base v2 2 (iJMP pNE 11) Hpc2 eq_refl).
+    cbn [pred_holds]. rewrite Hzf2. cbn. reflexivity. }
+  assert (Hhalt3 : vm_halted v3 = false).
+  { unfold v3. rewrite (prelude_not_halted table_base v2 2 (iJMP pNE 11) Hpc2 eq_refl ltac:(discriminate)). exact Hhalt2. }
+  assert (Hmem3 : vm_mem v3 = vm_mem vm).
+  { unfold v3. rewrite prelude_exec_mem. exact Hmem2. }
+  assert (Hr0_3 : vm_reg v3 0 = 0).
+  { unfold v3. rewrite prelude_exec_reg0. exact Hr0_2. }
+  assert (Hr13_3 : vm_reg v3 13 = 1).
+  { unfold v3. rewrite prelude_exec_reg13. exact Hr13_2. }
+  assert (Hr1_3 : vm_reg v3 1 = vm_mem vm action_halt_addr).
+  { unfold v3, exec_instr. rewrite Hpc2. cbn [nth_error prelude_block]. cbn.
+    exact Hr1_2. }
+  repeat split; assumption.
+Qed.
