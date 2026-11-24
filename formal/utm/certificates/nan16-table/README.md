@@ -413,3 +413,34 @@ action_mem_preserved_LD/MOVI/CMP/JMP/SUB/ADD
 The dedicated runner is checking the prefix module.  The next steps are the
 pc5 move branch, the common pc14..22 suffix, full `action_refines`,
 `step_refines`, `run100`, and the `.nas` transcription gate.
+
+## Layer 2: action block pieces checked
+
+Checked pieces:
+
+```text
+MinskyNaN16Action.v
+  action_block / action_run / set_mem / row_at
+  action_exec_pc / CMP flags / data-path projections
+  action_reg_preserved_* / action_mem_preserved_*
+  row_at_set_mem_neq
+
+MinskyNaN16ActionPrefix.v
+  action_prefix5  (pc0 -> pc5, write/tape/move field)
+
+MinskyNaN16ActionMove.v
+  action_move_zero / action_move_right / action_move_other / action_move
+  (pc5 -> pc14, head-1 / head+1 / head)
+
+MinskyNaN16ActionSuffix.v
+  action_suffix_prefix  (pc14 -> pc19)
+  action_suffix         (pc14 -> pc22, both halt branches)
+```
+
+CI has passed for the scan loop, action spec, action prefix, and move branch.
+The full suffix is on the runner.
+
+Remaining composition gap: `action_refines` needs the move block to expose its
+preserved `r0`, `r7`, and memory so the suffix gets the prefix's tape-written
+memory and `row_at_set_mem_neq` can be applied.  Then `step_refines`,
+`run100`, and the `.nas` transcription gate remain.
