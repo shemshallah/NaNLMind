@@ -797,3 +797,176 @@ Proof.
   cbn.
   exact Hpc6.
 Qed.
+
+Lemma scan_pc_after_11 :
+  forall vm, vm_pc vm = 11 -> vm_pc (exec_instr scan_block vm) = 12.
+Proof.
+  intros vm H. rewrite (exec_instr_pc vm 11 (iADD 8 8 13) H eq_refl).
+  cbn. reflexivity.
+Qed.
+
+Lemma scan_reg8_after_11 :
+  forall vm, vm_pc vm = 11 ->
+    vm_reg (exec_instr scan_block vm) 8 = vm_reg vm 8 + vm_reg vm 13.
+Proof.
+  intros vm H. unfold exec_instr. rewrite H. cbn [nth_error scan_block].
+  cbn. reflexivity.
+Qed.
+
+Lemma scan_pc_after_12 :
+  forall vm, vm_pc vm = 12 -> vm_pc (exec_instr scan_block vm) = 0.
+Proof.
+  intros vm H. rewrite (exec_instr_pc vm 12 (iJMP pALWAYS 0) H eq_refl).
+  cbn. reflexivity.
+Qed.
+
+(** ** Register/memory preservation for the miss path *)
+
+Lemma scan_reg_preserved_5 :
+  forall vm d, vm_pc vm = 5 -> vm_reg (exec_instr scan_block vm) d = vm_reg vm d.
+Proof.
+  intros. unfold exec_instr. rewrite H. cbn [nth_error scan_block]. cbn. reflexivity.
+Qed.
+
+Lemma scan_reg_preserved_6 :
+  forall vm d, vm_pc vm = 6 -> vm_reg (exec_instr scan_block vm) d = vm_reg vm d.
+Proof.
+  intros. unfold exec_instr. rewrite H. cbn [nth_error scan_block]. cbn. reflexivity.
+Qed.
+
+Lemma scan_reg_preserved_11 :
+  forall vm d, vm_pc vm = 11 -> d <> 8 ->
+    vm_reg (exec_instr scan_block vm) d = vm_reg vm d.
+Proof.
+  intros. unfold exec_instr. rewrite H. cbn [nth_error scan_block]. cbn.
+  unfold set_reg. destruct (Nat.eqb d 8) eqn:E.
+  { apply Nat.eqb_eq in E. lia. }
+  reflexivity.
+Qed.
+
+Lemma scan_reg_preserved_12 :
+  forall vm d, vm_pc vm = 12 -> vm_reg (exec_instr scan_block vm) d = vm_reg vm d.
+Proof.
+  intros. unfold exec_instr. rewrite H. cbn [nth_error scan_block]. cbn. reflexivity.
+Qed.
+
+Lemma scan_mem_preserved_5 :
+  forall vm, vm_pc vm = 5 -> vm_mem (exec_instr scan_block vm) = vm_mem vm.
+Proof.
+  intros. unfold exec_instr. rewrite H. cbn [nth_error scan_block]. cbn. reflexivity.
+Qed.
+
+Lemma scan_mem_preserved_6 :
+  forall vm, vm_pc vm = 6 -> vm_mem (exec_instr scan_block vm) = vm_mem vm.
+Proof.
+  intros. unfold exec_instr. rewrite H. cbn [nth_error scan_block]. cbn. reflexivity.
+Qed.
+
+Lemma scan_mem_preserved_11 :
+  forall vm, vm_pc vm = 11 -> vm_mem (exec_instr scan_block vm) = vm_mem vm.
+Proof.
+  intros. unfold exec_instr. rewrite H. cbn [nth_error scan_block]. cbn. reflexivity.
+Qed.
+
+Lemma scan_mem_preserved_12 :
+  forall vm, vm_pc vm = 12 -> vm_mem (exec_instr scan_block vm) = vm_mem vm.
+Proof.
+  intros. unfold exec_instr. rewrite H. cbn [nth_error scan_block]. cbn. reflexivity.
+Qed.
+
+Lemma scan_miss_from :
+  forall vm i state sym start row rest m,
+    vm_pc vm = 5 ->
+    vm_reg vm 7 = start + 8 * i ->
+    vm_reg vm 9 = m (start + 8 * i) ->
+    vm_reg vm 1 = state ->
+    vm_reg vm 4 = sym ->
+    vm_reg vm 8 = i ->
+    vm_reg vm 5 = start ->
+    vm_reg vm 6 = 184 ->
+    vm_reg vm 13 = 1 ->
+    vm_mem vm = m ->
+    vm_halted vm = false ->
+    table_mem_at (start + 8 * i) (row :: rest) m ->
+    0 < length row ->
+    nth 0 row 0 <> state ->
+    scan_ready (run_until 4 scan_block scan_stop vm) (S i) state sym start m.
+Proof.
+  intros vm i state sym start row rest m
+    Hpc Hr7 Hr9 Hr1 Hr4 Hr8 Hr5 Hr6 Hr13 Hmem Hhalt Hmemtab Hrow0 Hneq.
+  destruct (Nat.eqb (nth 0 row 0) state) eqn:Efrom.
+  { apply Nat.eqb_eq in Efrom. contradiction. }
+  set (v1 := exec_instr scan_block vm).
+  rewrite (run_one_false 3 scan_block scan_stop vm).
+  2:{ unfold scan_stop. rewrite Hpc, Hhalt. cbn. reflexivity. }
+  fold v1.
+  assert (Hpc1 : vm_pc v1 = 6) by (unfold v1; apply scan_pc_after_5; exact Hpc).
+  assert (Hzf1 : vm_zf v1 = false).
+  { unfold v1. rewrite (scan_zf_after_5 vm Hpc). rewrite Hr9, Hr1.
+    rewrite (table_mem_at_head0 (start + 8 * i) row rest m ltac:(lia) Hmemtab).
+    exact Efrom. }
+  assert (Hh1 : vm_halted v1 = false).
+  { unfold v1. rewrite (exec_instr_not_halted vm 5 (iCMP 9 1) Hpc eq_refl
+      ltac:(discriminate)). exact Hhalt. }
+  set (v2 := exec_instr scan_block v1).
+  rewrite (run_one_false 2 scan_block scan_stop v1).
+  2:{ unfold scan_stop. rewrite Hpc1, Hh1. cbn. reflexivity. }
+  fold v2.
+  assert (Hpc2 : vm_pc v2 = 11).
+  { unfold v2. rewrite (scan_pc_after_6 v1 Hpc1), Hzf1. cbn. reflexivity. }
+  assert (Hh2 : vm_halted v2 = false).
+  { unfold v2. rewrite (exec_instr_not_halted v1 6 (iJMP pNE 11) Hpc1 eq_refl
+      ltac:(discriminate)). exact Hh1. }
+  set (v3 := exec_instr scan_block v2).
+  rewrite (run_one_false 1 scan_block scan_stop v2).
+  2:{ unfold scan_stop. rewrite Hpc2, Hh2. cbn. reflexivity. }
+  fold v3.
+  assert (Hpc3 : vm_pc v3 = 12) by (unfold v3; apply scan_pc_after_11; exact Hpc2).
+  assert (Hh3 : vm_halted v3 = false).
+  { unfold v3. rewrite (exec_instr_not_halted v2 11 (iADD 8 8 13) Hpc2 eq_refl
+      ltac:(discriminate)). exact Hh2. }
+  set (v4 := exec_instr scan_block v3).
+  rewrite (run_one_false 0 scan_block scan_stop v3).
+  2:{ unfold scan_stop. rewrite Hpc3, Hh3. cbn. reflexivity. }
+  cbn [run_until].
+  fold v4.
+  assert (Hpc4 : vm_pc v4 = 0) by (unfold v4; apply scan_pc_after_12; exact Hpc3).
+  assert (Hh4 : vm_halted v4 = false).
+  { unfold v4. rewrite (exec_instr_not_halted v3 12 (iJMP pALWAYS 0) Hpc3 eq_refl
+      ltac:(discriminate)). exact Hh3. }
+  unfold scan_ready.
+  repeat split.
+  - exact Hpc4.
+  - unfold v4. rewrite (scan_reg_preserved_12 v3 1 Hpc3).
+    unfold v3. rewrite (scan_reg_preserved_11 v2 1 Hpc2 ltac:(lia)).
+    unfold v2. rewrite (scan_reg_preserved_6 v1 1 Hpc1).
+    unfold v1. rewrite (scan_reg_preserved_5 vm 1 Hpc). exact Hr1.
+  - unfold v4. rewrite (scan_reg_preserved_12 v3 4 Hpc3).
+    unfold v3. rewrite (scan_reg_preserved_11 v2 4 Hpc2 ltac:(lia)).
+    unfold v2. rewrite (scan_reg_preserved_6 v1 4 Hpc1).
+    unfold v1. rewrite (scan_reg_preserved_5 vm 4 Hpc). exact Hr4.
+  - unfold v4. rewrite (scan_reg_preserved_12 v3 5 Hpc3).
+    unfold v3. rewrite (scan_reg_preserved_11 v2 5 Hpc2 ltac:(lia)).
+    unfold v2. rewrite (scan_reg_preserved_6 v1 5 Hpc1).
+    unfold v1. rewrite (scan_reg_preserved_5 vm 5 Hpc). exact Hr5.
+  - unfold v4. rewrite (scan_reg_preserved_12 v3 6 Hpc3).
+    unfold v3. rewrite (scan_reg_preserved_11 v2 6 Hpc2 ltac:(lia)).
+    unfold v2. rewrite (scan_reg_preserved_6 v1 6 Hpc1).
+    unfold v1. rewrite (scan_reg_preserved_5 vm 6 Hpc). exact Hr6.
+  - unfold v4. rewrite (scan_reg_preserved_12 v3 8 Hpc3).
+    unfold v3. rewrite (scan_reg8_after_11 v2 Hpc2).
+    unfold v2. rewrite (scan_reg_preserved_6 v1 8 Hpc1).
+    rewrite (scan_reg_preserved_6 v1 13 Hpc1).
+    unfold v1. rewrite (scan_reg_preserved_5 vm 8 Hpc).
+    rewrite (scan_reg_preserved_5 vm 13 Hpc).
+    rewrite Hr8, Hr13. lia.
+  - unfold v4. rewrite (scan_reg_preserved_12 v3 13 Hpc3).
+    unfold v3. rewrite (scan_reg_preserved_11 v2 13 Hpc2 ltac:(lia)).
+    unfold v2. rewrite (scan_reg_preserved_6 v1 13 Hpc1).
+    unfold v1. rewrite (scan_reg_preserved_5 vm 13 Hpc). exact Hr13.
+  - unfold v4. rewrite (scan_mem_preserved_12 v3 Hpc3).
+    unfold v3. rewrite (scan_mem_preserved_11 v2 Hpc2).
+    unfold v2. rewrite (scan_mem_preserved_6 v1 Hpc1).
+    unfold v1. rewrite (scan_mem_preserved_5 vm Hpc). exact Hmem.
+  - exact Hh4.
+Qed.
