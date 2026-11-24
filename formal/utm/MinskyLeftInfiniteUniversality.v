@@ -14,7 +14,8 @@ From NaNLM Require Import MinskyTable MinskySourceEncoding MinskyWideSource
   MinskyLeftInfinite MinskyLeftInfiniteEncode MinskyLeftInfiniteWindow
   MinskyLeftInfiniteLookup MinskyLeftInfiniteLookupFull
   MinskyLeftInfiniteHalt MinskyLeftInfiniteHaltBook
-  MinskyLeftInfiniteEncoding MinskyLeftInfiniteBounded
+  MinskyLeftInfiniteEncoding MinskyLeftInfiniteStepRight
+  MinskyLeftInfiniteStepLeft MinskyLeftInfiniteBounded
   MinskyLeftInfiniteLeftDepth MinskyLeftInfiniteBoundary
   MinskyLeftInfiniteBoundaryLocate MinskyLeftInfiniteBoundaryBook
   MinskyLeftInfiniteBoundaryFinal MinskyLeftInfiniteBoundaryLookup
@@ -100,3 +101,89 @@ Proof.
 Qed.
 
 Print Assumptions lic_forward_clock_lo_ind.
+
+(** ** Clock alignment lemmas *)
+
+Lemma lic_step_cost_none_eq :
+  forall (rows : list WideSourceRow) (lo : Z) (c : LeftInfiniteConfig)
+         (steps : list book_failure) (last : book_failure),
+    wide_source_lookup (lic_lift_rows rows)
+      (lic_state (lic_lift_cfg c))
+      (lic_tape (lic_lift_cfg c) (lic_head (lic_lift_cfg c))) = None ->
+    book_first_match
+      (lic_state (lic_lift_cfg c) ++
+       [lic_tape (lic_lift_cfg c) (lic_head (lic_lift_cfg c))])
+      (lic_book_rows (lic_lift_rows rows)) = book_lookup_halt steps last ->
+    lic_step_cost (lic_lift_rows rows) lo (lic_lift_cfg c) =
+    S (length (lic_state (lic_lift_cfg c))) +
+    (book_failures_clock [] steps +
+     book_halt_clock (map bf_row steps) last).
+Proof.
+  intros. unfold lic_step_cost. rewrite H, H0. reflexivity.
+Qed.
+
+Lemma lic_step_cost_right_eq :
+  forall (rows : list WideSourceRow) (lo : Z) (c : LeftInfiniteConfig)
+         (r : WideSourceRow) (steps : list book_failure)
+         (hit : book_row) (after : list book_row),
+    wide_source_lookup (lic_lift_rows rows)
+      (lic_state (lic_lift_cfg c))
+      (lic_tape (lic_lift_cfg c) (lic_head (lic_lift_cfg c))) = Some r ->
+    book_first_match
+      (lic_state (lic_lift_cfg c) ++
+       [lic_tape (lic_lift_cfg c) (lic_head (lic_lift_cfg c))])
+      (source_rows_to_book (lic_lift_rows rows)) =
+      book_lookup_hit steps hit after ->
+    wr_right r = true ->
+    lic_step_cost (lic_lift_rows rows) lo (lic_lift_cfg c) =
+    lic_q5_right_hit_cost lo (lic_lift_cfg c) steps hit
+      (wr_next r) (wr_write r).
+Proof.
+  intros. unfold lic_step_cost. rewrite H, H0, H1. reflexivity.
+Qed.
+
+Lemma lic_step_cost_left_eq :
+  forall (rows : list WideSourceRow) (lo : Z) (c : LeftInfiniteConfig)
+         (r : WideSourceRow) (steps : list book_failure)
+         (hit : book_row) (after : list book_row),
+    wide_source_lookup (lic_lift_rows rows)
+      (lic_state (lic_lift_cfg c))
+      (lic_tape (lic_lift_cfg c) (lic_head (lic_lift_cfg c))) = Some r ->
+    book_first_match
+      (lic_state (lic_lift_cfg c) ++
+       [lic_tape (lic_lift_cfg c) (lic_head (lic_lift_cfg c))])
+      (source_rows_to_book (lic_lift_rows rows)) =
+      book_lookup_hit steps hit after ->
+    wr_right r = false ->
+    lic_step_cost (lic_lift_rows rows) lo (lic_lift_cfg c) =
+    lic_q5_left_hit_cost lo (lic_lift_cfg c) steps hit
+      (wr_next r) (wr_write r).
+Proof.
+  intros. unfold lic_step_cost. rewrite H, H0, H1. reflexivity.
+Qed.
+
+Lemma lic_boundary_clock_of_eq :
+  forall (rows : list WideSourceRow) (lo : Z) (c : LeftInfiniteConfig)
+         (r : WideSourceRow) (steps : list book_failure)
+         (hit : book_row) (next : book_row) (rest : list book_row)
+         (sf : list book_failure) (lf : book_failure),
+    book_first_match
+      (lic_state (lic_lift_cfg c) ++
+       [lic_tape (lic_lift_cfg c) (lic_head (lic_lift_cfg c))])
+      (lic_book_rows (lic_lift_rows rows)) =
+      book_lookup_hit steps hit (next :: rest) ->
+    book_first_match
+      (tl (lic_lift_state (wr_next r)) ++
+       [hd false (lic_lift_state (wr_next r))])
+      (lic_book_rows (lic_lift_rows rows)) = book_lookup_halt sf lf ->
+    lic_boundary_clock_of rows lo c r =
+    lic_q5_empty_boundary_clock lo (lic_lift_cfg c) steps hit
+      (lic_lift_state (wr_next r)) (wr_write r) sf lf.
+Proof.
+  intros. unfold lic_boundary_clock_of. rewrite H, H0. reflexivity.
+Qed.
+
+Print Assumptions lic_step_cost_none_eq.
+Print Assumptions lic_step_cost_right_eq.
+Print Assumptions lic_step_cost_left_eq.
+Print Assumptions lic_boundary_clock_of_eq.
