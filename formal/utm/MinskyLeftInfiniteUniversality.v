@@ -14,7 +14,8 @@ From NaNLM Require Import MinskyTable MinskySourceEncoding MinskyWideSource
   MinskyLeftInfinite MinskyLeftInfiniteEncode MinskyLeftInfiniteWindow
   MinskyLeftInfiniteLookup MinskyLeftInfiniteLookupFull
   MinskyLeftInfiniteHalt MinskyLeftInfiniteHaltBook
-  MinskyLeftInfiniteEncoding MinskyLeftInfiniteStepRight
+  MinskyLeftInfiniteFirstMatchApp MinskyLeftInfiniteEncoding
+  MinskyLeftInfiniteStepRight
   MinskyLeftInfiniteStepLeft MinskyLeftInfiniteBounded
   MinskyLeftInfiniteLeftDepth MinskyLeftInfiniteBoundary
   MinskyLeftInfiniteBoundaryLocate MinskyLeftInfiniteBoundaryBook
@@ -187,3 +188,42 @@ Print Assumptions lic_step_cost_none_eq.
 Print Assumptions lic_step_cost_right_eq.
 Print Assumptions lic_step_cost_left_eq.
 Print Assumptions lic_boundary_clock_of_eq.
+
+
+(** ** Bridge from the source first match to the augmented description *)
+
+Lemma lic_book_rows_first_match_hit_app_bridge :
+  forall (src : list bool) (R : list WideSourceRow)
+         (steps : list book_failure) (hit : book_row)
+         (after : list book_row),
+    book_first_match src (source_rows_to_book R) =
+      book_lookup_hit steps hit after ->
+    book_first_match src (lic_book_rows R) =
+      book_lookup_hit steps hit (after ++ [lic_sentinel_row R]).
+Proof.
+  intros src R steps hit after Hbf.
+  unfold lic_book_rows.
+  apply (@book_first_match_hit_app src (source_rows_to_book R)
+    [lic_sentinel_row R] steps hit after Hbf).
+Qed.
+
+Lemma lic_book_rows_first_match_hit_snoc :
+  forall (src : list bool) (R : list WideSourceRow)
+         (steps : list book_failure) (hit : book_row)
+         (after : list book_row),
+    book_first_match src (source_rows_to_book R) =
+      book_lookup_hit steps hit after ->
+    exists next rest,
+      book_first_match src (lic_book_rows R) =
+      book_lookup_hit steps hit (next :: rest).
+Proof.
+  intros src R steps hit after Hbf.
+  pose proof (lic_book_rows_first_match_hit_app_bridge src R steps hit
+    after Hbf) as H.
+  destruct (after ++ [lic_sentinel_row R]) as [|next rest] eqn:E.
+  - apply snoc_neq_nil in E. contradiction.
+  - exists next, rest. exact H.
+Qed.
+
+Print Assumptions lic_book_rows_first_match_hit_app_bridge.
+Print Assumptions lic_book_rows_first_match_hit_snoc.
