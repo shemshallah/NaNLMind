@@ -371,3 +371,16 @@ Lemma action_mem_preserved_ADD :
     nth_error action_block pc = Some (iADD d a b) ->
     vm_mem (exec_instr action_block vm) = vm_mem vm.
 Proof. intros. unfold exec_instr. rewrite H, H0. cbn. reflexivity. Qed.
+
+Lemma row_at_set_mem_neq :
+  forall (addr : nat) (row : list nat) (m : Mem) (a v : nat),
+    row_at addr row m ->
+    (forall f, f < length row -> addr + f <> a) ->
+    row_at addr row (set_mem m a v).
+Proof.
+  intros addr row m a v Hrow Hdis f Hf.
+  unfold row_at in Hrow.
+  rewrite (set_mem_neq m a v (addr + f)).
+  - apply Hrow. exact Hf.
+  - apply Hdis. exact Hf.
+Qed.
