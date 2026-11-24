@@ -11,6 +11,12 @@ on:
       - 'formal/utm/MinskyNaN16ActionPrefix.v'
       - 'formal/utm/MinskyNaN16ActionMove.v'
       - 'formal/utm/MinskyNaN16ActionSuffix.v'
+      - 'formal/utm/MinskyNaN16ActionRefines.v'
+      - 'formal/utm/MinskyNaN16ScanFrame.v'
+      - 'formal/utm/MinskyNaN16ScanPhase.v'
+      - 'formal/utm/MinskyNaN16Lookup.v'
+      - 'formal/utm/MinskyNaN16StepHit.v'
+      - 'formal/utm/MinskyNaN16StepNone.v'
       - '.github/workflows/minsky-nan16-vm.yml'
 
 permissions:
@@ -55,7 +61,13 @@ jobs:
             MinskyNaN16ActionMove
             MinskyNaN16ActionSuffix
             MinskyNaN16ActionPrefix
+            MinskyNaN16ActionRefines
             MinskyNaN16ScanLoop
+            MinskyNaN16ScanFrame
+            MinskyNaN16ScanPhase
+            MinskyNaN16Lookup
+            MinskyNaN16StepHit
+            MinskyNaN16StepNone
           "
           for f in $MODULES; do
             echo "=== coqc $f"
@@ -80,7 +92,13 @@ jobs:
             MinskyNaN16VM
             MinskyNaN16Action
             MinskyNaN16ActionPrefix
+            MinskyNaN16ActionRefines
             MinskyNaN16ScanLoop
+            MinskyNaN16ScanFrame
+            MinskyNaN16ScanPhase
+            MinskyNaN16Lookup
+            MinskyNaN16StepHit
+            MinskyNaN16StepNone
           "
           for f in $MODULES; do
             echo "=== coqchk $f"
@@ -120,6 +138,18 @@ jobs:
             formal/utm/MinskyNaN16ActionSuffix.vo
             formal/utm/MinskyNaN16ActionPrefix.v
             formal/utm/MinskyNaN16ActionPrefix.vo
+            formal/utm/MinskyNaN16ActionRefines.v
+            formal/utm/MinskyNaN16ActionRefines.vo
             formal/utm/MinskyNaN16ScanLoop.v
             formal/utm/MinskyNaN16ScanLoop.vo
+            formal/utm/MinskyNaN16ScanFrame.v
+            formal/utm/MinskyNaN16ScanFrame.vo
+            formal/utm/MinskyNaN16ScanPhase.v
+            formal/utm/MinskyNaN16ScanPhase.vo
+            formal/utm/MinskyNaN16Lookup.v
+            formal/utm/MinskyNaN16Lookup.vo
+            formal/utm/MinskyNaN16StepHit.v
+            formal/utm/MinskyNaN16StepHit.vo
+            formal/utm/MinskyNaN16StepNone.v
+            formal/utm/MinskyNaN16StepNone.vo
           if-no-files-found: warn
