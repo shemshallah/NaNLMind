@@ -246,5 +246,5 @@ Qed.
 Lemma set_mem_neq :
   forall (m : Mem) (a v k : nat), k <> a -> set_mem m a v k = m k.
 Proof.
-  intros. unfold set_mem. rewrite (Nat.eqb_neq k a H). reflexivity.
+  intros. unfold set_mem. rewrite (proj2 (Nat.eqb_neq k a) H). reflexivity.
 Qed.
