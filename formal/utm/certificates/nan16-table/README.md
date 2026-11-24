@@ -207,3 +207,19 @@ scan_prefix5_stop_vm :
 The next step is to expose the prefix VM to the outer 7-step hit suffix
 (`pc 5 -> 14`) and then the miss suffix (`pc 5 -> 0`).  The full
 `step`/`run100` and VM-level certificate are still open.
+
+## Layer 2 progress: hit-suffix projections
+
+`MinskyNaN16VM.v` now has the step projections for the outer hit suffix:
+
+```text
+scan_pc_after_5 .. scan_pc_after_10
+scan_zf_after_5 / scan_lf_after_5
+scan_zf_after_8 / scan_lf_after_8
+scan_reg9_after_7
+```
+
+These cover `pc 5 -> 14`: `CMP r9,r1`, `JMP[NE]`, `LD r9,r7,1`,
+`CMP r9,r4`, `JMP[NE]`, `JMP 14`.  The next lemma is the 7-step
+`scan_hit_suffix` using `run_one_false` plus these projections.  The full
+`step`/`run100` and VM-level certificate are still open.
