@@ -2114,3 +2114,43 @@ the no-premature-halt theorem.  A boundary halt at the last scanned step
 is itself a source halt.
 
 Claim remains false.
+
+## November 23: clock independence and the last gap
+
+Kernel-checked:
+
+- `MinskyLeftInfiniteBounded.v`:
+  `lic_step_cost_lo_ind`, `lic_bounded_clock_lo_ind`
+- `MinskyLeftInfiniteClockInd.v`:
+  `lic_q5_empty_boundary_clock_lo_ind`
+- `MinskyLeftInfiniteLeftDepth.v`:
+  `lic_left_ok_window`
+
+Key finding: **the left-window depth does not affect any native clock.**
+The `w_tape` argument of the q5 locate clock is unused, the perform
+clocks use the right buffer, and the passive ptape is never scanned.
+Only the frame representations depend on `lo`.
+
+This removes the finite-window clock-growth obstruction.  The remaining
+gap is purely proof exposure: the forward theorem returns an opaque `t`,
+so one cannot choose `K = max k t` and reuse the same `t` at the deeper
+window without an explicit-clock forward theorem:
+
+```coq
+lic_lifted_source_halt_to_native_explicit
+```
+
+stating the witness clock and its invariance under `lo`.  Once exposed,
+the equivalence follows:
+
+```text
+source halts <->
+exists K t, K >= t /\ native halts at t from the K-window encoding.
+```
+
+The forward direction chooses `K = max k t`; the backward direction
+uses `K >= t` with `lic_lifted_native_halt_to_source` at `n = t`.
+No mathematical obstruction remains, only the explicit-witness refactor.
+
+Claim remains false until that refactor and the final equivalence are
+kernel-checked.
