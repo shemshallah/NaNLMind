@@ -1,0 +1,4 @@
+nan16_lookup_agrees_all
+     : forall q s : nat,
+       @eq (option MinskyTableData.Entry) (nan16_lookup q s)
+         (MinskyTable.scan_table q s)

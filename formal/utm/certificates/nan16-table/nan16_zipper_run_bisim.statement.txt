@@ -1,0 +1,6 @@
+nan16_zipper_run_bisim
+     : forall (fuel : nat) (zip : MinskyTable.Config)
+         (addr : MinskyAddressRefinement.AddressConfig)
+         (_ : MinskyAddressRefinement.config_bisim zip addr),
+       MinskyAddressRefinement.config_bisim (MinskyTable.run fuel zip)
+         (MinskyAddressRefinement.address_run fuel nan16_address_step addr)

@@ -1,0 +1,4 @@
+nan16_address_step_refines
+     : forall c : MinskyAddressRefinement.AddressConfig,
+       @eq MinskyAddressRefinement.AddressConfig (nan16_address_step c)
+         (MinskyChartScan.chart_scan_address_step c)

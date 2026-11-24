@@ -1,0 +1,6 @@
+nan16_address_run_refines
+     : forall (fuel : nat) (c : MinskyAddressRefinement.AddressConfig),
+       @eq MinskyAddressRefinement.AddressConfig
+         (MinskyAddressRefinement.address_run fuel nan16_address_step c)
+         (MinskyAddressRefinement.address_run fuel
+            MinskyChartScan.chart_scan_address_step c)

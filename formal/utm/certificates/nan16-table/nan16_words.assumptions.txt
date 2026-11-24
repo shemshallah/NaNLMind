@@ -1,0 +1,15 @@
+===== nan16_lookup_agrees_all =====
+Closed under the global context
+
+===== nan16_sixbyte_lookup_agree =====
+Closed under the global context
+
+===== nan16_address_step_refines =====
+Closed under the global context
+
+===== nan16_address_run_refines =====
+Closed under the global context
+
+===== nan16_zipper_run_bisim =====
+Closed under the global context
+

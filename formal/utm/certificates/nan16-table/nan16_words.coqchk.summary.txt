@@ -1,0 +1,33 @@
+Checking library: NaNLM.MinskyNaN16Words
+  checking module: NaNLM.MinskyNaN16Words
+  checking cst:NaNLM.MinskyNaN16Words.encode_nan16_words
+  checking cst:NaNLM.MinskyNaN16Words.encode_nan16_words_length
+  checking cst:NaNLM.MinskyNaN16Words.nan16_scan_words
+  checking cst:NaNLM.MinskyNaN16Words.nan16_scan_words_cons
+  checking cst:NaNLM.MinskyNaN16Words.nan16_scan_matches_rows
+  checking cst:NaNLM.MinskyNaN16Words.nan16_word_image
+  checking cst:NaNLM.MinskyNaN16Words.nan16_word_image_length
+  checking cst:NaNLM.MinskyNaN16Words.nan16_lookup
+  checking cst:NaNLM.MinskyNaN16Words.nan16_lookup_agrees_all
+  checking cst:NaNLM.MinskyNaN16Words.nan16_sixbyte_lookup_agree
+  checking cst:NaNLM.MinskyNaN16Words.nan16_address_step
+  checking cst:NaNLM.MinskyNaN16Words.nan16_address_step_refines
+  checking cst:NaNLM.MinskyNaN16Words.nan16_address_run_refines
+  checking cst:NaNLM.MinskyNaN16Words.nan16_zipper_run_bisim
+Modules were successfully checked
+
+CONTEXT SUMMARY
+===============
+
+* Theory: Set is predicative
+  
+* Theory: Rewrite rules are not allowed
+  
+* Axioms: <none>
+  
+* Constants/Inductives relying on type-in-type: <none>
+  
+* Constants/Inductives relying on unsafe (co)fixpoints: <none>
+  
+* Inductives whose positivity is assumed: <none>
+  

@@ -1,0 +1,47 @@
+{
+  "schema": "nanlm.coq-nan16-table-certificate/1",
+  "generated_at": "2026-11-24T02:58:42.630950+00:00",
+  "layer": "Layer 1: Coq 23x8 table <-> native NaN16 eight-word table image",
+  "coq_module": "NaNLM.MinskyNaN16Words",
+  "theorems": [
+    "NaNLM.MinskyNaN16Words.nan16_lookup_agrees_all",
+    "NaNLM.MinskyNaN16Words.nan16_sixbyte_lookup_agree",
+    "NaNLM.MinskyNaN16Words.nan16_address_step_refines",
+    "NaNLM.MinskyNaN16Words.nan16_address_run_refines",
+    "NaNLM.MinskyNaN16Words.nan16_zipper_run_bisim"
+  ],
+  "assumptions": [],
+  "assumptions_text": "===== nan16_lookup_agrees_all =====\nClosed under the global context\n\n===== nan16_sixbyte_lookup_agree =====\nClosed under the global context\n\n===== nan16_address_step_refines =====\nClosed under the global context\n\n===== nan16_address_run_refines =====\nClosed under the global context\n\n===== nan16_zipper_run_bisim =====\nClosed under the global context",
+  "coqchk_status": "Modules were successfully checked",
+  "coqchk_context_axioms": "<none>",
+  "coq_version": "8.20.1",
+  "hashes": {
+    "MinskyNaN16Words.v": "174e5dd171446d6dd14f7523eaf39226853882fa1acd36e4a8b14d366c0d603f",
+    "MinskyNaN16Words.vo": "e05dae6edb8425e77b8602f686ae13bdd4e270aab9136215346a72982b5dd0aa",
+    "MinskyChartEncoding.v": "4f3375ffa63a2aec456da975225673d5e34e114915ef0113122d392414e507e9",
+    "MinskyChartScan.v": "0dcaefceb8fac13222ed21ae964f28dfd73575a7386cb6612ee4e0b0da75f378",
+    "MinskyTableData.v": "5ce4cb25128a546dc2be385c429a06245deeb6786385241de8d33ff3457d0ef5",
+    "mth_minsky_test.nas": "173666f7635ffa3c942a6a251eb9c4874e686a45df0ca68c97ad50e9195d112e",
+    "minsky_table.inc": "9a1cb52380b7aa91ba2d99cba283c01e9eb2e4dc28f17d77fb55b1c4837920ad",
+    "nan16_words.statement.txt": "860bed5f3caac430a903668265da62e1d0e3f6685ca0baba7a44a4348bb1199b",
+    "nan16_words.assumptions.txt": "03683dd47be8a889f30b1de43a1ced7315a8122c9bbfb7a7e51cce9e9de1d801",
+    "nan16_words.coqchk.txt.gz": "0dbba4a6301125812fc19969e8fa60382c5ccef39669b66f8ca85ea0b5a7c5b6",
+    "check_minsky_table.out": "cfbca2b53a02b0c46dbe4982f5e6c6f8e26ab91e48c962c44ed3bbf62ee7c939",
+    "check_minsky_nan16_words.out": "94de6f5cec8440ed0664898b263327a42698c7d0cc93411fa0bc84271e02355e"
+  },
+  "transcription_gates": {
+    "coq_table_vs_canonical": "PASS (184/184)",
+    "native_nas_table_vs_canonical": "PASS (184/184, both fixtures)"
+  },
+  "proved_scope": "The native eight-word row image used by mth_minsky_test.nas has the same first-match transition lookup as the Coq 23x8 table for every q,s; the native address-step, arbitrary-fuel run and zipper run agree with the chart/scan model.",
+  "not_proved": "The NaN16 assembler, ISA, VM, and the .nas step/run100 program are not formalized. This is not a Coq certificate of the NaN0S VM execution of the Minsky fixture, and not a refinement of third_party/nan0s/core/nan16.c.",
+  "next_milestone": "Formalize the NaN16 ISA subset used by mth_minsky_test.nas and prove its step/run100 routines refine nan16_address_step/address_run.",
+  "certificate_files": [
+    "nan16_words.statement.txt",
+    "nan16_words.assumptions.txt",
+    "nan16_words.coqchk.summary.txt",
+    "nan16_words.coqchk.txt.gz",
+    "check_minsky_table.out",
+    "check_minsky_nan16_words.out"
+  ]
+}

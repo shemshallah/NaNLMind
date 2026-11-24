@@ -1,0 +1,34 @@
+===== nan16_lookup_agrees_all =====
+nan16_lookup_agrees_all
+     : forall q s : nat,
+       @eq (option MinskyTableData.Entry) (nan16_lookup q s)
+         (MinskyTable.scan_table q s)
+
+===== nan16_sixbyte_lookup_agree =====
+nan16_sixbyte_lookup_agree
+     : forall q s : nat,
+       @eq (option MinskyTableData.Entry) (nan16_lookup q s)
+         (MinskyChartScan.chart_scan q s)
+
+===== nan16_address_step_refines =====
+nan16_address_step_refines
+     : forall c : MinskyAddressRefinement.AddressConfig,
+       @eq MinskyAddressRefinement.AddressConfig (nan16_address_step c)
+         (MinskyChartScan.chart_scan_address_step c)
+
+===== nan16_address_run_refines =====
+nan16_address_run_refines
+     : forall (fuel : nat) (c : MinskyAddressRefinement.AddressConfig),
+       @eq MinskyAddressRefinement.AddressConfig
+         (MinskyAddressRefinement.address_run fuel nan16_address_step c)
+         (MinskyAddressRefinement.address_run fuel
+            MinskyChartScan.chart_scan_address_step c)
+
+===== nan16_zipper_run_bisim =====
+nan16_zipper_run_bisim
+     : forall (fuel : nat) (zip : MinskyTable.Config)
+         (addr : MinskyAddressRefinement.AddressConfig)
+         (_ : MinskyAddressRefinement.config_bisim zip addr),
+       MinskyAddressRefinement.config_bisim (MinskyTable.run fuel zip)
+         (MinskyAddressRefinement.address_run fuel nan16_address_step addr)
+
