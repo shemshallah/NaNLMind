@@ -3,3 +3,4 @@
 *.vok
 *.vos
 *.out.out
+.*.aux
