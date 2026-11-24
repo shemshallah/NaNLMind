@@ -268,3 +268,20 @@ miss path are included.
 Next: the second miss path (`from` matches, `read` does not), then the
 generic `scan_ready` prefix, the 184-row induction, the action phase,
 and `run100`.
+
+## Layer 2: both miss paths proved
+
+`MinskyNaN16VM.v` now proves:
+
+```text
+scan_miss_from   (* row.from <> state: pc 5 -> 11 -> 12 -> 0 *)
+scan_miss_read   (* row.from = state, row.read <> sym:
+                    pc 5 -> 6 -> 7 -> 8 -> 9 -> 11 -> 12 -> 0 *)
+```
+
+Both return a VM satisfying `scan_ready (S i) state sym start m` at
+`pc=0`, with `r8=i+1`.  The hit suffix, both miss paths, all step
+projections, and the register/memory preservation lemmas are now checked.
+
+Next: the generic `scan_ready` five-step prefix, the 184-row scan
+induction, the action phase, and `run100`.
