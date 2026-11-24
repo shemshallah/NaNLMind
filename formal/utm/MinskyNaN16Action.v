@@ -248,3 +248,126 @@ Lemma set_mem_neq :
 Proof.
   intros. unfold set_mem. rewrite (proj2 (Nat.eqb_neq k a) H). reflexivity.
 Qed.
+
+(** ** One-step register/memory preservation *)
+
+Lemma action_reg_preserved_ST :
+  forall (vm : VM) (pc d a imm k : nat),
+    vm_pc vm = pc ->
+    nth_error action_block pc = Some (iST d a imm) ->
+    vm_reg (exec_instr action_block vm) k = vm_reg vm k.
+Proof.
+  intros. unfold exec_instr. rewrite H, H0. cbn. reflexivity.
+Qed.
+
+Lemma action_reg_preserved_CMP :
+  forall (vm : VM) (pc a b k : nat),
+    vm_pc vm = pc ->
+    nth_error action_block pc = Some (iCMP a b) ->
+    vm_reg (exec_instr action_block vm) k = vm_reg vm k.
+Proof.
+  intros. unfold exec_instr. rewrite H, H0. cbn. reflexivity.
+Qed.
+
+Lemma action_reg_preserved_JMP :
+  forall (vm : VM) (pc p target k : nat) (cond : preg),
+    vm_pc vm = pc ->
+    nth_error action_block pc = Some (iJMP cond target) ->
+    vm_reg (exec_instr action_block vm) k = vm_reg vm k.
+Proof.
+  intros. unfold exec_instr. rewrite H, H0. cbn. reflexivity.
+Qed.
+
+Lemma action_reg_preserved_LD :
+  forall (vm : VM) (pc d a imm k : nat),
+    vm_pc vm = pc ->
+    nth_error action_block pc = Some (iLD d a imm) ->
+    k <> d ->
+    vm_reg (exec_instr action_block vm) k = vm_reg vm k.
+Proof.
+  intros. unfold exec_instr. rewrite H, H0. cbn.
+  unfold set_reg. destruct (Nat.eqb k d) eqn:E.
+  { apply Nat.eqb_eq in E. lia. }
+  reflexivity.
+Qed.
+
+Lemma action_reg_preserved_MOVI :
+  forall (vm : VM) (pc d imm k : nat),
+    vm_pc vm = pc ->
+    nth_error action_block pc = Some (iMOVI d imm) ->
+    k <> d ->
+    vm_reg (exec_instr action_block vm) k = vm_reg vm k.
+Proof.
+  intros. unfold exec_instr. rewrite H, H0. cbn.
+  unfold set_reg. destruct (Nat.eqb k d) eqn:E.
+  { apply Nat.eqb_eq in E. lia. }
+  reflexivity.
+Qed.
+
+Lemma action_reg_preserved_SUB :
+  forall (vm : VM) (pc d a b k : nat),
+    vm_pc vm = pc ->
+    nth_error action_block pc = Some (iSUB d a b) ->
+    k <> d ->
+    vm_reg (exec_instr action_block vm) k = vm_reg vm k.
+Proof.
+  intros. unfold exec_instr. rewrite H, H0. cbn.
+  unfold set_reg. destruct (Nat.eqb k d) eqn:E.
+  { apply Nat.eqb_eq in E. lia. }
+  reflexivity.
+Qed.
+
+Lemma action_reg_preserved_ADD :
+  forall (vm : VM) (pc d a b k : nat),
+    vm_pc vm = pc ->
+    nth_error action_block pc = Some (iADD d a b) ->
+    k <> d ->
+    vm_reg (exec_instr action_block vm) k = vm_reg vm k.
+Proof.
+  intros. unfold exec_instr. rewrite H, H0. cbn.
+  unfold set_reg. destruct (Nat.eqb k d) eqn:E.
+  { apply Nat.eqb_eq in E. lia. }
+  reflexivity.
+Qed.
+
+Lemma action_mem_preserved_LD :
+  forall (vm : VM) (pc d a imm : nat),
+    vm_pc vm = pc ->
+    nth_error action_block pc = Some (iLD d a imm) ->
+    vm_mem (exec_instr action_block vm) = vm_mem vm.
+Proof. intros. unfold exec_instr. rewrite H, H0. cbn. reflexivity. Qed.
+
+Lemma action_mem_preserved_MOVI :
+  forall (vm : VM) (pc d imm : nat),
+    vm_pc vm = pc ->
+    nth_error action_block pc = Some (iMOVI d imm) ->
+    vm_mem (exec_instr action_block vm) = vm_mem vm.
+Proof. intros. unfold exec_instr. rewrite H, H0. cbn. reflexivity. Qed.
+
+Lemma action_mem_preserved_CMP :
+  forall (vm : VM) (pc a b : nat),
+    vm_pc vm = pc ->
+    nth_error action_block pc = Some (iCMP a b) ->
+    vm_mem (exec_instr action_block vm) = vm_mem vm.
+Proof. intros. unfold exec_instr. rewrite H, H0. cbn. reflexivity. Qed.
+
+Lemma action_mem_preserved_JMP :
+  forall (vm : VM) (pc cond target : nat) (p : preg),
+    vm_pc vm = pc ->
+    nth_error action_block pc = Some (iJMP p target) ->
+    vm_mem (exec_instr action_block vm) = vm_mem vm.
+Proof. intros. unfold exec_instr. rewrite H, H0. cbn. reflexivity. Qed.
+
+Lemma action_mem_preserved_SUB :
+  forall (vm : VM) (pc d a b : nat),
+    vm_pc vm = pc ->
+    nth_error action_block pc = Some (iSUB d a b) ->
+    vm_mem (exec_instr action_block vm) = vm_mem vm.
+Proof. intros. unfold exec_instr. rewrite H, H0. cbn. reflexivity. Qed.
+
+Lemma action_mem_preserved_ADD :
+  forall (vm : VM) (pc d a b : nat),
+    vm_pc vm = pc ->
+    nth_error action_block pc = Some (iADD d a b) ->
+    vm_mem (exec_instr action_block vm) = vm_mem vm.
+Proof. intros. unfold exec_instr. rewrite H, H0. cbn. reflexivity. Qed.
