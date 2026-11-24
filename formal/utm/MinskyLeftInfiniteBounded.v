@@ -1155,3 +1155,79 @@ Qed.
 
 Print Assumptions lic_step_cost_lo_ind.
 Print Assumptions lic_bounded_clock_lo_ind.
+
+(** ** Per-step positivity for every well-formed configuration *)
+
+Lemma lic_step_cost_pos_wellformed :
+  forall (p : nat) (rows : list WideSourceRow) (lo : Z)
+         (c : LeftInfiniteConfig),
+    Forall (wide_row_wellformed p) rows ->
+    rows <> [] ->
+    length (lic_state c) = p ->
+    1 <= lic_step_cost rows lo c.
+Proof.
+  intros p rows lo c Hwf Hne Hlen.
+  unfold lic_step_cost.
+  destruct (wide_source_lookup rows (lic_state c)
+    (lic_tape c (lic_head c))) as [r|] eqn:E.
+  - destruct (wide_source_lookup_some_book_first_match_hit p rows
+      (lic_state c) (lic_tape c (lic_head c)) r Hwf Hlen E)
+      as [steps [hit [after [Hbf _]]]].
+    rewrite Hbf. destruct (wr_right r);
+      unfold lic_q5_right_hit_cost, lic_q5_left_hit_cost,
+        book_steady_locate_q12_clock_gen; lia.
+  - destruct (lic_book_rows_first_match_halt p rows
+      (lic_state c) (lic_tape c (lic_head c)) Hwf Hlen Hne E)
+      as [steps [last Hbf]].
+    rewrite Hbf. unfold book_failures_clock, book_halt_clock.
+    cbn [length].
+    lia.
+Qed.
+
+Lemma lic_state_length_step_general :
+  forall (p : nat) (rows : list WideSourceRow) (c : LeftInfiniteConfig),
+    length (lic_state c) = p ->
+    Forall (wide_row_wellformed p) rows ->
+    length (lic_state (left_infinite_step rows c)) = p.
+Proof.
+  intros p rows c Hlen Hwf.
+  destruct (lic_halted c) eqn:Eh.
+  - unfold left_infinite_step. rewrite Eh. exact Hlen.
+  - destruct (wide_source_lookup rows (lic_state c)
+      (lic_tape c (lic_head c))) as [r|] eqn:El.
+    + destruct (left_infinite_right_blocked c r) eqn:Eb.
+      * destruct (left_infinite_step_blocked_fields rows c r Eh El Eb)
+          as [Hs _]. rewrite Hs. exact Hlen.
+      * assert (Hin : In r rows).
+        { pose proof (find_some
+            (fun row => wide_row_matches row (lic_state c)
+               (lic_tape c (lic_head c))) rows El) as Hfs.
+          exact (proj1 Hfs). }
+        assert (Hwf_r : wide_row_wellformed p r).
+        { rewrite Forall_forall in Hwf. apply Hwf. exact Hin. }
+        destruct (left_infinite_step_running_fields rows c r Eh El Eb)
+          as [Hs _]. rewrite Hs. exact (proj2 Hwf_r).
+    + destruct (left_infinite_step_lookup_none_fields rows c Eh El)
+        as [Hs _]. rewrite Hs. exact Hlen.
+Qed.
+
+Lemma lic_bounded_clock_at_least_steps_general :
+  forall (n p : nat) (rows : list WideSourceRow) (lo : Z)
+         (c : LeftInfiniteConfig),
+    Forall (wide_row_wellformed p) rows ->
+    rows <> [] ->
+    length (lic_state c) = p ->
+    n <= lic_bounded_clock rows n lo c.
+Proof.
+  induction n as [|n IH]; intros p rows lo c Hwf Hne Hlen.
+  - cbn [lic_bounded_clock]. lia.
+  - cbn [lic_bounded_clock].
+    assert (Hpos := lic_step_cost_pos_wellformed p rows lo c Hwf Hne Hlen).
+    assert (Hlen' : length (lic_state (left_infinite_step rows c)) = p)
+      by (apply (lic_state_length_step_general p rows c Hlen Hwf)).
+    assert (Hrec := IH p rows lo (left_infinite_step rows c) Hwf Hne Hlen').
+    lia.
+Qed.
+
+Print Assumptions lic_step_cost_pos_wellformed.
+Print Assumptions lic_bounded_clock_at_least_steps_general.
