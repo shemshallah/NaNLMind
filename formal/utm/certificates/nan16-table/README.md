@@ -129,3 +129,21 @@ A full Coq table ↔ NaN0S certificate needs:
 Layer 1 is the table/word-image half. Layer 2 is the VM/program half; it is
 not yet formalized. Executable NaN0S gates are conformance evidence, not a
 Coq certificate.
+
+## Layer 2 status (in progress)
+
+`formal/utm/MinskyNaN16VM.v` now defines the NaN16 ISA subset used by
+`mth_minsky_test.nas` (registers, memory, flags, predicates, `MOVI`/`LD`/`ST`/
+`CMP`/`JMP`/`CALL`/`RET`/`ADD`/`SUB`/`SHL`/`HALT`), the exact native scan block,
+the `scan_ready` loop invariant, the table-memory invariant, and the
+`run_until` composition lemmas.  It passes `coqc` and `coqchk`.
+
+It does **not** yet contain `scan_iter_hit`/`scan_iter_miss`, the scan-loop
+induction, the `step` action refinement, or the `run100` refinement.  The
+current engineering blocker is the symbolic execution of the 12-instruction
+scan iteration: `cbn` leaves the `run_until` stop checks under nested
+`exec_instr`s, while a full `vm_compute` is too expensive for the general
+symbolic state.  The next step is a small-step `run_one`/`exec` rewrite
+strategy that reduces each concrete PC check before the symbolic branch.
+
+Do not cite this as a Coq table ↔ NaN0S VM certificate yet.
