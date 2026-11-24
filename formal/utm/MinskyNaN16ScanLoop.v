@@ -7,7 +7,7 @@ Proof. reflexivity. Qed.
 Lemma scan_stop_13 : scan_stop 13 = true.
 Proof. reflexivity. Qed.
 
-Lemma scan_loop_try :
+Lemma scan_loop :
   forall (i state sym start : nat) (table : list (list nat)) (m : Mem) (vm : VM),
     i + length table = 184 ->
     Forall (fun row => 0 < length row /\ 1 < length row) table ->
@@ -128,3 +128,5 @@ Proof.
          { cbn [scan_index_from]. rewrite Efrom. cbn [andb]. reflexivity. }
          rewrite Hidx. exact Hres.
 Qed.
+
+Print Assumptions scan_loop.

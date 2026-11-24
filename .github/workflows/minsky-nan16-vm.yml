@@ -47,6 +47,7 @@ jobs:
             MinskyNativePages
             MinskyNaN16Words
             MinskyNaN16VM
+            MinskyNaN16Action
             MinskyNaN16ScanLoop
           "
           for f in $MODULES; do
@@ -70,6 +71,7 @@ jobs:
             MinskyNativePages
             MinskyNaN16Words
             MinskyNaN16VM
+            MinskyNaN16Action
             MinskyNaN16ScanLoop
           "
           for f in $MODULES; do
@@ -102,6 +104,8 @@ jobs:
             formal/utm/MinskyNaN16Words.vo
             formal/utm/MinskyNaN16VM.v
             formal/utm/MinskyNaN16VM.vo
+            formal/utm/MinskyNaN16Action.v
+            formal/utm/MinskyNaN16Action.vo
             formal/utm/MinskyNaN16ScanLoop.v
             formal/utm/MinskyNaN16ScanLoop.vo
           if-no-files-found: warn
