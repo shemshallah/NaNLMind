@@ -1114,3 +1114,44 @@ Proof.
 Qed.
 
 Print Assumptions lic_bounded_clock_mono.
+
+(** ** Clock invariance under the left-window choice
+
+    The left-window argument [lo] only changes the passive ptape; no
+    clock reads it.  All per-step and cumulative clocks are therefore
+    definitionally independent of [lo]. *)
+
+Lemma lic_step_cost_lo_ind :
+  forall (rows : list WideSourceRow) (lo lo' : Z)
+         (c : LeftInfiniteConfig),
+    lic_step_cost rows lo c = lic_step_cost rows lo' c.
+Proof.
+  intros rows lo lo' c.
+  unfold lic_step_cost.
+  destruct (wide_source_lookup rows (lic_state c)
+    (lic_tape c (lic_head c))) as [r|].
+  - destruct (book_first_match (lic_state c ++ [lic_tape c (lic_head c)])
+      (source_rows_to_book rows)) as [steps hit after|steps last|].
+    + destruct (wr_right r); reflexivity.
+    + reflexivity.
+    + reflexivity.
+  - destruct (book_first_match (lic_state c ++ [lic_tape c (lic_head c)])
+      (lic_book_rows rows)) as [steps hit after|steps last|];
+      reflexivity.
+Qed.
+
+Lemma lic_bounded_clock_lo_ind :
+  forall (n : nat) (rows : list WideSourceRow) (lo lo' : Z)
+         (c : LeftInfiniteConfig),
+    lic_bounded_clock rows n lo c =
+    lic_bounded_clock rows n lo' c.
+Proof.
+  induction n as [|n IH]; intros rows lo lo' c.
+  - reflexivity.
+  - cbn [lic_bounded_clock].
+    rewrite (lic_step_cost_lo_ind rows lo lo' c).
+    apply Nat.add_cancel_l. apply IH.
+Qed.
+
+Print Assumptions lic_step_cost_lo_ind.
+Print Assumptions lic_bounded_clock_lo_ind.
