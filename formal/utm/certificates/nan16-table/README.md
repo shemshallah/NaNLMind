@@ -285,3 +285,20 @@ projections, and the register/memory preservation lemmas are now checked.
 
 Next: the generic `scan_ready` five-step prefix, the 184-row scan
 induction, the action phase, and `run100`.
+
+## Layer 2: the full scan iteration is proved
+
+`MinskyNaN16VM.v` now contains the generic five-step prefix and the
+three complete iteration outcomes:
+
+```text
+scan_prefix5_ready      (* scan_ready vm -> vm5 projections *)
+scan_iter_hit           (* 12 steps -> pc 14 *)
+scan_iter_miss_from     (* 9 steps -> scan_ready at i+1 *)
+scan_iter_miss_read     (* 12 steps -> scan_ready at i+1 *)
+```
+
+The hit and both miss paths are composed from the checked step
+projections.  This is the complete control flow of one scan iteration.
+Next: the 184-row loop induction (`scan_none_at_end` + monotone fuel),
+then the action phase, `step`, `run100`, and the transcription gate.
