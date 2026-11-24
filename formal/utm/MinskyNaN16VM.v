@@ -609,3 +609,77 @@ Proof.
   repeat split; try reflexivity; try (apply f_equal; lia); try lia.
 Qed.
 
+
+Lemma scan_pc_after_5 :
+  forall vm, vm_pc vm = 5 -> vm_pc (exec_instr scan_block vm) = 6.
+Proof.
+  intros vm H. rewrite (exec_instr_pc vm 5 (iCMP 9 1) H eq_refl).
+  cbn. reflexivity.
+Qed.
+
+Lemma scan_zf_after_5 :
+  forall vm, vm_pc vm = 5 ->
+    vm_zf (exec_instr scan_block vm) = Nat.eqb (vm_reg vm 9) (vm_reg vm 1).
+Proof. intros vm H. exact (exec_instr_CMP_zf vm 5 9 1 H eq_refl). Qed.
+
+Lemma scan_lf_after_5 :
+  forall vm, vm_pc vm = 5 ->
+    vm_lf (exec_instr scan_block vm) = Nat.ltb (vm_reg vm 9) (vm_reg vm 1).
+Proof. intros vm H. exact (exec_instr_CMP_lf vm 5 9 1 H eq_refl). Qed.
+
+Lemma scan_pc_after_6 :
+  forall vm, vm_pc vm = 6 ->
+    vm_pc (exec_instr scan_block vm) =
+      if pred_holds pNE (vm_zf vm) (vm_lf vm) then 11 else 7.
+Proof.
+  intros vm H. rewrite (exec_instr_pc vm 6 (iJMP pNE 11) H eq_refl).
+  cbn. reflexivity.
+Qed.
+
+Lemma scan_pc_after_7 :
+  forall vm, vm_pc vm = 7 -> vm_pc (exec_instr scan_block vm) = 8.
+Proof.
+  intros vm H. rewrite (exec_instr_pc vm 7 (iLD 9 7 1) H eq_refl).
+  cbn. reflexivity.
+Qed.
+
+Lemma scan_reg9_after_7 :
+  forall vm, vm_pc vm = 7 ->
+    vm_reg (exec_instr scan_block vm) 9 = vm_mem vm (vm_reg vm 7 + 1).
+Proof.
+  intros vm H. unfold exec_instr. rewrite H. cbn [nth_error scan_block].
+  cbn. reflexivity.
+Qed.
+
+Lemma scan_pc_after_8 :
+  forall vm, vm_pc vm = 8 -> vm_pc (exec_instr scan_block vm) = 9.
+Proof.
+  intros vm H. rewrite (exec_instr_pc vm 8 (iCMP 9 4) H eq_refl).
+  cbn. reflexivity.
+Qed.
+
+Lemma scan_zf_after_8 :
+  forall vm, vm_pc vm = 8 ->
+    vm_zf (exec_instr scan_block vm) = Nat.eqb (vm_reg vm 9) (vm_reg vm 4).
+Proof. intros vm H. exact (exec_instr_CMP_zf vm 8 9 4 H eq_refl). Qed.
+
+Lemma scan_lf_after_8 :
+  forall vm, vm_pc vm = 8 ->
+    vm_lf (exec_instr scan_block vm) = Nat.ltb (vm_reg vm 9) (vm_reg vm 4).
+Proof. intros vm H. exact (exec_instr_CMP_lf vm 8 9 4 H eq_refl). Qed.
+
+Lemma scan_pc_after_9 :
+  forall vm, vm_pc vm = 9 ->
+    vm_pc (exec_instr scan_block vm) =
+      if pred_holds pNE (vm_zf vm) (vm_lf vm) then 11 else 10.
+Proof.
+  intros vm H. rewrite (exec_instr_pc vm 9 (iJMP pNE 11) H eq_refl).
+  cbn. reflexivity.
+Qed.
+
+Lemma scan_pc_after_10 :
+  forall vm, vm_pc vm = 10 -> vm_pc (exec_instr scan_block vm) = 14.
+Proof.
+  intros vm H. rewrite (exec_instr_pc vm 10 (iJMP pALWAYS 14) H eq_refl).
+  cbn. reflexivity.
+Qed.
