@@ -302,3 +302,22 @@ The hit and both miss paths are composed from the checked step
 projections.  This is the complete control flow of one scan iteration.
 Next: the 184-row loop induction (`scan_none_at_end` + monotone fuel),
 then the action phase, `step`, `run100`, and the transcription gate.
+
+## Layer 2: scan end and fuel extension
+
+`MinskyNaN16VM.v` now also proves:
+
+```text
+scan_none_at_end          (* r8 = 184 -> pc 13 in two steps *)
+run_until_extend_stopped  (* extra fuel after a stop is harmless *)
+```
+
+The complete scan block now has:
+- the generic five-step prefix,
+- the hit iteration,
+- both miss iterations,
+- the no-match end.
+
+The remaining scan proof is the 184-row loop induction, which composes
+these with `run_until_extend_stopped`.  Then the action phase, `step`,
+`run100`, and the transcription gate.
