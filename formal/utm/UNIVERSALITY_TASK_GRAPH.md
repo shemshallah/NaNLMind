@@ -1,7 +1,10 @@
 # Concrete 23x8 universality: task graph
 
-Status: open.  `claimed` remains false.  This document is the ranked
-engineering/research plan derived from the current kernel-checked tree.
+Status: **closed for the fixed 23x8 table's left-infinite simulation
+theorem.**  `claimed` is true; the final theorem is
+`lic_lifted_halting_equivalence` in
+`formal/utm/MinskyLeftInfiniteClockRun.v`.  The dated sections below
+retain the research log and are not the current status.
 
 ## What is already closed
 
@@ -803,3 +806,57 @@ frames, or a different encoding, is still required for a single
 
 The forward simulation and backward soundness are unconditional in
 their stated windows.  Claim remains false.
+
+
+## Closure: the unconditional halting equivalence (kernel-checked)
+
+`formal/utm/MinskyLeftInfiniteClockRun.v` contains, with no
+`Admitted`/`Axiom`/`Parameter` and with `coqchk` success:
+
+```coq
+Theorem lic_forward_clock_run :
+  forall (n p : nat) (lo : Z) (c : LeftInfiniteConfig)
+         (rows : list WideSourceRow),
+    Forall (wide_row_wellformed p) rows ->
+    rows <> [] ->
+    length (lic_state c) = p ->
+    left_infinite_ok c ->
+    lic_left_ok lo n c ->
+    lic_halted (left_infinite_run n rows c) = true ->
+    c_halted (run (lic_forward_clock rows n lo c)
+      (if lic_halted c then dispatch_halt_at_y [] []
+       else lic_q5_encode lo (lic_lift_cfg c)
+              (lic_book_rows (lic_lift_rows rows)) [])) = true.
+
+Theorem lic_lifted_halting_equivalence :
+  forall (p : nat) (rows : list WideSourceRow) (c : LeftInfiniteConfig),
+    Forall (wide_row_wellformed p) rows ->
+    rows <> [] ->
+    length (lic_state c) = p ->
+    left_infinite_ok c ->
+    left_infinite_eventually_halts rows c <->
+    exists K t,
+      K >= t /\
+      c_halted (run t
+        (if lic_halted c then dispatch_halt_at_y [] []
+         else lic_q5_encode (lic_head c - Z.of_nat K - 2)
+                (lic_lift_cfg c)
+                (lic_book_rows (lic_lift_rows rows)) [])) = true.
+```
+
+The forward direction uses the computable clock
+`lic_forward_clock`, its unconditional left-window invariance
+`lic_forward_clock_lo_ind`, and chooses `K = max k t`.  The backward
+direction uses `lic_lifted_native_halt_to_source` at `n = t`, the
+left-window invariant `lic_left_ok_window`, and the general lower bound
+`lic_bounded_clock_at_least_steps_general`.  The three branch
+alignments (`lic_step_cost_none_eq`, `_right_eq`, `_left_eq`,
+`lic_boundary_clock_of_eq`) and the augmented/source first-match bridge
+make the induction definitional.
+
+The final statement is a run-equivalence family: the left window depth
+`K` is chosen existentially and may grow with the native run time.
+A single total `encode` independent of `K` is not claimed: a wall halt
+and a lookup-failure halt can produce identical halted source
+configurations with different native frames, so that stronger
+formulation is false for this table.
