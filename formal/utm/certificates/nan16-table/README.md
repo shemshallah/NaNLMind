@@ -367,3 +367,25 @@ RET
 with a concrete `vm_compute` smoke test for the write/right/halt path.  The
 action refinement theorem, `step` setup/halt check, `run100`, and the
 `.nas` transcription gate remain open.
+
+## Layer 2: action specification certified
+
+The dedicated runner passed:
+
+```text
+run 45463919006  success
+```
+
+for:
+
+```text
+MinskyNaN16Action.v
+  action_block / action_stop / action_init
+  row_at / set_mem / action_ready
+  action_new_head / action_run
+  concrete action smoke test
+```
+
+The next theorem is `action_refines`: execute the 24-instruction
+`action_block` symbolically and prove it realizes `action_run` (moved
+head, written tape cell, stored head/state/halt cells).
