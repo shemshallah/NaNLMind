@@ -469,6 +469,24 @@ MinskyNaN16StepNone.v
 
 Both phase theorems are closed under the global context.
 
+The step entry is now partly assembled:
+
+```text
+MinskyNaN16Step.v
+  native_step / native_step_refines (hit and no-match branches)
+
+MinskyNaN16Prelude.v
+  literal prelude_block, LD/ADD/MOVI/CMP projections, frame lemmas
+
+MinskyNaN16PreludeReady.v
+  prelude_ready  (halt cell 0 -> loaded scan registers, pc 11)
+  prelude_halted (halt cell nonzero -> return point, pc 11)
+```
+
+`Print Assumptions prelude_ready` and `prelude_halted` are closed under the
+global context.  The prelude-to-step composition is the next local proof;
+it is not yet committed.
+
 Remaining for the `.nas` step/run100 certificate:
 
 1. a literal `step` program/prelude assembly (or checked block transcription)
