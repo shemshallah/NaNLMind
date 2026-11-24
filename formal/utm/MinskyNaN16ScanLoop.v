@@ -112,7 +112,9 @@ Proof.
            scan_block scan_stop (run_until 9 scan_block scan_stop vm)).
          ++ exact Hrun.
          ++ destruct (scan_index_from (S i) state sym rest) as [[j r]|] eqn:Eres.
-            ** destruct Hres as [Hpc14 _]. rewrite Hpc14. rewrite scan_stop_14. reflexivity.
-            ** destruct Hres as [Hpc13 _]. rewrite Hpc13. rewrite scan_stop_13. reflexivity.
+            ** rewrite <- Hrun. destruct Hres as [Hpc14 _].
+               rewrite Hpc14. rewrite scan_stop_14. reflexivity.
+            ** rewrite <- Hrun. destruct Hres as [Hpc13 _].
+               rewrite Hpc13. rewrite scan_stop_13. reflexivity.
       -- cbn [scan_index_from]. rewrite Efrom. simpl. exact Hres.
 Qed.
