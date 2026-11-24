@@ -82,3 +82,26 @@ Eval vm_compute in
    (vm_pc vm, vm_reg vm 2, vm_reg vm 9, vm_reg vm 7,
     vm_mem vm 200, vm_mem vm action_head_addr,
     vm_mem vm action_state_addr, vm_mem vm action_halt_addr)).
+
+(** ** Action invariant and specification *)
+
+Definition row_at (addr : nat) (row : list nat) (m : Mem) : Prop :=
+  forall f, f < length row -> m (addr + f) = nth f row 0.
+
+Definition set_mem (m : Mem) (a v : nat) : Mem :=
+  fun k => if Nat.eqb k a then v else m k.
+
+Definition action_ready
+    (vm : VM) (row_addr tape_addr head : nat) (m : Mem) : Prop :=
+  vm_pc vm = 0 /\
+  vm_reg vm 0 = 0 /\
+  vm_reg vm 2 = head /\
+  vm_reg vm 3 = tape_addr /\
+  vm_reg vm 7 = row_addr /\
+  vm_reg vm 13 = 1 /\
+  vm_mem vm = m /\
+  vm_halted vm = false.
+
+Definition action_new_head (head mv : nat) : nat :=
+  if Nat.eqb mv 0 then head - 1
+  else if Nat.eqb mv 2 then head + 1 else head.
