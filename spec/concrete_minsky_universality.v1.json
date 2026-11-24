@@ -30,6 +30,11 @@
       "formal/utm/MinskyLeftInfiniteLiftForward.v",
       "formal/utm/MinskyLeftInfiniteLiftBackward.v"
     ],
-    "certificate": "formal/utm/certificates/lic_lifted_halting_equivalence.certificate.json"
+    "certificate": "formal/utm/certificates/lic_lifted_halting_equivalence.certificate.json",
+    "native_table_certificate": "formal/utm/certificates/nan16-table/nan16_words.certificate.json"
+  },
+  "native_implementation_status": {
+    "table_image": "Coq 23x8 table <-> native NaN16 eight-word table image, proved in MinskyNaN16Words.v; raw certificate in formal/utm/certificates/nan16-table/.",
+    "vm_program": "Not yet formalized. The .nas step/run100 program and the NaN0S/Nan16 VM are linked by executable gates and transcription checks, not by a Coq refinement theorem."
   }
 }
