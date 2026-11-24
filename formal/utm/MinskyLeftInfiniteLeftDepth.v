@@ -361,3 +361,20 @@ Proof.
 Qed.
 
 Print Assumptions lic_left_no_premature_halt.
+
+(** ** The left-depth invariant for a window of depth [K] *)
+
+Lemma lic_left_ok_window :
+  forall (K k : nat) (c : LeftInfiniteConfig),
+    K >= k ->
+    left_infinite_ok c ->
+    lic_left_ok (lic_head c - Z.of_nat K - 2) k c.
+Proof.
+  intros K k c Hle Hok. unfold lic_left_ok.
+  split; [|exact Hok].
+  assert (HZK : (Z.of_nat k <= Z.of_nat K)%Z)
+    by (apply (proj1 (Nat2Z.inj_le k K)); exact Hle).
+  lia.
+Qed.
+
+Print Assumptions lic_left_ok_window.
