@@ -437,10 +437,43 @@ MinskyNaN16ActionSuffix.v
   action_suffix         (pc14 -> pc22, both halt branches)
 ```
 
-CI has passed for the scan loop, action spec, action prefix, and move branch.
-The full suffix is on the runner.
+The action composition is now closed locally:
 
-Remaining composition gap: `action_refines` needs the move block to expose its
-preserved `r0`, `r7`, and memory so the suffix gets the prefix's tape-written
-memory and `row_at_set_mem_neq` can be applied.  Then `step_refines`,
-`run100`, and the `.nas` transcription gate remain.
+```text
+MinskyNaN16ActionRefines.v
+  action_refines (pc 0 -> 22, exact move fuel, pointwise action_run memory)
+```
+
+`Print Assumptions action_refines` is closed under the global context.
+
+## Layer 2: scan frame and step phases checked
+
+```text
+MinskyNaN16ScanFrame.v
+  scan_exec/run frame for r0, r2, r3, r13, memory, halted
+
+MinskyNaN16ScanPhase.v
+  scan_phase (scan loop + frame conditions + hit/no-match exits)
+
+MinskyNaN16Lookup.v
+  nan16_rows = map encode_nan16_words minsky_entries
+  scan_index_from hit -> nan16_lookup hit (and the None direction)
+
+MinskyNaN16StepHit.v
+  step_hit_phase (scan -> action -> pc 22, memory = action_run)
+
+MinskyNaN16StepNone.v
+  no_trans_block / no_trans_run
+  step_none_phase (scan -> halt cell := 1, pc 2)
+```
+
+Both phase theorems are closed under the global context.
+
+Remaining for the `.nas` step/run100 certificate:
+
+1. a literal `step` program/prelude assembly (or checked block transcription)
+   tying the scan/action/no-trans phases to the `.nas` text;
+2. `run100` iteration of the step routine;
+3. the source address/tape refinement connecting the VM state to
+   `nan16_address_step`/`MinskyTable.step`;
+4. the checked `.nas` transcription gate and the final VM-level certificate.
