@@ -321,3 +321,49 @@ The complete scan block now has:
 The remaining scan proof is the 184-row loop induction, which composes
 these with `run_until_extend_stopped`.  Then the action phase, `step`,
 `run100`, and the transcription gate.
+
+## Layer 2: the 184-row scan loop is certified
+
+`formal/utm/MinskyNaN16ScanLoop.v` now proves, with `coqc` and `coqchk`:
+
+```coq
+scan_loop :
+  i + length table = 184 ->
+  Forall (fun row => 0 < length row /\ 1 < length row) table ->
+  table_mem_at (start + 8*i) table m ->
+  scan_ready vm i state sym start m ->
+  exists vm',
+    run_until (12*length table + 14) scan_block scan_stop vm = vm' /\
+    match scan_index_from i state sym table with
+    | Some (j,row) =>
+        vm_pc vm' = 14 /\ vm_reg vm' 7 = start + 8*j /\ vm_reg vm' 8 = j
+    | None => vm_pc vm' = 13 /\ vm_reg vm' 8 = 184
+    end.
+```
+
+The GitHub dedicated runner passed:
+
+```text
+run 45461981748  success
+```
+
+A separate local `coqc -time` trace showed the proof now checks in under a
+second after replacing a whole-goal `simpl` with a local
+`scan_index_from` equality.
+
+## Layer 2: action phase started
+
+`formal/utm/MinskyNaN16Action.v` models the `.nas` `match:` block:
+
+```text
+LD r9,r7,2 ; ST r9,r3,0       (* write *)
+LD r9,r7,3 ; move decision    (* -1 / 0 / +1 *)
+ST r2,r0,@head
+LD r9,r7,4 ; ST r9,r0,@state
+LD r9,r7,5 ; halt decision ; ST r9,r0,@halt
+RET
+```
+
+with a concrete `vm_compute` smoke test for the write/right/halt path.  The
+action refinement theorem, `step` setup/halt check, `run100`, and the
+`.nas` transcription gate remain open.
