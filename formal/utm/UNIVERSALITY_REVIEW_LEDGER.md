@@ -2232,12 +2232,17 @@ MinskyNaN16Lookup.v        scan_index_from vs nan16_lookup bridge
 MinskyNaN16StepHit.v       step_hit_phase (scan -> action -> pc 22)
 MinskyNaN16StepNone.v      no_trans_run / step_none_phase
 MinskyNaN16Step.v          native_step and native_step_refines
+MinskyNaN16ActionRun.v     action_run head/tape/state/halt/frame projections
+MinskyNaN16StepSpec.v      nstate_rel and native_step_spec_active
+MinskyNaN16Prelude*.v      literal prelude, both halt branches
 ```
 
-The dedicated runner is validating this cone.  **Not yet done:**
+The runner has validated the cone through `native_step_refines`; a later
+run validates `ActionRun` and `StepSpec`.  **Not yet done:**
 
-1. the literal step prelude/normalization (partially scaffolded in
-   `MinskyNaN16Prelude.v`, no run theorem yet);
+1. the step-entry composition (prelude + reset + `native_step`); the local
+   proot runs out of memory on the composed goal, so this is WIP, not in
+   the checked chain;
 2. a single contiguous `.nas` step program or a checked block
    transcription gate;
 3. `run100` iteration over the step routine;
