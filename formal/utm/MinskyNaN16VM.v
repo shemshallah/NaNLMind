@@ -341,3 +341,68 @@ Proof.
     + rewrite run_until_succ. rewrite E.
       apply IH.
 Qed.
+
+(** ** Explicit one-step reductions for the scan block *)
+
+Lemma run_one_false :
+  forall fuel prog stop vm,
+    orb (stop (vm_pc vm)) (vm_halted vm) = false ->
+    run_until (S fuel) prog stop vm =
+    run_until fuel prog stop (exec_instr prog vm).
+Proof.
+  intros. rewrite run_until_succ. rewrite H. reflexivity.
+Qed.
+
+Lemma exec_instr_pc :
+  forall (vm : VM) (pc : nat) (ins : Instr),
+    vm_pc vm = pc ->
+    nth_error scan_block pc = Some ins ->
+    vm_pc (exec_instr scan_block vm) =
+    match ins with
+    | iJMP p target =>
+        if pred_holds p (vm_zf vm) (vm_lf vm) then target else S pc
+    | iCALL target => target
+    | iRET => vm_link vm
+    | iHALT => pc
+    | _ => S pc
+    end.
+Proof.
+  intros vm pc ins Hpc Hins.
+  unfold exec_instr. rewrite Hpc, Hins.
+  destruct ins; cbn; reflexivity.
+Qed.
+
+Lemma exec_instr_CMP_zf :
+  forall (vm : VM) (pc a b : nat),
+    vm_pc vm = pc ->
+    nth_error scan_block pc = Some (iCMP a b) ->
+    vm_zf (exec_instr scan_block vm) =
+      Nat.eqb (vm_reg vm a) (vm_reg vm b).
+Proof.
+  intros vm pc a b Hpc Hins.
+  unfold exec_instr. rewrite Hpc, Hins. cbn. reflexivity.
+Qed.
+
+Lemma exec_instr_CMP_lf :
+  forall (vm : VM) (pc a b : nat),
+    vm_pc vm = pc ->
+    nth_error scan_block pc = Some (iCMP a b) ->
+    vm_lf (exec_instr scan_block vm) =
+      Nat.ltb (vm_reg vm a) (vm_reg vm b).
+Proof.
+  intros vm pc a b Hpc Hins.
+  unfold exec_instr. rewrite Hpc, Hins. cbn. reflexivity.
+Qed.
+
+Lemma exec_instr_not_halted :
+  forall (vm : VM) (pc : nat) (ins : Instr),
+    vm_pc vm = pc ->
+    nth_error scan_block pc = Some ins ->
+    ins <> iHALT ->
+    vm_halted (exec_instr scan_block vm) = vm_halted vm.
+Proof.
+  intros vm pc ins Hpc Hins Hne.
+  unfold exec_instr. rewrite Hpc, Hins.
+  destruct ins; try reflexivity.
+  exfalso. apply Hne. reflexivity.
+Qed.
