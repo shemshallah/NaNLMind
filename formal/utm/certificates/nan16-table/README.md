@@ -147,3 +147,21 @@ symbolic state.  The next step is a small-step `run_one`/`exec` rewrite
 strategy that reduces each concrete PC check before the symbolic branch.
 
 Do not cite this as a Coq table ↔ NaN0S VM certificate yet.
+
+## Layer 2 progress after the scaffold
+
+`MinskyNaN16VM.v` now also contains the explicit small-step reductions:
+
+```text
+run_one_false
+exec_instr_pc
+exec_instr_CMP_zf
+exec_instr_CMP_lf
+exec_instr_not_halted
+```
+
+These are the pieces needed to execute the 12-instruction scan iteration
+without a monolithic `vm_compute`.  The next proof is the 5-step scan prefix
+(`pc 0 -> 5`, `r7 = start + 8*i`, `r9 = m (start + 8*i)`), then the hit/miss
+iteration lemmas and the scan-loop induction.  The full `step`/`run100`
+refinement and the VM-level certificate are still open.
