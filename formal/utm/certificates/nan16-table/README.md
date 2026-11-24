@@ -481,11 +481,20 @@ MinskyNaN16Prelude.v
 MinskyNaN16PreludeReady.v
   prelude_ready  (halt cell 0 -> loaded scan registers, pc 11)
   prelude_halted (halt cell nonzero -> return point, pc 11)
+
+MinskyNaN16ActionRun.v
+  action_run head/tape/state/head-cell/halt-cell/frame projections
+
+MinskyNaN16StepSpec.v
+  NState / vm_to_nstate / nstep / nstate_rel
+  native_step_spec_active (native_step refines nstep pointwise)
 ```
 
-`Print Assumptions prelude_ready` and `prelude_halted` are closed under the
-global context.  The prelude-to-step composition is the next local proof;
-it is not yet committed.
+`Print Assumptions prelude_ready`, `prelude_halted`,
+`native_step_spec_active`, and `action_run_frame` are closed under the
+global context.  A step-entry composition (`MinskyNaN16StepEntrySpec.v`)
+is WIP: the local proot runs out of memory on the large composed goal, so
+it is not part of the checked chain.
 
 Remaining for the `.nas` step/run100 certificate:
 
