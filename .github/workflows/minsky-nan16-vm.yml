@@ -13,6 +13,8 @@ on:
       - 'formal/utm/MinskyNaN16ActionSuffix.v'
       - 'formal/utm/MinskyNaN16ActionRefines.v'
       - 'formal/utm/MinskyNaN16ActionRun.v'
+      - 'formal/utm/MinskyNaN16SourceArith.v'
+      - 'formal/utm/MinskyNaN16Window.v'
       - 'formal/utm/MinskyNaN16ScanFrame.v'
       - 'formal/utm/MinskyNaN16ScanPhase.v'
       - 'formal/utm/MinskyNaN16Lookup.v'
@@ -56,6 +58,7 @@ jobs:
             MinskyTableData
             MinskyTable
             MinskyAddressRefinement
+            MinskyNaN16Window
             MinskyChartEncoding
             MinskyChartScan
             MinskyNativeBounds
@@ -72,6 +75,7 @@ jobs:
             MinskyNaN16ScanFrame
             MinskyNaN16ScanPhase
             MinskyNaN16Lookup
+            MinskyNaN16SourceArith
             MinskyNaN16StepHit
             MinskyNaN16StepNone
             MinskyNaN16Step
@@ -94,6 +98,7 @@ jobs:
             MinskyTableData
             MinskyTable
             MinskyAddressRefinement
+            MinskyNaN16Window
             MinskyChartEncoding
             MinskyChartScan
             MinskyNativeBounds
@@ -108,6 +113,7 @@ jobs:
             MinskyNaN16ScanFrame
             MinskyNaN16ScanPhase
             MinskyNaN16Lookup
+            MinskyNaN16SourceArith
             MinskyNaN16StepHit
             MinskyNaN16StepNone
             MinskyNaN16Step
@@ -133,6 +139,8 @@ jobs:
             formal/utm/MinskyTable.vo
             formal/utm/MinskyAddressRefinement.v
             formal/utm/MinskyAddressRefinement.vo
+            formal/utm/MinskyNaN16Window.v
+            formal/utm/MinskyNaN16Window.vo
             formal/utm/MinskyChartEncoding.v
             formal/utm/MinskyChartEncoding.vo
             formal/utm/MinskyChartScan.v
@@ -165,6 +173,8 @@ jobs:
             formal/utm/MinskyNaN16ScanPhase.vo
             formal/utm/MinskyNaN16Lookup.v
             formal/utm/MinskyNaN16Lookup.vo
+            formal/utm/MinskyNaN16SourceArith.v
+            formal/utm/MinskyNaN16SourceArith.vo
             formal/utm/MinskyNaN16StepHit.v
             formal/utm/MinskyNaN16StepHit.vo
             formal/utm/MinskyNaN16StepNone.v
