@@ -131,3 +131,55 @@ Example action_run_smoke :
   snd res action_state_addr = 6 /\
   snd res action_halt_addr = 1.
 Proof. vm_compute. repeat split; reflexivity. Qed.
+
+(** ** Generic one-step projections for the action block *)
+
+Lemma action_exec_pc :
+  forall (vm : VM) (pc : nat) (ins : Instr),
+    vm_pc vm = pc ->
+    nth_error action_block pc = Some ins ->
+    vm_pc (exec_instr action_block vm) =
+    match ins with
+    | iJMP p target =>
+        if pred_holds p (vm_zf vm) (vm_lf vm) then target else S pc
+    | iCALL target => target
+    | iRET => vm_link vm
+    | iHALT => pc
+    | _ => S pc
+    end.
+Proof.
+  intros vm pc ins Hpc Hins.
+  unfold exec_instr. rewrite Hpc, Hins.
+  destruct ins; cbn; reflexivity.
+Qed.
+
+Lemma action_CMP_zf :
+  forall (vm : VM) (pc a b : nat),
+    vm_pc vm = pc ->
+    nth_error action_block pc = Some (iCMP a b) ->
+    vm_zf (exec_instr action_block vm) =
+      Nat.eqb (vm_reg vm a) (vm_reg vm b).
+Proof.
+  intros. unfold exec_instr. rewrite H, H0. cbn. reflexivity.
+Qed.
+
+Lemma action_CMP_lf :
+  forall (vm : VM) (pc a b : nat),
+    vm_pc vm = pc ->
+    nth_error action_block pc = Some (iCMP a b) ->
+    vm_lf (exec_instr action_block vm) =
+      Nat.ltb (vm_reg vm a) (vm_reg vm b).
+Proof.
+  intros. unfold exec_instr. rewrite H, H0. cbn. reflexivity.
+Qed.
+
+Lemma action_not_halted :
+  forall (vm : VM) (pc : nat) (ins : Instr),
+    vm_pc vm = pc ->
+    nth_error action_block pc = Some ins ->
+    ins <> iHALT ->
+    vm_halted (exec_instr action_block vm) = vm_halted vm.
+Proof.
+  intros. unfold exec_instr. rewrite H, H0.
+  destruct ins; try reflexivity; cbn in H1; contradiction.
+Qed.
