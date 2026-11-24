@@ -9,6 +9,7 @@ on:
       - 'formal/utm/MinskyNaN16ScanLoop.v'
       - 'formal/utm/MinskyNaN16Action.v'
       - 'formal/utm/MinskyNaN16ActionPrefix.v'
+      - 'formal/utm/MinskyNaN16ActionMove.v'
       - '.github/workflows/minsky-nan16-vm.yml'
 
 permissions:
@@ -50,6 +51,7 @@ jobs:
             MinskyNaN16Words
             MinskyNaN16VM
             MinskyNaN16Action
+            MinskyNaN16ActionMove
             MinskyNaN16ActionPrefix
             MinskyNaN16ScanLoop
           "
@@ -110,6 +112,8 @@ jobs:
             formal/utm/MinskyNaN16VM.vo
             formal/utm/MinskyNaN16Action.v
             formal/utm/MinskyNaN16Action.vo
+            formal/utm/MinskyNaN16ActionMove.v
+            formal/utm/MinskyNaN16ActionMove.vo
             formal/utm/MinskyNaN16ActionPrefix.v
             formal/utm/MinskyNaN16ActionPrefix.vo
             formal/utm/MinskyNaN16ScanLoop.v

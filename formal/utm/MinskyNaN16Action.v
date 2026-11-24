@@ -270,7 +270,7 @@ Proof.
 Qed.
 
 Lemma action_reg_preserved_JMP :
-  forall (vm : VM) (pc p target k : nat) (cond : preg),
+  forall (vm : VM) (pc : nat) (cond : preg) (target k : nat),
     vm_pc vm = pc ->
     nth_error action_block pc = Some (iJMP cond target) ->
     vm_reg (exec_instr action_block vm) k = vm_reg vm k.
@@ -352,9 +352,9 @@ Lemma action_mem_preserved_CMP :
 Proof. intros. unfold exec_instr. rewrite H, H0. cbn. reflexivity. Qed.
 
 Lemma action_mem_preserved_JMP :
-  forall (vm : VM) (pc cond target : nat) (p : preg),
+  forall (vm : VM) (pc : nat) (cond : preg) (target : nat),
     vm_pc vm = pc ->
-    nth_error action_block pc = Some (iJMP p target) ->
+    nth_error action_block pc = Some (iJMP cond target) ->
     vm_mem (exec_instr action_block vm) = vm_mem vm.
 Proof. intros. unfold exec_instr. rewrite H, H0. cbn. reflexivity. Qed.
 
