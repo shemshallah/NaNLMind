@@ -81,3 +81,21 @@ Proof.
   rewrite win_mem_write by exact H.
   rewrite Z.eqb_refl. reflexivity.
 Qed.
+
+Lemma win_mem_write_at :
+  forall (c : AddressConfig) (base K : nat) (h : Z) (v : nat),
+    (0 <= h + Z.of_nat K)%Z ->
+    forall z,
+      (0 <= z + Z.of_nat K)%Z ->
+      win_mem
+        {| a_state := a_state c; a_head := a_head c;
+           a_tape := write_at (a_tape c) h v;
+           a_halted := a_halted c |} base K (win_addr base K z) =
+      (if Z.eqb z h then v else win_mem c base K (win_addr base K z)).
+Proof.
+  intros c base K h v Hh z Hz.
+  rewrite (win_mem_write c base K h v Hh z Hz).
+  destruct (Z.eqb z h) eqn:E.
+  - reflexivity.
+  - rewrite win_mem_addr by exact Hz. reflexivity.
+Qed.
