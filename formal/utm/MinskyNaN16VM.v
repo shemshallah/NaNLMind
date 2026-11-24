@@ -1497,7 +1497,8 @@ Lemma scan_none_at_end :
   forall (vm : VM) i state sym start m,
     scan_ready vm i state sym start m ->
     vm_reg vm 8 = 184 ->
-    vm_pc (run_until 2 scan_block scan_stop vm) = 13.
+    vm_pc (run_until 2 scan_block scan_stop vm) = 13 /\
+    vm_reg (run_until 2 scan_block scan_stop vm) 8 = 184.
 Proof.
   intros vm i state sym start m Hready Hr8_184.
   unfold scan_ready in Hready.
@@ -1521,7 +1522,10 @@ Proof.
   cbn [run_until].
   assert (Hpc13 : vm_pc (exec_instr scan_block v1) = 13).
   { rewrite (scan_pc_after_1 v1 Hpc1), Hzf1, Hlf1. cbn. reflexivity. }
-  exact Hpc13.
+  split; [exact Hpc13|].
+  unfold exec_instr. rewrite Hpc1. cbn [nth_error scan_block]. cbn.
+  unfold v1. unfold exec_instr. rewrite Hpc. cbn [nth_error scan_block]. cbn.
+  exact Hr8_184.
 Qed.
 
 Lemma scan_reg_preserved_10 :
@@ -1529,3 +1533,5 @@ Lemma scan_reg_preserved_10 :
 Proof.
   intros. unfold exec_instr. rewrite H. cbn [nth_error scan_block]. cbn. reflexivity.
 Qed.
+
+
