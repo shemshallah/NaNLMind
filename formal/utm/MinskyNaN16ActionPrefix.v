@@ -96,30 +96,30 @@ Proof.
   { unfold v5. unfold exec_instr. rewrite Hpc4. cbn [nth_error action_block]. cbn.
     exact Hr10_4. }
   assert (Hr2_5 : vm_reg v5 2 = head).
-  { rewrite (action_reg_preserved_CMP v4 4 9 10 2 Hpc4 eq_refl).
-    rewrite (action_reg_preserved_MOVI v3 3 10 0 2 Hpc3 eq_refl ltac:(lia)).
-    rewrite (action_reg_preserved_LD v2 2 9 7 3 2 Hpc2 eq_refl ltac:(lia)).
-    rewrite (action_reg_preserved_ST v1 1 9 3 0 2 Hpc1 eq_refl).
-    rewrite (action_reg_preserved_LD vm 0 9 7 2 2 Hpc eq_refl ltac:(lia)).
+  { unfold v5. rewrite (action_reg_preserved_CMP v4 4 9 10 2 Hpc4 eq_refl).
+    unfold v4. rewrite (action_reg_preserved_MOVI v3 3 10 0 2 Hpc3 eq_refl ltac:(lia)).
+    unfold v3. rewrite (action_reg_preserved_LD v2 2 9 7 3 2 Hpc2 eq_refl ltac:(lia)).
+    unfold v2. rewrite (action_reg_preserved_ST v1 1 9 3 0 2 Hpc1 eq_refl).
+    unfold v1. rewrite (action_reg_preserved_LD vm 0 9 7 2 2 Hpc eq_refl ltac:(lia)).
     exact Hr2. }
   assert (Hr3_5 : vm_reg v5 3 = tape_addr).
-  { rewrite (action_reg_preserved_CMP v4 4 9 10 3 Hpc4 eq_refl).
-    rewrite (action_reg_preserved_MOVI v3 3 10 0 3 Hpc3 eq_refl ltac:(lia)).
-    rewrite (action_reg_preserved_LD v2 2 9 7 3 3 Hpc2 eq_refl ltac:(lia)).
-    rewrite (action_reg_preserved_ST v1 1 9 3 0 3 Hpc1 eq_refl).
-    rewrite (action_reg_preserved_LD vm 0 9 7 2 3 Hpc eq_refl ltac:(lia)).
+  { unfold v5. rewrite (action_reg_preserved_CMP v4 4 9 10 3 Hpc4 eq_refl).
+    unfold v4. rewrite (action_reg_preserved_MOVI v3 3 10 0 3 Hpc3 eq_refl ltac:(lia)).
+    unfold v3. rewrite (action_reg_preserved_LD v2 2 9 7 3 3 Hpc2 eq_refl ltac:(lia)).
+    unfold v2. rewrite (action_reg_preserved_ST v1 1 9 3 0 3 Hpc1 eq_refl).
+    unfold v1. rewrite (action_reg_preserved_LD vm 0 9 7 2 3 Hpc eq_refl ltac:(lia)).
     exact Hr3. }
   assert (Hr7_5 : vm_reg v5 7 = row_addr).
-  { rewrite (action_reg_preserved_CMP v4 4 9 10 7 Hpc4 eq_refl).
-    rewrite (action_reg_preserved_MOVI v3 3 10 0 7 Hpc3 eq_refl ltac:(lia)).
-    rewrite (action_reg_preserved_LD v2 2 9 7 3 7 Hpc2 eq_refl ltac:(lia)).
-    rewrite (action_reg_preserved_ST v1 1 9 3 0 7 Hpc1 eq_refl).
-    rewrite (action_reg_preserved_LD vm 0 9 7 2 7 Hpc eq_refl ltac:(lia)).
+  { unfold v5. rewrite (action_reg_preserved_CMP v4 4 9 10 7 Hpc4 eq_refl).
+    unfold v4. rewrite (action_reg_preserved_MOVI v3 3 10 0 7 Hpc3 eq_refl ltac:(lia)).
+    unfold v3. rewrite (action_reg_preserved_LD v2 2 9 7 3 7 Hpc2 eq_refl ltac:(lia)).
+    unfold v2. rewrite (action_reg_preserved_ST v1 1 9 3 0 7 Hpc1 eq_refl).
+    unfold v1. rewrite (action_reg_preserved_LD vm 0 9 7 2 7 Hpc eq_refl ltac:(lia)).
     exact Hr7. }
   assert (Hmem5 : vm_mem v5 = set_mem m tape_addr (nth 2 row 0)).
-  { rewrite (action_mem_preserved_CMP v4 4 9 10 Hpc4 eq_refl).
-    rewrite (action_mem_preserved_MOVI v3 3 10 0 Hpc3 eq_refl).
-    rewrite (action_mem_preserved_LD v2 2 9 7 3 Hpc2 eq_refl).
+  { unfold v5. rewrite (action_mem_preserved_CMP v4 4 9 10 Hpc4 eq_refl).
+    unfold v4. rewrite (action_mem_preserved_MOVI v3 3 10 0 Hpc3 eq_refl).
+    unfold v3. rewrite (action_mem_preserved_LD v2 2 9 7 3 Hpc2 eq_refl).
     exact Hmem2. }
   repeat split; assumption.
 Qed.
