@@ -23,6 +23,7 @@ on:
       - 'formal/utm/MinskyNaN16Step.v'
       - 'formal/utm/MinskyNaN16StepSpec.v'
       - 'formal/utm/MinskyNaN16StepEntrySpec.v'
+      - 'formal/utm/MinskyNaN16Run.v'
       - 'formal/utm/MinskyNaN16Prelude.v'
       - 'formal/utm/MinskyNaN16PreludeReady.v'
       - '.github/workflows/minsky-nan16-vm.yml'
@@ -84,6 +85,7 @@ jobs:
             MinskyNaN16Prelude
             MinskyNaN16PreludeReady
             MinskyNaN16StepEntrySpec
+            MinskyNaN16Run
           "
           for f in $MODULES; do
             echo "=== coqc $f"
@@ -191,4 +193,6 @@ jobs:
             formal/utm/MinskyNaN16PreludeReady.vo
             formal/utm/MinskyNaN16StepEntrySpec.v
             formal/utm/MinskyNaN16StepEntrySpec.vo
+            formal/utm/MinskyNaN16Run.v
+            formal/utm/MinskyNaN16Run.vo
           if-no-files-found: warn
