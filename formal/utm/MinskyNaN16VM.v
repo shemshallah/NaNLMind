@@ -406,3 +406,160 @@ Proof.
   destruct ins; try reflexivity.
   exfalso. apply Hne. reflexivity.
 Qed.
+
+(** ** Projections for the scan prefix, step by step *)
+
+Lemma scan_pc_after_0 :
+  forall vm, vm_pc vm = 0 -> vm_pc (exec_instr scan_block vm) = 1.
+Proof.
+  intros vm H.
+  rewrite (exec_instr_pc vm 0 (iCMP 8 6) H eq_refl).
+  cbn. reflexivity.
+Qed.
+
+Lemma scan_pc_after_1 :
+  forall vm, vm_pc vm = 1 ->
+    vm_pc (exec_instr scan_block vm) =
+      if pred_holds pGE (vm_zf vm) (vm_lf vm) then 13 else 2.
+Proof.
+  intros vm H.
+  rewrite (exec_instr_pc vm 1 (iJMP pGE 13) H eq_refl).
+  cbn. reflexivity.
+Qed.
+
+Lemma scan_pc_after_2 :
+  forall vm, vm_pc vm = 2 -> vm_pc (exec_instr scan_block vm) = 3.
+Proof.
+  intros vm H.
+  rewrite (exec_instr_pc vm 2 (iSHL 7 8 3) H eq_refl).
+  cbn. reflexivity.
+Qed.
+
+Lemma scan_pc_after_3 :
+  forall vm, vm_pc vm = 3 -> vm_pc (exec_instr scan_block vm) = 4.
+Proof.
+  intros vm H.
+  rewrite (exec_instr_pc vm 3 (iADD 7 7 5) H eq_refl).
+  cbn. reflexivity.
+Qed.
+
+Lemma scan_pc_after_4 :
+  forall vm, vm_pc vm = 4 -> vm_pc (exec_instr scan_block vm) = 5.
+Proof.
+  intros vm H.
+  rewrite (exec_instr_pc vm 4 (iLD 9 7 0) H eq_refl).
+  cbn. reflexivity.
+Qed.
+
+Lemma scan_reg8_after_0 :
+  forall vm, vm_pc vm = 0 -> vm_reg (exec_instr scan_block vm) 8 = vm_reg vm 8.
+Proof.
+  intros vm H. unfold exec_instr. rewrite H. cbn [nth_error scan_block]. reflexivity.
+Qed.
+
+Lemma scan_zf_after_0 :
+  forall vm, vm_pc vm = 0 ->
+    vm_zf (exec_instr scan_block vm) = Nat.eqb (vm_reg vm 8) (vm_reg vm 6).
+Proof.
+  intros vm H. exact (exec_instr_CMP_zf vm 0 8 6 H eq_refl).
+Qed.
+
+Lemma scan_lf_after_0 :
+  forall vm, vm_pc vm = 0 ->
+    vm_lf (exec_instr scan_block vm) = Nat.ltb (vm_reg vm 8) (vm_reg vm 6).
+Proof.
+  intros vm H. exact (exec_instr_CMP_lf vm 0 8 6 H eq_refl).
+Qed.
+
+Lemma scan_flags_after_1 :
+  forall vm, vm_pc vm = 1 ->
+    vm_zf (exec_instr scan_block vm) = vm_zf vm /\
+    vm_lf (exec_instr scan_block vm) = vm_lf vm.
+Proof.
+  intros vm H. unfold exec_instr. rewrite H. cbn [nth_error scan_block]. split; reflexivity.
+Qed.
+
+Lemma scan_reg7_after_2 :
+  forall vm, vm_pc vm = 2 ->
+    vm_reg (exec_instr scan_block vm) 7 = Nat.shiftl (vm_reg vm 8) 3.
+Proof.
+  intros vm H. unfold exec_instr. rewrite H. cbn [nth_error scan_block]. reflexivity.
+Qed.
+
+Lemma scan_zf_after_2 :
+  forall vm, vm_pc vm = 2 ->
+    vm_zf (exec_instr scan_block vm) = Nat.eqb (Nat.shiftl (vm_reg vm 8) 3) 0.
+Proof.
+  intros vm H. unfold exec_instr. rewrite H. cbn [nth_error scan_block]. reflexivity.
+Qed.
+
+Lemma scan_lf_after_2 :
+  forall vm, vm_pc vm = 2 -> vm_lf (exec_instr scan_block vm) = false.
+Proof.
+  intros vm H. unfold exec_instr. rewrite H. cbn [nth_error scan_block]. reflexivity.
+Qed.
+
+Lemma scan_reg7_after_3 :
+  forall vm, vm_pc vm = 3 ->
+    vm_reg (exec_instr scan_block vm) 7 = vm_reg vm 7 + vm_reg vm 5.
+Proof.
+  intros vm H. unfold exec_instr. rewrite H. cbn [nth_error scan_block]. reflexivity.
+Qed.
+
+Lemma scan_zf_after_3 :
+  forall vm, vm_pc vm = 3 ->
+    vm_zf (exec_instr scan_block vm) = Nat.eqb (vm_reg vm 7 + vm_reg vm 5) 0.
+Proof.
+  intros vm H. unfold exec_instr. rewrite H. cbn [nth_error scan_block]. reflexivity.
+Qed.
+
+Lemma scan_lf_after_3 :
+  forall vm, vm_pc vm = 3 -> vm_lf (exec_instr scan_block vm) = false.
+Proof.
+  intros vm H. unfold exec_instr. rewrite H. cbn [nth_error scan_block]. reflexivity.
+Qed.
+
+Lemma scan_reg9_after_4 :
+  forall vm, vm_pc vm = 4 ->
+    vm_reg (exec_instr scan_block vm) 9 = vm_mem vm (vm_reg vm 7 + 0).
+Proof.
+  intros vm H. unfold exec_instr. rewrite H. cbn [nth_error scan_block]. reflexivity.
+Qed.
+
+Lemma scan_reg7_after_4 :
+  forall vm, vm_pc vm = 4 -> vm_reg (exec_instr scan_block vm) 7 = vm_reg vm 7.
+Proof.
+  intros vm H. unfold exec_instr. rewrite H. cbn [nth_error scan_block]. reflexivity.
+Qed.
+
+Lemma scan_flags_after_4 :
+  forall vm, vm_pc vm = 4 ->
+    vm_zf (exec_instr scan_block vm) = vm_zf vm /\
+    vm_lf (exec_instr scan_block vm) = vm_lf vm.
+Proof.
+  intros vm H. unfold exec_instr. rewrite H. cbn [nth_error scan_block]. split; reflexivity.
+Qed.
+
+
+
+(** ** A first computed prefix: five instructions, no early stop *)
+
+Definition never_stop (_ : nat) : bool := false.
+
+Lemma scan_prefix5_never_pc :
+  forall i state sym start m,
+    i < 184 ->
+    vm_pc (run_until 5 scan_block never_stop
+      (scan_init i state sym start m)) = 5.
+Proof.
+  intros i state sym start m Hlt.
+  destruct (Nat.eqb i 184) eqn:E1.
+  { apply Nat.eqb_eq in E1. lia. }
+  destruct (Nat.ltb i 184) eqn:L1.
+  2:{ apply Nat.ltb_ge in L1. lia. }
+  cbn.
+  rewrite E1.
+  assert (Hleb : (i <=? 183) = true) by (apply Nat.leb_le; lia).
+  rewrite Hleb.
+  cbn. reflexivity.
+Qed.
