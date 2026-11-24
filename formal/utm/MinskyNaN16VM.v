@@ -563,3 +563,49 @@ Proof.
   rewrite Hleb.
   cbn. reflexivity.
 Qed.
+
+Lemma scan_prefix5_stop_pc :
+  forall i state sym start m,
+    i < 184 ->
+    vm_pc (run_until 5 scan_block scan_stop
+      (scan_init i state sym start m)) = 5.
+Proof.
+  intros i state sym start m Hlt.
+  destruct (Nat.eqb i 184) eqn:E1.
+  { apply Nat.eqb_eq in E1. lia. }
+  destruct (Nat.ltb i 184) eqn:L1.
+  2:{ apply Nat.ltb_ge in L1. lia. }
+  cbn.
+  rewrite E1.
+  assert (Hleb : (i <=? 183) = true) by (apply Nat.leb_le; lia).
+  rewrite Hleb.
+  cbn. reflexivity.
+Qed.
+
+Lemma scan_prefix5_stop_vm :
+  forall i state sym start m,
+    i < 184 ->
+    let vm' := run_until 5 scan_block scan_stop
+      (scan_init i state sym start m) in
+    vm_pc vm' = 5 /\
+    vm_reg vm' 7 = start + 8 * i /\
+    vm_reg vm' 9 = m (start + 8 * i) /\
+    vm_reg vm' 1 = state /\
+    vm_reg vm' 4 = sym /\
+    vm_reg vm' 8 = i /\
+    vm_mem vm' = m /\
+    vm_halted vm' = false.
+Proof.
+  intros i state sym start m Hlt.
+  destruct (Nat.eqb i 184) eqn:E1.
+  { apply Nat.eqb_eq in E1. lia. }
+  destruct (Nat.ltb i 184) eqn:L1.
+  2:{ apply Nat.ltb_ge in L1. lia. }
+  cbn.
+  rewrite E1.
+  assert (Hleb : (i <=? 183) = true) by (apply Nat.leb_le; lia).
+  rewrite Hleb.
+  cbn.
+  repeat split; try reflexivity; try (apply f_equal; lia); try lia.
+Qed.
+
