@@ -236,3 +236,15 @@ Proof.
   intros. unfold exec_instr. rewrite H, H0. cbn.
   unfold set_reg. rewrite Nat.eqb_refl. reflexivity.
 Qed.
+
+Lemma set_mem_same :
+  forall (m : Mem) (a v : nat), set_mem m a v a = v.
+Proof.
+  intros. unfold set_mem. rewrite Nat.eqb_refl. reflexivity.
+Qed.
+
+Lemma set_mem_neq :
+  forall (m : Mem) (a v k : nat), k <> a -> set_mem m a v k = m k.
+Proof.
+  intros. unfold set_mem. rewrite (Nat.eqb_neq k a H). reflexivity.
+Qed.
