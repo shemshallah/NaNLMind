@@ -148,3 +148,61 @@ Proof.
     + unfold vm_to_nstate. cbn. rewrite Hmem'. apply set_mem_same.
     + intro k. unfold vm_to_nstate. cbn. rewrite Hmem'. reflexivity.
 Qed.
+
+Lemma nstep_halted :
+  forall table table_base tape_base c,
+    n_halt c <> 0 ->
+    nstep table table_base tape_base c = c.
+Proof.
+  intros. unfold nstep.
+  assert (E : Nat.eqb (n_halt c) 0 = false)
+    by (apply Nat.eqb_neq; exact H).
+  rewrite E. reflexivity.
+Qed.
+
+Lemma set_mem_rel :
+  forall (m1 m2 : Mem) (a v : nat),
+    (forall k, m1 k = m2 k) ->
+    forall k, set_mem m1 a v k = set_mem m2 a v k.
+Proof.
+  intros. unfold set_mem. destruct (Nat.eqb k a); [reflexivity|apply H].
+Qed.
+
+Lemma action_run_mem_rel :
+  forall row_addr tape_addr head (m1 m2 : Mem) row,
+    (forall k, m1 k = m2 k) ->
+    forall k,
+      snd (action_run row_addr tape_addr head m1 row) k =
+      snd (action_run row_addr tape_addr head m2 row) k.
+Proof.
+  intros row_addr tape_addr head m1 m2 row H k.
+  unfold action_run. cbn.
+  destruct (Nat.eqb (nth 5 row 1) 0); cbn;
+    repeat (apply set_mem_rel); assumption.
+Qed.
+
+Lemma nstep_congr :
+  forall table table_base tape_base a b,
+    nstate_rel a b ->
+    nstate_rel (nstep table table_base tape_base a)
+      (nstep table table_base tape_base b).
+Proof.
+  intros table table_base tape_base a b Hab.
+  pose proof Hab as Hrel.
+  unfold nstate_rel in Hab.
+  destruct Hab as [Hs [Hh [Hl Hm]]].
+  unfold nstep. rewrite Hs, Hh, Hl.
+  destruct (Nat.eqb (n_halt b) 0) eqn:Eh.
+  - rewrite (Hm (tape_base + n_head b)).
+    destruct (scan_index_from 0 (n_state b) (n_mem b (tape_base + n_head b)) table)
+      as [[j row]|].
+    + unfold nstate_rel, hit_nstate. cbn.
+      pose proof (action_run_mem_rel table_base (tape_base + n_head b)
+        (n_head b) (n_mem a) (n_mem b) row Hm) as Hr.
+      split; [exact (Hr action_state_addr)|].
+      split; [reflexivity|].
+      split; [exact (Hr action_halt_addr)|exact Hr].
+    + unfold nstate_rel. cbn. split; [reflexivity|split; [reflexivity|split; [reflexivity|]]].
+      intro k. apply set_mem_rel. exact Hm.
+  - exact Hrel.
+Qed.
