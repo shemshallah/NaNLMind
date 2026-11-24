@@ -27,7 +27,7 @@ Proof.
     intros i state sym start m vm Hlen Hforall Hmemtab Hready.
   - (* empty suffix: i = 184 *)
     simpl in Hlen.
-    assert (Hi : i = 184) by lia.
+    assert (Hi : i = 184) by (clear -Hlen; simpl in Hlen; lia).
     subst i.
     unfold scan_ready in Hready.
     destruct Hready as [Hpc [Hr1 [Hr4 [Hr5 [Hr6 [Hr8 [Hr13 [Hmem Hhalt]]]]]]]].
@@ -49,12 +49,12 @@ Proof.
     + split; [exact Hpc13|exact Hr8_184].
   - (* nonempty suffix *)
     simpl in Hlen.
-    assert (Hlt : i < 184) by lia.
-    assert (Hlen' : S i + length rest = 184) by lia.
+    assert (Hlt : i < 184) by (clear -Hlen; simpl in Hlen; lia).
+    assert (Hlen' : S i + length rest = 184) by (clear -Hlen; simpl in Hlen; lia).
     inversion Hforall as [| a l Hrow HrestForall]; subst.
     destruct Hrow as [Hrow0 Hrow1].
     assert (Hmemtab' : table_mem_at (start + 8 * S i) rest m).
-    { replace (start + 8 * S i) with (start + 8 * i + 8) by lia.
+    { replace (start + 8 * S i) with (start + 8 * i + 8) by (clear; lia).
       apply (table_mem_at_tail (start + 8 * i) row rest m Hmemtab). }
     destruct (Nat.eqb (nth 0 row 0) state) eqn:Efrom.
     + destruct (Nat.eqb (nth 1 row 0) sym) eqn:Eread.
@@ -66,7 +66,7 @@ Proof.
         exists (run_until 12 scan_block scan_stop vm).
         split.
         -- replace (12 * length (row :: rest) + 14)
-             with (12 + (12 * length rest + 14)) by (simpl; lia).
+             with (12 + (12 * length rest + 14)) by (clear; simpl; lia).
            rewrite (run_until_split 12 (12 * length rest + 14) scan_block scan_stop vm).
            rewrite (run_until_stop (12 * length rest + 14) scan_block scan_stop
              (run_until 12 scan_block scan_stop vm)).
@@ -88,7 +88,7 @@ Proof.
         exists vm'.
         split.
         -- replace (12 * length (row :: rest) + 14)
-             with (12 + (12 * length rest + 14)) by (simpl; lia).
+             with (12 + (12 * length rest + 14)) by (clear; simpl; lia).
            rewrite (run_until_split 12 (12 * length rest + 14) scan_block scan_stop vm).
            exact Hrun.
         -- cbn [scan_index_from]. rewrite Efrom, Eread. simpl. exact Hres.
@@ -105,7 +105,7 @@ Proof.
       exists vm'.
       split.
       -- replace (12 * length (row :: rest) + 14)
-           with (9 + ((12 * length rest + 14) + 3)) by (simpl; lia).
+           with (9 + ((12 * length rest + 14) + 3)) by (clear; simpl; lia).
          rewrite (run_until_split 9 ((12 * length rest + 14) + 3)
            scan_block scan_stop vm).
          rewrite (run_until_extend_stopped (12 * length rest + 14) 3
