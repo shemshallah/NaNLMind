@@ -183,3 +183,27 @@ LD) with the two initial branch conditions resolved.  The next proof is the
 same prefix with the real `scan_stop`, then the hit/miss iteration and the
 184-row induction.  The full `step`/`run100` and VM-level certificate are still
 open.
+
+## Layer 2 progress: real five-step prefix
+
+`MinskyNaN16VM.v` now proves the prefix with the real `scan_stop`:
+
+```coq
+scan_prefix5_stop_pc :
+  i < 184 ->
+  vm_pc (run_until 5 scan_block scan_stop (scan_init i state sym start m)) = 5
+
+scan_prefix5_stop_vm :
+  vm_pc ... = 5 /\
+  vm_reg ... 7 = start + 8*i /\
+  vm_reg ... 9 = m (start + 8*i) /\
+  vm_reg ... 1 = state /\
+  vm_reg ... 4 = sym /\
+  vm_reg ... 8 = i /\
+  vm_mem ... = m /\
+  vm_halted ... = false
+```
+
+The next step is to expose the prefix VM to the outer 7-step hit suffix
+(`pc 5 -> 14`) and then the miss suffix (`pc 5 -> 0`).  The full
+`step`/`run100` and VM-level certificate are still open.
