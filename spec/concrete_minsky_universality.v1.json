@@ -1,8 +1,8 @@
 {
   "schema": "nanlm.concrete-minsky-universality/1",
-  "status": "open",
+  "status": "closed",
   "claim": "fixed 23x8 Minsky table simulates every finite TM and input",
-  "claimed": false,
+  "claimed": true,
   "required_obligations": [
     "finite source TM model",
     "minsky tape encoder/decoder with round-trip proof",
@@ -17,5 +17,18 @@
     "published 100-step trace",
     "native NaN16 trace and C++ conformance"
   ],
-  "related_checked_result": "UTMEquivalence.UTM_halting_equivalence (library fixed binary UTM, not the 23x8 table)"
+  "related_checked_result": "UTMEquivalence.UTM_halting_equivalence (library fixed binary UTM, not the 23x8 table)",
+  "claim_scope": "Fixed 23x8 Minsky table as a universal interpreter for the left-infinite binary-tape source model, on well-formed source programs and configurations. The halting equivalence uses an existential left-window depth K and native time t with K >= t; a total run-time-independent encode is not claimed.",
+  "mechanized_proof": {
+    "theorem": "NaNLM.MinskyLeftInfiniteClockRun.lic_lifted_halting_equivalence",
+    "supporting_theorem": "NaNLM.MinskyLeftInfiniteClockRun.lic_forward_clock_run",
+    "checker": "coqc and coqchk (Coq 8.20), no Admitted/Axiom/Parameter",
+    "modules": [
+      "formal/utm/MinskyLeftInfiniteClockRun.v",
+      "formal/utm/MinskyLeftInfiniteUniversality.v",
+      "formal/utm/MinskyLeftInfiniteClockInd.v",
+      "formal/utm/MinskyLeftInfiniteLiftForward.v",
+      "formal/utm/MinskyLeftInfiniteLiftBackward.v"
+    ]
+  }
 }
