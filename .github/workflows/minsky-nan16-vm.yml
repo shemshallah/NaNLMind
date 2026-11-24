@@ -68,7 +68,6 @@ jobs:
             MinskyNaN16ActionPrefix
             MinskyNaN16ActionRefines
             MinskyNaN16ActionRun
-            MinskyNaN16ActionRun
             MinskyNaN16ScanLoop
             MinskyNaN16ScanFrame
             MinskyNaN16ScanPhase
@@ -76,7 +75,6 @@ jobs:
             MinskyNaN16StepHit
             MinskyNaN16StepNone
             MinskyNaN16Step
-            MinskyNaN16StepSpec
             MinskyNaN16StepSpec
             MinskyNaN16Prelude
             MinskyNaN16PreludeReady
@@ -105,6 +103,7 @@ jobs:
             MinskyNaN16Action
             MinskyNaN16ActionPrefix
             MinskyNaN16ActionRefines
+            MinskyNaN16ActionRun
             MinskyNaN16ScanLoop
             MinskyNaN16ScanFrame
             MinskyNaN16ScanPhase
@@ -112,6 +111,7 @@ jobs:
             MinskyNaN16StepHit
             MinskyNaN16StepNone
             MinskyNaN16Step
+            MinskyNaN16StepSpec
             MinskyNaN16Prelude
             MinskyNaN16PreludeReady
           "
