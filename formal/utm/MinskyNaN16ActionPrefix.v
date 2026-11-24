@@ -2,7 +2,7 @@ From Coq Require Import List Arith Bool Lia.
 Import ListNotations.
 From NaNLM Require Import MinskyNaN16VM MinskyNaN16Action.
 
-Lemma action_prefix5_try :
+Lemma action_prefix5 :
   forall (vm : VM) row_addr tape_addr head m row,
     action_ready vm row_addr tape_addr head m ->
     row_at row_addr row m ->
@@ -16,7 +16,9 @@ Lemma action_prefix5_try :
     vm_reg vm5 3 = tape_addr /\
     vm_reg vm5 7 = row_addr /\
     vm_mem vm5 = set_mem m tape_addr (nth 2 row 0) /\
-    vm_halted vm5 = false.
+    vm_halted vm5 = false /\
+    vm_zf vm5 = Nat.eqb (nth 3 row 0) 0 /\
+    vm_lf vm5 = Nat.ltb (nth 3 row 0) 0.
 Proof.
   intros vm row_addr tape_addr head m row Hready Hrow Hlen Hdis.
   unfold action_ready in Hready.
@@ -121,5 +123,11 @@ Proof.
     unfold v4. rewrite (action_mem_preserved_MOVI v3 3 10 0 Hpc3 eq_refl).
     unfold v3. rewrite (action_mem_preserved_LD v2 2 9 7 3 Hpc2 eq_refl).
     exact Hmem2. }
+  assert (Hzf5 : vm_zf v5 = Nat.eqb (nth 3 row 0) 0).
+  { unfold v5. rewrite (action_CMP_zf v4 4 9 10 Hpc4 eq_refl).
+    rewrite Hr9_4, Hr10_4. reflexivity. }
+  assert (Hlf5 : vm_lf v5 = Nat.ltb (nth 3 row 0) 0).
+  { unfold v5. rewrite (action_CMP_lf v4 4 9 10 Hpc4 eq_refl).
+    rewrite Hr9_4, Hr10_4. reflexivity. }
   repeat split; assumption.
 Qed.
