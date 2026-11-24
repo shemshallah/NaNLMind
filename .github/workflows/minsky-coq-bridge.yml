@@ -632,5 +632,6 @@ jobs:
             formal/utm/MinskyNaN16Words.v
             formal/utm/MinskyNaN16Words.vo
             formal/utm/check_minsky_nan16_words.py
+            formal/utm/certificates/
           if-no-files-found: warn
           retention-days: 90

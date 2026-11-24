@@ -29,6 +29,7 @@
       "formal/utm/MinskyLeftInfiniteClockInd.v",
       "formal/utm/MinskyLeftInfiniteLiftForward.v",
       "formal/utm/MinskyLeftInfiniteLiftBackward.v"
-    ]
+    ],
+    "certificate": "formal/utm/certificates/lic_lifted_halting_equivalence.certificate.json"
   }
 }
