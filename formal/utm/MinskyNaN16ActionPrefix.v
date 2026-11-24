@@ -117,8 +117,8 @@ Proof.
     unfold exec_instr. rewrite Hpc. cbn [nth_error action_block]. cbn.
     exact Hr7. }
   assert (Hmem5 : vm_mem v5 = set_mem m tape_addr (nth 2 row 0)).
-  { unfold v5, v4. unfold exec_instr. rewrite Hpc4. cbn [nth_error action_block]. cbn.
-    unfold v3, v2, v1. unfold exec_instr. rewrite Hpc3. cbn [nth_error action_block]. cbn.
+  { unfold v5, v4, v3. unfold exec_instr. rewrite Hpc4. cbn [nth_error action_block]. cbn.
+    unfold exec_instr. rewrite Hpc3. cbn [nth_error action_block]. cbn.
     unfold exec_instr. rewrite Hpc2. cbn [nth_error action_block]. cbn.
     exact Hmem2. }
   repeat split; assumption.
