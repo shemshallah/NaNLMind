@@ -1502,3 +1502,9 @@ Proof.
   { rewrite (scan_pc_after_1 v1 Hpc1), Hzf1, Hlf1. cbn. reflexivity. }
   exact Hpc13.
 Qed.
+
+Lemma scan_reg_preserved_10 :
+  forall vm d, vm_pc vm = 10 -> vm_reg (exec_instr scan_block vm) d = vm_reg vm d.
+Proof.
+  intros. unfold exec_instr. rewrite H. cbn [nth_error scan_block]. cbn. reflexivity.
+Qed.
