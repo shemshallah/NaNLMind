@@ -683,3 +683,117 @@ Proof.
   intros vm H. rewrite (exec_instr_pc vm 10 (iJMP pALWAYS 14) H eq_refl).
   cbn. reflexivity.
 Qed.
+
+Lemma scan_hit_suffix :
+  forall (vm : VM) i state sym start row rest m,
+    vm_pc vm = 5 ->
+    vm_reg vm 7 = start + 8 * i ->
+    vm_reg vm 9 = m (start + 8 * i) ->
+    vm_reg vm 1 = state ->
+    vm_reg vm 4 = sym ->
+    vm_mem vm = m ->
+    vm_halted vm = false ->
+    table_mem_at (start + 8 * i) (row :: rest) m ->
+    0 < length row ->
+    1 < length row ->
+    nth 0 row 0 = state ->
+    nth 1 row 0 = sym ->
+    vm_pc (run_until 7 scan_block scan_stop vm) = 14.
+Proof.
+  intros vm i state sym start row rest m
+    Hpc Hr7 Hr9 Hr1 Hr4 Hmem Hhalt Hmemtab Hrow0 Hrow1 Hfrom Hread.
+  set (v1 := exec_instr scan_block vm).
+  set (v2 := exec_instr scan_block v1).
+  set (v3 := exec_instr scan_block v2).
+  set (v4 := exec_instr scan_block v3).
+  set (v5 := exec_instr scan_block v4).
+  set (v6 := exec_instr scan_block v5).
+  (* step 1 *)
+  rewrite (run_one_false 6 scan_block scan_stop vm).
+  2:{ unfold scan_stop. rewrite Hpc, Hhalt. cbn. reflexivity. }
+  fold v1.
+  assert (Hpc1 : vm_pc v1 = 6) by (unfold v1; apply scan_pc_after_5; exact Hpc).
+  assert (Hzf1 : vm_zf v1 = true).
+  { unfold v1. rewrite (scan_zf_after_5 vm Hpc). rewrite Hr9, Hr1.
+    rewrite (table_mem_at_head0 (start + 8 * i) row rest m ltac:(lia) Hmemtab).
+    rewrite Hfrom. rewrite Nat.eqb_refl. reflexivity. }
+  assert (Hlf1 : vm_lf v1 = false).
+  { unfold v1. rewrite (scan_lf_after_5 vm Hpc). rewrite Hr9, Hr1.
+    rewrite (table_mem_at_head0 (start + 8 * i) row rest m ltac:(lia) Hmemtab).
+    rewrite Hfrom. apply Nat.ltb_irrefl. }
+  assert (Hh1 : vm_halted v1 = false).
+  { unfold v1. rewrite (exec_instr_not_halted vm 5 (iCMP 9 1) Hpc eq_refl
+      ltac:(discriminate)). exact Hhalt. }
+  assert (Hr7_1 : vm_reg v1 7 = start + 8 * i).
+  { unfold v1. unfold exec_instr. rewrite Hpc. cbn [nth_error scan_block]. cbn. exact Hr7. }
+  assert (Hr4_1 : vm_reg v1 4 = sym).
+  { unfold v1. unfold exec_instr. rewrite Hpc. cbn [nth_error scan_block]. cbn. exact Hr4. }
+  assert (Hmem1 : vm_mem v1 = m).
+  { unfold v1. unfold exec_instr. rewrite Hpc. cbn [nth_error scan_block]. cbn. exact Hmem. }
+  (* step 2 *)
+  rewrite (run_one_false 5 scan_block scan_stop v1).
+  2:{ unfold scan_stop. rewrite Hpc1, Hh1. cbn. reflexivity. }
+  fold v2.
+  assert (Hpc2 : vm_pc v2 = 7).
+  { unfold v2. rewrite (scan_pc_after_6 v1 Hpc1), Hzf1, Hlf1. cbn. reflexivity. }
+  assert (Hh2 : vm_halted v2 = false).
+  { unfold v2. rewrite (exec_instr_not_halted v1 6 (iJMP pNE 11) Hpc1 eq_refl
+      ltac:(discriminate)). exact Hh1. }
+  assert (Hr7_2 : vm_reg v2 7 = start + 8 * i).
+  { unfold v2. unfold exec_instr. rewrite Hpc1. cbn [nth_error scan_block]. cbn. exact Hr7_1. }
+  assert (Hmem2 : vm_mem v2 = m).
+  { unfold v2. unfold exec_instr. rewrite Hpc1. cbn [nth_error scan_block]. cbn. exact Hmem1. }
+  (* step 3 *)
+  rewrite (run_one_false 4 scan_block scan_stop v2).
+  2:{ unfold scan_stop. rewrite Hpc2, Hh2. cbn. reflexivity. }
+  fold v3.
+  assert (Hpc3 : vm_pc v3 = 8) by (unfold v3; apply scan_pc_after_7; exact Hpc2).
+  assert (Hh3 : vm_halted v3 = false).
+  { unfold v3. rewrite (exec_instr_not_halted v2 7 (iLD 9 7 1) Hpc2 eq_refl
+      ltac:(discriminate)). exact Hh2. }
+  assert (Hr9_3 : vm_reg v3 9 = m (start + 8 * i + 1)).
+  { unfold v3. rewrite (scan_reg9_after_7 v2 Hpc2), Hr7_2, Hmem2.
+    apply f_equal. lia. }
+  assert (Hr4_3 : vm_reg v3 4 = sym).
+  { unfold v3. unfold exec_instr. rewrite Hpc2. cbn [nth_error scan_block]. cbn.
+    unfold v2. unfold exec_instr. rewrite Hpc1. cbn [nth_error scan_block]. cbn.
+    exact Hr4_1. }
+  (* step 4 *)
+  rewrite (run_one_false 3 scan_block scan_stop v3).
+  2:{ unfold scan_stop. rewrite Hpc3, Hh3. cbn. reflexivity. }
+  fold v4.
+  assert (Hpc4 : vm_pc v4 = 9) by (unfold v4; apply scan_pc_after_8; exact Hpc3).
+  assert (Hzf4 : vm_zf v4 = true).
+  { unfold v4. rewrite (scan_zf_after_8 v3 Hpc3). rewrite Hr9_3, Hr4_3.
+    rewrite (table_mem_at_head1 (start + 8 * i) row rest m ltac:(lia) Hmemtab).
+    rewrite Hread. rewrite Nat.eqb_refl. reflexivity. }
+  assert (Hlf4 : vm_lf v4 = false).
+  { unfold v4. rewrite (scan_lf_after_8 v3 Hpc3). rewrite Hr9_3, Hr4_3.
+    rewrite (table_mem_at_head1 (start + 8 * i) row rest m ltac:(lia) Hmemtab).
+    rewrite Hread. apply Nat.ltb_irrefl. }
+  assert (Hh4 : vm_halted v4 = false).
+  { unfold v4. rewrite (exec_instr_not_halted v3 8 (iCMP 9 4) Hpc3 eq_refl
+      ltac:(discriminate)). exact Hh3. }
+  (* step 5 *)
+  rewrite (run_one_false 2 scan_block scan_stop v4).
+  2:{ unfold scan_stop. rewrite Hpc4, Hh4. cbn. reflexivity. }
+  fold v5.
+  assert (Hpc5 : vm_pc v5 = 10).
+  { unfold v5. rewrite (scan_pc_after_9 v4 Hpc4), Hzf4, Hlf4. cbn. reflexivity. }
+  assert (Hh5 : vm_halted v5 = false).
+  { unfold v5. rewrite (exec_instr_not_halted v4 9 (iJMP pNE 11) Hpc4 eq_refl
+      ltac:(discriminate)). exact Hh4. }
+  (* step 6 *)
+  rewrite (run_one_false 1 scan_block scan_stop v5).
+  2:{ unfold scan_stop. rewrite Hpc5, Hh5. cbn. reflexivity. }
+  fold v6.
+  assert (Hpc6 : vm_pc v6 = 14) by (unfold v6; apply scan_pc_after_10; exact Hpc5).
+  assert (Hh6 : vm_halted v6 = false).
+  { unfold v6. rewrite (exec_instr_not_halted v5 10 (iJMP pALWAYS 14) Hpc5 eq_refl
+      ltac:(discriminate)). exact Hh5. }
+  (* the scan stop fires at pc 14 *)
+  cbn [run_until scan_stop orb].
+  rewrite Hpc6, Hh6.
+  cbn.
+  exact Hpc6.
+Qed.
