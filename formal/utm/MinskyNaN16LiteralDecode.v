@@ -10,10 +10,12 @@
       [fixture_pc7_decode_and_step]   (LD r1,r0,100)
 
     LD is word 7 of the fixture and is the memory-read counterpart used
-    by the control skeleton.  In literal word order the next unsupported
-    opcode after MOVI is actually ST at word 2; ST remains out of scope.
-    MOVI and LD are supported; every other fixture opcode is still rejected
-    by the decoder and is listed precisely by [decode_word_op_coverage].
+    by the control skeleton.  This revision additionally decodes and
+    executes ST (0x09), CMP (0x07), JMP (0x0A) with the NE/EQ/GE/ALWAYS
+    selectors, and ADD/SUB (0x03/0x04) under their no-overflow /
+    no-borrow side conditions.  SHL, CALL, RET, HALT, BOOL, PUTC, SHR and
+    predicated non-jump instructions remain outside this decoder and are
+    listed precisely by [decode_word_op_coverage].
 
     Word 0 of the pinned assembled fixture is
 
@@ -31,13 +33,15 @@
 
     Scope and honest limitations:
 
-    - The decoder below handles the MOVI opcode (0x01) and the LD opcode
-      (0x08), and rejects every other opcode.  Extending it to the full
-      fixture stream is ISA-OBL-2.
-    - The literal step below executes MOVI and LD; other decoded
-      instructions are out of scope here (they are unreachable because the
-      decoder returns [None] for them).  Extending execution to the full
-      fixture subset is ISA-OBL-3.
+    - The decoder below handles MOVI (0x01), ADD (0x03), SUB (0x04),
+      CMP (0x07), LD (0x08), ST (0x09), and JMP (0x0A) with the four
+      predicate selectors that occur in the fixture (NE/EQ/GE/ALWAYS).
+      SHL, CALL, RET, HALT and the display/string opcodes are still
+      rejected; extending to the full fixture stream remains ISA-OBL-2.
+    - The literal step below executes those seven opcodes.  ADD and SUB
+      carry explicit no-carry / no-borrow hypotheses because of D-03 and
+      D-04; JMP[EQ] and JMP[GE] carry the D-07 side condition [l_k <> 3].
+      The remaining fixture opcodes are ISA-OBL-3.
     - [fixture_prog] is the one-instruction head slice of the Coq fixture
       program used by ISA-OBL-1.  The LD obligation uses the literal
       eight-word control prefix [fixture_prog_prefix8] and selects word 7.
@@ -143,6 +147,87 @@ Definition word_n (w : N) : nat :=
 Definition pred_passes (n k : nat) : bool :=
   Nat.eqb ((n / 2 ^ k) mod 2) 1.
 
+(** Packed flags.  The oracle's [k] is [2*Z + L], with [L] in bit 0. *)
+Definition pack_k (zf lf : bool) : nat :=
+  (if zf then 2 else 0) + (if lf then 1 else 0).
+
+Lemma pack_k_zf :
+  forall zf lf, Nat.eqb ((pack_k zf lf / 2) mod 2) 1 = zf.
+Proof. intros [] []; reflexivity. Qed.
+
+Lemma pack_k_lf :
+  forall zf lf, Nat.eqb (pack_k zf lf mod 2) 1 = lf.
+Proof. intros [] []; reflexivity. Qed.
+
+Lemma pack_k_lt_4 :
+  forall zf lf, pack_k zf lf < 4.
+Proof. intros zf lf. destruct zf, lf; cbn; lia. Qed.
+
+(** Selector value [n] of a predicate, and the inverse decode used by the
+    fixture's four selectors.  These are the values tabulated in
+    NAN0S_ISA_SPEC.md section 3.4. *)
+Definition pred_nat (p : preg) : nat :=
+  match p with
+  | pEQ => 4
+  | pNE => 3
+  | pLT => 2
+  | pGE => 5
+  | pGT => 1
+  | pLE => 6
+  | pALWAYS => 15
+  | pNEVER => 0
+  end.
+
+Definition pred_of_n (n : nat) : option preg :=
+  match n with
+  | 3 => Some pNE
+  | 4 => Some pEQ
+  | 5 => Some pGE
+  | 15 => Some pALWAYS
+  | _ => None
+  end.
+
+(** The Coq truth-table predicates and the oracle's bit test agree on
+    every reachable packed-flag value except [k = 3].  [NE] and [ALWAYS]
+    agree at [k = 3] too; [EQ] and [GE] are the cases that need the
+    side condition (D-07). *)
+Lemma pred_agrees :
+  forall p k,
+    k < 4 ->
+    k <> 3 ->
+    pred_holds p (Nat.eqb ((k / 2) mod 2) 1)
+                (Nat.eqb (k mod 2) 1)
+    = pred_passes (pred_nat p) k.
+Proof.
+  intros p k Hlt Hne.
+  assert (Hk : k = 0 \/ k = 1 \/ k = 2) by lia.
+  destruct Hk as [-> | [-> | ->]]; destruct p; reflexivity.
+Qed.
+
+Lemma pred_agrees_ne :
+  forall k,
+    k < 4 ->
+    pred_holds pNE (Nat.eqb ((k / 2) mod 2) 1)
+                (Nat.eqb (k mod 2) 1)
+    = pred_passes 3 k.
+Proof.
+  intros k Hk.
+  assert (Hk' : k = 0 \/ k = 1 \/ k = 2 \/ k = 3) by lia.
+  destruct Hk' as [-> | [-> | [-> | ->]]]; reflexivity.
+Qed.
+
+Lemma pred_agrees_always :
+  forall k,
+    k < 4 ->
+    pred_holds pALWAYS (Nat.eqb ((k / 2) mod 2) 1)
+                       (Nat.eqb (k mod 2) 1)
+    = pred_passes 15 k.
+Proof.
+  intros k Hk.
+  assert (Hk' : k = 0 \/ k = 1 \/ k = 2 \/ k = 3) by lia.
+  destruct Hk' as [-> | [-> | [-> | ->]]]; reflexivity.
+Qed.
+
 (** ** The minimal literal decoder
 
     This is the MOVI + LD slice needed by ISA-OBL-1 and ISA-OBL-3a.  The
@@ -155,8 +240,21 @@ Definition decode_word (w : N) : option Instr :=
   if andb (nan_hvalid (word_near w)) (nan_hvalid (word_far w)) then
     if Nat.eqb (word_op w) 1 then
       Some (iMOVI (word_d w) (word_imm w))
+    else if Nat.eqb (word_op w) 3 then
+      Some (iADD (word_d w) (word_a w) (word_imm w mod 16))
+    else if Nat.eqb (word_op w) 4 then
+      Some (iSUB (word_d w) (word_a w) (word_imm w mod 16))
+    else if Nat.eqb (word_op w) 7 then
+      Some (iCMP (word_a w) (word_imm w mod 16))
     else if Nat.eqb (word_op w) 8 then
       Some (iLD (word_d w) (word_a w) (word_imm w))
+    else if Nat.eqb (word_op w) 9 then
+      Some (iST (word_d w) (word_a w) (word_imm w))
+    else if Nat.eqb (word_op w) 10 then
+      match pred_of_n (word_n w) with
+      | Some p => Some (iJMP p (word_imm w))
+      | None => None
+      end
     else None
   else None.
 
@@ -181,10 +279,28 @@ Definition lit_reset (mem : nat -> N) : LState :=
 Definition payload_word (w : N) : nat :=
   N.to_nat (word_payload w).
 
-(** The MOVI and LD actions of the literal ISA.  Other instructions are
-    outside ISA-OBL-1/ISA-OBL-3a and are not reachable through
-    [decode_word] above.  LD loads the payload of the literal word at
-    [r[a] + imm], matching the Coq model's payload memory. *)
+(** The raw word constructor.  [nan_head i] is [NAN_HEADS[i]] of
+    NAN0S_ISA_SPEC.md section 2.1, and [nan_mkword v n] places [v] in the
+    32-bit payload, [n]'s low two bits in the far head, and [n]'s high two
+    bits in the near head.  [ST] writes [nan_mkword (r[d]) 10]. *)
+Definition nan_head (i : nat) : N :=
+  match i with
+  | 0 => 0x7FF1
+  | 1 => 0xFFF1
+  | 2 => 0x7FF8
+  | _ => 0xFFF8
+  end.
+
+Definition nan_mkword (v : nat) (n : nat) : N :=
+  (N.shiftl (nan_head ((n / 4) mod 4)) 48
+   + N.shiftl (N.of_nat v) 16
+   + swap16 (nan_head (n mod 4)))%N.
+
+(** The literal actions of the ISA.  Instructions still outside this
+    slice are not reachable through [decode_word] above; the catch-all
+    keeps [lit_exec] total.  LD loads the payload of the literal word at
+    [r[a] + imm]; ST writes a class-10 word at that address.  CMP and
+    SUB use the oracle's unsigned compare, ADD uses carry-out as [L]. *)
 Definition lit_exec (L : LState) (ins : Instr) : LState :=
   match ins with
   | iMOVI d imm =>
@@ -199,6 +315,45 @@ Definition lit_exec (L : LState) (ins : Instr) : LState :=
                     (payload_word (l_mem L (l_reg L a + imm)));
          l_mem := l_mem L;
          l_k := l_k L;
+         l_halted := l_halted L |}
+  | iST d a imm =>
+      {| l_pc := S (l_pc L);
+         l_reg := l_reg L;
+         l_mem := fun ad =>
+           if Nat.eqb ad (l_reg L a + imm)
+           then nan_mkword (l_reg L d) 10
+           else l_mem L ad;
+         l_k := l_k L;
+         l_halted := l_halted L |}
+  | iCMP a b =>
+      {| l_pc := S (l_pc L);
+         l_reg := l_reg L;
+         l_mem := l_mem L;
+         l_k := pack_k (Nat.eqb (l_reg L a) (l_reg L b))
+                       (Nat.ltb (l_reg L a) (l_reg L b));
+         l_halted := l_halted L |}
+  | iJMP p target =>
+      {| l_pc := if pred_passes (pred_nat p) (l_k L)
+                 then target else S (l_pc L);
+         l_reg := l_reg L;
+         l_mem := l_mem L;
+         l_k := l_k L;
+         l_halted := l_halted L |}
+  | iADD d a b =>
+      let s := l_reg L a + l_reg L b in
+      {| l_pc := S (l_pc L);
+         l_reg := set_reg (l_reg L) d (s mod 2 ^ 32);
+         l_mem := l_mem L;
+         l_k := pack_k (Nat.eqb (s mod 2 ^ 32) 0)
+                       (Nat.leb (2 ^ 32) s);
+         l_halted := l_halted L |}
+  | iSUB d a b =>
+      let v := (l_reg L a - l_reg L b) mod 2 ^ 32 in
+      {| l_pc := S (l_pc L);
+         l_reg := set_reg (l_reg L) d v;
+         l_mem := l_mem L;
+         l_k := pack_k (Nat.eqb v 0)
+                       (Nat.ltb (l_reg L a) (l_reg L b));
          l_halted := l_halted L |}
   | _ => L
   end.
@@ -230,8 +385,23 @@ Definition R (L : LState) (vm : VM) : Prop :=
   (forall a, vm_mem vm a = payload_word (l_mem L a)) /\
   vm_zf vm = Nat.eqb ((l_k L / 2) mod 2) 1 /\
   vm_lf vm = Nat.eqb (l_k L mod 2) 1 /\
+  l_k L < 4 /\
   vm_halted vm = l_halted L /\
   (forall i, i < 16 -> l_reg L i < 2 ^ 32).
+
+(** Register equality follows at every architectural index, including
+    [r15], because the relation also bounds the literal register. *)
+Lemma R_reg_eq :
+  forall L vm i, R L vm -> i < 16 -> vm_reg vm i = l_reg L i.
+Proof.
+  intros L vm i HR Hi.
+  destruct HR as
+    (Hpc & Hregs & Hreg15 & Hlink & Hmem & Hzf & Hlf & Hk & Hhalt & Hbound).
+  destruct (Nat.eq_dec i 15) as [-> | Hne].
+  - rewrite Hreg15. apply Nat.mod_small. apply Hbound. lia.
+  - assert (Hi15 : i < 15) by lia.
+    rewrite (Hregs i Hi15). apply Nat.mod_small. apply Hbound. exact Hi.
+Qed.
 
 (** Coq-side reset state whose memory is the payload projection of the
     literal image. *)
@@ -313,6 +483,111 @@ Lemma payload_word_mod_two32 :
 Proof.
   intro w. apply Nat.mod_small. apply payload_word_lt_two32.
 Qed.
+
+(** ** Payload projection of the raw [ST] word
+
+    [nan_mkword] places the 32-bit value in bits 16..47, so the payload
+    projection is the value modulo [2 ^ 32].  The proof is arithmetic on
+    [N] fields; no head validity is needed for the payload clause of [R]. *)
+
+Lemma ones32 : (0xFFFFFFFF = N.ones 32)%N.
+Proof. vm_compute. reflexivity. Qed.
+
+Lemma N_to_nat_two32 : N.to_nat (2 ^ 32)%N = Nat.pow 2 32.
+Proof.
+  rewrite N2Nat.inj_pow.
+  change (Nat.pow 2 32 = Nat.pow 2 32).
+  reflexivity.
+Qed.
+
+Lemma N_of_nat_lt_two32 :
+  forall v, v < 2 ^ 32 -> (N.of_nat v < 2 ^ 32)%N.
+Proof.
+  intros v Hv.
+  unfold N.lt.
+  rewrite N2Nat.inj_compare.
+  rewrite Nat2N.id.
+  rewrite N_to_nat_two32.
+  apply PeanoNat.Nat.compare_lt_iff.
+  exact Hv.
+Qed.
+
+Lemma N_of_nat_mod_small :
+  forall v, v < 2 ^ 32 -> (N.of_nat v mod 2 ^ 32 = N.of_nat v)%N.
+Proof.
+  intros v Hv. apply N.mod_small. apply N_of_nat_lt_two32. exact Hv.
+Qed.
+
+Lemma nan_head_swap16_lt :
+  forall i : nat, (swap16 (nan_head (i mod 4)) < 2 ^ 16)%N.
+Proof.
+  intro i.
+  assert (H : (i mod 4 < 4)%nat)
+    by (apply Nat.mod_upper_bound; lia).
+  destruct (i mod 4) as [|[|[|[|k]]]]; try lia; vm_compute; reflexivity.
+Qed.
+
+Lemma nan_mkword_payload_mod :
+  forall v n, word_payload (nan_mkword v n) = (N.of_nat v mod 2 ^ 32)%N.
+Proof.
+  intros v n.
+  unfold word_payload, nan_mkword.
+  rewrite ones32.
+  rewrite N.land_ones.
+  rewrite N.shiftr_div_pow2.
+  set (near := nan_head ((n / 4) mod 4)).
+  set (far := swap16 (nan_head (n mod 4))).
+  assert (Hshape :
+    (N.shiftl near 48 + N.shiftl (N.of_nat v) 16 + far)%N
+    = ((near * 2 ^ 32 + N.of_nat v) * 2 ^ 16 + far)%N).
+  { rewrite !N.shiftl_mul_pow2. nia. }
+  rewrite Hshape.
+  rewrite N.div_add_l by (vm_compute; discriminate).
+  assert (Hfar : (far / 2 ^ 16 = 0)%N).
+  { apply N.div_small. unfold far. apply nan_head_swap16_lt. }
+  rewrite Hfar. rewrite N.add_0_r.
+  rewrite N.add_comm.
+  rewrite N.Div0.mod_add.
+  reflexivity.
+Qed.
+
+Lemma payload_word_nan_mkword :
+  forall v, v < 2 ^ 32 -> payload_word (nan_mkword v 10) = v.
+Proof.
+  intros v Hv.
+  unfold payload_word.
+  rewrite nan_mkword_payload_mod.
+  rewrite N_of_nat_mod_small by exact Hv.
+  rewrite Nat2N.id.
+  reflexivity.
+Qed.
+
+(** Field bounds used to identify literal and Coq register operands. *)
+
+Lemma word_d_lt_16 : forall w, word_d w < 16.
+Proof.
+  intro w. unfold word_d.
+  change (N.to_nat (N.land (N.shiftr (word_payload w) 20) 0xF)
+          < N.to_nat 16).
+  apply N_lt_to_nat_lt.
+  eapply N.le_lt_trans.
+  - apply N.land_le_r.
+  - vm_compute. reflexivity.
+Qed.
+
+Lemma word_a_lt_16 : forall w, word_a w < 16.
+Proof.
+  intro w. unfold word_a.
+  change (N.to_nat (N.land (N.shiftr (word_payload w) 16) 0xF)
+          < N.to_nat 16).
+  apply N_lt_to_nat_lt.
+  eapply N.le_lt_trans.
+  - apply N.land_le_r.
+  - vm_compute. reflexivity.
+Qed.
+
+Lemma word_imm_mod_16_lt : forall w, word_imm w mod 16 < 16.
+Proof. intro w. apply Nat.mod_upper_bound. lia. Qed.
 
 (** ** Helper lemmas for the register update *)
 
@@ -419,22 +694,37 @@ Lemma decode_word_literal_word7 :
   decode_word literal_word7 = Some (iLD 1 0 100).
 Proof. vm_compute. reflexivity. Qed.
 
-(** The decoder accepts exactly opcodes 0x01 (MOVI) and 0x08 (LD).  This
-    is the precise positive coverage statement for ISA-OBL-1/3a. *)
+(** The decoder accepts exactly opcodes 0x01 (MOVI), 0x03 (ADD),
+    0x04 (SUB), 0x07 (CMP), 0x08 (LD), 0x09 (ST), and 0x0A (JMP).  This
+    is the precise positive coverage statement for the extended slice. *)
 Lemma decode_word_op_coverage :
   forall w ins,
     decode_word w = Some ins ->
-    word_op w = 1 \/ word_op w = 8.
+    word_op w = 1 \/ word_op w = 3 \/ word_op w = 4 \/
+    word_op w = 7 \/ word_op w = 8 \/ word_op w = 9 \/
+    word_op w = 10.
 Proof.
   intros w ins H.
   unfold decode_word in H.
   destruct (andb (nan_hvalid (word_near w)) (nan_hvalid (word_far w)))
     eqn:Ehead; [|discriminate].
   destruct (Nat.eqb (word_op w) 1) eqn:E1.
-  - left. apply Nat.eqb_eq. exact E1.
-  - destruct (Nat.eqb (word_op w) 8) eqn:E8.
-    + right. apply Nat.eqb_eq. exact E8.
-    + discriminate.
+  { left. apply Nat.eqb_eq. exact E1. }
+  destruct (Nat.eqb (word_op w) 3) eqn:E3.
+  { right; left. apply Nat.eqb_eq. exact E3. }
+  destruct (Nat.eqb (word_op w) 4) eqn:E4.
+  { right; right; left. apply Nat.eqb_eq. exact E4. }
+  destruct (Nat.eqb (word_op w) 7) eqn:E7.
+  { right; right; right; left. apply Nat.eqb_eq. exact E7. }
+  destruct (Nat.eqb (word_op w) 8) eqn:E8.
+  { right; right; right; right; left. apply Nat.eqb_eq. exact E8. }
+  destruct (Nat.eqb (word_op w) 9) eqn:E9.
+  { right; right; right; right; right; left.
+    apply Nat.eqb_eq. exact E9. }
+  destruct (Nat.eqb (word_op w) 10) eqn:E10.
+  { right; right; right; right; right; right.
+    apply Nat.eqb_eq. exact E10. }
+  destruct (pred_of_n (word_n w)); discriminate.
 Qed.
 
 (** ** The literal first step *)
@@ -479,6 +769,7 @@ Proof.
   - intro a. reflexivity.
   - reflexivity.
   - reflexivity.
+  - lia.
   - reflexivity.
   - intros i Hi. rewrite reg0_any. apply Nat.neq_0_lt_0. exact two32_neq_0.
 Qed.
@@ -496,7 +787,7 @@ Proof.
   - cbn [image_word]. apply decode_word_literal_word0.
   - intros L vm HR Hpc.
     destruct HR as
-      (Hpcvm & Hregs & Hreg15 & Hlink & Hmem & Hzf & Hlf & Hhalt & Hbound).
+      (Hpcvm & Hregs & Hreg15 & Hlink & Hmem & Hzf & Hlf & Hk & Hhalt & Hbound).
     unfold literal_step.
     rewrite Hpc.
     cbn [image_word].
@@ -524,6 +815,7 @@ Proof.
     + intro a. exact (Hmem a).
     + exact Hzf.
     + exact Hlf.
+    + exact Hk.
     + exact Hhalt.
     + intros i Hi.
       destruct (Nat.eq_dec i 13) as [-> | Hne].
@@ -580,7 +872,7 @@ Proof.
   - cbn [image_word]. apply decode_word_literal_word7.
   - intros L vm HR Hpc.
     destruct HR as
-      (Hpcvm & Hregs & Hreg15 & Hlink & Hmem & Hzf & Hlf & Hhalt & Hbound).
+      (Hpcvm & Hregs & Hreg15 & Hlink & Hmem & Hzf & Hlf & Hk & Hhalt & Hbound).
     assert (Hr0 : vm_reg vm 0 = l_reg L 0).
     { rewrite (Hregs 0 ltac:(lia)).
       apply Nat.mod_small. apply Hbound. lia. }
@@ -614,6 +906,7 @@ Proof.
     + intro a. exact (Hmem a).
     + exact Hzf.
     + exact Hlf.
+    + exact Hk.
     + exact Hhalt.
     + intros i Hi.
       destruct (Nat.eq_dec i 1) as [-> | Hne].
