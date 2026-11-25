@@ -191,7 +191,16 @@ jobs:
             MinskyNaN16RunConcrete
             MinskyNaN16LiteralImage
             MinskyNaN16LiteralPuts
+            MinskyNaN16LiteralOps
+            MinskyNaN16LiteralExec
+            MinskyNaN16LiteralShl
+            MinskyNaN16LiteralShr
+            MinskyNaN16LiteralCall
+            MinskyNaN16LiteralRet
+            MinskyNaN16LiteralBool
             MinskyNaN16LiteralStep
+            MinskyNaN16LiteralPutc
+            MinskyNaN16LiteralHalt
             MinskyNaN16PreserveHead
             MinskyNaN16PreserveTable
             MinskyNaN16SourceArith
@@ -380,6 +389,24 @@ jobs:
             formal/utm/MinskyNaN16LiteralPuts.glob
             formal/utm/MinskyNaN16LiteralStep.vo
             formal/utm/MinskyNaN16LiteralStep.glob
+            formal/utm/MinskyNaN16LiteralOps.vo
+            formal/utm/MinskyNaN16LiteralOps.glob
+            formal/utm/MinskyNaN16LiteralExec.vo
+            formal/utm/MinskyNaN16LiteralExec.glob
+            formal/utm/MinskyNaN16LiteralShl.vo
+            formal/utm/MinskyNaN16LiteralShl.glob
+            formal/utm/MinskyNaN16LiteralShr.vo
+            formal/utm/MinskyNaN16LiteralShr.glob
+            formal/utm/MinskyNaN16LiteralCall.vo
+            formal/utm/MinskyNaN16LiteralCall.glob
+            formal/utm/MinskyNaN16LiteralRet.vo
+            formal/utm/MinskyNaN16LiteralRet.glob
+            formal/utm/MinskyNaN16LiteralBool.vo
+            formal/utm/MinskyNaN16LiteralBool.glob
+            formal/utm/MinskyNaN16LiteralPutc.vo
+            formal/utm/MinskyNaN16LiteralPutc.glob
+            formal/utm/MinskyNaN16LiteralHalt.vo
+            formal/utm/MinskyNaN16LiteralHalt.glob
             formal/utm/MinskyNaN16LiteralRun.vo
             formal/utm/MinskyNaN16LiteralRun.glob
             formal/utm/MinskyNaN16LiteralMachine.vo
