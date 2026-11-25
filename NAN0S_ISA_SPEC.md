@@ -950,6 +950,40 @@ execution, and PC convention to be fixed before any loop induction.
 | ISA-OBL-5 | Address relabeling: literal `99..103` / table `104` versus Coq `300..303` / table `304`, or switch the Coq constants to literal addresses. |
 | ISA-OBL-6 | Full PASS path: `puts` with `BOOL`, `PUTC`, `SHR`, `RET[EQ]`, and serial I/O; or an explicit theorem scoped only to `run100`. |
 
+### 6.4 ISA-OBL-2 image-side slices (partial, proved)
+
+The full 4,366-word assembler text is now checked in as
+`formal/utm/data/mth_minsky_test.nan` (sha256
+`f78ccb99eb0843b849a2560e0d27a09606c787a94366562a6a90b2c606c0bf77`, 141,409
+bytes) together with a word dump
+`formal/utm/data/mth_minsky_test.words` (sha256
+`43fbe83226221463b91d99862eba53cdb61a2fb7ba59d397abc755af4522a7d7`).
+`formal/utm/LiteralImageData.v` is the generated Coq `N` transcription, and
+`formal/utm/check_nan16_literal_image.py` cross-checks the three
+representations; `--assemble` re-runs the pinned HEAD `nmk.awk` and compares
+the exact bytes.
+
+`formal/utm/MinskyNaN16LiteralImage.v` proves
+`NaNLM.MinskyNaN16LiteralImage.literal_image_matches_fixture`
+(`Print Assumptions`: closed).  It covers:
+
+- code slices `[0,84)` and `[96,99)`: `main`, `run100`, the `step` prelude,
+  `scan`, `action` (`mleft`/`mright`/`mdone`), `step_ret`, `next`,
+  `no_trans`, and `fail`, word for word, including branch targets and
+  `NE`/`EQ`/`GE`/`ALWAYS` predicates;
+- data cells 99..103: `tbase = 4096`, `state = head = halt = rlink = 0`;
+- the payload slice `104..1575` (184x8) equals
+  `MinskyNaN16RunConcrete.fixture_table`;
+- the tape base cell 99 payload is `fixture_tape_base = 4096`, the 128-word
+  prefix at `4096..4223` is all payload 2, and the `.org 4096` padding
+  `1649..4095` is all payload 0.
+
+This does **not** close ISA-OBL-2 entirely: the `puts` block `[84,96)`
+uses `BOOL.8`, `PUTC`, `SHR`, and a predicated `RET`, which are absent from
+`MinskyNaN16VM.Instr`.  ISA-OBL-3..6, the loader/`nan_cli` path, and any
+run-refinement statement remain open.  The hash anchors are checked by the
+Python gate, not by an in-Coq SHA-256 implementation.
+
 ---
 
 ## 7. Delta obligations for future core changes

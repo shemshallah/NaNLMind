@@ -181,6 +181,8 @@ jobs:
             MinskyNaN16RunConcrete
             MinskyNaN16AddressStep
             MinskyNaN16Universality
+            LiteralImageData
+            MinskyNaN16LiteralImage
           "
           for f in $MODULES; do
             echo "=== coqc $f"
@@ -237,6 +239,13 @@ jobs:
           set -euo pipefail
           coqchk -Q formal/utm NaNLM formal/utm/MinskyNaN16Universality.vo
           echo "NAN16 UNIVERSALITY KERNEL-CHECKED"
+
+      - name: Check the literal image artifacts and ISA-OBL-2 theorem
+        run: |
+          set -euo pipefail
+          python3 formal/utm/check_nan16_literal_image.py
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyNaN16LiteralImage.vo
+          echo "NAN16 LITERAL IMAGE CHECKED"
 
       - name: Upload NaN16 VM certificate
         if: always()
