@@ -272,6 +272,17 @@ Lemma fixture_table_short :
   Forall (fun r => 0 < length r /\ 1 < length r) fixture_table.
 Proof. apply rows_short_of_rows8. exact fixture_table_rows8. Qed.
 
+(** The .nas emits the table immediately after the five data cells.  In
+    the model those cells end at [tape_base_addr = 303], so [304] is the
+    corresponding first free cell.  The tape base is the literal word
+    [4096] of the fixture. *)
+Lemma fixture_table_base_after_control :
+  fixture_table_base = tape_base_addr + 1.
+Proof. vm_compute. reflexivity. Qed.
+
+Lemma fixture_tape_base_literal : fixture_tape_base = 4096.
+Proof. reflexivity. Qed.
+
 (** The table occupies [304, 1776), strictly below the tape base. *)
 Lemma fixture_table_end :
   fixture_table_base + 8 * length fixture_table = 1776.
