@@ -16,10 +16,11 @@ sentinels for the scan exits.  The gate therefore applies a small, explicit
 normalization (documented in the output) before comparing instruction tuples.
 Anything outside that normalization fails closed.
 
-The gate also checks the literal ``run100`` driver shape and the presence of
-the exact Coq declarations in the checked step/run100 chain.  It does NOT
-compile Coq, prove the ISA, check the assembler/encoding, or promote Layer 2
-to a certificate.
+The gate also checks the literal ``run100`` driver shape, the presence of the
+exact Coq declarations in the checked step/run100 chain, that no relevant file
+contains ``Admitted``, and that ``vm_run_refines`` still carries its explicit
+``step_ok`` hypothesis.  It does NOT compile Coq, prove the ISA, check the
+assembler/encoding, or promote Layer 2 to a certificate.
 """
 
 from __future__ import annotations
@@ -77,6 +78,9 @@ THEOREM_FILES = (
     ("native_step_spec_active", "MinskyNaN16StepSpec.v"),
     ("step_entry_spec", "MinskyNaN16StepEntrySpec.v"),
     ("vm_run_refines", "MinskyNaN16Run.v"),
+    ("step_ok_of_layout", "MinskyNaN16StepOk.v"),
+    ("vm_run_refines_closed", "MinskyNaN16RunClosed.v"),
+    ("vm_run_refines_window", "MinskyNaN16RunClosed.v"),
 )
 
 CHAIN_DEFINITIONS = (
@@ -462,7 +466,7 @@ def check_theorem_contains(
 ) -> None:
     text = texts[filename]
     match = re.search(
-        r"\bTheorem\s+"
+        r"\b(?:Theorem|Corollary)\s+"
         + re.escape(name)
         + r"\b(.*?)\.\s*Proof\.",
         text,
@@ -758,8 +762,36 @@ def main() -> int:
                 "nrun n",
             ),
         )
+        check_theorem_contains(
+            texts,
+            "MinskyNaN16StepOk.v",
+            "step_ok_of_layout",
+            ("step_ok vm table table_base tbase",),
+        )
+        check_theorem_contains(
+            texts,
+            "MinskyNaN16RunClosed.v",
+            "vm_run_refines_closed",
+            (
+                "table_control_ok table table_base",
+                "tape_window_ok table table_base tbase window",
+                "vm_run n",
+                "nrun n",
+            ),
+        )
+        check_theorem_contains(
+            texts,
+            "MinskyNaN16RunClosed.v",
+            "vm_run_refines_window",
+            (
+                "table_control_ok table table_base",
+                "tape_window_ok table table_base tbase (vm_reg vm 2 + n + 1)",
+                "vm_run n",
+                "nrun n",
+            ),
+        )
         checked_theorems = check_declarations(
-            texts, THEOREM_FILES, "Theorem|Lemma"
+            texts, THEOREM_FILES, "Theorem|Lemma|Corollary"
         )
 
         try:
@@ -786,6 +818,10 @@ def main() -> int:
         print(
             "PASS vm_run_refines remains conditional on step_ok "
             "(no admitted proof in the checked files)"
+        )
+        print(
+            "PASS closed-run chain keeps table_control_ok/tape_window_ok explicit "
+            "(step_ok_of_layout, vm_run_refines_closed, vm_run_refines_window)"
         )
         for name, filename in checked_theorems:
             print(f"PASS theorem {name} ({filename})")

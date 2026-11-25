@@ -523,8 +523,10 @@ step refinement.
 
 Remaining for the `.nas` step/run100 certificate:
 
-1. discharge the explicit `step_ok` hypothesis of `vm_run_refines`
-   (entry-invariant preservation for every entry-ready state);
+1. prove the global table/tape separation facts (`table_control_ok`,
+   `tape_window_ok`) for the concrete fixture and kernel-check the
+   `MinskyNaN16RunClosed.v` chain; the older `vm_run_refines` still has an
+   explicit `step_ok` hypothesis;
 2. the source address/tape refinement connecting `nstep` to
    `nan16_address_step`/`MinskyTable.step` through the window lemmas;
 3. the assembler/ISA link (the Coq `exec_instr` model is a trusted
@@ -551,6 +553,8 @@ PASS action_block <-> MinskyNaN16Action.v: 23/23 instructions
 PASS no_trans_block <-> MinskyNaN16StepNone.v: 3/3 instructions
 PASS run100: literal 100-iteration CALL @step driver (main sets r13=1 and calls @run100 once)
 PASS Coq step_entry/vm_run structure: prelude_block -> native_step, vm_run -> step_entry
+PASS vm_run_refines remains conditional on step_ok (no admitted proof in the checked files)
+PASS closed-run chain keeps table_control_ok/tape_window_ok explicit (step_ok_of_layout, vm_run_refines_closed, vm_run_refines_window)
 PASS theorem prelude_ready (MinskyNaN16PreludeReady.v)
 PASS theorem prelude_halted (MinskyNaN16PreludeReady.v)
 PASS theorem action_refines (MinskyNaN16ActionRefines.v)
@@ -564,6 +568,9 @@ PASS theorem native_step_refines (MinskyNaN16Step.v)
 PASS theorem native_step_spec_active (MinskyNaN16StepSpec.v)
 PASS theorem step_entry_spec (MinskyNaN16StepEntrySpec.v)
 PASS theorem vm_run_refines (MinskyNaN16Run.v)
+PASS theorem step_ok_of_layout (MinskyNaN16StepOk.v)
+PASS theorem vm_run_refines_closed (MinskyNaN16RunClosed.v)
+PASS theorem vm_run_refines_window (MinskyNaN16RunClosed.v)
 NAN16 STEP/RUN100 TRANSCRIPTION PASS (source-text gate only; not a VM refinement certificate)
 ```
 
@@ -618,6 +625,9 @@ NaNLM.MinskyNaN16Step.native_step_refines
 NaNLM.MinskyNaN16StepSpec.native_step_spec_active
 NaNLM.MinskyNaN16StepEntrySpec.step_entry_spec
 NaNLM.MinskyNaN16Run.vm_run_refines
+NaNLM.MinskyNaN16StepOk.step_ok_of_layout
+NaNLM.MinskyNaN16RunClosed.vm_run_refines_closed
+NaNLM.MinskyNaN16RunClosed.vm_run_refines_window
 ```
 
 Workflow status of those declarations:
@@ -637,14 +647,28 @@ Workflow status of those declarations:
 | `native_step_spec_active` | `MinskyNaN16StepSpec.v` | `coqc` + `coqchk` |
 | `step_entry_spec` | `MinskyNaN16StepEntrySpec.v` | `coqc` only; not in the workflow kernel-check loop |
 | `vm_run_refines` | `MinskyNaN16Run.v` | `coqc` only; conditional on the explicit `step_ok` hypothesis |
+| `step_ok_of_layout` | `MinskyNaN16StepOk.v` | `coqc` only; not in the workflow kernel-check loop |
+| `vm_run_refines_closed` | `MinskyNaN16RunClosed.v` | `coqc` only; `table_control_ok`/`tape_window_ok` and a window bound remain explicit |
+| `vm_run_refines_window` | `MinskyNaN16RunClosed.v` | `coqc` only; `table_control_ok`/`tape_window_ok` remain explicit |
+
+The newer closed-run modules are compile-wired but not kernel-checked.  Their
+`Print Assumptions` directives run during `coqc`, but the workflow neither
+parses nor enforces that output, and the `coqchk` loop still stops at
+`MinskyNaN16PreludeReady.v`.
 
 ### Remaining assumptions and non-claims
 
-1. `vm_run_refines` is conditional.  Its statement contains
+1. `vm_run_refines` remains conditional on
    `(forall vm, entry_ok vm table table_base tbase ->
-   step_ok vm table table_base tbase)`; the checked workflow does not
-   discharge that hypothesis, and this gate does not either.  The theorem is
-   an induction schema, not a closed run100 certificate.
+   step_ok vm table table_base tbase)`.  The newer
+   `MinskyNaN16StepOk.v` + `MinskyNaN16RunClosed.v` chain textually
+   discharges that hypothesis through `step_ok_of_layout`,
+   `vm_run_refines_closed`, and `vm_run_refines_window`, but only by adding
+   the global `table_control_ok` and `tape_window_ok` separation assumptions
+   (plus the window bound for `vm_run_refines_closed`).  Those separation
+   facts are not proved for the concrete fixture, and the workflow only
+   compiles these modules; it does not `coqchk` them.  This gate checks that
+   their statements keep the assumptions explicit, not their proofs.
 2. `step_entry_spec` and `native_step_spec_active` retain their explicit
    table hypotheses: `length table = 184`, the `Forall` row-shape conditions,
    `table_mem_at table_base table m`, and per-row tape/table-cell
@@ -660,10 +684,10 @@ Workflow status of those declarations:
 5. The literal `run100` loop count (100) and `main`'s final state/head/tape
    checks are source-text facts.  Coq's `vm_run` is generic in `n`; no
    theorem specializes it to 100 or proves the fixture's `PASS` path.
-6. `MinskyNaN16StepEntrySpec.v` and `MinskyNaN16Run.v` are compiled by the
-   dedicated workflow but are not included in its `coqchk` loop.  The
-   existing local `Print Assumptions step_entry_spec` report is not a
-   substitute for a CI kernel check.
+6. `MinskyNaN16StepEntrySpec.v`, `MinskyNaN16Run.v`, `MinskyNaN16StepOk.v`,
+   and `MinskyNaN16RunClosed.v` are compiled by the dedicated workflow but
+   are not included in its `coqchk` loop.  The existing local
+   `Print Assumptions` reports are not a substitute for a CI kernel check.
 7. This section does not modify `nan16_words.certificate.json`, does not add
    a new certificate claim, and does not make Layer 2 a Coq ↔ NaN0S VM
    certificate.  It only records the new transcription gate and the exact

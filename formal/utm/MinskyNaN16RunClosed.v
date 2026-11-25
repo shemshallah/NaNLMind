@@ -22,7 +22,8 @@
 
     which guarantees that every head reachable in [n] steps stays inside the
     window.  It is preserved because one native step moves the head by at
-    most one to the right ([nstep_head_le], [step_ok_head_le]).
+    most one to the right ([nstep_head_le], [step_ok_head_le]); the lemma
+    [vm_run_head_lt_window] records the resulting head bound explicitly.
 
     The resulting [vm_run_refines_closed] has no axioms and no [Admitted].
     A corollary [vm_run_refines_window] instantiates the window with
@@ -65,6 +66,21 @@ Definition tape_window_ok
     z <> action_halt_addr /\
     z <> tape_base_addr).
 
+(** In the intended layout the table sits above the processor cells, so
+    [table_control_ok] follows from the single numeric fact
+    [action_halt_addr < table_base]. *)
+Lemma table_control_ok_of_base_above :
+  forall table table_base,
+    action_halt_addr < table_base ->
+    table_control_ok table table_base.
+Proof.
+  intros table table_base Hbase.
+  unfold table_control_ok.
+  split; [|split]; intros i f Hi Hf E;
+    unfold action_head_addr, action_state_addr, action_halt_addr in *;
+    lia.
+Qed.
+
 (** ** The head moves by at most one cell per native step *)
 
 (** [nstep] is kept opaque in [MinskyNaN16StepOk]; make it transparent only
@@ -90,7 +106,7 @@ Proof.
   - cbn [n_head]. lia.
 Qed.
 
-Opaque nstep action_run action_new_head.
+Opaque nstep action_run.
 
 (** The refined head of one [step_entry] is at most one past the old head. *)
 Lemma step_ok_head_le :
@@ -145,6 +161,36 @@ Proof.
     destruct (Hwin_control (tbase + vm_reg vm 2) Hz1 Hz2)
       as [_ [_ [_ Htb]]].
     exact (Htb (eq_sym E)).
+Qed.
+
+(** ** The reachable head stays in the window *)
+
+Lemma vm_run_head_lt_window :
+  forall (n : nat) (vm : VM) (table : list (list nat))
+         (table_base tbase window : nat),
+    entry_ok vm table table_base tbase ->
+    length table = 184 ->
+    Forall (fun r => 0 < length r /\ 1 < length r) table ->
+    Forall (fun r => length r = 8) table ->
+    table_control_ok table table_base ->
+    tape_window_ok table table_base tbase window ->
+    vm_reg vm 2 + n < window ->
+    vm_reg (vm_run n vm table table_base) 2 < window.
+Proof.
+  induction n as [|n IH];
+    intros vm table table_base tbase window
+      Hentry Hlen Hshort Hlen8 Hstatic Hwin Hbound.
+  - cbn [vm_run]. lia.
+  - cbn [vm_run].
+    assert (Hhead : vm_reg vm 2 < window) by lia.
+    assert (Hstep : step_ok vm table table_base tbase)
+      by (apply (step_ok_of_window vm table table_base tbase window
+                 Hentry Hlen Hshort Hlen8 Hstatic Hwin Hhead)).
+    pose proof (step_ok_head_le vm table table_base tbase Hstep) as Hle.
+    destruct Hstep as [Hentry' _].
+    apply (IH (step_entry vm table table_base) table table_base tbase window
+      Hentry' Hlen Hshort Hlen8 Hstatic Hwin).
+    lia.
 Qed.
 
 (** ** Closed run-level refinement *)
@@ -214,3 +260,4 @@ Qed.
 (** No axioms are used. *)
 Print Assumptions vm_run_refines_closed.
 Print Assumptions vm_run_refines_window.
+Print Assumptions vm_run_head_lt_window.
