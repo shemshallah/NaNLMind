@@ -194,6 +194,9 @@ Definition two32 : N := 0x100000000%N.
 
 Definition mod32N (x : N) : N := N.land x word_mask32.
 
+Definition sub32N (a b : N) : N :=
+  N.land (N.add a (N.sub two32 b)) word_mask32.
+
 Definition shl32N (a : N) (n : nat) : N :=
   N.land (N.shiftl a (N.of_nat n)) word_mask32.
 
@@ -203,9 +206,10 @@ Definition shr32N (a : N) (n : nat) : N :=
 Definition bnot32N (x : N) : N :=
   N.land (N.lxor x word_mask32) word_mask32.
 
-(** [nat]-projected 32-bit operations used by [lp_exec].  They are the
-    same masked operations as [mod32N]/[shl32N]/[shr32N], converted at the
-    boundary so the concrete register file stays in [N]. *)
+(** [nat]-projected 32-bit operations retained for the older nat-facing
+    statements.  [lp_exec] must NOT use these on a register that can hold
+    a packed character word: [N.to_nat] would build a unary numeral of up
+    to [2^32] constructors. *)
 Definition mod32 (x : nat) : nat :=
   N.to_nat (N.land (N.of_nat x) word_mask32).
 
@@ -247,32 +251,38 @@ Definition nan_mkwordN (v : N) (n : nat) : N :=
    + N.shiftl (N.land v word_mask32) 16
    + swap16 (nan_head (n mod 4)))%N.
 
-(** ** Literal instruction semantics *)
+(** ** Literal instruction semantics
+
+    Every value that can be a packed 32-bit word is read and written in
+    binary [N].  In particular CMP, SHL, SHR, ADD, SUB, BOOL and PUTC
+    never call [lget_reg] on a register: during the [puts] block those
+    registers hold words such as [0x4D544820], and the unary [nat]
+    projection would exhaust memory. *)
 
 Definition lp_exec (L : LPState) (ins : InstrP) : LPState :=
   match ins with
   | pMOVI d imm =>
       {| lp_pc := S (lp_pc L);
-         lp_reg := lset_nat (lp_reg L) d imm;
+         lp_reg := lset_word (lp_reg L) d (N.of_nat imm);
          lp_mem := lp_mem L; lp_k := lp_k L;
          lp_halted := lp_halted L; lp_out := lp_out L |}
   | pLD d a imm =>
       {| lp_pc := S (lp_pc L);
-         lp_reg := lset_nat (lp_reg L) d
-                     (payload_word
-                        (mem_get (lp_mem L) (lget_reg (lp_reg L) a + imm)));
+         lp_reg := lset_word (lp_reg L) d
+                     (N.of_nat (payload_word
+                        (mem_get (lp_mem L) (lget_reg (lp_reg L) a + imm))));
          lp_mem := lp_mem L; lp_k := lp_k L;
          lp_halted := lp_halted L; lp_out := lp_out L |}
   | pST d a imm =>
       {| lp_pc := S (lp_pc L); lp_reg := lp_reg L;
          lp_mem := mem_set (lp_mem L) (lget_reg (lp_reg L) a + imm)
-                     (nan_mkword (lget_reg (lp_reg L) d) 10);
+                     (nan_mkwordN (lget_regN (lp_reg L) d) 10);
          lp_k := lp_k L; lp_halted := lp_halted L; lp_out := lp_out L |}
   | pCMP a b =>
       {| lp_pc := S (lp_pc L); lp_reg := lp_reg L; lp_mem := lp_mem L;
          lp_k := pack_k
-                   (Nat.eqb (lget_reg (lp_reg L) a) (lget_reg (lp_reg L) b))
-                   (Nat.ltb (lget_reg (lp_reg L) a) (lget_reg (lp_reg L) b));
+                   (N.eqb (lget_regN (lp_reg L) a) (lget_regN (lp_reg L) b))
+                   (N.ltb (lget_regN (lp_reg L) a) (lget_regN (lp_reg L) b));
          lp_halted := lp_halted L; lp_out := lp_out L |}
   | pJMP p target =>
       {| lp_pc := if pred_passes (pred_nat p) (lp_k L)
@@ -280,52 +290,53 @@ Definition lp_exec (L : LPState) (ins : InstrP) : LPState :=
          lp_reg := lp_reg L; lp_mem := lp_mem L; lp_k := lp_k L;
          lp_halted := lp_halted L; lp_out := lp_out L |}
   | pSHL d a imm =>
-      let v := shl32 (lget_reg (lp_reg L) a) (imm mod 32) in
+      let v := shl32N (lget_regN (lp_reg L) a) (imm mod 32) in
       {| lp_pc := S (lp_pc L);
-         lp_reg := lset_nat (lp_reg L) d v;
+         lp_reg := lset_word (lp_reg L) d v;
          lp_mem := lp_mem L;
-         lp_k := pack_k (Nat.eqb v 0) false;
+         lp_k := pack_k (N.eqb v 0%N) false;
          lp_halted := lp_halted L; lp_out := lp_out L |}
   | pSHR d a imm =>
-      let v := shr32 (lget_reg (lp_reg L) a) (imm mod 32) in
+      let v := shr32N (lget_regN (lp_reg L) a) (imm mod 32) in
       {| lp_pc := S (lp_pc L);
-         lp_reg := lset_nat (lp_reg L) d v;
+         lp_reg := lset_word (lp_reg L) d v;
          lp_mem := lp_mem L;
-         lp_k := pack_k (Nat.eqb v 0) false;
+         lp_k := pack_k (N.eqb v 0%N) false;
          lp_halted := lp_halted L; lp_out := lp_out L |}
   | pADD d a b =>
-      let s := lget_reg (lp_reg L) a + lget_reg (lp_reg L) b in
+      let s := N.add (lget_regN (lp_reg L) a) (lget_regN (lp_reg L) b) in
+      let v := mod32N s in
       {| lp_pc := S (lp_pc L);
-         lp_reg := lset_nat (lp_reg L) d (mod32 s);
+         lp_reg := lset_word (lp_reg L) d v;
          lp_mem := lp_mem L;
-         lp_k := pack_k (Nat.eqb (mod32 s) 0) (ge32 s);
+         lp_k := pack_k (N.eqb v 0%N) (N.leb two32 s);
          lp_halted := lp_halted L; lp_out := lp_out L |}
   | pSUB d a b =>
-      let v := mod32 (lget_reg (lp_reg L) a - lget_reg (lp_reg L) b) in
+      let v := sub32N (lget_regN (lp_reg L) a) (lget_regN (lp_reg L) b) in
       {| lp_pc := S (lp_pc L);
-         lp_reg := lset_nat (lp_reg L) d v;
+         lp_reg := lset_word (lp_reg L) d v;
          lp_mem := lp_mem L;
-         lp_k := pack_k (Nat.eqb v 0)
-                   (Nat.ltb (lget_reg (lp_reg L) a) (lget_reg (lp_reg L) b));
+         lp_k := pack_k (N.eqb v 0%N)
+                   (N.ltb (lget_regN (lp_reg L) a) (lget_regN (lp_reg L) b));
          lp_halted := lp_halted L; lp_out := lp_out L |}
   | pBOOL tbl d a b =>
-      let res := bool_res tbl (lget_reg (lp_reg L) a)
-                             (lget_reg (lp_reg L) b) in
+      let res := bool_resN tbl (lget_regN (lp_reg L) a)
+                               (lget_regN (lp_reg L) b) in
       {| lp_pc := S (lp_pc L);
-         lp_reg := lset_nat (lp_reg L) d res;
+         lp_reg := lset_word (lp_reg L) d res;
          lp_mem := lp_mem L;
-         lp_k := pack_k (Nat.eqb res 0) false;
+         lp_k := pack_k (N.eqb res 0%N) false;
          lp_halted := lp_halted L; lp_out := lp_out L |}
   | pPUTC d =>
       {| lp_pc := S (lp_pc L); lp_reg := lp_reg L; lp_mem := lp_mem L;
          lp_k := lp_k L; lp_halted := lp_halted L;
          lp_out := append (lp_out L)
                      (String (Ascii.ascii_of_nat
-                                (lget_reg (lp_reg L) d mod 256))
+                                (N.to_nat (N.land (lget_regN (lp_reg L) d) 255%N)))
                              EmptyString) |}
   | pCALL target =>
       {| lp_pc := target;
-         lp_reg := lset_nat (lp_reg L) 15 (S (lp_pc L));
+         lp_reg := lset_word (lp_reg L) 15 (N.of_nat (S (lp_pc L)));
          lp_mem := lp_mem L; lp_k := lp_k L;
          lp_halted := lp_halted L; lp_out := lp_out L |}
   | pRET =>
