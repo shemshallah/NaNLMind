@@ -95,6 +95,19 @@ Fixpoint lset_word (l : list N) (i : nat) (v : N) : list N :=
       end
   end.
 
+(** Register update on the concrete [N] register file.  The stored value is
+    a small [nat] projection (immediate, address, counter or 32-bit result),
+    so converting it back to [N] preserves the executor's semantics. *)
+Fixpoint lset_nat (l : list N) (i : nat) (v : nat) : list N :=
+  match l with
+  | [] => []
+  | x :: xs =>
+      match i with
+      | 0 => N.of_nat v :: xs
+      | S k => x :: lset_nat xs k v
+      end
+  end.
+
 Definition regs0 : list N := repeat 0%N 16.
 
 (** ** Block lookup and update
@@ -214,6 +227,30 @@ Definition shr32N (a : N) (n : nat) : N :=
 
 Definition bnot32N (x : N) : N :=
   N.land (N.lxor x word_mask32) word_mask32.
+
+(** [nat]-projected 32-bit operations used by [lp_exec].  They are the
+    same masked operations as [mod32N]/[shl32N]/[shr32N], converted at the
+    boundary so the concrete register file stays in [N]. *)
+Definition mod32 (x : nat) : nat :=
+  N.to_nat (N.land (N.of_nat x) word_mask32).
+
+Definition shl32 (a n : nat) : nat :=
+  N.to_nat (N.land (N.shiftl (N.of_nat a) (N.of_nat n)) word_mask32).
+
+Definition shr32 (a n : nat) : nat :=
+  N.to_nat (N.shiftr (N.of_nat a) (N.of_nat n)).
+
+Definition ge32 (x : nat) : bool :=
+  N.leb 0x100000000%N (N.of_nat x).
+
+Definition bnot32 (x : nat) : nat :=
+  N.to_nat (N.land (N.lxor (N.of_nat x) word_mask32) word_mask32).
+
+Definition bool_res (tbl a b : nat) : nat :=
+  (if Nat.eqb (Nat.land tbl 1) 1 then bnot32 (Nat.lor a b) else 0) +
+  (if Nat.eqb (Nat.land tbl 2) 2 then Nat.land (bnot32 a) b else 0) +
+  (if Nat.eqb (Nat.land tbl 4) 4 then Nat.land a (bnot32 b) else 0) +
+  (if Nat.eqb (Nat.land tbl 8) 8 then Nat.land a b else 0).
 
 (** ** BOOL truth table
 
