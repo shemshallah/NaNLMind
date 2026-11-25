@@ -24,6 +24,8 @@ on:
       - 'formal/utm/MinskyNaN16StepSpec.v'
       - 'formal/utm/MinskyNaN16StepEntrySpec.v'
       - 'formal/utm/MinskyNaN16Run.v'
+      - 'formal/utm/MinskyNaN16StepOk.v'
+      - 'formal/utm/MinskyNaN16StepOk.v'
       - 'formal/utm/MinskyNaN16RunClosed.v'
       - 'formal/utm/MinskyNaN16Prelude.v'
       - 'formal/utm/MinskyNaN16PreludeReady.v'
@@ -94,6 +96,7 @@ jobs:
             MinskyNaN16PreludeReady
             MinskyNaN16StepEntrySpec
             MinskyNaN16Run
+            MinskyNaN16StepOk
             MinskyNaN16RunClosed
           "
           for f in $MODULES; do
@@ -206,6 +209,10 @@ jobs:
             formal/utm/MinskyNaN16StepEntrySpec.vo
             formal/utm/MinskyNaN16Run.v
             formal/utm/MinskyNaN16Run.vo
+            formal/utm/MinskyNaN16StepOk.v
+            formal/utm/MinskyNaN16StepOk.vo
+            formal/utm/MinskyNaN16StepOk.v
+            formal/utm/MinskyNaN16StepOk.vo
             formal/utm/MinskyNaN16RunClosed.v
             formal/utm/MinskyNaN16RunClosed.vo
           if-no-files-found: warn
