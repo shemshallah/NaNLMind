@@ -26,6 +26,8 @@ on:
       - 'formal/utm/MinskyNaN16Run.v'
       - 'formal/utm/MinskyNaN16StepOk.v'
       - 'formal/utm/MinskyNaN16RunClosed.v'
+      - 'formal/utm/MinskyNaN16AddressStep.v'
+      - 'formal/utm/MinskyNaN16Universality.v'
       - 'formal/utm/MinskyNaN16PreserveTable.v'
       - 'formal/utm/MinskyNaN16PreserveHead.v'
       - 'formal/utm/MinskyNaN16Prelude.v'
@@ -222,6 +224,10 @@ jobs:
             formal/utm/MinskyNaN16StepOk.vo
             formal/utm/MinskyNaN16RunClosed.v
             formal/utm/MinskyNaN16RunClosed.vo
+            formal/utm/MinskyNaN16AddressStep.v
+            formal/utm/MinskyNaN16AddressStep.vo
+            formal/utm/MinskyNaN16Universality.v
+            formal/utm/MinskyNaN16Universality.vo
             formal/utm/MinskyNaN16PreserveTable.v
             formal/utm/MinskyNaN16PreserveTable.vo
             formal/utm/MinskyNaN16PreserveHead.v
