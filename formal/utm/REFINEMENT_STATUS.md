@@ -83,8 +83,12 @@ GitHub Actions run does not make them interchangeable.
      20,247-instruction prefix as a transparent `vm_compute` value
      (`literal_run100_valu`) and re-derives the published run100 trace
      agreement from that cache.
-   - `MinskyNaN16LiteralTail.v` evaluates the remaining 778 instructions
-     over the cached prefix state and proves the full-run postconditions:
+   - `MinskyNaN16LiteralTail01.v` ... `MinskyNaN16LiteralTail11.v`
+     execute the remaining 778 instructions over the cached prefix
+     state in eleven checked chunks (100 steps for the first five, 50
+     for the next five, 28 for the last), each caching its result;
+   - `MinskyNaN16LiteralTail.v` composes the eleven chunk equalities
+     and proves the full-run postconditions:
      halted, `pc = 28`, payload words `2/166/0` at the action cells,
      output `"MTH MINSKY NATIVE PASS"`, register 1 = 4357, and the code
      image preserved (`code_preserved_bool`). This is the split

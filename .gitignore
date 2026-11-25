@@ -12,3 +12,6 @@ temporal_nan
 test_r14
 state/
 runner/__pycache__/
+
+# local scratch (never commit)
+tmp/

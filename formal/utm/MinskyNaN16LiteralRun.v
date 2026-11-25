@@ -14,9 +14,11 @@
         [literal_run100_matches_nrun100],
         [nrun100_matches_published_trace] and
         [literal_run100_cells] from that cache;
-      - [MinskyNaN16LiteralTail01] ... [Tail08] and
+      - [MinskyNaN16LiteralTail01] ... [Tail11] and
         [MinskyNaN16LiteralTail.v] execute the remaining 778
-        instructions in 100-step chunks and postcondition lemmas.
+        instructions in eleven checked chunks (100 steps for the first
+        five, 50 for the next five, 28 for the last) and derive the
+        postcondition lemmas.
 
     Thus [literal_full_run_pass] is derived from the smaller certified
     prefix/tail facts and the checked native [nrun] fixture result; no
