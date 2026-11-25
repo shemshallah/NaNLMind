@@ -4,7 +4,7 @@
     literal fixture.  SHL is opcode 0x05 and is word 49 of the pinned
     image:
 
-      49  FFF8_05180003_F8FF  SHL r7,r8,3
+      49  FFF8_05780003_F8FF  SHL r7,r8,3
 
     Two agreement statements are proved.
 
