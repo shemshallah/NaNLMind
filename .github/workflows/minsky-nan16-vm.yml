@@ -25,8 +25,9 @@ on:
       - 'formal/utm/MinskyNaN16StepEntrySpec.v'
       - 'formal/utm/MinskyNaN16Run.v'
       - 'formal/utm/MinskyNaN16StepOk.v'
-      - 'formal/utm/MinskyNaN16StepOk.v'
       - 'formal/utm/MinskyNaN16RunClosed.v'
+      - 'formal/utm/MinskyNaN16PreserveTable.v'
+      - 'formal/utm/MinskyNaN16PreserveHead.v'
       - 'formal/utm/MinskyNaN16Prelude.v'
       - 'formal/utm/MinskyNaN16PreludeReady.v'
       - 'formal/utm/check_minsky_nan16_step.py'
@@ -98,6 +99,8 @@ jobs:
             MinskyNaN16Run
             MinskyNaN16StepOk
             MinskyNaN16RunClosed
+            MinskyNaN16PreserveTable
+            MinskyNaN16PreserveHead
           "
           for f in $MODULES; do
             echo "=== coqc $f"
@@ -136,6 +139,12 @@ jobs:
             MinskyNaN16StepSpec
             MinskyNaN16Prelude
             MinskyNaN16PreludeReady
+            MinskyNaN16StepEntrySpec
+            MinskyNaN16Run
+            MinskyNaN16StepOk
+            MinskyNaN16RunClosed
+            MinskyNaN16PreserveTable
+            MinskyNaN16PreserveHead
           "
           for f in $MODULES; do
             echo "=== coqchk $f"
@@ -211,8 +220,10 @@ jobs:
             formal/utm/MinskyNaN16Run.vo
             formal/utm/MinskyNaN16StepOk.v
             formal/utm/MinskyNaN16StepOk.vo
-            formal/utm/MinskyNaN16StepOk.v
-            formal/utm/MinskyNaN16StepOk.vo
             formal/utm/MinskyNaN16RunClosed.v
             formal/utm/MinskyNaN16RunClosed.vo
+            formal/utm/MinskyNaN16PreserveTable.v
+            formal/utm/MinskyNaN16PreserveTable.vo
+            formal/utm/MinskyNaN16PreserveHead.v
+            formal/utm/MinskyNaN16PreserveHead.vo
           if-no-files-found: warn
