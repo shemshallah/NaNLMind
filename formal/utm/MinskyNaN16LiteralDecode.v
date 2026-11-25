@@ -21,15 +21,17 @@
 
       0xFFF801D00001F8FF = FFF8_01D00001_F8FF = MOVI r13,1
 
-    We define a literal NaN16 word decoder for the MOVI and LD cases, a
-    literal machine state and step for those cases, and the proposed
-    refinement relation [R] between the literal state and the Coq [VM]
-    model of [MinskyNaN16VM.v].  We then prove that the decoded
-    instructions are [iMOVI 13 1] and [iLD 1 0 100], that one literal
-    step from the reset state reaches [pc = 1], [r13 = 1], [k = 0] with
-    memory and all other registers unchanged, and that both literal
-    successors are related by [R] to [exec_instr] on the corresponding
-    fixture programs.
+    We define a literal NaN16 word decoder for the MOVI/LD/ST/CMP/JMP/
+    ADD/SUB slice, a literal machine state and step for those cases, and
+    the proposed refinement relation [R] between the literal state and
+    the Coq [VM] model of [MinskyNaN16VM.v].  We prove that the original
+    pinned words decode to [iMOVI 13 1] and [iLD 1 0 100], that one
+    literal step from the reset state reaches [pc = 1], [r13 = 1],
+    [k = 0] with memory and all other registers unchanged, and that the
+    literal successors are related by [R] to [exec_instr] on the
+    corresponding fixture programs.  The new opcode obligations and the
+    concrete ST/CMP/JMP/ADD/SUB fixture words are in
+    [MinskyNaN16LiteralOps.v].
 
     Scope and honest limitations:
 
@@ -50,6 +52,8 @@
       the same 64-bit value; using [nat] would force Coq to normalize a
       2^48-scale unary numeral.  Register and payload values remain [nat]
       where the Coq model requires them.
+    - The generic one-step theorems for the added opcodes and the concrete
+      fixture-word obligations are in [MinskyNaN16LiteralOps.v].
     - Memory coherence is stated for all addresses, not only for
       [a < NAN_WORDS].  The Coq model has a total [nat -> nat] memory, so
       the total version is the strongest form and avoids choosing the
@@ -375,7 +379,12 @@ Definition literal_step (image : nat -> N) (L : LState) : LState :=
     The final clause records that literal registers are 32-bit.  It is
     needed by literal LD: the load address is [r[a] + imm] in the literal
     machine, while the Coq model sees [vm_reg a + imm].  The relation only
-    says [vm_reg a = r[a] mod 2^32]; the bound identifies the two. *)
+    says [vm_reg a = r[a] mod 2^32]; the bound identifies the two.
+
+    The [l_k < 4] clause records that [k] is a two-bit packed flag word.
+    It is preserved by every literal action (CMP/ADD/SUB repack 0..3) and
+    is needed to compare the exact bit-test predicate with the Coq truth
+    table; see [pred_agrees] and D-07. *)
 
 Definition R (L : LState) (vm : VM) : Prop :=
   vm_pc vm = l_pc L /\
