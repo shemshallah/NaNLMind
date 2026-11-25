@@ -2272,19 +2272,19 @@ configuration but different native frames.
 The certified theorem is about the **Coq NaN16 VM model**, not about the
 literal assembled `.nas` image:
 
-- the Coq VM control cells are
-  `action_head_addr = 300`, `action_state_addr = 301`,
-  `action_halt_addr = 302`, `tape_base_addr = 303`, and
-  `fixture_table_base = 304`;
+- the Coq VM data-cell constants are pinned to the literal labels:
+  `action_head_addr = 101`, `action_state_addr = 100`,
+  `action_halt_addr = 102`, `tape_base_addr = 99`, and
+  `fixture_table_base = 104`; `rlink` 103 is reserved and unmodelled;
 - the `.nas` labels `tbase`/`state`/`head`/`halt`/`rlink`/`table` are at
   `99..104`, and the table starts at `104`;
 - `check_minsky_nan16_step.py` compares mnemonic tuples with symbolic
   memory operands (`@head`, `@state`, `@halt`, `@tbase`, `@table`), not
-  assembled addresses, instruction encodings, or loader behaviour.
+  instruction encodings or loader behaviour.
 
-The theorem is therefore not a refinement of
-`third_party/nan0s/core/nan16.c` or the NaN0S C++ VM, and it does not prove
-that the assembled image uses the Coq model's exact addresses or opcodes.
-Those remain separate semantics-preserving bridge obligations.  The
-existing spec `claim` for the Coq table is separate and must not be read as
-a literal NaN16 execution claim.
+The theorem is therefore not a refinement of a host `nan16.c` reference
+harness or any external NaN0S VM, and it does not prove that the assembled
+image uses the Coq model's exact opcodes or loader state.  Those remain
+separate semantics-preserving bridge obligations.  The existing spec `claim`
+for the Coq table is separate and must not be read as a literal NaN16
+execution claim.

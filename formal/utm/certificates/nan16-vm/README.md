@@ -124,7 +124,7 @@ not the module-wide context summary, for the theorem's exact assumption set.
 Stable source/artifact anchors:
 
 ```text
-a101596212b63381af0c04b7941949bf3a63f88e46f35afbc3eb5d8f9dd8bd37  MinskyNaN16Universality.v
+61f5d54a8329360f23fe074009ee866320f5dca3aae4e866d471d98d1e2c0f66  MinskyNaN16Universality.v
 d3ee6d5c1e5284d45f31741af35feb0eb8651201e3a28ead919fa18d1a8b8be9  nan16_run_halting_equivalence_canonical.statement.txt
 188ff29b8a0705f491438ebf47623e533fe60658944f3f1f58e1f9b5badb1bcf  nan16_run_halting_equivalence_canonical.assumptions.txt
 5722a3fa97254832fa204f0db6f0debe524e78191838d99422fde072cbf79a3b  nan16_run_halting_equivalence_canonical.proofterm.txt
@@ -134,8 +134,8 @@ d3ee6d5c1e5284d45f31741af35feb0eb8651201e3a28ead919fa18d1a8b8be9  nan16_run_halt
 Build-artifact anchors (current local Coq 8.20.1 build):
 
 ```text
-ea3f3a7c382e026c9ee1a85d17475604a1666d7220214accd7b3c9dfb32aaa9b  MinskyNaN16Universality.vo
-93cb4a9452a01b24c489e10deeb4ba23222f8382aca8c05dcc3584808c40fb00  nan16_run_halting_equivalence_canonical.coqchk.txt.gz
+e331933b2b1f2ee92ef118df199c415068fbbeda76f50f0c80848f454bd2ce68  MinskyNaN16Universality.vo
+c622f8a1bb945146481a8db595980baa054bd6159758d0505ce6a38caed5795c  nan16_run_halting_equivalence_canonical.coqchk.txt.gz
 ```
 
 The full `coqchk` log contains absolute build paths and is machine-specific;
@@ -170,18 +170,20 @@ does not check the canonical theorem.
 ## Scope and non-claims
 
 The theorem is about the **Coq NaN16 VM model** and the fixed 23x8 table
-image at `fixture_table_base = 304` with tape base `fixture_tape_base = 4096`.
+image at `fixture_table_base = 104` with tape base `fixture_tape_base = 4096`.
 It is not:
 
-- a refinement of `third_party/nan0s/core/nan16.c` or the NaN0S C++ VM;
-  `MinskyNaN16VM.exec_instr` is a trusted Coq ISA model;
+- a refinement of a host `nan16.c` reference harness or any external NaN0S
+  VM; `MinskyNaN16VM.exec_instr` is a trusted Coq ISA model;
 - a proof that the assembled `.nas` image or the NaN16 assembler/encoder
   matches the Coq instruction blocks;
-- a literal assembled-address theorem.  The Coq control cells are
-  `300..303` and the table base is `304`, while the `.nas` labels are
-  `99..104` and the table starts at `104`.  The transcription gate
-  `check_minsky_nan16_step.py` compares memory operands symbolically
-  (`@head`, `@state`, `@halt`, `@tbase`, `@table`), not assembled addresses;
+- a proof of the assembled code, instruction encodings, or loader.  The
+  Coq data-cell constants are pinned to the `.nas` labels (`tbase` 99,
+  `state` 100, `head` 101, `halt` 102, `table` 104); `rlink` 103 is
+  reserved and unmodelled.  The theorem still talks about the Coq VM model,
+  and `check_minsky_nan16_step.py` compares memory operands symbolically
+  (`@head`, `@state`, `@halt`, `@tbase`, `@table`) rather than encoding the
+  image;
 - a total run-time-independent encoder.  `K` may grow with the native time
   `t`; only `exists K t, K >= t` is claimed.
 - a proof of the literal 100-step fixture `PASS` path or a fixed `run100`

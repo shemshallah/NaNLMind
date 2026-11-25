@@ -154,7 +154,7 @@ Proof.
     exact Hdis_head.
   - exact Hdis_state.
   - exact Hdis_halt.
-  - (* the tape cell is not the tape-base cell 303 *)
+  - (* the tape cell is not the tape-base cell 99 *)
     intro E.
     assert (Hz1 : tbase <= tbase + vm_reg vm 2) by lia.
     assert (Hz2 : tbase + vm_reg vm 2 < tbase + window) by lia.

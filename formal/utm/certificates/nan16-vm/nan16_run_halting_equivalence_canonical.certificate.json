@@ -1,6 +1,6 @@
 {
   "schema": "nanlm.coq-nan16-vm-certificate/1",
-  "generated_at": "2026-11-25T02:08:45.634429+00:00",
+  "generated_at": "2026-11-25T03:35:59.925248+00:00",
   "layer": "Final: Coq NaN16 VM model executes the fixed 23x8 fixture table on the left-infinite source encoding",
   "theorem": "NaNLM.MinskyNaN16Universality.nan16_run_halting_equivalence_canonical",
   "supporting_theorems": [
@@ -24,16 +24,16 @@
   ],
   "coqchk_context_axioms_note": "This axiom appears in the coqchk CONTEXT SUMMARY for the whole loaded module cone. It is not an assumption of the certified theorem: Print Assumptions for nan16_run_halting_equivalence_canonical (and for the three supporting theorems) reports 'Closed under the global context'.",
   "coq_version": "8.20.1",
-  "source_sha256": "a101596212b63381af0c04b7941949bf3a63f88e46f35afbc3eb5d8f9dd8bd37",
-  "vo_sha256": "ea3f3a7c382e026c9ee1a85d17475604a1666d7220214accd7b3c9dfb32aaa9b",
+  "source_sha256": "61f5d54a8329360f23fe074009ee866320f5dca3aae4e866d471d98d1e2c0f66",
+  "vo_sha256": "e331933b2b1f2ee92ef118df199c415068fbbeda76f50f0c80848f454bd2ce68",
   "hashes": {
-    "MinskyNaN16Universality.v": "a101596212b63381af0c04b7941949bf3a63f88e46f35afbc3eb5d8f9dd8bd37",
-    "MinskyNaN16Universality.vo": "ea3f3a7c382e026c9ee1a85d17475604a1666d7220214accd7b3c9dfb32aaa9b",
+    "MinskyNaN16Universality.v": "61f5d54a8329360f23fe074009ee866320f5dca3aae4e866d471d98d1e2c0f66",
+    "MinskyNaN16Universality.vo": "e331933b2b1f2ee92ef118df199c415068fbbeda76f50f0c80848f454bd2ce68",
     "nan16_run_halting_equivalence_canonical.statement.txt": "d3ee6d5c1e5284d45f31741af35feb0eb8651201e3a28ead919fa18d1a8b8be9",
     "nan16_run_halting_equivalence_canonical.assumptions.txt": "188ff29b8a0705f491438ebf47623e533fe60658944f3f1f58e1f9b5badb1bcf",
     "nan16_run_halting_equivalence_canonical.proofterm.txt": "5722a3fa97254832fa204f0db6f0debe524e78191838d99422fde072cbf79a3b",
     "nan16_run_halting_equivalence_canonical.coqchk.summary.txt": "40562ace144ab7e1b16fb0360b779829d742976e6bc11ecf58e9951d4443f5a1",
-    "nan16_run_halting_equivalence_canonical.coqchk.txt.gz": "93cb4a9452a01b24c489e10deeb4ba23222f8382aca8c05dcc3584808c40fb00",
+    "nan16_run_halting_equivalence_canonical.coqchk.txt.gz": "c622f8a1bb945146481a8db595980baa054bd6159758d0505ce6a38caed5795c",
     "mth_minsky_test.nas": "173666f7635ffa3c942a6a251eb9c4874e686a45df0ca68c97ad50e9195d112e",
     "minsky_table.inc": "9a1cb52380b7aa91ba2d99cba283c01e9eb2e4dc28f17d77fb55b1c4837920ad"
   },
@@ -43,61 +43,61 @@
       "module": "MinskyNaN16AddressStep",
       "source": "formal/utm/MinskyNaN16AddressStep.v",
       "source_sha256": "de813103f763273b6b2c7830ebff66f5003ff00957c9acfd934da0b19bef898a",
-      "vo_sha256": "9f4c2d025422d0e26373e2672aa8db6eefca7def4784e4f4e80b430a3c0695ca"
+      "vo_sha256": "92c0066b018bcd5e2b4d5d66be7508370c4c71977f87a15b8f32e206d9614a92"
     },
     {
       "module": "MinskyNaN16RunConcrete",
       "source": "formal/utm/MinskyNaN16RunConcrete.v",
-      "source_sha256": "984b3c18b9def2ffa28c63a06c31c82b949ee2e0bc6c1463a9aa4fef2b13db56",
-      "vo_sha256": "32e070a4ae0ede9f0ce40723d13aa732e1c3f9c4e3658e91ae6f50a73e3743c8"
+      "source_sha256": "0edff117594a0117b874eaaa7c76f68a80ebc64c7c2fbba98f323232f70ad1ed",
+      "vo_sha256": "ae8f0cee1d8c1dbed28bd79e9ee11bda905509c4dd069b289dc37fbe2926a0df"
     },
     {
       "module": "MinskyNaN16RunClosed",
       "source": "formal/utm/MinskyNaN16RunClosed.v",
-      "source_sha256": "010a9f940e4f33b4d0aeaf769c657eb3fce2e35533e1c794b826fd7550fea41d",
-      "vo_sha256": "b149aed503c48c414c9df6bfdd1977743aa11dcf3424a4cd4601d3e11919a8e5"
+      "source_sha256": "b26fbe7316fc9e5b909b89d542d881ca9ca719605b4a214a4a6ecabbfafd82a2",
+      "vo_sha256": "a9ac02fa05a3f9c19766eb11206341283a3b03d8aefdb7448c4fe6f856392f3e"
     },
     {
       "module": "MinskyNaN16Run",
       "source": "formal/utm/MinskyNaN16Run.v",
       "source_sha256": "a35a1d6e1ea52f297debca9b4c3e379b80d648da9e54d7c0658f33b78237f85e",
-      "vo_sha256": "1753908cbdad4eae1d93e5c85d98b0fa5cd7673be91bde126c7de810f55130a9"
+      "vo_sha256": "5480cc365ccf4209c8b54365ac96a96f13c211d34e6bb519e69ff6bf274da998"
     },
     {
       "module": "MinskyNaN16StepEntrySpec",
       "source": "formal/utm/MinskyNaN16StepEntrySpec.v",
       "source_sha256": "cc60f733dcdf2b8d508a91e2ce55955de645b250c7f4c877c212285a744ab1dd",
-      "vo_sha256": "5678b48011e12ab702f82abf154b0e431c6b09cb9a5b47d89c673a9c3d98e33d"
+      "vo_sha256": "dd55783fc785aa211a3c457ad6807ad7059637e64ed88053e155b8acb420fc6e"
     },
     {
       "module": "MinskyNaN16StepSpec",
       "source": "formal/utm/MinskyNaN16StepSpec.v",
       "source_sha256": "f52bc027f7c515823769e1ebed77a086f2afdbabe055489d1fdeca2ee7137cc0",
-      "vo_sha256": "f050367695464b962d318cc9631591e0846d57fd637db2be23a8f459beb7b39d"
+      "vo_sha256": "d6960c5e9a5ca196df66f6669245a55d276ddb2ee6ee49786b9ea636ac76963b"
     },
     {
       "module": "MinskyNaN16Step",
       "source": "formal/utm/MinskyNaN16Step.v",
       "source_sha256": "82908826cc052b92a7497aa1abf9ff652af50f9e2c19bb93273ce5f1af349e1a",
-      "vo_sha256": "09fdbdc748d1b041ee93b920bc11b6350f94cb9a948250ae3b2122747d775f61"
+      "vo_sha256": "3525c399181e5deb4a3f07d93c46d819af43a3a22bfc41ef471e604ae3854453"
     },
     {
       "module": "MinskyNaN16StepHit",
       "source": "formal/utm/MinskyNaN16StepHit.v",
       "source_sha256": "3b0296a4dfed08dc7320230288ffe9cb65e6194659c3d240ff051302c329f801",
-      "vo_sha256": "4460dd0db4287f2d3ce23c3ee5fa41c74a91714d648b534cd083e1eee66d6a4e"
+      "vo_sha256": "8149960641faf0e487acaaab553cf40ca27e8d9eb45a2c636e0cfe32821a5078"
     },
     {
       "module": "MinskyNaN16StepNone",
       "source": "formal/utm/MinskyNaN16StepNone.v",
       "source_sha256": "c23bfd08a4e5922303711e43cd520566f79d68f9af1a9647f7a444bc9940a357",
-      "vo_sha256": "c5e7d912f229a6962a591a21bf7f07901b08c17c5911ac2d64048b0e13b19b38"
+      "vo_sha256": "951970059e2e871636307f702eed9ffb787ae02646d43c429511cf54327ad3ee"
     },
     {
       "module": "MinskyNaN16StepOk",
       "source": "formal/utm/MinskyNaN16StepOk.v",
-      "source_sha256": "9ddb6c3dd61f02b71af33fb18d9668c6f96b85d2ed6fa7277a81986d0eaa8346",
-      "vo_sha256": "780271d7a65c70a0fca504b17e77c18862617bca620e186716a5982f0c96957b"
+      "source_sha256": "772165bccd219a6a8b26fce268a2d5bf38c6cb4f2745c0fe6e8be6655016c953",
+      "vo_sha256": "0d21c617d0a27c5db3cfbe8f0dafe1cc50475900fb5badfabd7b8ea84633a549"
     },
     {
       "module": "MinskyNaN16Window",
@@ -127,25 +127,25 @@
       "module": "MinskyNaN16ScanPhase",
       "source": "formal/utm/MinskyNaN16ScanPhase.v",
       "source_sha256": "42976fd813cfc42c426b967104af7fd622d1a546a5961e34fe68bb907b12dbcb",
-      "vo_sha256": "7da9eb388f2629425ef709e8d3b76f8850ed502f9aaed91c9744d58a166588e6"
+      "vo_sha256": "1527096206c39b9b753e00491aa413d81e1923e7ddf4c424d3f1a30d70ebdc91"
     },
     {
       "module": "MinskyNaN16ActionRefines",
       "source": "formal/utm/MinskyNaN16ActionRefines.v",
       "source_sha256": "6ac651dea58e6f5f6efefd6ec0741a16cb81e9ada318f82dc27017c16fe5b6a2",
-      "vo_sha256": "b4817295f427e84391fb770f6bb873a9d17cde75bacc0b15d1b568747194c5ad"
+      "vo_sha256": "4892ed7e3afd54b428229cc4d99112327f5f415712a8a190ee7bbc3ce2e1f5c2"
     },
     {
       "module": "MinskyNaN16ActionRun",
       "source": "formal/utm/MinskyNaN16ActionRun.v",
       "source_sha256": "c407953754ee750a49c98daa07b291bb24bf7b6ca3857dbbb8367bda2c4cc14a",
-      "vo_sha256": "d43c7aa6fc3a559ae3fb49293d30ab1b6d2dde614390b4da7f54bb28d30c29cd"
+      "vo_sha256": "a7ac1e1e44510cd4441f2e38e006aedc7154bb33763e33df1df7f792ec23942d"
     },
     {
       "module": "MinskyNaN16PreludeReady",
       "source": "formal/utm/MinskyNaN16PreludeReady.v",
       "source_sha256": "c7b77123dbaa6d4a3a8e2c2ba8726fc8ed332017b17f0b12b3ab9cc78ca332bc",
-      "vo_sha256": "b76e86b381cbb28362ce87cb2756fffbd1ea019e4ebb2d31a6981298ab1f3a20"
+      "vo_sha256": "729936ec459c4865057a642dc7833ca531751c6726a4acbde233483df4c0e2f8"
     },
     {
       "module": "MinskyNaN16VM",
@@ -190,15 +190,15 @@
       "vo_sha256": "c9fac9dbfd61b6a2e80d6c54350e62bba1e1d425fde587cd9ec327b8054c0b42"
     }
   ],
-  "scope": "Fixed 23x8 Minsky table executed by the Coq model of the literal NaN16 fixture mth/tests/mth_minsky_test.nas (184x8 table image at fixture_table_base = 304, flat tape at fixture_tape_base = 4096). Source side: the left-infinite binary-tape source model on all well-formed inputs: Forall (wide_row_wellformed p) rows, rows <> [], length (lic_state c) = p, and left_infinite_ok c.",
+  "scope": "Fixed 23x8 Minsky table executed by the Coq model of the literal NaN16 fixture mth/tests/mth_minsky_test.nas (184x8 table image at fixture_table_base = 104, flat tape at fixture_tape_base = 4096). Source side: the left-infinite binary-tape source model on all well-formed inputs: Forall (wide_row_wellformed p) rows, rows <> [], length (lic_state c) = p, and left_infinite_ok c.",
   "window_note": "The theorem asserts exists K t, K >= t. K is the left-window depth and may grow with the native run time t; a total run-time-independent encode is not claimed. The window premise is discharged inside the theorem for the existential K, not assumed separately.",
   "not_proved": [
-    "No refinement of third_party/nan0s/core/nan16.c or the NaN0S C++ VM: MinskyNaN16VM.exec_instr is a trusted Coq ISA model.",
+    "No refinement of a host nan16.c reference harness or any external NaN0S VM: MinskyNaN16VM.exec_instr is a trusted Coq ISA model.",
     "No proof that the assembled .nas image or the NaN16 assembler/encoder matches the Coq instruction blocks. check_minsky_nan16_step.py is a source-text transcription gate only.",
-    "No literal assembled address equality: the Coq VM uses abstract control cells 300..303 and table base 304, while the .nas labels are 99..104 and the table starts at 104. The transcription gate compares memory operands symbolically.",
+    "No full literal-image equality: the Coq VM data-cell constants are pinned to the .nas labels (tbase 99, state 100, head 101, halt 102, table 104), but the theorem does not prove the assembled code, instruction encodings, or loader.",
     "No run-time-independent total encoder: the K window is existential and may grow with t.",
     "No claim about the 100-step native fixture PASS path or a fixed run100 iteration count."
   ],
-  "transcription_table_base_caveat": "The Coq VM constants action_head_addr = 300, action_state_addr = 301, action_halt_addr = 302, tape_base_addr = 303, and fixture_table_base = 304 are abstract cell identifiers. The .nas source uses labels tbase/state/head/halt/table at 99..104. check_minsky_nan16_step.py maps @head/@state/@halt/@tbase/@table to those symbolic names and compares mnemonic tuples; it does not check assembled addresses. The final theorem is a statement about the Coq VM model, not about the literal assembled NaN16 image.",
+  "transcription_table_base_caveat": "The Coq VM constants action_head_addr = 101, action_state_addr = 100, action_halt_addr = 102, tape_base_addr = 99, and fixture_table_base = 104 are pinned to the literal .nas labels tbase/state/head/halt/table at 99..104; rlink at 103 is reserved and unmodelled. check_minsky_nan16_step.py maps @head/@state/@halt/@tbase/@table to those symbolic names and compares mnemonic tuples; it does not check instruction encodings or the loader. The final theorem is a statement about the Coq VM model, not about the literal assembled NaN16 image.",
   "reproduction": "bash formal/utm/certificates/nan16-vm/reproduce.sh"
 }

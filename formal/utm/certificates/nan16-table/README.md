@@ -22,11 +22,12 @@ with `Print Assumptions` closed under the global context and `coqchk`
 reporting `Modules were successfully checked`.  The raw VM certificate is
 in [`../nan16-vm/`](../nan16-vm/).
 
-This does **not** remove the table-base transcription caveat below: the
-final theorem is about the Coq VM model with abstract control cells
-`300..303` and table base `304`, while the literal `.nas` labels are
-`99..104` and the table starts at `104`.  The transcription gate compares
-memory operands symbolically, not assembled addresses.
+This does **not** remove the transcription caveat below: the final theorem
+is about the Coq VM model.  Its data-cell constants are now pinned to the
+literal `.nas` labels: `tbase` 99, `state` 100, `head` 101, `halt` 102,
+`table` 104, with `rlink` 103 reserved and unmodelled.  The theorem still
+does not prove the assembled code, instruction encodings, or loader; the
+transcription gate compares memory operands symbolically.
 
 This is **Layer 1** of a Coq ↔ NaN0S certificate. It is a real, axiom-free
 kernel certificate for the table data and the native word-image step/run
@@ -628,10 +629,11 @@ Memory operands are compared symbolically, not by assembled address:
 @table <-> table_base
 ```
 
-The Coq constants `action_head_addr = 300`, `action_state_addr = 301`,
-`action_halt_addr = 302`, and `tape_base_addr = 303` are abstract cell
-identifiers.  The gate does not check the actual `.nas` label addresses,
-instruction encoding, or assembled layout.
+The Coq constants `action_head_addr = 101`, `action_state_addr = 100`,
+`action_halt_addr = 102`, `tape_base_addr = 99`, and
+`fixture_table_base = 104` are pinned to the literal `.nas` data labels;
+`rlink` 103 is reserved and unmodelled.  The gate still does not check
+instruction encoding or the assembled/loaded image.
 
 `run100` is checked as a literal driver shape: save `r15` in `@rlink`,
 `MOVI r11,100`, `CALL @step`, `SUB r11,r11,r13`, `JMP[NE] @rloop`, restore
@@ -766,18 +768,17 @@ A total run-time-independent encoder is still not claimed.
 The final theorem is a statement about the **Coq VM model**, not about the
 literal assembled `.nas` image:
 
-- the Coq VM uses abstract control cells
-  `action_head_addr = 300`, `action_state_addr = 301`,
-  `action_halt_addr = 302`, `tape_base_addr = 303`, and
-  `fixture_table_base = 304`;
+- the Coq VM data-cell constants are pinned to the literal labels:
+  `action_head_addr = 101`, `action_state_addr = 100`,
+  `action_halt_addr = 102`, `tape_base_addr = 99`, and
+  `fixture_table_base = 104`; `rlink` 103 is reserved and unmodelled;
 - the literal `.nas` labels are `tbase`/`state`/`head`/`halt`/`rlink`/
   `table` at `99..104`, and the table starts at `104`;
 - `check_minsky_nan16_step.py` maps `@head`, `@state`, `@halt`, `@tbase`,
   and `@table` to those symbolic Coq names and compares normalized
-  mnemonic tuples.  It does not check assembled addresses, instruction
-  encodings, or the loader.
+  mnemonic tuples.  It does not check instruction encodings or the loader.
 
-Accordingly, the theorem does not refine
-`third_party/nan0s/core/nan16.c` or the NaN0S C++ VM, and it does not prove
-that the assembler emits the exact instruction addresses or opcodes used by
-the Coq model.  Those remain separate bridge obligations.
+Accordingly, the theorem does not refine a host `nan16.c` reference harness
+or any external NaN0S VM, and it does not prove that the assembler emits the
+exact instruction addresses or opcodes used by the Coq model.  Those remain
+separate bridge obligations.

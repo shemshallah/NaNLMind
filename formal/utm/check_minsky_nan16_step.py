@@ -36,7 +36,9 @@ DEFAULT_SOURCE = ROOT / "mth/tests/mth_minsky_test.nas"
 DEFAULT_COQ_DIR = ROOT / "formal/utm"
 
 # Memory operands are compared symbolically.  The Coq address constants are
-# abstract stand-ins for cells, not the assembled addresses of the .nas labels.
+# pinned to the literal assembled labels: tbase 99, state 100, head 101,
+# halt 102, rlink 103 (reserved), table 104.  This gate still compares the
+# mnemonic structure; the numeric pin lives in NAN0S_LAYOUT.md.
 SOURCE_MEMORY = {
     "head": "head",
     "state": "state",

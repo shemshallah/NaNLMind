@@ -4,9 +4,10 @@ From NaNLM Require Import MinskyNaN16VM MinskyNaN16Action.
 
 (** The literal step prelude from the .nas fixture, with the table base as an
     immediate.  The prelude ends at pc 11, which is the scan entry in the
-    combined step program. *)
+    combined step program.  [tape_base_addr] is the literal [tbase] cell at
+    word 99; the cell contains the tape image base 4096. *)
 
-Definition tape_base_addr : nat := 303.
+Definition tape_base_addr : nat := 99.
 
 Definition prelude_block (table_base : nat) : list Instr :=
   [ iLD 1 0 action_halt_addr;    (* 0 *)

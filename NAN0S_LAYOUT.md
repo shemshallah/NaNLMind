@@ -11,6 +11,11 @@ has been applied to the Coq constants and fixture arithmetic. The pre-change
 `300..304` map is retained in [§3](#3-the-104-vs-304-conflict) only as the
 historical conflict record.
 
+**Local verification (2026-11-24):** Coq 8.20.1 compiled the NaN16 VM chain
+and the universality cone; `coqchk` reports `Modules were successfully
+checked` for `MinskyNaN16Universality.vo`; the transcription gate passes; the
+native `minsky_table` fixture reports `MTH MINSKY NATIVE PASS` (21025 steps).
+
 **Authority:** the literal source text of
 `mth/tests/mth_minsky_test.nas` and the assembler-resolved label values for
 that text. The NaN16 core is the word-addressed NaN16 execution semantics; a
@@ -149,7 +154,8 @@ table [104, 1576)
 tape base cell address = 99; tape image base = 4096
 ```
 
-Current Coq model constants:
+Pre-correction Coq constants (retained here as the historical conflict
+record; the applied values are in [§4.1](#41-applied-values)):
 
 ```text
 action_head_addr  = 300
@@ -159,11 +165,11 @@ tape_base_addr    = 303
 fixture_table_base = 304
 ```
 
-### 3.2 Why this is a conflict, not a harmless naming difference
+### 3.2 Why this was a conflict, not a harmless naming difference
 
-The model's table is placed at **304**, while the literal table is at
-**104**. The model's control cells are **300..303**, while the literal
-control cells are **99..102** (with `rlink` at 103).
+Before the correction, the model's table was placed at **304**, while the
+literal table is at **104**. The model's control cells were **300..303**,
+while the literal control cells are **99..102** (with `rlink` at 103).
 
 The mapping is not a uniform shift and not a permutation that preserves the
 literal order:
@@ -177,10 +183,10 @@ literal order:
 | `rlink` | 103 | not a `Mem` cell; modelled by `vm_link` | — | — |
 | `table` | 104 | `fixture_table_base` | 304 | +200 |
 
-A single uniform `+200` relocation would put the literal cells at
-`299/300/301/302` and the table at `304`, which is not what the Coq constants
-say either. The model's control block is **reordered**, and the literal
-`rlink` cell has no `Mem` representation.
+A single uniform `+200` relocation would have put the literal cells at
+`299/300/301/302` and the table at `304`, which is not what the old Coq
+constants said either. The old control block was **reordered**, and the
+literal `rlink` cell has no `Mem` representation.
 
 ### 3.3 The dangerous partial fix
 
@@ -206,10 +212,12 @@ addresses 300, 301, and 302, so:
 The table base and all control-cell constants must move together, or the
 304 placement must be justified by a proved relocation.
 
-### 3.4 What is currently claimed
+### 3.4 Scope after the correction
 
-The checked Coq chain proves a statement about its **own VM model**, not about
-the literal assembled `.nas` image. The certificate says so explicitly:
+The checked Coq chain still proves a statement about its **own VM model**, not
+about the literal assembled `.nas` image: changing the data-cell constants
+does not prove the assembler, encoding, or loader. The certificate records
+that scope explicitly:
 
 - `formal/utm/certificates/nan16-vm/nan16_run_halting_equivalence_canonical.certificate.json`
   — fields `scope`, `not_proved[2]`, and
@@ -227,11 +235,11 @@ symbolically and deliberately does not check numeric addresses.
 
 ---
 
-## 4. Recommended correction: literal addresses
+## 4. Applied correction: literal addresses
 
-### 4.1 Chosen values
+### 4.1 Applied values
 
-Adopt the literal `.nas` addresses in the Coq model:
+The literal `.nas` addresses are now used by the Coq model:
 
 ```coq
 (* formal/utm/MinskyNaN16Action.v *)
@@ -264,14 +272,14 @@ tape:          4096..4351
 strings:       4352..4365
 ```
 
-### 4.2 Why literal addresses are recommended
+### 4.2 Why literal addresses were chosen
 
-1. The five constants are arbitrary model identifiers today. No proof needs
+1. The five constants were arbitrary model identifiers. No proof needs
    `300..304` to be round; no theorem depends on a particular numeric value
    beyond the ordering/distinctness facts.
 2. The literal values remove the address caveat for the modelled control and
-   table cells. After the change, the model's table is the source table at
-   104, and `entry_ok` reads the source `tbase` cell at 99.
+   table cells. The model's table is now the source table at 104, and
+   `entry_ok` reads the source `tbase` cell at 99.
 3. The proof changes are small and local: two fixture arithmetic lemmas plus
    comments. The rest of the chain uses the constants symbolically
    (`action_head_addr`, `tape_base_addr`, `table_base`) and continues to
@@ -281,12 +289,13 @@ strings:       4352..4365
    used only if the model must keep its current numeric layout for an
    external reason.
 
-### 4.3 Required proof and statement changes
+### 4.3 Applied proof and statement changes
 
-The following are the hard changes; `vm_compute`/`reflexivity` statements
-would otherwise be false.
+The following were the hard changes; the old `vm_compute`/`reflexivity`
+statements would otherwise have been false. All are applied in the current
+revision.
 
-| File | Constant / declaration | Change | Why |
+| File | Constant / declaration | Applied change | Why |
 |---|---|---|---|
 | `formal/utm/MinskyNaN16Action.v` | `action_head_addr` | `300` → `101` | literal `head` label |
 | `formal/utm/MinskyNaN16Action.v` | `action_state_addr` | `301` → `100` | literal `state` label |
@@ -309,7 +318,7 @@ values, but should be reviewed/updated when touching them:
 
 | File | Why review |
 |---|---|
-| `formal/utm/MinskyNaN16Action.v` | `smoke_mem` currently places a row at 100..105, which overlaps the new control cells 100..102. `action_run_smoke` still computes because the row is read before the stores, but the smoke fixture is no longer layout-honest. Move the smoke row/tape (e.g. 400/500) when next editing this module. |
+| `formal/utm/MinskyNaN16Action.v` | `smoke_mem` now uses row `400..405` and tape cell `500`, so it no longer overlaps the control cells or the table. `action_run_smoke` was updated to the new row/tape literals. |
 | `formal/utm/MinskyNaN16ActionRun.v` | distinctness lemmas (`action_head_state_neq`, etc.) remain true under 101/100/102; no numeric edit needed, but rerun. |
 | `formal/utm/MinskyNaN16ActionRefines.v`, `MinskyNaN16ActionSuffix.v` | row-vs-control hypotheses are symbolic; the literal values still satisfy the required inequalities. |
 | `formal/utm/MinskyNaN16RunClosed.v` | `table_control_ok_of_base_above` still applies because `102 < 104`; `table_control_ok` / `tape_window_ok` are generic. |
@@ -318,7 +327,8 @@ values, but should be reviewed/updated when touching them:
 | `formal/utm/MinskyNaN16Step.v`, `StepHit.v`, `StepNone.v`, `StepSpec.v`, `StepEntrySpec.v` | symbolic; verify the full build after the constants move. |
 | `formal/utm/MinskyNaN16Run.v`, `MinskyNaN16Window.v` | generic; `entry_ok` still reads `tape_base_addr` and `action_*` symbolically. |
 
-After the change, these should remain provable without statement changes:
+After the change, these remain provable without statement changes (verified
+by the local full-chain build):
 
 - `fixture_table_control_ok` (`102 < 104`);
 - `fixture_tape_window_ok` (all control cells and table cells below 4096);
@@ -328,10 +338,9 @@ After the change, these should remain provable without statement changes:
 - `nan16_addr_mem_table`'s cell-inequality goals (table range is outside
   `99..102`).
 
-### 4.4 First edit
+### 4.4 First edit applied
 
-Do not apply this edit in a documentation-only change. When the Coq change is
-authorized, the first edit is the lowest-level address block, in
+The first edit applied was the lowest-level address block, in
 `formal/utm/MinskyNaN16Action.v` (definitions at lines 21–23 as of the pinned
 HEAD):
 
@@ -347,9 +356,11 @@ HEAD):
 +Definition action_halt_addr : nat := 102.
 ```
 
-Then edit `formal/utm/MinskyNaN16Prelude.v` (`tape_base_addr := 99`), then
+The applied sequence then continued with
+`formal/utm/MinskyNaN16Prelude.v` (`tape_base_addr := 99`),
 `formal/utm/MinskyNaN16RunConcrete.v` (`fixture_table_base := 104` and the two
-fixture lemmas), then the comments and certificate text.
+fixture lemmas), the action smoke-memory relocation, and the comments and
+certificate text.
 
 ---
 
@@ -442,24 +453,28 @@ The `.nas` file is the source of truth. Any change to code size, data labels,
 `.org`, table length, expected length, or tape length can shift addresses.
 Follow this checklist in order.
 
-### 7.1 Immediate delta list (for the literal-address correction)
+### 7.1 Immediate delta list (applied literal-address correction)
+
+This table was applied in the current revision; it remains the checklist if
+the layout is re-pinned later.
 
 | # | File | Delta |
 |---|---|---|
 | 1 | `mth/tests/mth_minsky_test.nas` | No text change required for this correction; it remains the pinned authority. Re-run `nmk.awk` and confirm the blob hash is still `b40bdbe...` before trusting the map. |
-| 2 | `formal/utm/MinskyNaN16Action.v` | `action_head_addr 300→101`, `action_state_addr 301→100`, `action_halt_addr 302→102`; update header comment; review `smoke_mem`. |
+| 2 | `formal/utm/MinskyNaN16Action.v` | `action_head_addr 300→101`, `action_state_addr 301→100`, `action_halt_addr 302→102`; header comment updated; `smoke_mem` moved to row 400/tape 500. |
 | 3 | `formal/utm/MinskyNaN16Prelude.v` | `tape_base_addr 303→99`; update any comment that describes the cell. |
 | 4 | `formal/utm/MinskyNaN16RunConcrete.v` | `fixture_table_base 304→104`; `fixture_table_base_after_control` `+1→+5`; `fixture_table_end` `1776→1576`; rewrite the "Addresses" header block. |
 | 5 | `formal/utm/MinskyNaN16Universality.v` | Module comment `304→104`; recheck `fixture_table_base_above_halt` and `fixture_table_fits_below_tape` (both remain true). |
 | 6 | `formal/utm/MinskyNaN16StepOk.v` | Comment "tape-base cell 303" → "tape-base cell 99". |
-| 7 | `formal/utm/check_minsky_nan16_step.py` | Update the symbolic-address comment; recommended hardening: assert the pinned label values (`tbase 99`, `state 100`, `head 101`, `halt 102`, `rlink 103`, `table 104`) against `nmk.awk` `LABELS` output and against the Coq `Definition`s. |
-| 8 | `formal/utm/certificates/nan16-vm/nan16_run_halting_equivalence_canonical.certificate.json` | Regenerate the certificate after the Coq change; update `scope`, `not_proved[2]`, and `transcription_table_base_caveat` (the old caveat says "abstract control cells 300..303"). |
-| 9 | `formal/utm/certificates/nan16-vm/README.md` | Update the current scope/non-claims text (`fixture_table_base = 304`, `300..303`, `99..104`). |
-| 10 | `formal/utm/certificates/nan16-table/README.md` | Update the current table-base caveat at the top and in "What is not proved" (`300..303`, `304`, `99..104`). |
-| 11 | `formal/utm/UNIVERSALITY_REVIEW_LEDGER.md` | Update the current caveat section or add a dated correction entry; preserve historical run entries. |
+| 7 | `formal/utm/check_minsky_nan16_step.py` | Symbolic-address comment updated; further hardening (asserting the pinned label values against `nmk.awk` `LABELS` output and the Coq `Definition`s) remains a follow-up, not a proof premise. |
+| 8 | `formal/utm/certificates/nan16-vm/nan16_run_halting_equivalence_canonical.certificate.json` | Regenerated and updated: `scope`, `not_proved[2]`, `transcription_table_base_caveat`, source/`.vo` hashes, and dependency hashes now reflect the literal layout. |
+| 9 | `formal/utm/certificates/nan16-vm/README.md` | Scope/non-claims text and anchor hashes updated to the literal layout. |
+| 10 | `formal/utm/certificates/nan16-table/README.md` | Table-base caveat and block-correspondence text updated to the literal layout. |
+| 11 | `formal/utm/UNIVERSALITY_REVIEW_LEDGER.md` | Current caveat section updated; historical run entries preserved. |
 
-No Coq `.v` file is modified by this document. The first actual Coq edit is
-the `MinskyNaN16Action.v` patch in [§4.4](#44-first-edit).
+This document itself does not modify Coq files. The first actual Coq edit
+applied was the `MinskyNaN16Action.v` patch in
+[§4.4](#44-first-edit-applied).
 
 ### 7.2 Future `.nas` layout change procedure
 

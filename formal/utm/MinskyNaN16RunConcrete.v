@@ -26,16 +26,15 @@
     i.e. the five data cells are followed immediately by the table and
     the whole 1472-word table (104 + 8*184 = 1576) stays below the tape.
 
-    The Coq VM abstracts the four data cells by the constants
-    [action_head_addr = 300], [action_state_addr = 301],
-    [action_halt_addr = 302], [tape_base_addr = 303] (see
-    [MinskyNaN16Action.v]; the constants are parameters linked to the
-    source layout by the transcription gate).  The model table must
-    therefore avoid 300..302 and start above the control block.  Taking
-    the first free address, [304], preserves the .nas ordering
+    The Coq VM uses the literal control cells
+    [action_head_addr = 101], [action_state_addr = 100],
+    [action_halt_addr = 102], [tape_base_addr = 99] (see
+    [MinskyNaN16Action.v] and [MinskyNaN16Prelude.v]).  The `rlink` cell at
+    103 is reserved and unmodelled; the table begins at its literal label,
+    [fixture_table_base = 104].  Thus
 
-      300..303   control cells
-      304..1775  table        (304 + 8*184 = 1776)
+      99..102    modelled control cells (103 = rlink, reserved)
+      104..1575  table        (104 + 8*184 = 1576)
       4096..     tape
 
     and the separation below is pure arithmetic on these numerals.  The
@@ -51,7 +50,7 @@ From NaNLM Require Import MinskyNaN16RunClosed MinskyNaN16Run
 
 (** ** Fixture addresses *)
 
-Definition fixture_table_base : nat := 304.
+Definition fixture_table_base : nat := 104.
 Definition fixture_tape_base : nat := 4096.
 
 (** ** The literal 184x8 table of [mth_minsky_test.nas] *)
@@ -273,19 +272,19 @@ Lemma fixture_table_short :
 Proof. apply rows_short_of_rows8. exact fixture_table_rows8. Qed.
 
 (** The .nas emits the table immediately after the five data cells.  In
-    the model those cells end at [tape_base_addr = 303], so [304] is the
-    corresponding first free cell.  The tape base is the literal word
-    [4096] of the fixture. *)
+    the model those cells start at [tape_base_addr = 99], so the literal
+    table base is [99 + 5 = 104]; the intervening rlink cell at 103 is
+    reserved.  The tape base is the literal word [4096] of the fixture. *)
 Lemma fixture_table_base_after_control :
-  fixture_table_base = tape_base_addr + 1.
+  fixture_table_base = tape_base_addr + 5.
 Proof. vm_compute. reflexivity. Qed.
 
 Lemma fixture_tape_base_literal : fixture_tape_base = 4096.
 Proof. reflexivity. Qed.
 
-(** The table occupies [304, 1776), strictly below the tape base. *)
+(** The table occupies [104, 1576), strictly below the tape base. *)
 Lemma fixture_table_end :
-  fixture_table_base + 8 * length fixture_table = 1776.
+  fixture_table_base + 8 * length fixture_table = 1576.
 Proof. vm_compute. reflexivity. Qed.
 
 Lemma fixture_table_below_tape :

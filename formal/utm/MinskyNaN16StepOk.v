@@ -18,7 +18,7 @@
       fields of [entry_ok] is a projection of the native execution
       specification ([prelude_halted], [prelude_ready],
       [native_step_refines]) plus two memory frames:
-        * the tape-base cell 303 is not overwritten by the action
+        * the tape-base cell 99 is not overwritten by the action
           ([action_run_frame] plus [tape_base_addr <> tape cell]);
         * the table cells are not overwritten by the action
           ([table_mem_at_action_run] plus table/tape disjointness).
@@ -544,7 +544,7 @@ Theorem step_ok_of_layout :
       table_base + 8 * i + f <> action_state_addr) ->
     (forall i f, i < length table -> f < 8 ->
       table_base + 8 * i + f <> action_halt_addr) ->
-    (* the tape-base cell 303 is not the current tape cell *)
+    (* the tape-base cell 99 is not the current tape cell *)
     tape_base_addr <> tbase + vm_reg vm 2 ->
     step_ok vm table table_base tbase.
 Proof.

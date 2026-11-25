@@ -6,8 +6,9 @@
     head and state, and sets the halt flag.
 
     The block is modelled at the .nas mnemonic level, like
-    [MinskyNaN16VM].  The address constants are parameters; the
-    transcription gate links them to the literal source layout. *)
+    [MinskyNaN16VM].  The address constants below are pinned to the
+    literal source layout: tbase 99, state 100, head 101, halt 102,
+    rlink 103 (unmodelled), table 104. *)
 
 From Coq Require Import List Arith Bool Lia.
 Import ListNotations.
@@ -18,9 +19,9 @@ Open Scope nat_scope.
 
 (** ** Action program *)
 
-Definition action_head_addr : nat := 300.
-Definition action_state_addr : nat := 301.
-Definition action_halt_addr : nat := 302.
+Definition action_head_addr : nat := 101.
+Definition action_state_addr : nat := 100.
+Definition action_halt_addr : nat := 102.
 
 Definition action_block : list Instr :=
   [ iLD 9 7 2;              (* 0: write symbol *)
@@ -58,21 +59,21 @@ Definition action_init (vm : VM) : VM :=
 
 Definition smoke_mem : Mem :=
   fun k =>
-    if Nat.eqb k 100 then 3 else
-    if Nat.eqb k 101 then 4 else
-    if Nat.eqb k 102 then 7 else
-    if Nat.eqb k 103 then 2 else
-    if Nat.eqb k 104 then 6 else
-    if Nat.eqb k 105 then 1 else
-    if Nat.eqb k 200 then 5 else
+    if Nat.eqb k 400 then 3 else
+    if Nat.eqb k 401 then 4 else
+    if Nat.eqb k 402 then 7 else
+    if Nat.eqb k 403 then 2 else
+    if Nat.eqb k 404 then 6 else
+    if Nat.eqb k 405 then 1 else
+    if Nat.eqb k 500 then 5 else
     0.
 
 Definition smoke_vm : VM :=
   {| vm_pc := 0;
      vm_reg := fun x =>
        if Nat.eqb x 2 then 50 else
-       if Nat.eqb x 3 then 200 else
-       if Nat.eqb x 7 then 100 else
+       if Nat.eqb x 3 then 500 else
+       if Nat.eqb x 7 then 400 else
        if Nat.eqb x 13 then 1 else 0;
      vm_mem := smoke_mem;
      vm_zf := false; vm_lf := false; vm_halted := false; vm_link := 900 |}.
@@ -80,7 +81,7 @@ Definition smoke_vm : VM :=
 Eval vm_compute in
   (let vm := run_until 24 action_block action_stop smoke_vm in
    (vm_pc vm, vm_reg vm 2, vm_reg vm 9, vm_reg vm 7,
-    vm_mem vm 200, vm_mem vm action_head_addr,
+    vm_mem vm 500, vm_mem vm action_head_addr,
     vm_mem vm action_state_addr, vm_mem vm action_halt_addr)).
 
 (** ** Action invariant and specification *)
@@ -124,9 +125,9 @@ Definition action_run
 Definition smoke_row : list nat := [3; 4; 7; 2; 6; 1; 0; 0].
 
 Example action_run_smoke :
-  let res := action_run 100 200 50 smoke_mem smoke_row in
+  let res := action_run 400 500 50 smoke_mem smoke_row in
   fst res = 51 /\
-  snd res 200 = 7 /\
+  snd res 500 = 7 /\
   snd res action_head_addr = 51 /\
   snd res action_state_addr = 6 /\
   snd res action_halt_addr = 1.

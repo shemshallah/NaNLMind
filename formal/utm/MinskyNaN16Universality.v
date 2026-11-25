@@ -7,7 +7,7 @@
              the closed NaN16 VM run halts within the K-window encoding.
 
     The K-indexed initial VM is the literal fixture memory: the 184x8 table
-    at [fixture_table_base = 304], the flat tape at
+    at [fixture_table_base = 104], the flat tape at
     [fixture_tape_base = 4096], and the source tape placed at signed
     coordinates [z] via [win_mem ... K], so the runtime offset is [z + K].
 
