@@ -33,6 +33,7 @@ on:
       - 'formal/utm/MinskyNaN16Prelude.v'
       - 'formal/utm/MinskyNaN16PreludeReady.v'
       - 'formal/utm/check_minsky_nan16_step.py'
+      - 'formal/utm/certificates/nan16-vm/**'
       - '.github/workflows/minsky-nan16-vm.yml'
 
 permissions:
@@ -112,6 +113,83 @@ jobs:
           done
           echo "NAN16 VM CHAIN COMPILED"
 
+      - name: Compile the final NaN16 universality cone
+        run: |
+          set -euo pipefail
+          MODULES="
+            MinskySourceEncoding
+            MinskyWideSource
+            MinskyConcreteEntry
+            MinskyConcreteDispatch
+            MinskyLeftInfinite
+            MinskyMatchMacro
+            MinskyActionMacro
+            MinskyHeadMoveMacro
+            MinskyWritebackMacro
+            MinskyRelocationMacro
+            MinskyDirectionDecision
+            MinskyCanonicalMatch
+            MinskyCanonicalCopy
+            MinskyCanonicalCopyGeneral
+            MinskyCanonicalDirection
+            MinskyCanonicalRestore
+            MinskyCanonicalDecision
+            MinskyCanonicalFetch
+            MinskyCanonicalInstruction
+            MinskyDirectionCycle
+            MinskyConcreteProgramScan
+            MinskyWideConcreteDispatch
+            MinskyDirectionRelocationCycle
+            MinskyTaggedHalt
+            MinskyBookLayout
+            MinskyBookCycle
+            MinskyBookLeft
+            MinskyBookLeftCycle
+            MinskyBookLocate
+            MinskyBookLocateRows
+            MinskyBookLocateWide
+            MinskyBookLocateCycle
+            MinskyBookLocateLookup
+            MinskyBookEncode
+            MinskyBookRawBuffer
+            MinskyLeftInfiniteEncode
+            MinskyLeftInfiniteWindow
+            MinskyLeftInfiniteLookup
+            MinskyLeftInfiniteLookupFull
+            MinskyLeftInfiniteSentinel
+            MinskyLeftInfiniteHalt
+            MinskyLeftInfiniteHaltBook
+            MinskyLeftInfiniteFirstMatchApp
+            MinskyLeftInfiniteStepRight
+            MinskyLeftInfiniteStepLeft
+            MinskyLeftInfiniteEncoding
+            MinskyLeftInfiniteBounded
+            MinskyLeftInfiniteLeftDepth
+            MinskyLeftInfiniteLift
+            MinskyLeftInfiniteBoundary
+            MinskyLeftInfiniteBoundaryLocate
+            MinskyLeftInfiniteBoundaryBook
+            MinskyLeftInfiniteBoundaryPremises
+            MinskyLeftInfiniteBoundaryFinal
+            MinskyLeftInfiniteBoundaryLookup
+            MinskyLeftInfiniteBoundaryLifted
+            MinskyLeftInfiniteClockInd
+            MinskyLeftInfiniteLiftForward
+            MinskyLeftInfiniteLiftBackward
+            MinskyLeftInfiniteUniversality
+            MinskyLeftInfiniteClockRun
+            MinskyNaN16RunConcrete
+            MinskyNaN16AddressStep
+            MinskyNaN16Universality
+          "
+          for f in $MODULES; do
+            echo "=== coqc $f"
+            coqc -Q formal/utm NaNLM \
+              -w -notation-overridden,-stdlib-vector \
+              "formal/utm/$f.v"
+          done
+          echo "NAN16 UNIVERSALITY CONE COMPILED"
+
       - name: Kernel-check the NaN16 VM chain
         run: |
           set -euo pipefail
@@ -153,6 +231,12 @@ jobs:
             coqchk -Q formal/utm NaNLM "formal/utm/$f.vo"
           done
           echo "NAN16 VM CHAIN KERNEL-CHECKED"
+
+      - name: Kernel-check the final NaN16 universality theorem
+        run: |
+          set -euo pipefail
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyNaN16Universality.vo
+          echo "NAN16 UNIVERSALITY KERNEL-CHECKED"
 
       - name: Upload NaN16 VM certificate
         if: always()
