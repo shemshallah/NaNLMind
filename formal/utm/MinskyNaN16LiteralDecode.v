@@ -1,34 +1,47 @@
-(** * ISA-OBL-1: literal word 0 decode and first step
+(** * ISA-OBL-1 and ISA-OBL-3a: literal decode and single-step execution
 
     This file discharges the first ISA-level obligation of
     [NAN0S_ISA_SPEC.md], section 6.3:
 
       [fixture_pc0_decode_and_step]
 
+    and the first opcode-extension obligation, ISA-OBL-3a:
+
+      [fixture_pc7_decode_and_step]   (LD r1,r0,100)
+
+    LD is word 7 of the fixture and is the memory-read counterpart used
+    by the control skeleton.  In literal word order the next unsupported
+    opcode after MOVI is actually ST at word 2; ST remains out of scope.
+    MOVI and LD are supported; every other fixture opcode is still rejected
+    by the decoder and is listed precisely by [decode_word_op_coverage].
+
     Word 0 of the pinned assembled fixture is
 
       0xFFF801D00001F8FF = FFF8_01D00001_F8FF = MOVI r13,1
 
-    We define a literal NaN16 word decoder for the MOVI case, a literal
-    machine state and step for that case, and the proposed refinement
-    relation [R] between the literal state and the Coq [VM] model of
-    [MinskyNaN16VM.v].  We then prove that the decoded instruction is
-    [iMOVI 13 1], that one literal step from the reset state reaches
-    [pc = 1], [r13 = 1], [k = 0] with memory and all other registers
-    unchanged, and that the literal successor is related by [R] to
-    [exec_instr fixture_prog vm].
+    We define a literal NaN16 word decoder for the MOVI and LD cases, a
+    literal machine state and step for those cases, and the proposed
+    refinement relation [R] between the literal state and the Coq [VM]
+    model of [MinskyNaN16VM.v].  We then prove that the decoded
+    instructions are [iMOVI 13 1] and [iLD 1 0 100], that one literal
+    step from the reset state reaches [pc = 1], [r13 = 1], [k = 0] with
+    memory and all other registers unchanged, and that both literal
+    successors are related by [R] to [exec_instr] on the corresponding
+    fixture programs.
 
     Scope and honest limitations:
 
-    - The decoder below handles the MOVI opcode (0x01) and rejects other
-      opcodes.  Extending it to the full fixture stream is ISA-OBL-2.
-    - The literal step below executes MOVI; other decoded instructions
-      are out of scope here (they are unreachable because the decoder
-      returns [None] for them).  Extending execution to the full fixture
-      subset is ISA-OBL-3.
+    - The decoder below handles the MOVI opcode (0x01) and the LD opcode
+      (0x08), and rejects every other opcode.  Extending it to the full
+      fixture stream is ISA-OBL-2.
+    - The literal step below executes MOVI and LD; other decoded
+      instructions are out of scope here (they are unreachable because the
+      decoder returns [None] for them).  Extending execution to the full
+      fixture subset is ISA-OBL-3.
     - [fixture_prog] is the one-instruction head slice of the Coq fixture
-      program.  ISA-OBL-1 only inspects word 0; the full 99-word decoder
-      agreement is ISA-OBL-2.
+      program used by ISA-OBL-1.  The LD obligation uses the literal
+      eight-word control prefix [fixture_prog_prefix8] and selects word 7.
+      The full 99-word decoder agreement is ISA-OBL-2.
     - The raw word is a binary natural [N], not a unary [nat].  This is
       the same 64-bit value; using [nat] would force Coq to normalize a
       2^48-scale unary numeral.  Register and payload values remain [nat]
@@ -54,11 +67,20 @@ Definition literal_word0 : N := 0xFFF801D00001F8FF.
 Lemma literal_word0_lt_2_64 : (literal_word0 < 2 ^ 64)%N.
 Proof. vm_compute. reflexivity. Qed.
 
-(** The literal image used by the obligation.  Only word 0 is constrained;
+(** ISA-OBL-3a uses word 7 of the same assembled fixture,
+
+      0xFFF808100064F8FF = FFF8_08100064_F8FF = LD r1,r0,100. *)
+Definition literal_word7 : N := 0xFFF808100064F8FF.
+
+Lemma literal_word7_lt_2_64 : (literal_word7 < 2 ^ 64)%N.
+Proof. vm_compute. reflexivity. Qed.
+
+(** The literal image used by the obligations.  Words 0 and 7 are pinned;
     all other words are zero here.  A full image is ISA-OBL-2. *)
 Definition image_word (idx : nat) : N :=
   match idx with
   | 0 => literal_word0
+  | 7 => literal_word7
   | _ => 0
   end.
 
@@ -123,15 +145,18 @@ Definition pred_passes (n k : nat) : bool :=
 
 (** ** The minimal literal decoder
 
-    This is the MOVI slice needed by ISA-OBL-1.  The head gate is part of
-    the decoder: an invalid near or far head produces [None].  For a valid
-    head pair, opcode 0x01 is decoded as [MOVI d,imm]; every other opcode
-    is rejected. *)
+    This is the MOVI + LD slice needed by ISA-OBL-1 and ISA-OBL-3a.  The
+    head gate is part of the decoder: an invalid near or far head produces
+    [None].  For a valid head pair, opcode 0x01 is decoded as
+    [MOVI d,imm], opcode 0x08 as [LD d,a,imm], and every other opcode is
+    rejected. *)
 
 Definition decode_word (w : N) : option Instr :=
   if andb (nan_hvalid (word_near w)) (nan_hvalid (word_far w)) then
     if Nat.eqb (word_op w) 1 then
       Some (iMOVI (word_d w) (word_imm w))
+    else if Nat.eqb (word_op w) 8 then
+      Some (iLD (word_d w) (word_a w) (word_imm w))
     else None
   else None.
 
@@ -152,13 +177,26 @@ Definition lit_reset (mem : nat -> N) : LState :=
      l_k := 0;
      l_halted := false |}.
 
-(** The MOVI action of the literal ISA.  Other instructions are outside
-    ISA-OBL-1 and are not reachable through [decode_word] above. *)
+(** The 32-bit payload projection used by the relation and by literal LD. *)
+Definition payload_word (w : N) : nat :=
+  N.to_nat (word_payload w).
+
+(** The MOVI and LD actions of the literal ISA.  Other instructions are
+    outside ISA-OBL-1/ISA-OBL-3a and are not reachable through
+    [decode_word] above.  LD loads the payload of the literal word at
+    [r[a] + imm], matching the Coq model's payload memory. *)
 Definition lit_exec (L : LState) (ins : Instr) : LState :=
   match ins with
   | iMOVI d imm =>
       {| l_pc := S (l_pc L);
          l_reg := set_reg (l_reg L) d imm;
+         l_mem := l_mem L;
+         l_k := l_k L;
+         l_halted := l_halted L |}
+  | iLD d a imm =>
+      {| l_pc := S (l_pc L);
+         l_reg := set_reg (l_reg L) d
+                    (payload_word (l_mem L (l_reg L a + imm)));
          l_mem := l_mem L;
          l_k := l_k L;
          l_halted := l_halted L |}
@@ -177,10 +215,12 @@ Definition literal_step (image : nat -> N) (L : LState) : LState :=
     reconciliation made explicit: both [vm_reg 15] and [vm_link] are tied
     to the literal [r15].  The memory clause projects each literal word to
     its 32-bit payload, because the Coq model's [LD]/[ST] see payloads.
-    The address bound is omitted: the Coq memory is total. *)
+    The address bound is omitted: the Coq memory is total.
 
-Definition payload_word (w : N) : nat :=
-  N.to_nat (word_payload w).
+    The final clause records that literal registers are 32-bit.  It is
+    needed by literal LD: the load address is [r[a] + imm] in the literal
+    machine, while the Coq model sees [vm_reg a + imm].  The relation only
+    says [vm_reg a = r[a] mod 2^32]; the bound identifies the two. *)
 
 Definition R (L : LState) (vm : VM) : Prop :=
   vm_pc vm = l_pc L /\
@@ -190,7 +230,8 @@ Definition R (L : LState) (vm : VM) : Prop :=
   (forall a, vm_mem vm a = payload_word (l_mem L a)) /\
   vm_zf vm = Nat.eqb ((l_k L / 2) mod 2) 1 /\
   vm_lf vm = Nat.eqb (l_k L mod 2) 1 /\
-  vm_halted vm = l_halted L.
+  vm_halted vm = l_halted L /\
+  (forall i, i < 16 -> l_reg L i < 2 ^ 32).
 
 (** Coq-side reset state whose memory is the payload projection of the
     literal image. *)
@@ -230,6 +271,47 @@ Lemma zero_mod_two32 : 0 mod 2 ^ 32 = 0.
 Proof.
   apply Nat.mod_small.
   apply Nat.neq_0_lt_0. exact two32_neq_0.
+Qed.
+
+(** ** Helper lemmas for the 32-bit payload bound
+
+    [payload_word] is always a 32-bit value, so storing it in a literal
+    register preserves the 32-bit register invariant, and reducing it
+    modulo [2 ^ 32] is the identity. *)
+
+Lemma N_lt_to_nat_lt :
+  forall a b : N, (a < b)%N -> N.to_nat a < N.to_nat b.
+Proof.
+  intros a b H. unfold N.lt in H.
+  rewrite N2Nat.inj_compare in H.
+  apply PeanoNat.Nat.compare_lt_iff. exact H.
+Qed.
+
+Lemma word_payload_lt_two32 :
+  forall w, (word_payload w < 2 ^ 32)%N.
+Proof.
+  intro w. unfold word_payload.
+  eapply N.le_lt_trans.
+  - apply N.land_le_r.
+  - vm_compute. reflexivity.
+Qed.
+
+Lemma payload_word_lt_two32 :
+  forall w, payload_word w < 2 ^ 32.
+Proof.
+  intro w. unfold payload_word.
+  pose proof
+    (N_lt_to_nat_lt (word_payload w) (2 ^ 32)%N
+       (word_payload_lt_two32 w)) as H.
+  rewrite N2Nat.inj_pow in H.
+  cbn in H.
+  exact H.
+Qed.
+
+Lemma payload_word_mod_two32 :
+  forall w, payload_word w mod 2 ^ 32 = payload_word w.
+Proof.
+  intro w. apply Nat.mod_small. apply payload_word_lt_two32.
 Qed.
 
 (** ** Helper lemmas for the register update *)
@@ -301,6 +383,60 @@ Lemma decode_word_literal_word0 :
   decode_word literal_word0 = Some (iMOVI 13 1).
 Proof. vm_compute. reflexivity. Qed.
 
+(** ** Literal decoding facts for word 7 (LD) *)
+
+Lemma literal_word7_near : word_near literal_word7 = 2 ^ 16 - 8.
+Proof. vm_compute. reflexivity. Qed.
+
+Lemma literal_word7_far : word_far literal_word7 = 2 ^ 16 - 8.
+Proof. vm_compute. reflexivity. Qed.
+
+Lemma literal_word7_payload : word_payload literal_word7 = (0x08100064)%N.
+Proof. vm_compute. reflexivity. Qed.
+
+Lemma literal_word7_op : word_op literal_word7 = 8.
+Proof. vm_compute. reflexivity. Qed.
+
+Lemma literal_word7_d : word_d literal_word7 = 1.
+Proof. vm_compute. reflexivity. Qed.
+
+Lemma literal_word7_a : word_a literal_word7 = 0.
+Proof. vm_compute. reflexivity. Qed.
+
+Lemma literal_word7_imm : word_imm literal_word7 = 100.
+Proof. vm_compute. reflexivity. Qed.
+
+Lemma literal_word7_n : word_n literal_word7 = 15.
+Proof. vm_compute. reflexivity. Qed.
+
+Lemma literal_word7_near_valid : nan_hvalid (word_near literal_word7) = true.
+Proof. vm_compute. reflexivity. Qed.
+
+Lemma literal_word7_far_valid : nan_hvalid (word_far literal_word7) = true.
+Proof. vm_compute. reflexivity. Qed.
+
+Lemma decode_word_literal_word7 :
+  decode_word literal_word7 = Some (iLD 1 0 100).
+Proof. vm_compute. reflexivity. Qed.
+
+(** The decoder accepts exactly opcodes 0x01 (MOVI) and 0x08 (LD).  This
+    is the precise positive coverage statement for ISA-OBL-1/3a. *)
+Lemma decode_word_op_coverage :
+  forall w ins,
+    decode_word w = Some ins ->
+    word_op w = 1 \/ word_op w = 8.
+Proof.
+  intros w ins H.
+  unfold decode_word in H.
+  destruct (andb (nan_hvalid (word_near w)) (nan_hvalid (word_far w)))
+    eqn:Ehead; [|discriminate].
+  destruct (Nat.eqb (word_op w) 1) eqn:E1.
+  - left. apply Nat.eqb_eq. exact E1.
+  - destruct (Nat.eqb (word_op w) 8) eqn:E8.
+    + right. apply Nat.eqb_eq. exact E8.
+    + discriminate.
+Qed.
+
 (** ** The literal first step *)
 
 Lemma fixture_prog_head :
@@ -344,6 +480,7 @@ Proof.
   - reflexivity.
   - reflexivity.
   - reflexivity.
+  - intros i Hi. rewrite reg0_any. apply Nat.neq_0_lt_0. exact two32_neq_0.
 Qed.
 
 (** ** ISA-OBL-1 *)
@@ -359,7 +496,7 @@ Proof.
   - cbn [image_word]. apply decode_word_literal_word0.
   - intros L vm HR Hpc.
     destruct HR as
-      (Hpcvm & Hregs & Hreg15 & Hlink & Hmem & Hzf & Hlf & Hhalt).
+      (Hpcvm & Hregs & Hreg15 & Hlink & Hmem & Hzf & Hlf & Hhalt & Hbound).
     unfold literal_step.
     rewrite Hpc.
     cbn [image_word].
@@ -371,7 +508,7 @@ Proof.
     cbn.
     unfold R.
     cbn [vm_pc vm_reg vm_mem vm_zf vm_lf vm_halted vm_link
-         l_pc l_reg l_mem l_k l_halted instr_succ].
+         l_pc l_reg l_mem l_k l_halted instr_succ get_reg].
     split_conj.
     + reflexivity.
     + intros i Hi.
@@ -388,6 +525,10 @@ Proof.
     + exact Hzf.
     + exact Hlf.
     + exact Hhalt.
+    + intros i Hi.
+      destruct (Nat.eq_dec i 13) as [-> | Hne].
+      * rewrite set_reg_eq. exact one_lt_two32.
+      * rewrite set_reg_neq by exact Hne. apply Hbound. exact Hi.
 Qed.
 
 (** The concrete reset instance, i.e. the Coq successor of the literal
@@ -403,8 +544,87 @@ Proof.
   - reflexivity.
 Qed.
 
+(** ** ISA-OBL-3a: literal LD decode and single-step execution
+
+    Word 7 of the fixture is [FFF8_08100064_F8FF] = [LD r1,r0,100].
+    The Coq program below is the literal eight-word control prefix
+    (the first seven instructions are not executed by this obligation;
+    [nth_error] selects index 7). *)
+
+Definition fixture_prog_prefix8 : list Instr :=
+  [ iMOVI 13 1;      (* 0 *)
+    iMOVI 1 5;       (* 1 *)
+    iST 1 0 100;     (* 2 *)
+    iMOVI 1 166;     (* 3 *)
+    iST 1 0 101;     (* 4 *)
+    iST 0 0 102;     (* 5 *)
+    iCALL 29;        (* 6 *)
+    iLD 1 0 100 ].   (* 7 *)
+
+Lemma fixture_prog_prefix8_ld :
+  nth_error fixture_prog_prefix8 7 = Some (iLD 1 0 100).
+Proof. reflexivity. Qed.
+
+(** Literal LD loads the 32-bit payload at [r[a] + imm].  The proof uses
+    the 32-bit register-bound clause of [R] to identify the literal
+    address [r[0] + 100] with the Coq address [vm_reg vm 0 + 100]. *)
+Theorem fixture_pc7_decode_and_step :
+  decode_word (image_word 7) = Some (iLD 1 0 100) /\
+  forall L vm,
+    R L vm ->
+    l_pc L = 7 ->
+    R (literal_step image_word L)
+      (exec_instr fixture_prog_prefix8 vm).
+Proof.
+  split.
+  - cbn [image_word]. apply decode_word_literal_word7.
+  - intros L vm HR Hpc.
+    destruct HR as
+      (Hpcvm & Hregs & Hreg15 & Hlink & Hmem & Hzf & Hlf & Hhalt & Hbound).
+    assert (Hr0 : vm_reg vm 0 = l_reg L 0).
+    { rewrite (Hregs 0 ltac:(lia)).
+      apply Nat.mod_small. apply Hbound. lia. }
+    unfold literal_step.
+    rewrite Hpc.
+    cbn [image_word].
+    rewrite decode_word_literal_word7.
+    cbn [lit_exec].
+    unfold exec_instr.
+    rewrite Hpcvm, Hpc.
+    rewrite fixture_prog_prefix8_ld.
+    cbn.
+    unfold R.
+    cbn [vm_pc vm_reg vm_mem vm_zf vm_lf vm_halted vm_link
+         l_pc l_reg l_mem l_k l_halted instr_succ get_reg].
+    split_conj.
+    + reflexivity.
+    + intros i Hi.
+      destruct (Nat.eq_dec i 1) as [-> | Hne].
+      * rewrite !set_reg_eq.
+        unfold get_reg.
+        rewrite Hr0, Hmem.
+        rewrite payload_word_mod_two32.
+        reflexivity.
+      * rewrite !set_reg_neq by exact Hne.
+        apply Hregs. exact Hi.
+    + rewrite !set_reg_neq by lia.
+      exact Hreg15.
+    + rewrite set_reg_neq by lia.
+      exact Hlink.
+    + intro a. exact (Hmem a).
+    + exact Hzf.
+    + exact Hlf.
+    + exact Hhalt.
+    + intros i Hi.
+      destruct (Nat.eq_dec i 1) as [-> | Hne].
+      * rewrite set_reg_eq. apply payload_word_lt_two32.
+      * rewrite set_reg_neq by exact Hne. apply Hbound. exact Hi.
+Qed.
+
 (** ** Assumption audit *)
 
 Print Assumptions fixture_pc0_decode_and_step.
 Print Assumptions fixture_pc0_literal_step.
 Print Assumptions fixture_pc0_reset_agrees.
+Print Assumptions decode_word_op_coverage.
+Print Assumptions fixture_pc7_decode_and_step.
