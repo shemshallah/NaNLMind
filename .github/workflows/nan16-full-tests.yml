@@ -90,10 +90,31 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: coqorg/coq:8.20
-      options: --user root
+      options: --user root --privileged
     timeout-minutes: 360
     steps:
       - uses: actions/checkout@v4
+
+      - name: Add swap headroom for the 21k-instruction kernel reduction
+        run: |
+          set -euo pipefail
+          if ! command -v swapon >/dev/null 2>&1 || ! command -v mkswap >/dev/null 2>&1; then
+            apt-get update -qq
+            apt-get install -y -qq util-linux procps
+          fi
+          echo "memory.max: $(cat /sys/fs/cgroup/memory.max 2>/dev/null || echo n/a)"
+          echo "memory.swap.max: $(cat /sys/fs/cgroup/memory.swap.max 2>/dev/null || echo n/a)"
+          free -h || true
+          SWAPFILE=/__w/nan16-swapfile
+          if ! swapon --show=NAME --noheadings 2>/dev/null | grep -qx "$SWAPFILE"; then
+            fallocate -l 12G "$SWAPFILE" \
+              || dd if=/dev/zero of="$SWAPFILE" bs=1M count=12288 status=none
+            chmod 600 "$SWAPFILE"
+            mkswap "$SWAPFILE"
+            swapon "$SWAPFILE"
+          fi
+          free -h
+          swapon --show
 
       - name: Locate the pinned Coq 8.20 toolchain
         run: |
