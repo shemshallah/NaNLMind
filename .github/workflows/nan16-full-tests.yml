@@ -104,7 +104,7 @@ jobs:
           fi
           echo "memory.max: $(cat /sys/fs/cgroup/memory.max 2>/dev/null || echo n/a)"
           echo "memory.swap.max: $(cat /sys/fs/cgroup/memory.swap.max 2>/dev/null || echo n/a)"
-          free -h || true
+          grep -E 'MemTotal|MemFree|SwapTotal|SwapFree' /proc/meminfo || true
           SWAPFILE=/__w/nan16-swapfile
           if ! swapon --show=NAME --noheadings 2>/dev/null | grep -qx "$SWAPFILE"; then
             fallocate -l 12G "$SWAPFILE" \
@@ -113,7 +113,7 @@ jobs:
             mkswap "$SWAPFILE"
             swapon "$SWAPFILE"
           fi
-          free -h
+          grep -E 'MemTotal|MemFree|SwapTotal|SwapFree' /proc/meminfo
           swapon --show
 
       - name: Locate the pinned Coq 8.20 toolchain
