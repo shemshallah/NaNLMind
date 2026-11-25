@@ -16,8 +16,9 @@ name: NaN16 full tests
 #      provides, so a resource failure is reported as a warning (set the
 #      workflow_dispatch input require_literal_run=true to make it fatal);
 #   3b. the cached prefix/tail split of the same 21,025-instruction run
-#      (LiteralMachine + LiteralPrefix + LiteralTail): required, each half
-#      stays inside the runner's memory;
+#      (LiteralMachine + LiteralPrefix + LiteralTail01..11 + LiteralTail):
+#      required, each 100-instruction chunk stays inside the runner's
+#      memory;
 #   4. coqchk on MinskyNaN16Universality.vo;
 #   5. logs and key .vo/.glob artifacts for every run.
 #
@@ -291,14 +292,32 @@ jobs:
           #     definitions only, no concrete reduction;
           #   MinskyNaN16LiteralPrefix: caches the certified 20,247-step
           #     prefix (same reduction as LiteralRun's first proof);
-          #   MinskyNaN16LiteralTail: the remaining 778 instructions on
-          #     the cached prefix state, ending in the published PASS
-          #     postconditions (halt, pc 28, payload 2/166/0,
-          #     "MTH MINSKY NATIVE PASS", reg1 4357, code preserved).
+          #   MinskyNaN16LiteralTail01 .. Tail11: the remaining 778
+          #     instructions on the cached prefix state, in eleven
+          #     checked chunks of at most 100 instructions each (100
+          #     steps for Tail01..05, 50 steps for Tail06..10, 28 for
+          #     Tail11).  The per-chunk reducers stay small; a single
+          #     778-step reduction is still OOM-killed on the hosted
+          #     runner;
+          #   MinskyNaN16LiteralTail: composes the chunk equalities and
+          #     proves the published PASS postconditions (halt, pc 28,
+          #     payload 2/166/0, "MTH MINSKY NATIVE PASS", reg1 4357,
+          #     code preserved).
           # This step is required: a failure here means the split proof
           # itself is wrong, not that resources ran out.
           for f in MinskyNaN16LiteralMachine \
                    MinskyNaN16LiteralPrefix \
+                   MinskyNaN16LiteralTail01 \
+                   MinskyNaN16LiteralTail02 \
+                   MinskyNaN16LiteralTail03 \
+                   MinskyNaN16LiteralTail04 \
+                   MinskyNaN16LiteralTail05 \
+                   MinskyNaN16LiteralTail06 \
+                   MinskyNaN16LiteralTail07 \
+                   MinskyNaN16LiteralTail08 \
+                   MinskyNaN16LiteralTail09 \
+                   MinskyNaN16LiteralTail10 \
+                   MinskyNaN16LiteralTail11 \
                    MinskyNaN16LiteralTail; do
             echo "=== coqc $f"
             coqc -Q formal/utm NaNLM \
@@ -413,6 +432,28 @@ jobs:
             formal/utm/MinskyNaN16LiteralMachine.glob
             formal/utm/MinskyNaN16LiteralPrefix.vo
             formal/utm/MinskyNaN16LiteralPrefix.glob
+            formal/utm/MinskyNaN16LiteralTail01.vo
+            formal/utm/MinskyNaN16LiteralTail01.glob
+            formal/utm/MinskyNaN16LiteralTail02.vo
+            formal/utm/MinskyNaN16LiteralTail02.glob
+            formal/utm/MinskyNaN16LiteralTail03.vo
+            formal/utm/MinskyNaN16LiteralTail03.glob
+            formal/utm/MinskyNaN16LiteralTail04.vo
+            formal/utm/MinskyNaN16LiteralTail04.glob
+            formal/utm/MinskyNaN16LiteralTail05.vo
+            formal/utm/MinskyNaN16LiteralTail05.glob
+            formal/utm/MinskyNaN16LiteralTail06.vo
+            formal/utm/MinskyNaN16LiteralTail06.glob
+            formal/utm/MinskyNaN16LiteralTail07.vo
+            formal/utm/MinskyNaN16LiteralTail07.glob
+            formal/utm/MinskyNaN16LiteralTail08.vo
+            formal/utm/MinskyNaN16LiteralTail08.glob
+            formal/utm/MinskyNaN16LiteralTail09.vo
+            formal/utm/MinskyNaN16LiteralTail09.glob
+            formal/utm/MinskyNaN16LiteralTail10.vo
+            formal/utm/MinskyNaN16LiteralTail10.glob
+            formal/utm/MinskyNaN16LiteralTail11.vo
+            formal/utm/MinskyNaN16LiteralTail11.glob
             formal/utm/MinskyNaN16LiteralTail.vo
             formal/utm/MinskyNaN16LiteralTail.glob
             formal/utm/MinskyNaN16RunConcrete.vo

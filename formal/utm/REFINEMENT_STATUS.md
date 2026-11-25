@@ -70,6 +70,32 @@ GitHub Actions run does not make them interchangeable.
    workflows compile it and independently run `coqchk` on the certificate.
    This scan proof concerns the flattened byte list; the new page model
    separately treats functional page indexing and bounded head arithmetic.
+7. **NaN16 literal full-fixture run (ISA-OBL-3d), cached split:** the
+   21,025-instruction literal program's full run was originally a single
+   monolithic `vm_compute` proof in `MinskyNaN16LiteralRun.v` (still
+   tracked, advisory). The split proves the same final postconditions in
+   two halves that each stay inside a hosted runner's memory:
+   - `MinskyNaN16LiteralMachine.v` holds the literal `LPState` machine
+     (five-block memory, 32-bit masked word arithmetic, `lp_exec`/
+     `lp_step`/`lp_run`) as **definitions only**; no proof in it reduces
+     a concrete run.
+   - `MinskyNaN16LiteralPrefix.v` caches the already-certified
+     20,247-instruction prefix as a transparent `vm_compute` value
+     (`literal_run100_valu`) and re-derives the published run100 trace
+     agreement from that cache.
+   - `MinskyNaN16LiteralTail.v` evaluates the remaining 778 instructions
+     over the cached prefix state and proves the full-run postconditions:
+     halted, `pc = 28`, payload words `2/166/0` at the action cells,
+     output `"MTH MINSKY NATIVE PASS"`, register 1 = 4357, and the code
+     image preserved (`code_preserved_bool`). This is the split
+     equivalent of the monolithic `literal_final` claims; fuel
+     composition (`20247 + 778 = 21025`) matches `lp_run_add`.
+   The CI split step (`nan16-full-tests.yml`, "Compile the literal
+   prefix/tail split") is **required**: a failure there means the split
+   proof is wrong, not that resources ran out. The monolithic
+   `MinskyNaN16LiteralRun` leaf stays advisory because its single
+   21,025-instruction reduction exceeds the hosted runner's memory even
+   with swap headroom.
 
 The Coq theorems are formal results about the Coq models. The general
 zipper-to-signed-address simulation bridges these two formal representations,
