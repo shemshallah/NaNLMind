@@ -251,7 +251,14 @@ jobs:
           echo "Compiling ${#MODULES[@]} modules with $(coqc --version | head -1)"
           for f in "${MODULES[@]}"; do
             echo "=== coqc $f"
-            coqc -Q formal/utm NaNLM \
+            EXTRA=()
+            if [ "$f" = "MinskyNaN16LiteralRun" ]; then
+              # The 20k/21k-instruction vm_compute proofs each need several
+              # GiB.  A worker isolates them from the accumulated master
+              # heap, which otherwise trips the OOM killer on the last one.
+              EXTRA=(-async-proofs on -async-proofs-tac-j 1)
+            fi
+            coqc "${EXTRA[@]}" -Q formal/utm NaNLM \
               -w -notation-overridden,-stdlib-vector \
               "formal/utm/$f.v" 2>&1 | tee "logs/coqc-$f.log"
           done
