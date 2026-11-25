@@ -138,14 +138,32 @@ Definition word_imm (w : N) : nat :=
       nan_hvalid(h) = ((h & 0x7FF0) == 0x7FF0)
                       /\ ((h & 15) == 1 \/ (h & 15) == 8)
       nan_hcls(h)   = ((h >> 2) & 2) | (h >> 15)
-      n             = (class(near) << 2) | class(far). *)
+      n             = (class(near) << 2) | class(far).
+
+    The executable definitions below use binary [N] masks and shifts.
+    This is the same function as the arithmetic [h/16 mod 2048],
+    [h/8 mod 2], [h/2^15 mod 2] spelling, but avoids Coq's linear
+    [divmod] on 16-bit heads: that spelling made the full literal run
+    uncomputable inside the kernel VM. *)
+
+Definition nan_hvalid_N (x : N) : bool :=
+  andb (N.eqb (N.land x 0x7FF0%N) 0x7FF0%N)
+       (orb (N.eqb (N.land x 0xF%N) 1%N)
+            (N.eqb (N.land x 0xF%N) 8%N)).
+
+Definition nan_hcls_N (x : N) : nat :=
+  2 * N.to_nat (N.land (N.shiftr x 3) 1%N) +
+      N.to_nat (N.land (N.shiftr x 15) 1%N).
 
 Definition nan_hvalid (h : nat) : bool :=
-  andb (Nat.eqb ((h / 16) mod 2048) 2047)
-       (orb (Nat.eqb (h mod 16) 1) (Nat.eqb (h mod 16) 8)).
+  nan_hvalid_N (N.of_nat h).
 
 Definition nan_hcls (h : nat) : nat :=
-  2 * ((h / 8) mod 2) + (h / (2 ^ 15)) mod 2.
+  nan_hcls_N (N.of_nat h).
+
+Definition word_n_N (w : N) : nat :=
+  nan_hcls_N (N.shiftr w 48) * 4 +
+  nan_hcls_N (swap16 (N.land w 0xFFFF)).
 
 Definition word_n (w : N) : nat :=
   nan_hcls (word_near w) * 4 + nan_hcls (word_far w).

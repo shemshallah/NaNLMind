@@ -121,13 +121,14 @@ Proof. destruct p; reflexivity. Qed.
 (** ** Full fixture decoder *)
 
 Definition decode_word_p (w : N) : option InstrP :=
-  if andb (nan_hvalid (word_near w)) (nan_hvalid (word_far w)) then
+  if andb (nan_hvalid_N (N.shiftr w 48))
+          (nan_hvalid_N (swap16 (N.land w 0xFFFF))) then
     let op := word_op w in
     let d := word_d w in
     let a := word_a w in
     let imm := word_imm w in
     if Nat.eqb op 0 then
-      Some (pBOOL (word_n w) d a (imm mod 16))
+      Some (pBOOL (word_n_N w) d a (imm mod 16))
     else if Nat.eqb op 1 then Some (pMOVI d imm)
     else if Nat.eqb op 3 then Some (pADD d a (imm mod 16))
     else if Nat.eqb op 4 then Some (pSUB d a (imm mod 16))
@@ -137,20 +138,20 @@ Definition decode_word_p (w : N) : option InstrP :=
     else if Nat.eqb op 8 then Some (pLD d a imm)
     else if Nat.eqb op 9 then Some (pST d a imm)
     else if Nat.eqb op 10 then
-      match pred_of_n_full (word_n w) with
+      match pred_of_n_full (word_n_N w) with
       | Some p => Some (pJMP p imm)
       | None => None
       end
     else if Nat.eqb op 11 then Some (pCALL imm)
     else if Nat.eqb op 12 then
-      if Nat.eqb (word_n w) 15 then Some pRET
-      else match pred_of_n_full (word_n w) with
+      if Nat.eqb (word_n_N w) 15 then Some pRET
+      else match pred_of_n_full (word_n_N w) with
            | Some p => Some (pRETP p)
            | None => None
            end
     else if Nat.eqb op 21 then Some (pPUTC d)
     else if Nat.eqb op 255 then
-      if Nat.eqb (word_n w) 15 then Some pHALT else None
+      if Nat.eqb (word_n_N w) 15 then Some pHALT else None
     else None
   else None.
 
