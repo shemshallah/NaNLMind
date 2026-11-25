@@ -15,6 +15,9 @@ name: NaN16 full tests
 #      monolithic vm_compute proofs need more memory than a hosted runner
 #      provides, so a resource failure is reported as a warning (set the
 #      workflow_dispatch input require_literal_run=true to make it fatal);
+#   3b. the cached prefix/tail split of the same 21,025-instruction run
+#      (LiteralMachine + LiteralPrefix + LiteralTail): required, each half
+#      stays inside the runner's memory;
 #   4. coqchk on MinskyNaN16Universality.vo;
 #   5. logs and key .vo/.glob artifacts for every run.
 #
@@ -266,6 +269,35 @@ jobs:
           done
           echo "NAN16 FULL CONE COMPILED" | tee -a "$GITHUB_STEP_SUMMARY"
 
+      - name: Compile the literal prefix/tail split (ISA-OBL-3d)
+        timeout-minutes: 120
+        run: |
+          set -euo pipefail
+          ulimit -s unlimited 2>/dev/null || ulimit -s 65536
+          mkdir -p logs
+          # The 21,025-instruction full-fixture run is proven in two
+          # cached halves so no single vm_compute reduction exceeds the
+          # hosted runner's memory:
+          #   MinskyNaN16LiteralMachine: literal NaN16 state machine,
+          #     definitions only, no concrete reduction;
+          #   MinskyNaN16LiteralPrefix: caches the certified 20,247-step
+          #     prefix (same reduction as LiteralRun's first proof);
+          #   MinskyNaN16LiteralTail: the remaining 778 instructions on
+          #     the cached prefix state, ending in the published PASS
+          #     postconditions (halt, pc 28, payload 2/166/0,
+          #     "MTH MINSKY NATIVE PASS", reg1 4357, code preserved).
+          # This step is required: a failure here means the split proof
+          # itself is wrong, not that resources ran out.
+          for f in MinskyNaN16LiteralMachine \
+                   MinskyNaN16LiteralPrefix \
+                   MinskyNaN16LiteralTail; do
+            echo "=== coqc $f"
+            coqc -Q formal/utm NaNLM \
+              -w -notation-overridden,-stdlib-vector \
+              "formal/utm/$f.v" 2>&1 | tee "logs/coqc-$f.log"
+          done
+          echo "NAN16 LITERAL PREFIX/TAIL SPLIT PROOF PASS" | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: Kernel-check the NaN16 universality theorem
         run: |
           set -euo pipefail
@@ -350,6 +382,12 @@ jobs:
             formal/utm/MinskyNaN16LiteralStep.glob
             formal/utm/MinskyNaN16LiteralRun.vo
             formal/utm/MinskyNaN16LiteralRun.glob
+            formal/utm/MinskyNaN16LiteralMachine.vo
+            formal/utm/MinskyNaN16LiteralMachine.glob
+            formal/utm/MinskyNaN16LiteralPrefix.vo
+            formal/utm/MinskyNaN16LiteralPrefix.glob
+            formal/utm/MinskyNaN16LiteralTail.vo
+            formal/utm/MinskyNaN16LiteralTail.glob
             formal/utm/MinskyNaN16RunConcrete.vo
             formal/utm/MinskyNaN16RunConcrete.glob
             formal/utm/MinskyNaN16AddressStep.vo
