@@ -24,8 +24,10 @@ on:
       - 'formal/utm/MinskyNaN16StepSpec.v'
       - 'formal/utm/MinskyNaN16StepEntrySpec.v'
       - 'formal/utm/MinskyNaN16Run.v'
+      - 'formal/utm/MinskyNaN16RunClosed.v'
       - 'formal/utm/MinskyNaN16Prelude.v'
       - 'formal/utm/MinskyNaN16PreludeReady.v'
+      - 'formal/utm/check_minsky_nan16_step.py'
       - '.github/workflows/minsky-nan16-vm.yml'
 
 permissions:
@@ -44,6 +46,12 @@ jobs:
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
+
+      - name: Check literal step/run100 transcription
+        run: |
+          set -euo pipefail
+          python3 formal/utm/check_minsky_nan16_step.py 2>&1 \
+            | tee formal/utm/certificates/nan16-table/check_minsky_nan16_step.out
 
       - name: Locate pinned Coq 8.20 toolchain
         run: |
@@ -86,6 +94,7 @@ jobs:
             MinskyNaN16PreludeReady
             MinskyNaN16StepEntrySpec
             MinskyNaN16Run
+            MinskyNaN16RunClosed
           "
           for f in $MODULES; do
             echo "=== coqc $f"
@@ -137,6 +146,8 @@ jobs:
         with:
           name: nan16-vm-${{ github.run_id }}
           path: |
+            formal/utm/check_minsky_nan16_step.py
+            formal/utm/certificates/nan16-table/check_minsky_nan16_step.out
             formal/utm/MinskyTableData.v
             formal/utm/MinskyTableData.vo
             formal/utm/MinskyTable.v
@@ -195,4 +206,6 @@ jobs:
             formal/utm/MinskyNaN16StepEntrySpec.vo
             formal/utm/MinskyNaN16Run.v
             formal/utm/MinskyNaN16Run.vo
+            formal/utm/MinskyNaN16RunClosed.v
+            formal/utm/MinskyNaN16RunClosed.vo
           if-no-files-found: warn

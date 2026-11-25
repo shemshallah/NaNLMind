@@ -523,8 +523,148 @@ step refinement.
 
 Remaining for the `.nas` step/run100 certificate:
 
-1. `run100` iteration of `step_entry` (entry-invariant preservation and
-   `nstate_rel` induction);
+1. discharge the explicit `step_ok` hypothesis of `vm_run_refines`
+   (entry-invariant preservation for every entry-ready state);
 2. the source address/tape refinement connecting `nstep` to
    `nan16_address_step`/`MinskyTable.step` through the window lemmas;
-3. the checked `.nas` transcription gate and the final VM-level certificate.
+3. the assembler/ISA link (the Coq `exec_instr` model is a trusted
+   boundary, not a refinement of `third_party/nan0s/core/nan16.c`);
+4. the final VM-level certificate.  The new
+   `check_minsky_nan16_step.py` gate is only a source-text transcription
+   check, not a proof of this refinement.
+
+## Layer 2: literal step/run100 transcription gate (scaffolding)
+
+`formal/utm/check_minsky_nan16_step.py` is the source-text gate for the four
+Coq mnemonic blocks.  It reads both the literal `.nas` text and the Coq
+`Definition ... : list Instr` bodies, applies only the block-relative
+normalization listed below, and fails closed on any opcode, predicate,
+register, immediate, or symbolic memory-cell change.  It does **not** compile
+Coq and does **not** promote Layer 2 to a certificate.
+
+```text
+$ python3 formal/utm/check_minsky_nan16_step.py
+PASS mth/tests/mth_minsky_test.nas: literal step prelude/scan/action/no_trans order
+PASS prelude_block <-> MinskyNaN16Prelude.v: 11/11 instructions
+PASS scan_block <-> MinskyNaN16VM.v: 15/15 instructions
+PASS action_block <-> MinskyNaN16Action.v: 23/23 instructions
+PASS no_trans_block <-> MinskyNaN16StepNone.v: 3/3 instructions
+PASS run100: literal 100-iteration CALL @step driver (main sets r13=1 and calls @run100 once)
+PASS Coq step_entry/vm_run structure: prelude_block -> native_step, vm_run -> step_entry
+PASS theorem prelude_ready (MinskyNaN16PreludeReady.v)
+PASS theorem prelude_halted (MinskyNaN16PreludeReady.v)
+PASS theorem action_refines (MinskyNaN16ActionRefines.v)
+PASS theorem action_run_frame (MinskyNaN16ActionRun.v)
+PASS theorem scan_loop (MinskyNaN16ScanLoop.v)
+PASS theorem scan_phase (MinskyNaN16ScanPhase.v)
+PASS theorem step_hit_phase (MinskyNaN16StepHit.v)
+PASS theorem no_trans_run (MinskyNaN16StepNone.v)
+PASS theorem step_none_phase (MinskyNaN16StepNone.v)
+PASS theorem native_step_refines (MinskyNaN16Step.v)
+PASS theorem native_step_spec_active (MinskyNaN16StepSpec.v)
+PASS theorem step_entry_spec (MinskyNaN16StepEntrySpec.v)
+PASS theorem vm_run_refines (MinskyNaN16Run.v)
+NAN16 STEP/RUN100 TRANSCRIPTION PASS (source-text gate only; not a VM refinement certificate)
+```
+
+### Block correspondence checked by the gate
+
+| Coq block | Coq file | Literal `.nas` source | Block-relative normalization |
+|---|---|---|---|
+| `prelude_block` | `MinskyNaN16Prelude.v` | `step:` through `MOVI r8,0` (11 instructions) | `@step_ret` is the standalone prelude exit at pc 11 |
+| `scan_block` | `MinskyNaN16VM.v` | `scan:` first 10 instructions plus `next:` (2 instructions) | `@no_trans` -> `scan_none_pc` (13), `@next` -> 11, match fallthrough -> `scan_match_pc` (14); two model `HALT` sentinels are appended |
+| `action_block` | `MinskyNaN16Action.v` | `LD r9,r7,2` fallthrough through `step_ret: RET` (22 instructions) | `@mleft` -> 10, `@mright` -> 12, `@mdone` -> 14, `@step_ret` -> 22; one `JMP[ALWAYS] 14` is synthesized for the literal right-branch fallthrough into `mdone` |
+| `no_trans_block` | `MinskyNaN16StepNone.v` | `no_trans:` through `RET` (3 instructions) | none |
+
+Memory operands are compared symbolically, not by assembled address:
+
+```text
+@head  <-> action_head_addr
+@state <-> action_state_addr
+@halt  <-> action_halt_addr
+@tbase <-> tape_base_addr
+@table <-> table_base
+```
+
+The Coq constants `action_head_addr = 300`, `action_state_addr = 301`,
+`action_halt_addr = 302`, and `tape_base_addr = 303` are abstract cell
+identifiers.  The gate does not check the actual `.nas` label addresses,
+instruction encoding, or assembled layout.
+
+`run100` is checked as a literal driver shape: save `r15` in `@rlink`,
+`MOVI r11,100`, `CALL @step`, `SUB r11,r11,r13`, `JMP[NE] @rloop`, restore
+`r15`, `RET`; `main` sets `r13=1` and calls `@run100` exactly once.  The Coq
+side is checked structurally only: `step_entry` still composes
+`prelude_block` with `native_step`, and `vm_run` still iterates `step_entry`.
+There is no Coq theorem that instantiates the literal 100 or the final
+`main` state/head/tape assertions.
+
+### Exact Coq declarations checked for presence
+
+The gate checks these exact fully qualified declarations (module and short
+name); it does not re-prove them:
+
+```text
+NaNLM.MinskyNaN16PreludeReady.prelude_ready
+NaNLM.MinskyNaN16PreludeReady.prelude_halted
+NaNLM.MinskyNaN16ActionRefines.action_refines
+NaNLM.MinskyNaN16ActionRun.action_run_frame
+NaNLM.MinskyNaN16ScanLoop.scan_loop
+NaNLM.MinskyNaN16ScanPhase.scan_phase
+NaNLM.MinskyNaN16StepHit.step_hit_phase
+NaNLM.MinskyNaN16StepNone.no_trans_run
+NaNLM.MinskyNaN16StepNone.step_none_phase
+NaNLM.MinskyNaN16Step.native_step_refines
+NaNLM.MinskyNaN16StepSpec.native_step_spec_active
+NaNLM.MinskyNaN16StepEntrySpec.step_entry_spec
+NaNLM.MinskyNaN16Run.vm_run_refines
+```
+
+Workflow status of those declarations:
+
+| Declaration | Module | Workflow status |
+|---|---|---|
+| `prelude_ready` | `MinskyNaN16PreludeReady.v` | `coqc` + `coqchk` |
+| `prelude_halted` | `MinskyNaN16PreludeReady.v` | `coqc` + `coqchk` |
+| `action_refines` | `MinskyNaN16ActionRefines.v` | `coqc` + `coqchk` |
+| `action_run_frame` | `MinskyNaN16ActionRun.v` | `coqc` + `coqchk` |
+| `scan_loop` | `MinskyNaN16ScanLoop.v` | `coqc` + `coqchk` |
+| `scan_phase` | `MinskyNaN16ScanPhase.v` | `coqc` + `coqchk` |
+| `step_hit_phase` | `MinskyNaN16StepHit.v` | `coqc` + `coqchk` |
+| `no_trans_run` | `MinskyNaN16StepNone.v` | `coqc` + `coqchk` |
+| `step_none_phase` | `MinskyNaN16StepNone.v` | `coqc` + `coqchk` |
+| `native_step_refines` | `MinskyNaN16Step.v` | `coqc` + `coqchk` |
+| `native_step_spec_active` | `MinskyNaN16StepSpec.v` | `coqc` + `coqchk` |
+| `step_entry_spec` | `MinskyNaN16StepEntrySpec.v` | `coqc` only; not in the workflow kernel-check loop |
+| `vm_run_refines` | `MinskyNaN16Run.v` | `coqc` only; conditional on the explicit `step_ok` hypothesis |
+
+### Remaining assumptions and non-claims
+
+1. `vm_run_refines` is conditional.  Its statement contains
+   `(forall vm, entry_ok vm table table_base tbase ->
+   step_ok vm table table_base tbase)`; the checked workflow does not
+   discharge that hypothesis, and this gate does not either.  The theorem is
+   an induction schema, not a closed run100 certificate.
+2. `step_entry_spec` and `native_step_spec_active` retain their explicit
+   table hypotheses: `length table = 184`, the `Forall` row-shape conditions,
+   `table_mem_at table_base table m`, and per-row tape/table-cell
+   disjointness.  The gate checks the instruction text, not these semantic
+   premises for the concrete fixture.
+3. The gate compares normalized mnemonic tuples, not bytes.  The scan `HALT`
+   sentinels, the scan match-fallthrough jump, and the action right-branch
+   fallthrough jump are explicit model/normalization constructs.  The gate
+   does not prove that the assembler emits those exact addresses or opcodes.
+4. The NaN16 ISA semantics in `MinskyNaN16VM.exec_instr` remain a trusted
+   model boundary.  Nothing here refines `third_party/nan0s/core/nan16.c` or
+   the NaN16 encoder/loader.
+5. The literal `run100` loop count (100) and `main`'s final state/head/tape
+   checks are source-text facts.  Coq's `vm_run` is generic in `n`; no
+   theorem specializes it to 100 or proves the fixture's `PASS` path.
+6. `MinskyNaN16StepEntrySpec.v` and `MinskyNaN16Run.v` are compiled by the
+   dedicated workflow but are not included in its `coqchk` loop.  The
+   existing local `Print Assumptions step_entry_spec` report is not a
+   substitute for a CI kernel check.
+7. This section does not modify `nan16_words.certificate.json`, does not add
+   a new certificate claim, and does not make Layer 2 a Coq ↔ NaN0S VM
+   certificate.  It only records the new transcription gate and the exact
+   declarations it touches.
