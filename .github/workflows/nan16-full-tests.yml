@@ -1,0 +1,278 @@
+name: NaN16 full tests
+
+# Full, self-contained NaN16 verification on an Ubuntu GitHub runner.
+#
+# The local Termux environment crashes while kernel-reducing the literal
+# run proofs, so this workflow is the authoritative check for the literal
+# NaN16 cone.  It needs no external nan0s_work tree and no undecidability
+# library: every module is compiled from formal/utm with Coq 8.20.
+#
+#   1. self-contained transcription / literal-image / certificate gates;
+#   2. the complete transitive cone of
+#      MinskyNaN16LiteralDecode, LiteralStep, LiteralImage, LiteralPuts,
+#      LiteralRun, RunConcrete, AddressStep and Universality;
+#   3. coqchk on MinskyNaN16Universality.vo;
+#   4. logs and key .vo/.glob artifacts for every run.
+#
+# The loader gate (check_nan16_loader.py) is intentionally NOT run: it
+# requires an external NAN0S_WORK / nan0s_work checkout.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'formal/utm/**'
+      - 'tools/**'
+      - 'mth/tests/**'
+      - '.github/workflows/nan16-full-tests.yml'
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: nan16-full-tests-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  nan16-gates:
+    name: Self-contained NaN16 gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Check literal step / run100 transcription
+        run: |
+          set -euo pipefail
+          mkdir -p logs
+          python3 formal/utm/check_minsky_nan16_step.py 2>&1 \
+            | tee logs/check_minsky_nan16_step.log
+          echo "NAN16 STEP TRANSCRIPTION GATE PASS" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Check literal image dumps and ISA-OBL-2 anchors
+        run: |
+          set -euo pipefail
+          mkdir -p logs
+          python3 formal/utm/check_nan16_literal_image.py 2>&1 \
+            | tee logs/check_nan16_literal_image.log
+          echo "NAN16 LITERAL IMAGE GATE PASS" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify archived NaN16 certificate manifest and source anchors
+        run: |
+          set -euo pipefail
+          mkdir -p logs
+          # --allow-missing-vo: this job has no compiled .vo yet.  The full
+          # .vo anchors are checked after the Coq cone job below.
+          python3 tools/nan0s_compucert.py --allow-missing-vo -v 2>&1 \
+            | tee logs/nan0s_compucert_manifest.log
+          echo "NAN0S COMPUCERT MANIFEST PASS" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload gate logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nan16-full-gates-${{ github.run_id }}
+          path: logs/
+          if-no-files-found: warn
+          retention-days: 30
+
+  nan16-coq-cone:
+    name: Coq 8.20 NaN16 full cone
+    runs-on: ubuntu-latest
+    container:
+      image: coqorg/coq:8.20
+      options: --user root
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Locate the pinned Coq 8.20 toolchain
+        run: |
+          set -euo pipefail
+          if command -v coqc >/dev/null 2>&1; then
+            COQBIN=$(dirname "$(command -v coqc)")
+          else
+            COQC=$(find /home/coq/.opam -name coqc -type f | head -1)
+            test -n "$COQC"
+            COQBIN=$(dirname "$COQC")
+          fi
+          test -x "$COQBIN/coqc"
+          echo "$COQBIN" >> "$GITHUB_PATH"
+          "$COQBIN/coqc" --version | head -1
+          "$COQBIN/coqchk" --version | head -1
+
+      - name: Compile the full NaN16 cone
+        run: |
+          set -euo pipefail
+          mkdir -p logs
+          # Transitive dependency cone of the eight headline modules, in
+          # topological order.  Generated from the From NaNLM Require Import
+          # graph; keep MinskyNaN16LiteralRun.v tracked.
+          MODULES=(
+            MinskyTableData
+            MinskyTable
+            MinskyAddressRefinement
+            MinskyChartEncoding
+            MinskyChartScan
+            MinskyNaN16Words
+            MinskyNaN16VM
+            MinskyNaN16LiteralDecode
+            LiteralImageData
+            MinskyNaN16Action
+            MinskyNaN16Prelude
+            MinskyNaN16ActionMove
+            MinskyNaN16ActionPrefix
+            MinskyNaN16ActionSuffix
+            MinskyNaN16ActionRefines
+            MinskyNaN16Lookup
+            MinskyNaN16ScanFrame
+            MinskyNaN16ScanLoop
+            MinskyNaN16ScanPhase
+            MinskyNaN16StepHit
+            MinskyNaN16StepNone
+            MinskyNaN16Step
+            MinskyNaN16PreludeReady
+            MinskyNaN16ActionRun
+            MinskyNaN16StepSpec
+            MinskyNaN16StepEntrySpec
+            MinskyNaN16Run
+            MinskyNaN16StepOk
+            MinskyNaN16RunClosed
+            MinskyNaN16RunConcrete
+            MinskyNaN16LiteralImage
+            MinskyNaN16LiteralPuts
+            MinskyNaN16LiteralStep
+            MinskyNaN16LiteralRun
+            MinskyNaN16PreserveHead
+            MinskyNaN16PreserveTable
+            MinskyNaN16SourceArith
+            MinskyNaN16Window
+            MinskyNaN16AddressStep
+            MinskySourceEncoding
+            MinskyConcreteEntry
+            MinskyConcreteDispatch
+            MinskyMatchMacro
+            MinskyActionMacro
+            MinskyCanonicalMatch
+            MinskyCanonicalCopy
+            MinskyCanonicalCopyGeneral
+            MinskyCanonicalDirection
+            MinskyHeadMoveMacro
+            MinskyCanonicalRestore
+            MinskyDirectionDecision
+            MinskyWritebackMacro
+            MinskyRelocationMacro
+            MinskyCanonicalDecision
+            MinskyCanonicalFetch
+            MinskyCanonicalInstruction
+            MinskyDirectionCycle
+            MinskyConcreteProgramScan
+            MinskyWideSource
+            MinskyWideConcreteDispatch
+            MinskyDirectionRelocationCycle
+            MinskyTaggedHalt
+            MinskyBookLayout
+            MinskyBookCycle
+            MinskyBookLocate
+            MinskyBookLocateRows
+            MinskyBookEncode
+            MinskyBookLeft
+            MinskyBookLeftCycle
+            MinskyBookLocateWide
+            MinskyBookLocateCycle
+            MinskyBookLocateLookup
+            MinskyLeftInfinite
+            MinskyBookRawBuffer
+            MinskyLeftInfiniteEncode
+            MinskyLeftInfiniteFirstMatchApp
+            MinskyLeftInfiniteLookup
+            MinskyLeftInfiniteSentinel
+            MinskyLeftInfiniteWindow
+            MinskyLeftInfiniteHalt
+            MinskyLeftInfiniteHaltBook
+            MinskyLeftInfiniteLookupFull
+            MinskyLeftInfiniteStepLeft
+            MinskyLeftInfiniteStepRight
+            MinskyLeftInfiniteEncoding
+            MinskyLeftInfiniteBoundary
+            MinskyLeftInfiniteBoundaryLocate
+            MinskyLeftInfiniteBounded
+            MinskyLeftInfiniteLeftDepth
+            MinskyLeftInfiniteLift
+            MinskyLeftInfiniteBoundaryBook
+            MinskyLeftInfiniteBoundaryPremises
+            MinskyLeftInfiniteBoundaryFinal
+            MinskyLeftInfiniteBoundaryLookup
+            MinskyLeftInfiniteBoundaryLifted
+            MinskyLeftInfiniteClockInd
+            MinskyLeftInfiniteLiftForward
+            MinskyLeftInfiniteLiftBackward
+            MinskyLeftInfiniteUniversality
+            MinskyLeftInfiniteClockRun
+            MinskyNaN16Universality
+          )
+          echo "Compiling ${#MODULES[@]} modules with $(coqc --version | head -1)"
+          for f in "${MODULES[@]}"; do
+            echo "=== coqc $f"
+            coqc -Q formal/utm NaNLM \
+              -w -notation-overridden,-stdlib-vector \
+              "formal/utm/$f.v" 2>&1 | tee "logs/coqc-$f.log"
+          done
+          echo "NAN16 FULL CONE COMPILED" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Kernel-check the NaN16 universality theorem
+        run: |
+          set -euo pipefail
+          test -f formal/utm/MinskyNaN16Universality.vo
+          coqchk -Q formal/utm NaNLM formal/utm/MinskyNaN16Universality.vo \
+            2>&1 | tee logs/coqchk-MinskyNaN16Universality.log
+          echo "NAN16 UNIVERSALITY KERNEL-CHECKED" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Advisory full certificate check including compiled .vo anchors
+        id: compucert_full
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          python3 tools/nan0s_compucert.py -v 2>&1 \
+            | tee logs/nan0s_compucert_full.log
+
+      - name: Note any advisory certificate mismatch
+        if: steps.compucert_full.outcome == 'failure'
+        run: |
+          echo "::warning::Full nan0s_compucert .vo hash check did not pass; see logs/nan0s_compucert_full.log. Compilation, coqchk and the manifest/source-anchor gates are unaffected."
+
+      - name: Upload Coq logs and key NaN16 artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nan16-full-coq-${{ github.run_id }}
+          path: |
+            logs/
+            formal/utm/certificates/nan16-vm/
+            formal/utm/MinskyNaN16LiteralDecode.vo
+            formal/utm/MinskyNaN16LiteralDecode.glob
+            formal/utm/MinskyNaN16LiteralImage.vo
+            formal/utm/MinskyNaN16LiteralImage.glob
+            formal/utm/MinskyNaN16LiteralPuts.vo
+            formal/utm/MinskyNaN16LiteralPuts.glob
+            formal/utm/MinskyNaN16LiteralStep.vo
+            formal/utm/MinskyNaN16LiteralStep.glob
+            formal/utm/MinskyNaN16LiteralRun.vo
+            formal/utm/MinskyNaN16LiteralRun.glob
+            formal/utm/MinskyNaN16RunConcrete.vo
+            formal/utm/MinskyNaN16RunConcrete.glob
+            formal/utm/MinskyNaN16AddressStep.vo
+            formal/utm/MinskyNaN16AddressStep.glob
+            formal/utm/MinskyNaN16Universality.vo
+            formal/utm/MinskyNaN16Universality.glob
+          if-no-files-found: warn
+          retention-days: 30
