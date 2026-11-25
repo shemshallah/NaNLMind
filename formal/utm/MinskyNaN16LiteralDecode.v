@@ -83,8 +83,11 @@ Definition literal_word7 : N := 0xFFF808100064F8FF.
 Lemma literal_word7_lt_2_64 : (literal_word7 < 2 ^ 64)%N.
 Proof. vm_compute. reflexivity. Qed.
 
-(** The literal image used by the obligations.  Words 0 and 7 are pinned;
-    all other words are zero here.  A full image is ISA-OBL-2. *)
+(** The literal image used by the original ISA-OBL-1/ISA-OBL-3a
+    obligations.  Words 0 and 7 are pinned; all other words are zero
+    here.  The added opcode obligations in [MinskyNaN16LiteralOps.v] use
+    the full pinned image [MinskyNaN16LiteralImage.literal_word_at]
+    instead. *)
 Definition image_word (idx : nat) : N :=
   match idx with
   | 0 => literal_word0
@@ -182,7 +185,7 @@ Definition pred_nat (p : preg) : nat :=
   | pNEVER => 0
   end.
 
-Definition pred_of_n (n : nat) : option preg :=
+Definition pred_of_selector (n : nat) : option preg :=
   match n with
   | 3 => Some pNE
   | 4 => Some pEQ
@@ -232,13 +235,15 @@ Proof.
   destruct Hk' as [-> | [-> | [-> | ->]]]; reflexivity.
 Qed.
 
-(** ** The minimal literal decoder
+(** ** The literal decoder
 
-    This is the MOVI + LD slice needed by ISA-OBL-1 and ISA-OBL-3a.  The
-    head gate is part of the decoder: an invalid near or far head produces
-    [None].  For a valid head pair, opcode 0x01 is decoded as
-    [MOVI d,imm], opcode 0x08 as [LD d,a,imm], and every other opcode is
-    rejected. *)
+    The head gate is part of the decoder: an invalid near or far head
+    produces [None].  For a valid head pair the accepted opcodes are
+    MOVI (0x01), ADD (0x03), SUB (0x04), CMP (0x07), LD (0x08), ST (0x09),
+    and JMP (0x0A).  Register operands [b] are [imm & 15] as specified in
+    NAN0S_ISA_SPEC.md section 4; JMP targets keep the full 16-bit [imm].
+    The JMP selector is restricted to NE/EQ/GE/ALWAYS by
+    [pred_of_selector]; every other opcode or selector is rejected. *)
 
 Definition decode_word (w : N) : option Instr :=
   if andb (nan_hvalid (word_near w)) (nan_hvalid (word_far w)) then
@@ -255,7 +260,7 @@ Definition decode_word (w : N) : option Instr :=
     else if Nat.eqb (word_op w) 9 then
       Some (iST (word_d w) (word_a w) (word_imm w))
     else if Nat.eqb (word_op w) 10 then
-      match pred_of_n (word_n w) with
+      match pred_of_selector (word_n w) with
       | Some p => Some (iJMP p (word_imm w))
       | None => None
       end
@@ -733,7 +738,39 @@ Proof.
   destruct (Nat.eqb (word_op w) 10) eqn:E10.
   { right; right; right; right; right; right.
     apply Nat.eqb_eq. exact E10. }
-  destruct (pred_of_n (word_n w)); discriminate.
+  destruct (pred_of_selector (word_n w)); discriminate.
+Qed.
+
+(** The JMP selector is restricted to the four fixture predicates. *)
+Lemma pred_of_selector_range :
+  forall n p, pred_of_selector n = Some p ->
+  p = pNE \/ p = pEQ \/ p = pGE \/ p = pALWAYS.
+Proof.
+  intros n p H.
+  unfold pred_of_selector in H.
+  destruct n as [|[|[|[|[|[|[|[|[|[|[|[|[|[|[|[|n]]]]]]]]]]]]]]]];
+    try discriminate H; inversion H; subst; auto.
+Qed.
+
+Lemma decode_word_jmp_pred_coverage :
+  forall w p target,
+    decode_word w = Some (iJMP p target) ->
+    p = pNE \/ p = pEQ \/ p = pGE \/ p = pALWAYS.
+Proof.
+  intros w p target H.
+  unfold decode_word in H.
+  destruct (andb (nan_hvalid (word_near w)) (nan_hvalid (word_far w)))
+    eqn:Ehead; [|discriminate].
+  destruct (Nat.eqb (word_op w) 1); [discriminate|].
+  destruct (Nat.eqb (word_op w) 3); [discriminate|].
+  destruct (Nat.eqb (word_op w) 4); [discriminate|].
+  destruct (Nat.eqb (word_op w) 7); [discriminate|].
+  destruct (Nat.eqb (word_op w) 8); [discriminate|].
+  destruct (Nat.eqb (word_op w) 9); [discriminate|].
+  destruct (Nat.eqb (word_op w) 10) eqn:E10; [|discriminate].
+  destruct (pred_of_selector (word_n w)) as [q|] eqn:Eq; [|discriminate].
+  inversion H; subst.
+  apply (pred_of_selector_range (word_n w) p). exact Eq.
 Qed.
 
 (** ** The literal first step *)

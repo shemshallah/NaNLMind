@@ -353,6 +353,11 @@ Qed.
 
 (** ** The concrete fixture prefix and its selected words *)
 
+(** The four slices are the ones already proved against the image by
+    [decode_slice_main], [decode_slice_run100],
+    [decode_slice_step_prelude], and [decode_slice_scan] in
+    [MinskyNaN16LiteralImage.v].  Their concatenation is exactly the
+    fixture prefix at indices 0..66. *)
 Definition fixture_prog_0_66 : list Instr :=
   slice_main ++ slice_run100 ++ slice_step_prelude ++ slice_scan.
 
