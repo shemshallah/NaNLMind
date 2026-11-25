@@ -98,6 +98,11 @@ jobs:
       - name: Locate the pinned Coq 8.20 toolchain
         run: |
           set -euo pipefail
+          # Coq's VM and conversion checker recurse on the native stack.
+          # The default 8 MiB container stack is too small for the literal
+          # NaN16 vm_compute proofs (Stack overflow at LiteralDecode.v:650).
+          ulimit -s unlimited 2>/dev/null || ulimit -s 65536
+          ulimit -s
           if command -v coqc >/dev/null 2>&1; then
             COQBIN=$(dirname "$(command -v coqc)")
           else
@@ -113,6 +118,8 @@ jobs:
       - name: Compile the full NaN16 cone
         run: |
           set -euo pipefail
+          ulimit -s unlimited 2>/dev/null || ulimit -s 65536
+          echo "stack limit: $(ulimit -s)"
           mkdir -p logs
           # Transitive dependency cone of the eight headline modules, in
           # topological order.  Generated from the From NaNLM Require Import
@@ -232,6 +239,7 @@ jobs:
       - name: Kernel-check the NaN16 universality theorem
         run: |
           set -euo pipefail
+          ulimit -s unlimited 2>/dev/null || ulimit -s 65536
           test -f formal/utm/MinskyNaN16Universality.vo
           coqchk -Q formal/utm NaNLM formal/utm/MinskyNaN16Universality.vo \
             2>&1 | tee logs/coqchk-MinskyNaN16Universality.log
