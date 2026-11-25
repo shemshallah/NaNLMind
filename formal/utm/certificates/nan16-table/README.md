@@ -1,8 +1,36 @@
 # Coq 23x8 table ↔ native NaN16 table image
 
+**Final status (2026-11-24).** Layer 2 is closed at the Coq VM-model level.
+`formal/utm/MinskyNaN16Universality.v` proves the final theorem
+
+```text
+nan16_run_halting_equivalence_canonical
+  forall p rows c,
+    Forall (wide_row_wellformed p) rows ->
+    rows <> [] ->
+    length (lic_state c) = p ->
+    left_infinite_ok c ->
+    left_infinite_eventually_halts rows c <->
+    exists K t, K >= t /\
+      nan16_vm_halted
+        (vm_run t
+          (nan16_vm_of_addr K (embed_config (lic_native_init rows c K) 0))
+          fixture_table fixture_table_base)
+```
+
+with `Print Assumptions` closed under the global context and `coqchk`
+reporting `Modules were successfully checked`.  The raw VM certificate is
+in [`../nan16-vm/`](../nan16-vm/).
+
+This does **not** remove the table-base transcription caveat below: the
+final theorem is about the Coq VM model with abstract control cells
+`300..303` and table base `304`, while the literal `.nas` labels are
+`99..104` and the table starts at `104`.  The transcription gate compares
+memory operands symbolically, not assembled addresses.
+
 This is **Layer 1** of a Coq ↔ NaN0S certificate. It is a real, axiom-free
 kernel certificate for the table data and the native word-image step/run
-semantics. It is **not** yet a certificate for the `.nas` program running on
+semantics. It is **not** a certificate for the `.nas` program running on
 the NaN0S VM.
 
 ## What is proved
@@ -126,24 +154,31 @@ A full Coq table ↔ NaN0S certificate needs:
 4. Optionally, a refinement of `third_party/nan0s/core/nan16.c` or a
    documented trusted-ISA boundary.
 
-Layer 1 is the table/word-image half. Layer 2 is the VM/program half; it is
-not yet formalized. Executable NaN0S gates are conformance evidence, not a
-Coq certificate.
+Layer 1 is the table/word-image half. Layer 2 is the VM/program half.  The
+final Layer 2 theorem is now proved at the Coq VM-model level (see the
+status banner at the top and the closing section); it still does not refine
+the literal assembled NaN0S image.  Executable NaN0S gates are conformance
+evidence, not a Coq certificate.
 
-## Layer 2 status (in progress)
+## Layer 2 history (earlier checkpoint; superseded)
 
-`formal/utm/MinskyNaN16VM.v` now defines the NaN16 ISA subset used by
+The material below records the proof construction as it stood before the
+final theorem.  Statements such as "not yet formalized" are historical and
+are superseded by the final status at the top and the closing section.
+
+`formal/utm/MinskyNaN16VM.v` defines the NaN16 ISA subset used by
 `mth_minsky_test.nas` (registers, memory, flags, predicates, `MOVI`/`LD`/`ST`/
 `CMP`/`JMP`/`CALL`/`RET`/`ADD`/`SUB`/`SHL`/`HALT`), the exact native scan block,
 the `scan_ready` loop invariant, the table-memory invariant, and the
 `run_until` composition lemmas.  It passes `coqc` and `coqchk`.
 
-It does **not** yet contain `scan_iter_hit`/`scan_iter_miss`, the scan-loop
-induction, the `step` action refinement, or the `run100` refinement.  The
-current engineering blocker is the symbolic execution of the 12-instruction
-scan iteration: `cbn` leaves the `run_until` stop checks under nested
-`exec_instr`s, while a full `vm_compute` is too expensive for the general
-symbolic state.  The next step is a small-step `run_one`/`exec` rewrite
+At this checkpoint it did **not** yet contain `scan_iter_hit`/`scan_iter_miss`,
+the scan-loop induction, the `step` action refinement, or the `run100`
+refinement.  The engineering blocker at the time was the symbolic execution
+of the 12-instruction scan iteration: `cbn` left the `run_until` stop checks
+under nested `exec_instr`s, while a full `vm_compute` was too expensive for
+the general symbolic state.  The next step at that checkpoint was a
+small-step `run_one`/`exec` rewrite
 strategy that reduces each concrete PC check before the symbolic branch.
 
 Do not cite this as a Coq table ↔ NaN0S VM certificate yet.
@@ -692,3 +727,57 @@ parses nor enforces that output, and the `coqchk` loop still stops at
    a new certificate claim, and does not make Layer 2 a Coq ↔ NaN0S VM
    certificate.  It only records the new transcription gate and the exact
    declarations it touches.
+
+## Layer 2 final status (2026-11-24)
+
+The Coq VM half is now closed by
+`formal/utm/MinskyNaN16Universality.v`:
+
+```text
+NaNLM.MinskyNaN16Universality.nan16_run_halting_equivalence_canonical
+```
+
+The exact statement is reproduced in
+[`../nan16-vm/README.md`](../nan16-vm/README.md).  For every finite state
+width `p`, nonempty well-formed row list, and well-formed left-infinite
+source configuration, the source halts iff
+
+```text
+exists K t, K >= t /\
+  nan16_vm_halted
+    (vm_run t
+      (nan16_vm_of_addr K (embed_config (lic_native_init rows c K) 0))
+      fixture_table fixture_table_base)
+```
+
+The theorem and its supporting direction theorems
+`nan16_source_halt_to_vm` and `nan16_vm_halt_to_source` all report
+`Closed under the global context`; `coqchk` reports
+`Modules were successfully checked`.  The raw certificate, proof term,
+assumptions, and `coqchk` transcript are in
+[`../nan16-vm/`](../nan16-vm/).
+
+`K` is existential and may grow with the native run time `t`.  The window
+premise `K >= t` is inside the theorem, not a separate bridge hypothesis.
+A total run-time-independent encoder is still not claimed.
+
+### Transcription table-base caveat
+
+The final theorem is a statement about the **Coq VM model**, not about the
+literal assembled `.nas` image:
+
+- the Coq VM uses abstract control cells
+  `action_head_addr = 300`, `action_state_addr = 301`,
+  `action_halt_addr = 302`, `tape_base_addr = 303`, and
+  `fixture_table_base = 304`;
+- the literal `.nas` labels are `tbase`/`state`/`head`/`halt`/`rlink`/
+  `table` at `99..104`, and the table starts at `104`;
+- `check_minsky_nan16_step.py` maps `@head`, `@state`, `@halt`, `@tbase`,
+  and `@table` to those symbolic Coq names and compares normalized
+  mnemonic tuples.  It does not check assembled addresses, instruction
+  encodings, or the loader.
+
+Accordingly, the theorem does not refine
+`third_party/nan0s/core/nan16.c` or the NaN0S C++ VM, and it does not prove
+that the assembler emits the exact instruction addresses or opcodes used by
+the Coq model.  Those remain separate bridge obligations.

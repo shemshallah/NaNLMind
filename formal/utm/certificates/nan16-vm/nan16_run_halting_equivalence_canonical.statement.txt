@@ -1,0 +1,23 @@
+nan16_run_halting_equivalence_canonical
+     : forall (p : nat) (rows : list MinskyWideSource.WideSourceRow)
+         (c : MinskyLeftInfinite.LeftInfiniteConfig)
+         (_ : @List.Forall MinskyWideSource.WideSourceRow
+                (MinskyWideSource.wide_row_wellformed p) rows)
+         (_ : not
+                (@eq (list MinskyWideSource.WideSourceRow) rows
+                   (@nil MinskyWideSource.WideSourceRow)))
+         (_ : @eq nat (@length bool (MinskyLeftInfinite.lic_state c)) p)
+         (_ : MinskyLeftInfinite.left_infinite_ok c),
+       iff (MinskyLeftInfinite.left_infinite_eventually_halts rows c)
+         (@ex nat
+            (fun K : nat =>
+             @ex nat
+               (fun t : nat =>
+                and (ge K t)
+                  (nan16_vm_halted
+                     (MinskyNaN16Run.vm_run t
+                        (nan16_vm_of_addr K
+                           (MinskyAddressRefinement.embed_config
+                              (lic_native_init rows c K) BinNums.Z0))
+                        MinskyNaN16RunConcrete.fixture_table
+                        MinskyNaN16RunConcrete.fixture_table_base)))))

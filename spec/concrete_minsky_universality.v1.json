@@ -35,6 +35,51 @@
   },
   "native_implementation_status": {
     "table_image": "Coq 23x8 table <-> native NaN16 eight-word table image, proved in MinskyNaN16Words.v; raw certificate in formal/utm/certificates/nan16-table/.",
-    "vm_program": "Not yet formalized. The .nas step/run100 program and the NaN0S/Nan16 VM are linked by executable gates and transcription checks, not by a Coq refinement theorem."
+    "vm_program": "Formalized at the Coq semantics level in MinskyNaN16Universality.v; see nan16_vm_universality. The Coq VM model remains a trusted ISA boundary: this is not a refinement of third_party/nan0s/core/nan16.c, the assembler/encoder, or the literal assembled .nas addresses."
+  },
+  "nan16_vm_universality": {
+    "status": "closed",
+    "claim": "fixed 23x8 Minsky table executed by the Coq NaN16 fixture VM simulates every finite run of the left-infinite binary-tape source machine",
+    "claimed": true,
+    "theorem": "NaNLM.MinskyNaN16Universality.nan16_run_halting_equivalence_canonical",
+    "supporting_theorems": [
+      "NaNLM.MinskyNaN16Universality.nan16_source_halt_to_vm",
+      "NaNLM.MinskyNaN16Universality.nan16_vm_halt_to_source",
+      "NaNLM.MinskyNaN16Universality.nan16_run_halting_equivalence"
+    ],
+    "assumptions": [],
+    "checker": "coqc and coqchk (Coq 8.20.1), no Admitted/Axiom/Parameter",
+    "modules": [
+      "formal/utm/MinskyNaN16Universality.v",
+      "formal/utm/MinskyNaN16AddressStep.v",
+      "formal/utm/MinskyNaN16RunConcrete.v",
+      "formal/utm/MinskyNaN16RunClosed.v",
+      "formal/utm/MinskyNaN16Run.v",
+      "formal/utm/MinskyNaN16StepEntrySpec.v",
+      "formal/utm/MinskyNaN16StepSpec.v",
+      "formal/utm/MinskyNaN16Step.v",
+      "formal/utm/MinskyNaN16StepHit.v",
+      "formal/utm/MinskyNaN16StepNone.v",
+      "formal/utm/MinskyNaN16StepOk.v",
+      "formal/utm/MinskyNaN16Window.v",
+      "formal/utm/MinskyNaN16Words.v",
+      "formal/utm/MinskyNaN16Lookup.v",
+      "formal/utm/MinskyNaN16ScanLoop.v",
+      "formal/utm/MinskyNaN16ScanPhase.v",
+      "formal/utm/MinskyNaN16ActionRefines.v",
+      "formal/utm/MinskyNaN16ActionRun.v",
+      "formal/utm/MinskyNaN16PreludeReady.v",
+      "formal/utm/MinskyNaN16VM.v",
+      "formal/utm/MinskyLeftInfiniteClockRun.v",
+      "formal/utm/MinskyLeftInfiniteUniversality.v"
+    ],
+    "certificate": "formal/utm/certificates/nan16-vm/nan16_run_halting_equivalence_canonical.certificate.json",
+    "scope": "Fixed 23x8 table and the Coq model of the literal NaN16 fixture mth/tests/mth_minsky_test.nas. For every p, rows, c with Forall (wide_row_wellformed p) rows, rows <> [], length (lic_state c) = p, and left_infinite_ok c, the left-infinite source halts iff the closed NaN16 VM run halts from the K-window encoding of the same initial source configuration.",
+    "window_note": "The halting equivalence is exists K t, K >= t. K is the left-window depth and may grow with native time t; the window premise is not a separate bridge hypothesis, and a total run-time-independent encode is not claimed.",
+    "not_proved": [
+      "refinement of third_party/nan0s/core/nan16.c or the NaN0S C++ VM (exec_instr is a trusted Coq ISA model)",
+      "assembler/encoder correctness for the literal .nas source text",
+      "literal assembled addresses; the transcription gate compares @head/@state/@halt/@tbase/@table symbolically"
+    ]
   }
 }

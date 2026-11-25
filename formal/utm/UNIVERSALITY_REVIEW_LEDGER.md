@@ -1,10 +1,13 @@
 # Concrete Minsky 23×8 universality: referee-facing proof ledger
 
-Status date: 2026-11-23. **The fixed-table left-infinite simulation
-theorem is established and kernel-checked.**  The final theorem
-`lic_lifted_halting_equivalence` is recorded in the closing section.
+Status date: 2026-11-24. **The fixed-table left-infinite simulation
+theorem is established and kernel-checked.**  The Coq-table theorem
+`lic_lifted_halting_equivalence` is recorded in the closing section.  The
+separate NaN16 VM theorem `nan16_run_halting_equivalence_canonical` is
+also established and kernel-checked; its final status and the transcription
+table-base caveat are recorded in the NaN16 VM section at the end.
 Earlier sections retain their historical status and are superseded by
-that section.
+those sections.
 
 ## Frozen target
 
@@ -2210,46 +2213,78 @@ The existential window is essential.  A single total
 true for this table: a right-wall halt and a lookup-failure halt can
 have the same halted source configuration but different native frames.
 
-## November 24 NaN16 VM layer (in progress)
+## November 24 final NaN16 VM layer (kernel-checked)
 
 The table-level theorem above is unchanged and remains the certified
-universality claim.  A separate, lower VM layer is being built for the
-literal NaN16 fixture `mth/tests/mth_minsky_test.nas`.
+Coq-table universality claim.  A separate, lower VM layer is now also
+closed for the Coq model of the literal NaN16 fixture
+`mth/tests/mth_minsky_test.nas`.
 
-Checked locally (all `Print Assumptions` closed under the global context):
+The final theorem is
 
 ```text
-MinskyNaN16VM.v            ISA subset, scan block, scan_ready, table_mem_at
-MinskyNaN16ScanLoop.v      184-row scan loop, hit and no-match exits
-MinskyNaN16Action.v        action block, action_run, preservation lemmas
-MinskyNaN16ActionPrefix.v  pc 0 -> 5
-MinskyNaN16ActionMove.v    pc 5 -> 14, exact fuel 3/6/5, with r0/r7/mem frame
-MinskyNaN16ActionSuffix.v  pc 14 -> 22, both halt branches, full memory
-MinskyNaN16ActionRefines.v action_refines (pc 0 -> 22, pointwise action_run)
-MinskyNaN16ScanFrame.v     r0/r2/r3/r13/mem/halted scan frame
-MinskyNaN16ScanPhase.v     scan_phase with hit/no-match exits
-MinskyNaN16Lookup.v        scan_index_from vs nan16_lookup bridge
-MinskyNaN16StepHit.v       step_hit_phase (scan -> action -> pc 22)
-MinskyNaN16StepNone.v      no_trans_run / step_none_phase
-MinskyNaN16Step.v          native_step and native_step_refines
-MinskyNaN16ActionRun.v     action_run head/tape/state/halt/frame projections
-MinskyNaN16StepSpec.v      nstate_rel and native_step_spec_active
-MinskyNaN16Prelude*.v      literal prelude, both halt branches
+NaNLM.MinskyNaN16Universality.nan16_run_halting_equivalence_canonical
 ```
 
-The runner has validated the cone through `native_step_refines`; a later
-run validates `ActionRun` and `StepSpec`.  **Not yet done:**
+with exact statement
 
-1. the step-entry composition (prelude + reset + `native_step`); both the
-   local proot and a 30-minute GitHub probe failed to finish the composed
-   goal, so the probe was canceled and removed from the checked chain;
-2. a single contiguous `.nas` step program or a checked block
-   transcription gate;
-3. `run100` iteration over the step routine;
-4. the VM-memory/window representation of `AddressConfig` and the
-   one-step source refinement to `nan16_address_step`/`MinskyTable.step`;
-5. the raw VM-level certificate and any change to the spec claim.
+```text
+forall (p : nat) (rows : list WideSourceRow) (c : LeftInfiniteConfig),
+  Forall (wide_row_wellformed p) rows ->
+  rows <> [] ->
+  length (lic_state c) = p ->
+  left_infinite_ok c ->
+  left_infinite_eventually_halts rows c <->
+  exists K t,
+    K >= t /\
+    nan16_vm_halted
+      (vm_run t
+        (nan16_vm_of_addr K (embed_config (lic_native_init rows c K) 0))
+        fixture_table fixture_table_base)
+```
 
-No VM-level universality claim is made by this section.  The spec
-`claim` for the Coq table remains separate and must not be read as a
-NaN16 execution claim.
+It is checked by `coqc` and `coqchk` (Coq 8.20.1), with
+`Print Assumptions` reporting `Closed under the global context` for the
+canonical theorem and for the supporting direction theorems
+`nan16_source_halt_to_vm`, `nan16_vm_halt_to_source`, and
+`nan16_run_halting_equivalence`.  There is no `Admitted`, `Axiom`, or
+`Parameter` in the proof.  The raw certificate, statement, assumptions,
+proof term, and `coqchk` transcript are in
+[`certificates/nan16-vm/`](certificates/nan16-vm/).
+
+The theorem is a halting equivalence for every finite state width `p`,
+every nonempty well-formed row list, and every well-formed left-infinite
+source configuration.  The initial VM is the explicit constructor
+`nan16_vm_of_addr K (embed_config (lic_native_init rows c K) 0)`; only
+`K` and `t` are existential.
+
+### Window scope
+
+The theorem asserts `exists K t, K >= t`.  `K` is the left-window depth and
+may grow with the native run time `t`.  The window bound is discharged
+inside the theorem; it is not a separate bridge premise.  A total
+run-time-independent `encode p rows c` is still not claimed: right-wall
+halts and lookup-failure halts can have the same halted source
+configuration but different native frames.
+
+### Transcription table-base caveat
+
+The certified theorem is about the **Coq NaN16 VM model**, not about the
+literal assembled `.nas` image:
+
+- the Coq VM control cells are
+  `action_head_addr = 300`, `action_state_addr = 301`,
+  `action_halt_addr = 302`, `tape_base_addr = 303`, and
+  `fixture_table_base = 304`;
+- the `.nas` labels `tbase`/`state`/`head`/`halt`/`rlink`/`table` are at
+  `99..104`, and the table starts at `104`;
+- `check_minsky_nan16_step.py` compares mnemonic tuples with symbolic
+  memory operands (`@head`, `@state`, `@halt`, `@tbase`, `@table`), not
+  assembled addresses, instruction encodings, or loader behaviour.
+
+The theorem is therefore not a refinement of
+`third_party/nan0s/core/nan16.c` or the NaN0S C++ VM, and it does not prove
+that the assembled image uses the Coq model's exact addresses or opcodes.
+Those remain separate semantics-preserving bridge obligations.  The
+existing spec `claim` for the Coq table is separate and must not be read as
+a literal NaN16 execution claim.

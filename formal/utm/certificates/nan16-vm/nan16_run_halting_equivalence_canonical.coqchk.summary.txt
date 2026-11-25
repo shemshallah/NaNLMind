@@ -1,0 +1,56 @@
+Checking library: NaNLM.MinskyNaN16Universality
+  checking module: NaNLM.MinskyNaN16Universality
+  checking cst:NaNLM.MinskyNaN16Universality.fixture_words
+  checking cst:NaNLM.MinskyNaN16Universality.fixture_table_cell
+  checking cst:NaNLM.MinskyNaN16Universality.fixture_table_eq_nan16_rows
+  checking cst:NaNLM.MinskyNaN16Universality.nth_concat_eight
+  checking cst:NaNLM.MinskyNaN16Universality.fixture_table_rows8_in
+  checking cst:NaNLM.MinskyNaN16Universality.fixture_table_cell_spec
+  checking cst:NaNLM.MinskyNaN16Universality.fixture_table_base_above_halt
+  checking cst:NaNLM.MinskyNaN16Universality.fixture_table_fits_below_tape
+  checking cst:NaNLM.MinskyNaN16Universality.nan16_addr_mem
+  checking cst:NaNLM.MinskyNaN16Universality.nan16_addr_mem_head
+  checking cst:NaNLM.MinskyNaN16Universality.nan16_addr_mem_state
+  checking cst:NaNLM.MinskyNaN16Universality.nan16_addr_mem_halt
+  checking cst:NaNLM.MinskyNaN16Universality.nan16_addr_mem_tape_base
+  checking cst:NaNLM.MinskyNaN16Universality.nan16_addr_mem_win
+  checking cst:NaNLM.MinskyNaN16Universality.nan16_addr_mem_table
+  checking cst:NaNLM.MinskyNaN16Universality.nan16_addr_mem_table_nan16_rows
+  checking cst:NaNLM.MinskyNaN16Universality.nan16_vm_of_addr
+  checking cst:NaNLM.MinskyNaN16Universality.nan16_vm_of_addr_reg0
+  checking cst:NaNLM.MinskyNaN16Universality.nan16_vm_of_addr_reg2
+  checking cst:NaNLM.MinskyNaN16Universality.nan16_vm_of_addr_reg13
+  checking cst:NaNLM.MinskyNaN16Universality.nan16_vm_of_addr_entry_ok
+  checking cst:NaNLM.MinskyNaN16Universality.nan16_vm_of_addr_window_rep
+  checking cst:NaNLM.MinskyNaN16Universality.nstep_refines_address_step_fixture
+  checking cst:NaNLM.MinskyNaN16Universality.address_run_halted
+  checking cst:NaNLM.MinskyNaN16Universality.address_step_indexed_head_ge
+  checking cst:NaNLM.MinskyNaN16Universality.address_run_head_ge
+  checking cst:NaNLM.MinskyNaN16Universality.address_run_head_window
+  checking cst:NaNLM.MinskyNaN16Universality.nan16_addr_run_rep
+  checking cst:NaNLM.MinskyNaN16Universality.nan16_vm_halted
+  checking cst:NaNLM.MinskyNaN16Universality.if_one_neq_zero
+  checking cst:NaNLM.MinskyNaN16Universality.nan16_vm_run_halt_cell
+  checking cst:NaNLM.MinskyNaN16Universality.lic_native_init
+  checking cst:NaNLM.MinskyNaN16Universality.nan16_source_halt_to_vm
+  checking cst:NaNLM.MinskyNaN16Universality.nan16_vm_halt_to_source
+  checking cst:NaNLM.MinskyNaN16Universality.nan16_run_halting_equivalence
+  checking cst:NaNLM.MinskyNaN16Universality.nan16_run_halting_equivalence_canonical
+Modules were successfully checked
+
+CONTEXT SUMMARY
+===============
+
+* Theory: Set is predicative
+  
+* Theory: Rewrite rules are not allowed
+  
+* Axioms:
+    Coq.Logic.FunctionalExtensionality.functional_extensionality_dep
+  
+* Constants/Inductives relying on type-in-type: <none>
+  
+* Constants/Inductives relying on unsafe (co)fixpoints: <none>
+  
+* Inductives whose positivity is assumed: <none>
+  

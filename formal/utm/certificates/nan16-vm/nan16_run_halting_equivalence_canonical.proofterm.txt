@@ -1,0 +1,257 @@
+nan16_run_halting_equivalence_canonical =
+fun (p : nat) (rows : list MinskyWideSource.WideSourceRow)
+  (c : MinskyLeftInfinite.LeftInfiniteConfig)
+  (Hwf : @List.Forall MinskyWideSource.WideSourceRow
+           (MinskyWideSource.wide_row_wellformed p) rows)
+  (Hne : not
+           (@eq (list MinskyWideSource.WideSourceRow) rows
+              (@nil MinskyWideSource.WideSourceRow)))
+  (Hlen : @eq nat (@length bool (MinskyLeftInfinite.lic_state c)) p)
+  (Hok : MinskyLeftInfinite.left_infinite_ok c) =>
+@conj
+  (forall _ : MinskyLeftInfinite.left_infinite_eventually_halts rows c,
+   @ex nat
+     (fun K : nat =>
+      @ex nat
+        (fun t : nat =>
+         and (ge K t)
+           (nan16_vm_halted
+              (MinskyNaN16Run.vm_run t
+                 (nan16_vm_of_addr K
+                    (MinskyAddressRefinement.embed_config
+                       (lic_native_init rows c K) BinNums.Z0))
+                 MinskyNaN16RunConcrete.fixture_table
+                 MinskyNaN16RunConcrete.fixture_table_base)))))
+  (forall
+     _ : @ex nat
+           (fun K : nat =>
+            @ex nat
+              (fun t : nat =>
+               and (ge K t)
+                 (nan16_vm_halted
+                    (MinskyNaN16Run.vm_run t
+                       (nan16_vm_of_addr K
+                          (MinskyAddressRefinement.embed_config
+                             (lic_native_init rows c K) BinNums.Z0))
+                       MinskyNaN16RunConcrete.fixture_table
+                       MinskyNaN16RunConcrete.fixture_table_base)))),
+   MinskyLeftInfinite.left_infinite_eventually_halts rows c)
+  (fun Hsrc : MinskyLeftInfinite.left_infinite_eventually_halts rows c =>
+   nan16_source_halt_to_vm p rows c Hwf Hne Hlen Hok Hsrc)
+  (fun
+     H : @ex nat
+           (fun K : nat =>
+            @ex nat
+              (fun t : nat =>
+               and (ge K t)
+                 (nan16_vm_halted
+                    (MinskyNaN16Run.vm_run t
+                       (nan16_vm_of_addr K
+                          (MinskyAddressRefinement.embed_config
+                             (lic_native_init rows c K) BinNums.Z0))
+                       MinskyNaN16RunConcrete.fixture_table
+                       MinskyNaN16RunConcrete.fixture_table_base)))) =>
+   match
+     H return (MinskyLeftInfinite.left_infinite_eventually_halts rows c)
+   with
+   | @ex_intro _ _ x x0 =>
+       (fun (K : nat)
+          (H0 : @ex nat
+                  (fun t : nat =>
+                   and (ge K t)
+                     (nan16_vm_halted
+                        (MinskyNaN16Run.vm_run t
+                           (nan16_vm_of_addr K
+                              (MinskyAddressRefinement.embed_config
+                                 (lic_native_init rows c K) BinNums.Z0))
+                           MinskyNaN16RunConcrete.fixture_table
+                           MinskyNaN16RunConcrete.fixture_table_base)))) =>
+        match
+          H0
+          return (MinskyLeftInfinite.left_infinite_eventually_halts rows c)
+        with
+        | @ex_intro _ _ x1 x2 =>
+            (fun (t : nat)
+               (H1 : and (ge K t)
+                       (nan16_vm_halted
+                          (MinskyNaN16Run.vm_run t
+                             (nan16_vm_of_addr K
+                                (MinskyAddressRefinement.embed_config
+                                   (lic_native_init rows c K) BinNums.Z0))
+                             MinskyNaN16RunConcrete.fixture_table
+                             MinskyNaN16RunConcrete.fixture_table_base))) =>
+             match
+               H1
+               return
+                 (MinskyLeftInfinite.left_infinite_eventually_halts rows c)
+             with
+             | @conj _ _ x3 x4 =>
+                 (fun (HKt : ge K t)
+                    (Hhalt : nan16_vm_halted
+                               (MinskyNaN16Run.vm_run t
+                                  (nan16_vm_of_addr K
+                                     (MinskyAddressRefinement.embed_config
+                                        (lic_native_init rows c K) BinNums.Z0))
+                                  MinskyNaN16RunConcrete.fixture_table
+                                  MinskyNaN16RunConcrete.fixture_table_base))
+                  =>
+                  nan16_vm_halt_to_source p rows c K t
+                    (nan16_vm_of_addr K
+                       (MinskyAddressRefinement.embed_config
+                          (lic_native_init rows c K) BinNums.Z0)) Hwf Hne
+                    Hlen Hok HKt
+                    (nan16_vm_of_addr_entry_ok K
+                       (MinskyAddressRefinement.embed_config
+                          (lic_native_init rows c K) BinNums.Z0))
+                    (nan16_vm_of_addr_window_rep K
+                       (MinskyAddressRefinement.embed_config
+                          (lic_native_init rows c K) BinNums.Z0)
+                       (((let H2 :
+                            BinInt.Z.le BinNums.Z0 (BinInt.Z.of_nat K) :=
+                            Znat.Nat2Z.is_nonneg K in
+                          let HKt0 :
+                            BinInt.Z.ge (BinInt.Z.of_nat K)
+                              (BinInt.Z.of_nat t) :=
+                            ZifyClasses.rew_iff (ge K t)
+                              (BinInt.Z.ge (BinInt.Z.of_nat K)
+                                 (BinInt.Z.of_nat t))
+                              (ZifyClasses.mkrel nat BinNums.Z ge
+                                 BinInt.Z.of_nat BinInt.Z.ge
+                                 Znat.Nat2Z.inj_ge K 
+                                 (BinInt.Z.of_nat K)
+                                 (@eq_refl BinNums.Z (BinInt.Z.of_nat K)) t
+                                 (BinInt.Z.of_nat t)
+                                 (@eq_refl BinNums.Z (BinInt.Z.of_nat t)))
+                              HKt in
+                          let Hlen0 :
+                            @eq BinNums.Z
+                              (BinInt.Z.of_nat
+                                 (@length bool
+                                    (MinskyLeftInfinite.lic_state c)))
+                              (BinInt.Z.of_nat p) :=
+                            ZifyClasses.rew_iff
+                              (@eq nat
+                                 (@length bool
+                                    (MinskyLeftInfinite.lic_state c)) p)
+                              (@eq BinNums.Z
+                                 (BinInt.Z.of_nat
+                                    (@length bool
+                                       (MinskyLeftInfinite.lic_state c)))
+                                 (BinInt.Z.of_nat p))
+                              (ZifyClasses.mkrel nat BinNums.Z 
+                                 (@eq nat) BinInt.Z.of_nat 
+                                 (@eq BinNums.Z)
+                                 (fun x5 y : nat =>
+                                  @iff_sym
+                                    (@eq BinNums.Z 
+                                       (BinInt.Z.of_nat x5)
+                                       (BinInt.Z.of_nat y)) 
+                                    (@eq nat x5 y) 
+                                    (Znat.Nat2Z.inj_iff x5 y))
+                                 (@length bool
+                                    (MinskyLeftInfinite.lic_state c))
+                                 (BinInt.Z.of_nat
+                                    (@length bool
+                                       (MinskyLeftInfinite.lic_state c)))
+                                 (@eq_refl BinNums.Z
+                                    (BinInt.Z.of_nat
+                                       (@length bool
+                                          (MinskyLeftInfinite.lic_state c))))
+                                 p (BinInt.Z.of_nat p)
+                                 (@eq_refl BinNums.Z (BinInt.Z.of_nat p)))
+                              Hlen in
+                          let cstr :
+                            BinInt.Z.le BinNums.Z0 (BinInt.Z.of_nat p) :=
+                            Znat.Nat2Z.is_nonneg p in
+                          let cstr0 :
+                            BinInt.Z.le BinNums.Z0 (BinInt.Z.of_nat t) :=
+                            Znat.Nat2Z.is_nonneg t in
+                          let cstr1 :
+                            BinInt.Z.le BinNums.Z0
+                              (BinInt.Z.of_nat
+                                 (@length bool
+                                    (MinskyLeftInfinite.lic_state c))) :=
+                            Znat.Nat2Z.is_nonneg
+                              (@length bool (MinskyLeftInfinite.lic_state c))
+                            in
+                          let __arith :
+                            forall (__x1 : BinNums.Z)
+                              (_ : BinInt.Z.le BinNums.Z0 __x1),
+                            BinInt.Z.le BinNums.Z0 __x1 :=
+                            fun __x1 : BinNums.Z =>
+                            let __wit : list ZMicromega.ZArithProof :=
+                              @nil ZMicromega.ZArithProof in
+                            let __varmap : VarMap.t BinNums.Z :=
+                              @VarMap.Elt BinNums.Z __x1 in
+                            let __ff :
+                              Tauto.BFormula
+                                (RingMicromega.Formula BinNums.Z)
+                                Tauto.isProp :=
+                              @Tauto.IMPL (RingMicromega.Formula BinNums.Z)
+                                Tauto.eKind unit unit Tauto.isProp
+                                (@Tauto.A (RingMicromega.Formula BinNums.Z)
+                                   Tauto.eKind unit unit Tauto.isProp
+                                   (@RingMicromega.Build_Formula BinNums.Z
+                                      (...) RingMicromega.OpLe 
+                                      (...)) tt) (@None unit)
+                                (@Tauto.A (RingMicromega.Formula BinNums.Z)
+                                   Tauto.eKind unit unit Tauto.isProp
+                                   (@RingMicromega.Build_Formula BinNums.Z
+                                      (...) RingMicromega.OpLe 
+                                      (...)) tt) in
+                            ZMicromega.ZTautoChecker_sound __ff __wit
+                              (@eq_refl bool true
+                               <:
+                               @eq bool (ZMicromega.ZTautoChecker __ff __wit)
+                                 true)
+                              (@VarMap.find BinNums.Z BinNums.Z0 __varmap) in
+                          __arith (BinInt.Z.of_nat K) H2)
+                         :
+                         BinInt.Z.le BinNums.Z0
+                           (BinInt.Z.add
+                              (MinskyAddressRefinement.a_head
+                                 (MinskyAddressRefinement.Build_AddressConfig
+                                    (MinskyTable.c_state
+                                       (lic_native_init rows c K)) BinNums.Z0
+                                    (MinskyAddressRefinement.embed_tape
+                                       (MinskyTable.c_tape
+                                          (lic_native_init rows c K))
+                                       BinNums.Z0)
+                                    (MinskyTable.c_halted
+                                       (lic_native_init rows c K))))
+                              (BinInt.Z.of_nat K)))
+                        :
+                        BinInt.Z.le BinNums.Z0
+                          (BinInt.Z.add
+                             (MinskyAddressRefinement.a_head
+                                (MinskyAddressRefinement.embed_config
+                                   (lic_native_init rows c K) BinNums.Z0))
+                             (BinInt.Z.of_nat K)))) Hhalt) x3 x4
+             end) x1 x2
+        end) x x0
+   end)
+     : forall (p : nat) (rows : list MinskyWideSource.WideSourceRow)
+         (c : MinskyLeftInfinite.LeftInfiniteConfig)
+         (_ : @List.Forall MinskyWideSource.WideSourceRow
+                (MinskyWideSource.wide_row_wellformed p) rows)
+         (_ : not
+                (@eq (list MinskyWideSource.WideSourceRow) rows
+                   (@nil MinskyWideSource.WideSourceRow)))
+         (_ : @eq nat (@length bool (MinskyLeftInfinite.lic_state c)) p)
+         (_ : MinskyLeftInfinite.left_infinite_ok c),
+       iff (MinskyLeftInfinite.left_infinite_eventually_halts rows c)
+         (@ex nat
+            (fun K : nat =>
+             @ex nat
+               (fun t : nat =>
+                and (ge K t)
+                  (nan16_vm_halted
+                     (MinskyNaN16Run.vm_run t
+                        (nan16_vm_of_addr K
+                           (MinskyAddressRefinement.embed_config
+                              (lic_native_init rows c K) BinNums.Z0))
+                        MinskyNaN16RunConcrete.fixture_table
+                        MinskyNaN16RunConcrete.fixture_table_base)))))
+
+Arguments nan16_run_halting_equivalence_canonical 
+  p%nat_scope rows%list_scope c _ _ _ _

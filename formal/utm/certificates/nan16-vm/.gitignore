@@ -1,0 +1,7 @@
+*.vo
+*.glob
+*.vok
+*.vos
+*.out.out
+*.coqchk.txt
+.*.aux
