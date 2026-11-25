@@ -76,7 +76,10 @@ WORDS_BYTES = 74_222
 
 # NAN0S_ISA_SPEC.md section 1.6: the external fixture runner used for the
 # oracle observation is a separate checkout at this commit.  The file hashes
-# below are the ones that path was inspected at.
+# below are the ones that path was inspected at.  nan_cli.c and nan_load.c are
+# the loader path proper; nan16.c/nan16.h/nan16_int.h are pinned at the same
+# checkout because the text loader stores into that VM's raw-word memory and
+# the payload/head accessors live there.
 LOADER_COMMIT = "80bc81dbf892ca72719882ddd02691f23083785c"
 
 LOADER_FILES = (
@@ -562,6 +565,14 @@ def check_loader_sources(checker: Checker, root: Path) -> dict[str, str]:
         checker.check(
             "nan_cli slurp opens the image in binary mode",
             re.search(r'fopen\s*\(\s*p\s*,\s*"rb"\s*\)', cli) is not None,
+        )
+        checker.check(
+            "nan_cli slurp passes the exact file length",
+            re.search(
+                r"b\s*\[\s*l\s*\]\s*=\s*0\s*;\s*\*n\s*=\s*\(size_t\)\s*l\s*;",
+                cli,
+            )
+            is not None,
         )
         checker.check(
             "nan_cli calls nan_load_auto on slurped bytes",

@@ -207,7 +207,14 @@ the vendored `nan_create` API. The inspected checkout is:
 | --- | --- | --- |
 | NaN0S checkout | `/data/data/com.termux/files/home/nan0s_work` | commit `80bc81dbf892ca72719882ddd02691f23083785c` |
 | CLI source | `aarch64/android/tools/nan_cli.c` | SHA-256 `19a1406e4593281f91313075fa9c6ca5d84d5ec0daa68e55f90f296b80a749ae` (16,246 B) |
-| CLI core | `aarch64/android/core/nan16.c` | SHA-256 `7ed977607efb8f57c7bed802f9dffdf349ad3dc1cecd7fe379b59f4839b23d41` |
+| CLI core | `aarch64/android/core/nan16.c` | SHA-256 `7ed977607efb8f57c7bed802f9dffdf349ad3dc1cecd7fe379b59f4839b23d41` (30,272 B) |
+| VM header | `aarch64/android/core/nan16.h` | SHA-256 `740ea2cb17fcc3e1903c2566cde815a533432f9bad3023c4a85c906dc742e414` (9,127 B) |
+| VM internal header | `aarch64/android/core/nan16_int.h` | SHA-256 `959f90b7b92a70bc34bbe3d943186dddda442cee1cbc0b5a5dacf527b863a022` (2,984 B) |
+
+Decision **D-01** is *restore, do not fork*: these five files were restored
+from commit `80bc81d...` into `nan0s_work` with `git show`. The checkout's
+current `HEAD` may be later, so the file hashes above, not the `HEAD` id, are
+authoritative for the loader gate.
 
 This is a **third** C variant: it differs from both the vendored snapshot
 (`05d34f...`) and the canonical `SOURCE.json` snapshot (`0ef601...`). The
