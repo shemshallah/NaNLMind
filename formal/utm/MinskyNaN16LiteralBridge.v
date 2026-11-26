@@ -272,9 +272,11 @@ Proof.
   - reflexivity.
   - intros i Hi.
     change (0 = N.to_nat (lget_regN regs0 i) mod 2 ^ 32).
-    rewrite lget_regN_regs0. reflexivity.
+    rewrite lget_regN_regs0.
+    symmetry. apply Nat.mod_0_l. exact two32_neq_0.
   - change (0 = N.to_nat (lget_regN regs0 15) mod 2 ^ 32).
-    rewrite lget_regN_regs0. reflexivity.
+    rewrite lget_regN_regs0.
+    symmetry. apply Nat.mod_0_l. exact two32_neq_0.
   - change (0 = N.to_nat (lget_regN regs0 15)).
     rewrite lget_regN_regs0. reflexivity.
   - reflexivity.
