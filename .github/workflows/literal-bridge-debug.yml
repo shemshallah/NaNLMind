@@ -67,7 +67,7 @@ jobs:
         run: |
           set -euo pipefail
           ulimit -s unlimited 2>/dev/null || ulimit -s 65536
-          coqc -time -Q formal/utm NaNLM \
+          stdbuf -oL -eL coqc -time -Q formal/utm NaNLM \
             -w -notation-overridden,-stdlib-vector \
             formal/utm/MinskyNaN16LiteralBridge.v
           echo "LITERAL BRIDGE COMPILE PASS"
