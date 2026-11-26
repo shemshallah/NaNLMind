@@ -209,15 +209,21 @@ Proof.
   unfold Rlp, R, lp_to_LState, vm_of_lp, lp_reset, vm_reset, reg0.
   split_conj_bridge.
   - reflexivity.
-  - intros i Hi. cbn [l_reg lp_reg lp_reset lget_regN]. rewrite lget_regN_regs0. cbn. reflexivity.
-  - cbn [l_reg lp_reg lp_reset lget_regN]. rewrite lget_regN_regs0. cbn. reflexivity.
-  - cbn [l_reg lp_reg lp_reset lget_regN]. rewrite lget_regN_regs0. cbn. reflexivity.
+  - intros i Hi.
+    change (0 = N.to_nat (lget_regN regs0 i) mod 2 ^ 32).
+    rewrite lget_regN_regs0. reflexivity.
+  - change (0 = N.to_nat (lget_regN regs0 15) mod 2 ^ 32).
+    rewrite lget_regN_regs0. reflexivity.
+  - change (0 = N.to_nat (lget_regN regs0 15)).
+    rewrite lget_regN_regs0. reflexivity.
   - intro a. reflexivity.
   - reflexivity.
   - reflexivity.
   - lia.
   - reflexivity.
-  - intros i Hi. cbn [l_reg lp_reg lp_reset lget_regN]. rewrite lget_regN_regs0. cbn.
+  - intros i Hi.
+    change (N.to_nat (lget_regN regs0 i) < 2 ^ 32).
+    rewrite lget_regN_regs0.
     pose proof one_lt_two32. lia.
 Qed.
 
