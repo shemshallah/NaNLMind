@@ -84,7 +84,7 @@ Proof.
       rewrite (lget_regN_lset_word_eq (lp_reg L) d (N.of_nat imm))
         by (rewrite Hlen; lia).
       rewrite Nat2N.id.
-      apply Nat.mod_small. exact Himm.
+      rewrite Nat.mod_small by exact Himm. reflexivity.
     + rewrite (set_reg_neq _ _ _ _ Hne).
       rewrite (lget_regN_lset_word_neq (lp_reg L) d (N.of_nat imm) i Hne).
       exact (Hregs i Hi).
