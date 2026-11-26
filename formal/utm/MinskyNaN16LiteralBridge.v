@@ -154,13 +154,8 @@ Theorem literal_tape_base_matches_nan16_addr_mem :
     payload_word (mem_get (lp_mem lp_reset) tape_base_addr).
 Proof.
   intros K c.
-  unfold nan16_addr_mem, tape_base_addr, action_head_addr,
-    action_state_addr, action_halt_addr, fixture_tape_base.
-  cbn.
-  rewrite mem_get_lp_reset.
-  rewrite (mem_get_reset 99) by lia.
-  unfold literal_word_at, tape_base_addr.
-  symmetry. apply literal_tbase_cell.
+  vm_compute.
+  reflexivity.
 Qed.
 
 (** ** Assumption audit *)
