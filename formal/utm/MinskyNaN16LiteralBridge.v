@@ -29,11 +29,11 @@ From NaNLM Require Import MinskyNaN16LiteralMachine
 (** ** A list helper for the image-side table rows *)
 
 Lemma nth_map_seq_lt :
-  forall (A : Type) (f : nat -> A) (start m n : nat) (d : A),
+  forall {A : Type} (f : nat -> A) (start m n : nat) (d : A),
     n < m ->
     nth n (map f (seq start m)) d = f (start + n).
 Proof.
-  intros A f start m n d H.
+  intros f start m n d H.
   revert start m H.
   induction n as [|n IH]; intros start m H.
   - destruct m as [|m]; [lia|].
