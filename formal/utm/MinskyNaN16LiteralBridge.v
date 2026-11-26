@@ -205,8 +205,6 @@ Lemma Rlp_lp_reset :
   Rlp lp_reset (vm_of_lp lp_reset).
 Proof.
   unfold Rlp, R, lp_to_LState, vm_of_lp, lp_reset, vm_reset, reg0.
-  cbn [vm_pc vm_reg vm_mem vm_zf vm_lf vm_halted vm_link
-       l_pc l_reg l_mem l_k l_halted].
   repeat split.
   - reflexivity.
   - intros i Hi. rewrite lget_regN_regs0. cbn. reflexivity.
