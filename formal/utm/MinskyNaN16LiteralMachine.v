@@ -390,6 +390,18 @@ Definition nrun100 : NState :=
 
 Definition literal_run100 : LPState := lp_run 20247 lp_reset.
 
+(** ** Published final state predicates *)
+
+(** The output expected on success. *)
+Definition pass_string : string := "MTH MINSKY NATIVE PASS"%string.
+
+(** Code preservation: the first 99 words of the low block still equal
+    the literal image.  Checked by computation in the run certificates. *)
+Definition code_preserved_bool (m : MemP) : bool :=
+  forallb
+    (fun i => N.eqb (nth i (mp_low m) 0%N) (nth i literal_image 0%N))
+    (seq 0 99).
+
 (** ** Fuel composition *)
 
 Lemma lp_run_add :
