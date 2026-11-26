@@ -385,9 +385,10 @@ Proof.
     rewrite Hreg15pre.
     rewrite Nat.mod_small by exact Hpc32.
     reflexivity.
-  - change (S (lp_pc L) =
+  - change (instr_succ (vm_pc vm) =
             N.to_nat
               (lget_regN (lset_word (lp_reg L) 15 (N.of_nat (S (lp_pc L)))) 15)).
+    unfold instr_succ. rewrite Hpc.
     rewrite (lget_regN_lset_word_eq (lp_reg L) 15
       (N.of_nat (S (lp_pc L)))) by (rewrite Hlen; lia).
     rewrite Nat2N.id. reflexivity.
