@@ -37,25 +37,25 @@ Lemma literal_tail_compose :
   lp_run 778 literal_run100 = literal_tail11.
 Proof.
   assert (H1 : lp_halted (lp_run 100 literal_run100) = false)
-    by (rewrite literal_tail1_spec. exact literal_tail1_halted).
+    by (rewrite literal_tail1_spec; exact literal_tail1_halted).
   assert (H2 : lp_halted (lp_run 100 literal_tail1) = false)
-    by (rewrite literal_tail2_spec. exact literal_tail2_halted).
+    by (rewrite literal_tail2_spec; exact literal_tail2_halted).
   assert (H3 : lp_halted (lp_run 100 literal_tail2) = false)
-    by (rewrite literal_tail3_spec. exact literal_tail3_halted).
+    by (rewrite literal_tail3_spec; exact literal_tail3_halted).
   assert (H4 : lp_halted (lp_run 100 literal_tail3) = false)
-    by (rewrite literal_tail4_spec. exact literal_tail4_halted).
+    by (rewrite literal_tail4_spec; exact literal_tail4_halted).
   assert (H5 : lp_halted (lp_run 100 literal_tail4) = false)
-    by (rewrite literal_tail5_spec. exact literal_tail5_halted).
+    by (rewrite literal_tail5_spec; exact literal_tail5_halted).
   assert (H6 : lp_halted (lp_run 50 literal_tail5) = false)
-    by (rewrite literal_tail6_spec. exact literal_tail6_halted).
+    by (rewrite literal_tail6_spec; exact literal_tail6_halted).
   assert (H7 : lp_halted (lp_run 50 literal_tail6) = false)
-    by (rewrite literal_tail7_spec. exact literal_tail7_halted).
+    by (rewrite literal_tail7_spec; exact literal_tail7_halted).
   assert (H8 : lp_halted (lp_run 50 literal_tail7) = false)
-    by (rewrite literal_tail8_spec. exact literal_tail8_halted).
+    by (rewrite literal_tail8_spec; exact literal_tail8_halted).
   assert (H9 : lp_halted (lp_run 50 literal_tail8) = false)
-    by (rewrite literal_tail9_spec. exact literal_tail9_halted).
+    by (rewrite literal_tail9_spec; exact literal_tail9_halted).
   assert (H10 : lp_halted (lp_run 50 literal_tail9) = false)
-    by (rewrite literal_tail10_spec. exact literal_tail10_halted).
+    by (rewrite literal_tail10_spec; exact literal_tail10_halted).
   replace 778 with (100 + 678) by reflexivity.
   rewrite (lp_run_add 100 678 literal_run100 H1).
   rewrite literal_tail1_spec.
