@@ -56,7 +56,7 @@ Lemma nth_literal_table_row :
 Proof.
   intros i Hi.
   unfold literal_table_rows.
-  rewrite (nth_map_seq_lt (A:=list nat)
+  rewrite (nth_map_seq_lt (list nat)
     (fun i0 =>
        map (fun f =>
               payload_word
@@ -81,7 +81,7 @@ Proof.
   pose proof (nth_literal_table_row i Hi) as Hrow.
   rewrite literal_table_slice_eq_fixture in Hrow.
   rewrite Hrow.
-  rewrite (nth_map_seq_lt (A:=nat)
+  rewrite (nth_map_seq_lt nat
     (fun f0 =>
        payload_word
          (literal_word_at (fixture_table_base + 8 * i + f0)))
