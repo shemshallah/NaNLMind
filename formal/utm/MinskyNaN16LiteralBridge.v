@@ -163,3 +163,62 @@ Qed.
 Print Assumptions literal_table_matches_nan16_addr_mem.
 Print Assumptions literal_control_cells_payload.
 Print Assumptions literal_tape_base_matches_nan16_addr_mem.
+
+(** ** Executor state relation *)
+
+(** The cached literal machine [LPState] and the older one-step machine
+    [LState] carry the same architectural state, differing only in
+    representation: [LPState] stores binary [N] registers and a
+    five-block [MemP], while [LState] stores [nat] registers and a total
+    memory function.  [lp_to_LState] is the pointwise view used by the
+    existing [R] relation and one-step lemmas. *)
+
+Definition lp_to_LState (L : LPState) : LState :=
+  {| l_pc := lp_pc L;
+     l_reg := fun i => N.to_nat (lget_regN (lp_reg L) i);
+     l_mem := fun a => mem_get (lp_mem L) a;
+     l_k := lp_k L;
+     l_halted := lp_halted L |}.
+
+Definition vm_of_lp (L : LPState) : VM :=
+  vm_reset (fun a => mem_get (lp_mem L) a).
+
+Definition Rlp (L : LPState) (vm : VM) : Prop :=
+  R (lp_to_LState L) vm.
+
+Lemma nth_repeat_zero :
+  forall n k, nth n (repeat 0%N k) 0%N = 0%N.
+Proof.
+  intros n. induction n as [|n IH]; intros k.
+  - destruct k; cbn; reflexivity.
+  - destruct k; cbn; [reflexivity|apply IH].
+Qed.
+
+Lemma lget_regN_regs0 :
+  forall i, lget_regN regs0 i = 0%N.
+Proof.
+  intro i. unfold lget_regN, regs0. apply nth_repeat_zero.
+Qed.
+
+(** The reset literal state is related to the reset Coq VM. *)
+Lemma Rlp_lp_reset :
+  Rlp lp_reset (vm_of_lp lp_reset).
+Proof.
+  unfold Rlp, R, lp_to_LState, vm_of_lp, lp_reset, vm_reset, reg0.
+  cbn [vm_pc vm_reg vm_mem vm_zf vm_lf vm_halted vm_link
+       l_pc l_reg l_mem l_k l_halted].
+  repeat split.
+  - reflexivity.
+  - intros i Hi. rewrite lget_regN_regs0. cbn. reflexivity.
+  - rewrite lget_regN_regs0. cbn. reflexivity.
+  - rewrite lget_regN_regs0. cbn. reflexivity.
+  - intro a. reflexivity.
+  - reflexivity.
+  - reflexivity.
+  - lia.
+  - reflexivity.
+  - intros i Hi. rewrite lget_regN_regs0. cbn.
+    pose proof one_lt_two32. lia.
+Qed.
+
+Print Assumptions Rlp_lp_reset.
