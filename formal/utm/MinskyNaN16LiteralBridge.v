@@ -115,8 +115,10 @@ Proof.
   unfold table_mem_at in Htab.
   rewrite Htab.
   rewrite mem_get_lp_reset.
-  rewrite (mem_get_reset (fixture_table_base + 8 * i + f)) by
-    (pose proof (fixture_table_below_tape i f Hi Hf); lia).
+  assert (Hlt4366 : fixture_table_base + 8 * i + f < 4366).
+  { pose proof (fixture_table_below_tape i f Hi Hf) as Hlt.
+    unfold fixture_tape_base in Hlt. lia. }
+  rewrite (mem_get_reset (fixture_table_base + 8 * i + f)) by exact Hlt4366.
   change (nth f (nth i fixture_table []) 0 =
           payload_word
             (literal_word_at (fixture_table_base + 8 * i + f))).
