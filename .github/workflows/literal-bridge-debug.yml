@@ -17,6 +17,10 @@ permissions:
   actions: read
   contents: read
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   bridge:
     name: Compile literal bridge
