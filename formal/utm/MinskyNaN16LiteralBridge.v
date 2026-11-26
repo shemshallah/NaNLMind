@@ -145,10 +145,6 @@ Theorem literal_control_cells_payload :
 Proof.
   destruct literal_data_cells as (H99 & H100 & H101 & H102 & H103).
   repeat split.
-  - rewrite mem_get_lp_reset. rewrite (mem_get_reset 99) by lia. exact H99.
-  - rewrite mem_get_lp_reset. rewrite (mem_get_reset 100) by lia. exact H100.
-  - rewrite mem_get_lp_reset. rewrite (mem_get_reset 101) by lia. exact H101.
-  - rewrite mem_get_lp_reset. rewrite (mem_get_reset 102) by lia. exact H102.
 Qed.
 
 Theorem literal_tape_base_matches_nan16_addr_mem :
