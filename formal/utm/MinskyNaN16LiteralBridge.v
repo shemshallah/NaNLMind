@@ -47,7 +47,7 @@ Qed.
     [literal_table_rows] value. *)
 Lemma nth_literal_table_row :
   forall i,
-    i < length fixture_table ->
+    i < List.length fixture_table ->
     nth i literal_table_rows [] =
       map (fun f =>
              payload_word
@@ -62,7 +62,7 @@ Proof.
               payload_word
                 (literal_word_at (fixture_table_base + 8 * i0 + f)))
            (seq 0 8))
-    0 (length fixture_table) i []) by exact Hi.
+    0 (List.length fixture_table) i []) by exact Hi.
   replace (0 + i) with i by lia.
   reflexivity.
 Qed.
@@ -71,7 +71,7 @@ Qed.
     corresponding [fixture_table] entry. *)
 Lemma literal_table_payload_row :
   forall i f,
-    i < length fixture_table ->
+    i < List.length fixture_table ->
     f < 8 ->
     payload_word
       (literal_word_at (fixture_table_base + 8 * i + f)) =
@@ -94,18 +94,18 @@ Qed.
 
 Theorem literal_table_matches_nan16_addr_mem :
   forall K c i f,
-    i < length fixture_table ->
+    i < List.length fixture_table ->
     f < 8 ->
     nan16_addr_mem K c (fixture_table_base + 8 * i + f) =
     payload_word
       (mem_get (lp_mem lp_reset) (fixture_table_base + 8 * i + f)).
 Proof.
   intros K c i f Hi Hf.
-  assert (Hrow : length (nth i fixture_table []) = 8).
+  assert (Hrow : List.length (nth i fixture_table []) = 8).
   { exact (@proj1 _ _
-      (@Forall_nth (list nat) (fun r => length r = 8) fixture_table)
+      (@Forall_nth (list nat) (fun r => List.length r = 8) fixture_table)
       fixture_table_rows8 i [] Hi). }
-  assert (Hf' : f < length (nth i fixture_table [])) by lia.
+  assert (Hf' : f < List.length (nth i fixture_table [])) by lia.
   pose proof (nan16_addr_mem_table K c i f Hi Hf') as Htab.
   unfold table_mem_at in Htab.
   rewrite Htab.
