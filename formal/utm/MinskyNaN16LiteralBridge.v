@@ -37,10 +37,9 @@ Proof.
   revert start m H.
   induction n as [|n IH]; intros start m H.
   - destruct m as [|m]; [lia|].
-    simpl. rewrite Nat.add_0_r. reflexivity.
+    simpl. reflexivity.
   - destruct m as [|m]; [lia|].
-    simpl. replace (start + S n) with (S start + n) by lia.
-    apply IH. lia.
+    simpl. apply IH. lia.
 Qed.
 
 (** Row [i] of the literal table slice, extracted from the computed
