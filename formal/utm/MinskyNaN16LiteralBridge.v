@@ -22,7 +22,7 @@ From Coq Require Import List Arith Bool Lia NArith String.
 Import ListNotations.
 Open Scope nat_scope.
 
-From NaNLM Require Import MinskyNaN16LiteralMachine
+From NaNLM Require Import MinskyNaN16VM MinskyNaN16LiteralMachine
   MinskyNaN16LiteralDecode MinskyNaN16LiteralImage
   MinskyNaN16RunConcrete MinskyNaN16Universality.
 
