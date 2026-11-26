@@ -123,3 +123,120 @@ Proof.
 Qed.
 
 Print Assumptions lp_exec_MOVI_refines.
+
+(** ** HALT *)
+
+Theorem lp_exec_HALT_refines :
+  forall L vm prog,
+    Rlp L vm ->
+    decode_word_p (lp_mem_at L (lp_pc L)) = Some pHALT ->
+    nth_error prog (vm_pc vm) = Some pHALT ->
+    Rlp (lp_exec L pHALT) (exec_instr_p prog vm).
+Proof.
+  intros L vm prog HR Hdec Hnth.
+  unfold Rlp in *.
+  destruct HR as
+    (Hpc & Hregs & Hreg15 & Hlink & Hmem & Hzf & Hlf & Hk & Hhalt & Hbound).
+  unfold lp_exec, exec_instr_p.
+  rewrite Hnth. cbn.
+  unfold R, lp_to_LState.
+  split_conj_step.
+  - change (vm_pc vm = lp_pc L). exact Hpc.
+  - intros i Hi.
+    change (vm_reg vm i = N.to_nat (lget_regN (lp_reg L) i) mod 2 ^ 32).
+    exact (Hregs i Hi).
+  - change (vm_reg vm 15 =
+            N.to_nat (lget_regN (lp_reg L) 15) mod 2 ^ 32).
+    exact Hreg15.
+  - change (vm_link vm = N.to_nat (lget_regN (lp_reg L) 15)).
+    exact Hlink.
+  - intro a.
+    change (vm_mem vm a = payload_word (lp_mem_at (lp_exec L pHALT) a)).
+    rewrite lp_mem_at_lp_exec_HALT. exact (Hmem a).
+  - change (vm_zf vm = Nat.eqb ((lp_k L / 2) mod 2) 1). exact Hzf.
+  - change (vm_lf vm = Nat.eqb (lp_k L mod 2) 1). exact Hlf.
+  - change (lp_k L < 4). exact Hk.
+  - change (true = true). reflexivity.
+  - intros i Hi.
+    change (N.to_nat (lget_regN (lp_reg L) i) < 2 ^ 32).
+    exact (Hbound i Hi).
+Qed.
+
+(** ** PUTC *)
+
+Theorem lp_exec_PUTC_refines :
+  forall L vm prog d,
+    Rlp L vm ->
+    decode_word_p (lp_mem_at L (lp_pc L)) = Some (pPUTC d) ->
+    nth_error prog (vm_pc vm) = Some (pPUTC d) ->
+    Rlp (lp_exec L (pPUTC d)) (exec_instr_p prog vm).
+Proof.
+  intros L vm prog d HR Hdec Hnth.
+  unfold Rlp in *.
+  destruct HR as
+    (Hpc & Hregs & Hreg15 & Hlink & Hmem & Hzf & Hlf & Hk & Hhalt & Hbound).
+  unfold lp_exec, exec_instr_p.
+  rewrite Hnth. cbn.
+  unfold R, lp_to_LState.
+  split_conj_step.
+  - change (S (vm_pc vm) = S (lp_pc L)). rewrite Hpc. reflexivity.
+  - intros i Hi.
+    change (vm_reg vm i = N.to_nat (lget_regN (lp_reg L) i) mod 2 ^ 32).
+    exact (Hregs i Hi).
+  - change (vm_reg vm 15 =
+            N.to_nat (lget_regN (lp_reg L) 15) mod 2 ^ 32).
+    exact Hreg15.
+  - change (vm_link vm = N.to_nat (lget_regN (lp_reg L) 15)).
+    exact Hlink.
+  - intro a.
+    change (vm_mem vm a = payload_word (lp_mem_at (lp_exec L (pPUTC d)) a)).
+    rewrite lp_mem_at_lp_exec_PUTC. exact (Hmem a).
+  - change (vm_zf vm = Nat.eqb ((lp_k L / 2) mod 2) 1). exact Hzf.
+  - change (vm_lf vm = Nat.eqb (lp_k L mod 2) 1). exact Hlf.
+  - change (lp_k L < 4). exact Hk.
+  - change (vm_halted vm = lp_halted L). exact Hhalt.
+  - intros i Hi.
+    change (N.to_nat (lget_regN (lp_reg L) i) < 2 ^ 32).
+    exact (Hbound i Hi).
+Qed.
+
+(** ** RET *)
+
+Theorem lp_exec_RET_refines :
+  forall L vm prog,
+    Rlp L vm ->
+    decode_word_p (lp_mem_at L (lp_pc L)) = Some pRET ->
+    nth_error prog (vm_pc vm) = Some pRET ->
+    Rlp (lp_exec L pRET) (exec_instr_p prog vm).
+Proof.
+  intros L vm prog HR Hdec Hnth.
+  unfold Rlp in *.
+  destruct HR as
+    (Hpc & Hregs & Hreg15 & Hlink & Hmem & Hzf & Hlf & Hk & Hhalt & Hbound).
+  unfold lp_exec, exec_instr_p.
+  rewrite Hnth. cbn.
+  unfold R, lp_to_LState.
+  split_conj_step.
+  - change (vm_link vm = N.to_nat (lget_regN (lp_reg L) 15)). exact Hlink.
+  - intros i Hi.
+    change (vm_reg vm i = N.to_nat (lget_regN (lp_reg L) i) mod 2 ^ 32).
+    exact (Hregs i Hi).
+  - change (vm_reg vm 15 =
+            N.to_nat (lget_regN (lp_reg L) 15) mod 2 ^ 32).
+    exact Hreg15.
+  - change (vm_link vm = N.to_nat (lget_regN (lp_reg L) 15)). exact Hlink.
+  - intro a.
+    change (vm_mem vm a = payload_word (lp_mem_at (lp_exec L pRET) a)).
+    rewrite lp_mem_at_lp_exec_RET. exact (Hmem a).
+  - change (vm_zf vm = Nat.eqb ((lp_k L / 2) mod 2) 1). exact Hzf.
+  - change (vm_lf vm = Nat.eqb (lp_k L mod 2) 1). exact Hlf.
+  - change (lp_k L < 4). exact Hk.
+  - change (vm_halted vm = lp_halted L). exact Hhalt.
+  - intros i Hi.
+    change (N.to_nat (lget_regN (lp_reg L) i) < 2 ^ 32).
+    exact (Hbound i Hi).
+Qed.
+
+Print Assumptions lp_exec_HALT_refines.
+Print Assumptions lp_exec_PUTC_refines.
+Print Assumptions lp_exec_RET_refines.
