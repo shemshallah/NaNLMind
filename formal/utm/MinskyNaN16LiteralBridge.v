@@ -23,7 +23,8 @@ Import ListNotations.
 Open Scope nat_scope.
 
 From NaNLM Require Import MinskyNaN16LiteralMachine
-  MinskyNaN16LiteralImage MinskyNaN16RunConcrete MinskyNaN16Universality.
+  MinskyNaN16LiteralDecode MinskyNaN16LiteralImage
+  MinskyNaN16RunConcrete MinskyNaN16Universality.
 
 (** ** A list helper for the image-side table rows *)
 
