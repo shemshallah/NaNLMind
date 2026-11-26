@@ -29,11 +29,11 @@ From NaNLM Require Import MinskyNaN16LiteralMachine
 (** ** A list helper for the image-side table rows *)
 
 Lemma nth_map_seq_lt :
-  forall {A : Type} (f : nat -> A) (start m n : nat) (d : A),
+  forall (A : Type) (f : nat -> A) (start m n : nat) (d : A),
     n < m ->
     nth n (map f (seq start m)) d = f (start + n).
 Proof.
-  intros f start m n d H.
+  intros A f start m n d H.
   revert start m H.
   induction n as [|n IH]; intros start m H.
   - destruct m as [|m]; [lia|].
@@ -55,7 +55,7 @@ Lemma nth_literal_table_row :
 Proof.
   intros i Hi.
   unfold literal_table_rows.
-  rewrite (nth_map_seq_lt
+  rewrite (nth_map_seq_lt (A:=list nat)
     (fun i0 =>
        map (fun f =>
               payload_word
@@ -80,7 +80,7 @@ Proof.
   pose proof (nth_literal_table_row i Hi) as Hrow.
   rewrite literal_table_slice_eq_fixture in Hrow.
   rewrite Hrow.
-  rewrite (nth_map_seq_lt
+  rewrite (nth_map_seq_lt (A:=nat)
     (fun f0 =>
        payload_word
          (literal_word_at (fixture_table_base + 8 * i + f0)))
