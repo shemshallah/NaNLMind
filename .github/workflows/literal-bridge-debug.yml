@@ -1,0 +1,55 @@
+name: Literal bridge debug
+
+# Fast loop for MinskyNaN16LiteralBridge.v only.  Downloads the .vo
+# dependencies from a previously successful full run, then compiles the
+# bridge with a short timeout.  Manual dispatch only, so experimental
+# commits on a debug branch do not trigger the full NaN16 workflow.
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Successful nan16-full-tests run id supplying cached .vo artifacts'
+        required: true
+        default: '45833220561'
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  bridge:
+    name: Compile literal bridge
+    runs-on: ubuntu-latest
+    container:
+      image: coqorg/coq:8.20
+      options: --user root
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download cached .vo artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: nan16-full-coq-${{ inputs.run_id }}
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: artifacts
+
+      - name: Restore cached .vo files
+        run: |
+          set -euo pipefail
+          cp artifacts/formal/utm/*.vo formal/utm/
+          test -f formal/utm/MinskyNaN16LiteralMachine.vo
+          test -f formal/utm/MinskyNaN16Universality.vo
+          echo "restored $(ls formal/utm/*.vo | wc -l) .vo files"
+
+      - name: Compile MinskyNaN16LiteralBridge.v
+        timeout-minutes: 6
+        run: |
+          set -euo pipefail
+          ulimit -s unlimited 2>/dev/null || ulimit -s 65536
+          coqc -Q formal/utm NaNLM \
+            -w -notation-overridden,-stdlib-vector \
+            formal/utm/MinskyNaN16LiteralBridge.v
+          echo "LITERAL BRIDGE COMPILE PASS"
