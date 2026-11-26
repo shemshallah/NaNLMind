@@ -26,6 +26,11 @@ From NaNLM Require Import MinskyNaN16VM MinskyNaN16LiteralMachine
   MinskyNaN16LiteralDecode MinskyNaN16LiteralImage
   MinskyNaN16RunConcrete MinskyNaN16Universality.
 
+(** [lp_reset]'s memory is the concrete reset memory, definitionally. *)
+Lemma mem_get_lp_reset :
+  forall a, mem_get (lp_mem lp_reset) a = mem_get reset_mem a.
+Proof. intro a. reflexivity. Qed.
+
 (** ** A list helper for the image-side table rows *)
 
 Lemma nth_map_seq_lt :
@@ -109,6 +114,7 @@ Proof.
   pose proof (nan16_addr_mem_table K c i f Hi Hf') as Htab.
   unfold table_mem_at in Htab.
   rewrite Htab.
+  rewrite mem_get_lp_reset.
   rewrite (mem_get_reset (fixture_table_base + 8 * i + f)) by
     (pose proof (fixture_table_below_tape i f Hi Hf); lia).
   change (nth f (nth i fixture_table []) 0 =
@@ -124,6 +130,7 @@ Lemma literal_memory_eq_image :
     mem_get (lp_mem lp_reset) a = literal_word_at a.
 Proof.
   intros a Ha.
+  rewrite mem_get_lp_reset.
   unfold literal_word_at.
   apply mem_get_reset. exact Ha.
 Qed.
@@ -136,10 +143,10 @@ Theorem literal_control_cells_payload :
 Proof.
   destruct literal_data_cells as (H99 & H100 & H101 & H102 & H103).
   repeat split.
-  - rewrite (mem_get_reset 99) by lia. exact H99.
-  - rewrite (mem_get_reset 100) by lia. exact H100.
-  - rewrite (mem_get_reset 101) by lia. exact H101.
-  - rewrite (mem_get_reset 102) by lia. exact H102.
+  - rewrite mem_get_lp_reset. rewrite (mem_get_reset 99) by lia. exact H99.
+  - rewrite mem_get_lp_reset. rewrite (mem_get_reset 100) by lia. exact H100.
+  - rewrite mem_get_lp_reset. rewrite (mem_get_reset 101) by lia. exact H101.
+  - rewrite mem_get_lp_reset. rewrite (mem_get_reset 102) by lia. exact H102.
 Qed.
 
 Theorem literal_tape_base_matches_nan16_addr_mem :
@@ -151,6 +158,7 @@ Proof.
   unfold nan16_addr_mem, tape_base_addr, action_head_addr,
     action_state_addr, action_halt_addr, fixture_tape_base.
   cbn.
+  rewrite mem_get_lp_reset.
   rewrite (mem_get_reset 99) by lia.
   unfold literal_word_at, tape_base_addr.
   symmetry. apply literal_tbase_cell.
