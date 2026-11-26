@@ -178,6 +178,16 @@ Print Assumptions literal_tape_base_matches_nan16_addr_mem.
     concrete 4,366-word image while checking the reset/step relation. *)
 Definition lp_mem_at (L : LPState) (a : nat) : N :=
   mem_get (lp_mem L) a.
+
+Lemma lp_mem_at_eq :
+  forall L a, lp_mem_at L a = mem_get (lp_mem L) a.
+Proof. intros L a. reflexivity. Qed.
+
+Lemma lp_mem_at_lp_exec_MOVI :
+  forall L d imm,
+    lp_mem_at (lp_exec L (pMOVI d imm)) = lp_mem_at L.
+Proof. intros. unfold lp_mem_at, lp_exec. reflexivity. Qed.
+
 Opaque lp_mem_at.
 
 Definition lp_to_LState (L : LPState) : LState :=
