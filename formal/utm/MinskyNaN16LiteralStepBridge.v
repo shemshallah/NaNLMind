@@ -73,9 +73,12 @@ Proof.
   cbn.
   unfold R, lp_to_LState.
   split_conj_step.
-  - unfold instr_succ. rewrite Hpc. reflexivity.
+  - change (S (vm_pc vm) = S (lp_pc L)).
+    rewrite Hpc. reflexivity.
   - intros i Hi.
-    match goal with |- ?G => idtac "REGS_GOAL:" G end.
+    change (set_reg (vm_reg vm) d imm i =
+            N.to_nat (lget_regN (lset_word (lp_reg L) d (N.of_nat imm)) i)
+              mod 2 ^ 32).
     destruct (Nat.eq_dec i d) as [-> | Hne].
     + rewrite set_reg_eq.
       rewrite (lget_regN_lset_word_eq (lp_reg L) d (N.of_nat imm))
@@ -85,21 +88,32 @@ Proof.
     + rewrite (set_reg_neq _ _ _ _ Hne).
       rewrite (lget_regN_lset_word_neq (lp_reg L) d (N.of_nat imm) i Hne).
       exact (Hregs i Hi).
-  - rewrite (set_reg_neq _ _ _ _ (not_eq_sym Hd15)).
+  - change (set_reg (vm_reg vm) d imm 15 =
+            N.to_nat (lget_regN (lset_word (lp_reg L) d (N.of_nat imm)) 15)
+              mod 2 ^ 32).
+    rewrite (set_reg_neq _ _ _ _ (not_eq_sym Hd15)).
     rewrite (lget_regN_lset_word_neq (lp_reg L) d (N.of_nat imm) 15
       (not_eq_sym Hd15)).
     exact Hreg15.
-  - rewrite (lget_regN_lset_word_neq (lp_reg L) d (N.of_nat imm) 15
+  - change (vm_link vm =
+            N.to_nat (lget_regN (lset_word (lp_reg L) d (N.of_nat imm)) 15)).
+    rewrite (lget_regN_lset_word_neq (lp_reg L) d (N.of_nat imm) 15
       (not_eq_sym Hd15)).
     exact Hlink.
-  - rewrite lp_mem_at_lp_exec_MOVI.
-    exact Hmem.
-  - exact Hzf.
-  - exact Hlf.
-  - exact Hk.
-  - exact Hhalt.
+  - intro a.
+    change (vm_mem vm a =
+            payload_word (lp_mem_at (lp_exec L (pMOVI d imm)) a)).
+    rewrite lp_mem_at_lp_exec_MOVI.
+    exact (Hmem a).
+  - change (vm_zf vm = Nat.eqb ((lp_k L / 2) mod 2) 1).
+    exact Hzf.
+  - change (vm_lf vm = Nat.eqb (lp_k L mod 2) 1).
+    exact Hlf.
+  - change (lp_k L < 4). exact Hk.
+  - change (vm_halted vm = lp_halted L). exact Hhalt.
   - intros i Hi.
-    match goal with |- ?G => idtac "REGS_GOAL:" G end.
+    change (N.to_nat (lget_regN (lset_word (lp_reg L) d (N.of_nat imm)) i)
+            < 2 ^ 32).
     destruct (Nat.eq_dec i d) as [-> | Hne].
     + rewrite (lget_regN_lset_word_eq (lp_reg L) d (N.of_nat imm))
         by (rewrite Hlen; lia).
