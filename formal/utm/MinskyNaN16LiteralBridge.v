@@ -200,12 +200,14 @@ Proof.
   intro i. unfold lget_regN, regs0. apply nth_repeat_zero.
 Qed.
 
+Ltac split_conj_bridge := repeat match goal with |- _ /\ _ => split end.
+
 (** The reset literal state is related to the reset Coq VM. *)
 Lemma Rlp_lp_reset :
   Rlp lp_reset (vm_of_lp lp_reset).
 Proof.
   unfold Rlp, R, lp_to_LState, vm_of_lp, lp_reset, vm_reset, reg0.
-  repeat split.
+  split_conj_bridge.
   - reflexivity.
   - intros i Hi. rewrite lget_regN_regs0. cbn. reflexivity.
   - rewrite lget_regN_regs0. cbn. reflexivity.
