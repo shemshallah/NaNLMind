@@ -240,3 +240,106 @@ Qed.
 Print Assumptions lp_exec_HALT_refines.
 Print Assumptions lp_exec_PUTC_refines.
 Print Assumptions lp_exec_RET_refines.
+
+(** ** LD *)
+
+Theorem lp_exec_LD_refines :
+  forall L vm prog d a imm,
+    Rlp L vm ->
+    List.length (lp_reg L) = 16 ->
+    d < 16 ->
+    d <> 15 ->
+    a < 16 ->
+    decode_word_p (lp_mem_at L (lp_pc L)) = Some (pLD d a imm) ->
+    nth_error prog (vm_pc vm) = Some (pLD d a imm) ->
+    Rlp (lp_exec L (pLD d a imm)) (exec_instr_p prog vm).
+Proof.
+  intros L vm prog d a imm HR Hlen Hd Hd15 Ha Hdec Hnth.
+  unfold Rlp in *.
+  destruct HR as
+    (Hpc & Hregs & Hreg15 & Hlink & Hmem & Hzf & Hlf & Hk & Hhalt & Hbound).
+  pose proof (R_reg_eq (lp_to_LState L) vm a ltac:(assumption) Ha) as Hreg_a.
+  assert (Haddr : vm_reg vm a = lget_reg (lp_reg L) a).
+  { unfold lget_reg. exact Hreg_a. }
+  unfold lp_exec, exec_instr_p.
+  rewrite Hnth. cbn.
+  unfold R, lp_to_LState.
+  split_conj_step.
+  - change (S (vm_pc vm) = S (lp_pc L)). rewrite Hpc. reflexivity.
+  - intros i Hi.
+    change (set_reg (vm_reg vm) d
+              (vm_mem vm (vm_reg vm a + imm)) i =
+            N.to_nat
+              (lget_regN
+                (lset_word (lp_reg L) d
+                  (word_payload
+                    (mem_get (lp_mem L) (lget_reg (lp_reg L) a + imm)))) i)
+              mod 2 ^ 32).
+    destruct (Nat.eq_dec i d) as [-> | Hne].
+    + rewrite set_reg_eq.
+      rewrite (lget_regN_lset_word_eq (lp_reg L) d
+        (word_payload
+          (mem_get (lp_mem L) (lget_reg (lp_reg L) a + imm))))
+        by (rewrite Hlen; lia).
+      rewrite Haddr.
+      rewrite <- (lp_mem_at_eq L (lget_reg (lp_reg L) a + imm)).
+      rewrite Nat.mod_small by apply payload_word_lt_two32.
+      reflexivity.
+    + rewrite (set_reg_neq _ _ _ _ Hne).
+      rewrite (lget_regN_lset_word_neq (lp_reg L) d
+        (word_payload
+          (mem_get (lp_mem L) (lget_reg (lp_reg L) a + imm))) i Hne).
+      exact (Hregs i Hi).
+  - change (set_reg (vm_reg vm) d
+              (vm_mem vm (vm_reg vm a + imm)) 15 =
+            N.to_nat
+              (lget_regN
+                (lset_word (lp_reg L) d
+                  (word_payload
+                    (mem_get (lp_mem L) (lget_reg (lp_reg L) a + imm)))) 15)
+              mod 2 ^ 32).
+    rewrite (set_reg_neq _ _ _ _ (not_eq_sym Hd15)).
+    rewrite (lget_regN_lset_word_neq (lp_reg L) d
+      (word_payload
+        (mem_get (lp_mem L) (lget_reg (lp_reg L) a + imm))) 15
+      (not_eq_sym Hd15)).
+    exact Hreg15.
+  - change (vm_link vm =
+            N.to_nat
+              (lget_regN
+                (lset_word (lp_reg L) d
+                  (word_payload
+                    (mem_get (lp_mem L) (lget_reg (lp_reg L) a + imm)))) 15)).
+    rewrite (lget_regN_lset_word_neq (lp_reg L) d
+      (word_payload
+        (mem_get (lp_mem L) (lget_reg (lp_reg L) a + imm))) 15
+      (not_eq_sym Hd15)).
+    exact Hlink.
+  - intro x.
+    change (vm_mem vm x =
+            payload_word (lp_mem_at (lp_exec L (pLD d a imm)) x)).
+    rewrite lp_mem_at_lp_exec_LD. exact (Hmem x).
+  - change (vm_zf vm = Nat.eqb ((lp_k L / 2) mod 2) 1). exact Hzf.
+  - change (vm_lf vm = Nat.eqb (lp_k L mod 2) 1). exact Hlf.
+  - change (lp_k L < 4). exact Hk.
+  - change (vm_halted vm = lp_halted L). exact Hhalt.
+  - intros i Hi.
+    change (N.to_nat
+              (lget_regN
+                (lset_word (lp_reg L) d
+                  (word_payload
+                    (mem_get (lp_mem L) (lget_reg (lp_reg L) a + imm)))) i)
+            < 2 ^ 32).
+    destruct (Nat.eq_dec i d) as [-> | Hne].
+    + rewrite (lget_regN_lset_word_eq (lp_reg L) d
+        (word_payload
+          (mem_get (lp_mem L) (lget_reg (lp_reg L) a + imm))))
+        by (rewrite Hlen; lia).
+      apply payload_word_lt_two32.
+    + rewrite (lget_regN_lset_word_neq (lp_reg L) d
+        (word_payload
+          (mem_get (lp_mem L) (lget_reg (lp_reg L) a + imm))) i Hne).
+      exact (Hbound i Hi).
+Qed.
+
+Print Assumptions lp_exec_LD_refines.
