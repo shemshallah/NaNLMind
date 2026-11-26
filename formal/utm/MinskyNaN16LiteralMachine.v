@@ -254,10 +254,10 @@ Definition nan_mkwordN (v : N) (n : nat) : N :=
 (** ** Literal instruction semantics
 
     Every value that can be a packed 32-bit word is read and written in
-    binary [N].  In particular CMP, SHL, SHR, ADD, SUB, BOOL and PUTC
-    never call [lget_reg] on a register: during the [puts] block those
-    registers hold words such as [0x4D544820], and the unary [nat]
-    projection would exhaust memory. *)
+    binary [N].  In particular LD, CMP, SHL, SHR, ADD, SUB, BOOL and
+    PUTC never project a register (or a memory payload) through unary
+    [nat]: the [puts] block loads words such as [0x2048544D], and
+    [N.to_nat] would build hundreds of millions of constructors. *)
 
 Definition lp_exec (L : LPState) (ins : InstrP) : LPState :=
   match ins with
@@ -269,8 +269,8 @@ Definition lp_exec (L : LPState) (ins : InstrP) : LPState :=
   | pLD d a imm =>
       {| lp_pc := S (lp_pc L);
          lp_reg := lset_word (lp_reg L) d
-                     (N.of_nat (payload_word
-                        (mem_get (lp_mem L) (lget_reg (lp_reg L) a + imm))));
+                     (word_payload
+                        (mem_get (lp_mem L) (lget_reg (lp_reg L) a + imm)));
          lp_mem := lp_mem L; lp_k := lp_k L;
          lp_halted := lp_halted L; lp_out := lp_out L |}
   | pST d a imm =>
