@@ -283,6 +283,7 @@ Proof.
           (mem_get (lp_mem L) (lget_reg (lp_reg L) a + imm))))
         by (rewrite Hlen; lia).
       rewrite Haddr.
+      rewrite (Hmem (lget_reg (lp_reg L) a + imm)).
       rewrite <- (lp_mem_at_eq L (lget_reg (lp_reg L) a + imm)).
       rewrite Nat.mod_small by apply payload_word_lt_two32.
       reflexivity.
