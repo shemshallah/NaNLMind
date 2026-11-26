@@ -75,6 +75,7 @@ Proof.
   split_conj_step.
   - unfold instr_succ. rewrite Hpc. reflexivity.
   - intros i Hi.
+    match goal with |- ?G => idtac "REGS_GOAL:" G end.
     destruct (Nat.eq_dec i d) as [-> | Hne].
     + rewrite set_reg_eq.
       rewrite (lget_regN_lset_word_eq (lp_reg L) d (N.of_nat imm))
@@ -98,6 +99,7 @@ Proof.
   - exact Hk.
   - exact Hhalt.
   - intros i Hi.
+    match goal with |- ?G => idtac "REGS_GOAL:" G end.
     destruct (Nat.eq_dec i d) as [-> | Hne].
     + rewrite (lget_regN_lset_word_eq (lp_reg L) d (N.of_nat imm))
         by (rewrite Hlen; lia).
