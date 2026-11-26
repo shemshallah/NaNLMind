@@ -97,9 +97,10 @@ GitHub Actions run does not make them interchangeable.
    The CI split step (`nan16-full-tests.yml`, "Compile the literal
    prefix/tail split") is **required**: a failure there means the split
    proof is wrong, not that resources ran out. The monolithic
-   `MinskyNaN16LiteralRun` leaf stays advisory because its single
-   21,025-instruction reduction exceeds the hosted runner's memory even
-   with swap headroom.
+   `MinskyNaN16LiteralRun` leaf now imports the split and composes
+   `literal_tail_compose` with `literal_tail_pass`; it no longer reduces
+   the 21,025-instruction run in one VM call, and it compiles in the
+   same CI job.
 
 The Coq theorems are formal results about the Coq models. The general
 zipper-to-signed-address simulation bridges these two formal representations,
