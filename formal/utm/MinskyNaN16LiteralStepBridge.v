@@ -255,10 +255,11 @@ Theorem lp_exec_LD_refines :
     Rlp (lp_exec L (pLD d a imm)) (exec_instr_p prog vm).
 Proof.
   intros L vm prog d a imm HR Hlen Hd Hd15 Ha Hdec Hnth.
+  pose proof HR as HR_R.
   unfold Rlp in *.
   destruct HR as
     (Hpc & Hregs & Hreg15 & Hlink & Hmem & Hzf & Hlf & Hk & Hhalt & Hbound).
-  pose proof (R_reg_eq (lp_to_LState L) vm a ltac:(assumption) Ha) as Hreg_a.
+  pose proof (R_reg_eq (lp_to_LState L) vm a HR_R Ha) as Hreg_a.
   assert (Haddr : vm_reg vm a = lget_reg (lp_reg L) a).
   { unfold lget_reg. exact Hreg_a. }
   unfold lp_exec, exec_instr_p.
