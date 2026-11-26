@@ -209,6 +209,8 @@ Qed.
     separate so the reset instance and the memory view can be proved and
     composed cheaply. *)
 
+Opaque mem_get.
+
 Record Rlp_core (L : LPState) (vm : VM) : Prop := {
   rc_pc : vm_pc vm = lp_pc L;
   rc_regs :
@@ -296,3 +298,5 @@ Proof.
 Qed.
 
 Print Assumptions Rlp_lp_reset.
+
+Transparent mem_get.
