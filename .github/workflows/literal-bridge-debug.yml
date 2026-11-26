@@ -48,6 +48,20 @@ jobs:
           test -f formal/utm/MinskyNaN16Universality.vo
           echo "restored $(ls formal/utm/*.vo | wc -l) .vo files"
 
+      - name: Locate the pinned Coq 8.20 toolchain
+        run: |
+          set -euo pipefail
+          if command -v coqc >/dev/null 2>&1; then
+            COQBIN=$(dirname "$(command -v coqc)")
+          else
+            COQC=$(find /home/coq/.opam -name coqc -type f | head -1)
+            test -n "$COQC"
+            COQBIN=$(dirname "$COQC")
+          fi
+          test -x "$COQBIN/coqc"
+          echo "$COQBIN" >> "$GITHUB_PATH"
+          "$COQBIN/coqc" --version | head -1
+
       - name: Compile MinskyNaN16LiteralBridge.v
         timeout-minutes: 6
         run: |
