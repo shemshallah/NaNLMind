@@ -173,15 +173,22 @@ Print Assumptions literal_tape_base_matches_nan16_addr_mem.
     memory function.  [lp_to_LState] is the pointwise view used by the
     existing [R] relation and one-step lemmas. *)
 
+(** Opaque memory view.  Keeping [mem_get] behind an opaque wrapper is
+    what makes the executor relation proofs cheap: Coq never unfolds the
+    concrete 4,366-word image while checking the reset/step relation. *)
+Definition lp_mem_at (L : LPState) (a : nat) : N :=
+  mem_get (lp_mem L) a.
+Opaque lp_mem_at.
+
 Definition lp_to_LState (L : LPState) : LState :=
   {| l_pc := lp_pc L;
      l_reg := fun i => N.to_nat (lget_regN (lp_reg L) i);
-     l_mem := fun a => mem_get (lp_mem L) a;
+     l_mem := lp_mem_at L;
      l_k := lp_k L;
      l_halted := lp_halted L |}.
 
 Definition vm_of_lp (L : LPState) : VM :=
-  vm_reset (fun a => mem_get (lp_mem L) a).
+  vm_reset (lp_mem_at L).
 
 Definition Rlp (L : LPState) (vm : VM) : Prop :=
   R (lp_to_LState L) vm.
@@ -200,3 +207,95 @@ Proof.
   intro i. unfold lget_regN, regs0. apply nth_repeat_zero.
 Qed.
 
+
+(** ** Memory-free executor core *)
+
+Record Rlp_core (L : LPState) (vm : VM) : Prop := {
+  rc_pc : vm_pc vm = lp_pc L;
+  rc_regs :
+    forall i, i < 15 ->
+      vm_reg vm i = N.to_nat (lget_regN (lp_reg L) i) mod 2 ^ 32;
+  rc_reg15 :
+    vm_reg vm 15 = N.to_nat (lget_regN (lp_reg L) 15) mod 2 ^ 32;
+  rc_link : vm_link vm = N.to_nat (lget_regN (lp_reg L) 15);
+  rc_zf : vm_zf vm = Nat.eqb ((lp_k L / 2) mod 2) 1;
+  rc_lf : vm_lf vm = Nat.eqb (lp_k L mod 2) 1;
+  rc_k : lp_k L < 4;
+  rc_halted : vm_halted vm = lp_halted L;
+  rc_bound :
+    forall i, i < 16 -> N.to_nat (lget_regN (lp_reg L) i) < 2 ^ 32;
+}.
+
+Ltac split_conj_core := repeat match goal with |- _ /\ _ => split end.
+
+Lemma R_of_core_mem :
+  forall L vm,
+    Rlp_core L vm ->
+    (forall a, vm_mem vm a = payload_word (lp_mem_at L a)) ->
+    R (lp_to_LState L) vm.
+Proof.
+  intros L vm Hcore Hmem.
+  pose proof (rc_pc L vm Hcore) as Hpc.
+  pose proof (rc_regs L vm Hcore) as Hregs.
+  pose proof (rc_reg15 L vm Hcore) as Hreg15.
+  pose proof (rc_link L vm Hcore) as Hlink.
+  pose proof (rc_zf L vm Hcore) as Hzf.
+  pose proof (rc_lf L vm Hcore) as Hlf.
+  pose proof (rc_k L vm Hcore) as Hk.
+  pose proof (rc_halted L vm Hcore) as Hhalt.
+  pose proof (rc_bound L vm Hcore) as Hbound.
+  unfold R, lp_to_LState.
+  split_conj_core.
+  - exact Hpc.
+  - intros i Hi. exact (Hregs i Hi).
+  - exact Hreg15.
+  - exact Hlink.
+  - exact Hmem.
+  - exact Hzf.
+  - exact Hlf.
+  - exact Hk.
+  - exact Hhalt.
+  - exact Hbound.
+Qed.
+
+Lemma vm_mem_of_lp :
+  forall L a,
+    vm_mem (vm_of_lp L) a = payload_word (lp_mem_at L a).
+Proof.
+  intros L a. reflexivity.
+Qed.
+
+Lemma Rlp_core_lp_reset :
+  Rlp_core lp_reset (vm_of_lp lp_reset).
+Proof.
+  constructor.
+  - reflexivity.
+  - intros i Hi.
+    change (0 = N.to_nat (lget_regN regs0 i) mod 2 ^ 32).
+    rewrite lget_regN_regs0.
+    symmetry. apply Nat.mod_0_l. exact two32_neq_0.
+  - change (0 = N.to_nat (lget_regN regs0 15) mod 2 ^ 32).
+    rewrite lget_regN_regs0.
+    symmetry. apply Nat.mod_0_l. exact two32_neq_0.
+  - change (0 = N.to_nat (lget_regN regs0 15)).
+    rewrite lget_regN_regs0. reflexivity.
+  - reflexivity.
+  - reflexivity.
+  - change (0 < 4). lia.
+  - reflexivity.
+  - intros i Hi.
+    change (N.to_nat (lget_regN regs0 i) < 2 ^ 32).
+    rewrite lget_regN_regs0.
+    pose proof one_lt_two32. lia.
+Qed.
+
+Lemma Rlp_lp_reset :
+  Rlp lp_reset (vm_of_lp lp_reset).
+Proof.
+  unfold Rlp.
+  apply R_of_core_mem.
+  - apply Rlp_core_lp_reset.
+  - apply vm_mem_of_lp.
+Qed.
+
+Print Assumptions Rlp_lp_reset.
