@@ -10,7 +10,7 @@ Import ListNotations.
 Open Scope nat_scope.
 
 From NaNLM Require Import MinskyNaN16VM MinskyNaN16LiteralMachine
-  MinskyNaN16LiteralDecode MinskyNaN16LiteralExec
+  MinskyNaN16LiteralDecode MinskyNaN16LiteralPuts MinskyNaN16LiteralExec
   MinskyNaN16LiteralBridge.
 
 (** ** Register-file update lemmas *)
