@@ -206,6 +206,11 @@ Lemma lp_mem_at_lp_exec_LD :
     lp_mem_at (lp_exec L (pLD d a imm)) = lp_mem_at L.
 Proof. intros. unfold lp_mem_at, lp_exec. reflexivity. Qed.
 
+Lemma lp_mem_at_lp_exec_CALL :
+  forall L target,
+    lp_mem_at (lp_exec L (pCALL target)) = lp_mem_at L.
+Proof. intros. unfold lp_mem_at, lp_exec. reflexivity. Qed.
+
 Opaque lp_mem_at.
 
 Definition lp_to_LState (L : LPState) : LState :=

@@ -345,3 +345,71 @@ Proof.
 Qed.
 
 Print Assumptions lp_exec_LD_refines.
+
+(** ** CALL (with the link-register invariant) *)
+
+Theorem lp_exec_CALL_refines :
+  forall L vm prog target,
+    Rlp L vm ->
+    List.length (lp_reg L) = 16 ->
+    S (lp_pc L) < 2 ^ 32 ->
+    vm_reg vm 15 = S (lp_pc L) ->
+    decode_word_p (lp_mem_at L (lp_pc L)) = Some (pCALL target) ->
+    nth_error prog (vm_pc vm) = Some (pCALL target) ->
+    Rlp (lp_exec L (pCALL target)) (exec_instr_p prog vm).
+Proof.
+  intros L vm prog target HR Hlen Hpc32 Hreg15pre Hdec Hnth.
+  unfold Rlp in *.
+  destruct HR as
+    (Hpc & Hregs & Hreg15 & Hlink & Hmem & Hzf & Hlf & Hk & Hhalt & Hbound).
+  unfold lp_exec, exec_instr_p.
+  rewrite Hnth. cbn.
+  unfold R, lp_to_LState.
+  split_conj_step.
+  - reflexivity.
+  - intros i Hi.
+    change (vm_reg vm i =
+            N.to_nat
+              (lget_regN (lset_word (lp_reg L) 15 (N.of_nat (S (lp_pc L)))) i)
+              mod 2 ^ 32).
+    rewrite (lget_regN_lset_word_neq (lp_reg L) 15
+      (N.of_nat (S (lp_pc L))) i) by lia.
+    exact (Hregs i Hi).
+  - change (vm_reg vm 15 =
+            N.to_nat
+              (lget_regN (lset_word (lp_reg L) 15 (N.of_nat (S (lp_pc L)))) 15)
+              mod 2 ^ 32).
+    rewrite (lget_regN_lset_word_eq (lp_reg L) 15
+      (N.of_nat (S (lp_pc L)))) by (rewrite Hlen; lia).
+    rewrite Nat2N.id.
+    rewrite Hreg15pre.
+    rewrite Nat.mod_small by exact Hpc32.
+    reflexivity.
+  - change (S (lp_pc L) =
+            N.to_nat
+              (lget_regN (lset_word (lp_reg L) 15 (N.of_nat (S (lp_pc L)))) 15)).
+    rewrite (lget_regN_lset_word_eq (lp_reg L) 15
+      (N.of_nat (S (lp_pc L)))) by (rewrite Hlen; lia).
+    rewrite Nat2N.id. reflexivity.
+  - intro a.
+    change (vm_mem vm a =
+            payload_word (lp_mem_at (lp_exec L (pCALL target)) a)).
+    rewrite lp_mem_at_lp_exec_CALL. exact (Hmem a).
+  - change (vm_zf vm = Nat.eqb ((lp_k L / 2) mod 2) 1). exact Hzf.
+  - change (vm_lf vm = Nat.eqb (lp_k L mod 2) 1). exact Hlf.
+  - change (lp_k L < 4). exact Hk.
+  - change (vm_halted vm = lp_halted L). exact Hhalt.
+  - intros i Hi.
+    change (N.to_nat
+              (lget_regN (lset_word (lp_reg L) 15 (N.of_nat (S (lp_pc L)))) i)
+            < 2 ^ 32).
+    destruct (Nat.eq_dec i 15) as [-> | Hne].
+    + rewrite (lget_regN_lset_word_eq (lp_reg L) 15
+        (N.of_nat (S (lp_pc L)))) by (rewrite Hlen; lia).
+      rewrite Nat2N.id. exact Hpc32.
+    + rewrite (lget_regN_lset_word_neq (lp_reg L) 15
+        (N.of_nat (S (lp_pc L))) i) by lia.
+      exact (Hbound i Hi).
+Qed.
+
+Print Assumptions lp_exec_CALL_refines.
