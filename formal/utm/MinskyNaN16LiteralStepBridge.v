@@ -83,7 +83,7 @@ Proof.
     + rewrite set_reg_eq.
       rewrite (lget_regN_lset_word_eq (lp_reg L) d (N.of_nat imm))
         by (rewrite Hlen; lia).
-      rewrite N2Nat.id.
+      rewrite Nat2N.id.
       apply Nat.mod_small. exact Himm.
     + rewrite (set_reg_neq _ _ _ _ Hne).
       rewrite (lget_regN_lset_word_neq (lp_reg L) d (N.of_nat imm) i Hne).
@@ -117,7 +117,7 @@ Proof.
     destruct (Nat.eq_dec i d) as [-> | Hne].
     + rewrite (lget_regN_lset_word_eq (lp_reg L) d (N.of_nat imm))
         by (rewrite Hlen; lia).
-      rewrite N2Nat.id. exact Himm.
+      rewrite Nat2N.id. exact Himm.
     + rewrite (lget_regN_lset_word_neq (lp_reg L) d (N.of_nat imm) i Hne).
       exact (Hbound i Hi).
 Qed.
