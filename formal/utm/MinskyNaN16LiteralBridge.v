@@ -37,7 +37,7 @@ Proof.
   revert start m H.
   induction n as [|n IH]; intros start m H.
   - destruct m as [|m]; [lia|].
-    simpl. reflexivity.
+    simpl. replace (start + 0) with start by lia. reflexivity.
   - destruct m as [|m]; [lia|].
     simpl. apply IH. lia.
 Qed.
