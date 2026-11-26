@@ -281,7 +281,7 @@ Proof.
     rewrite lget_regN_regs0. reflexivity.
   - reflexivity.
   - reflexivity.
-  - lia.
+  - change (0 < 4). lia.
   - reflexivity.
   - intros i Hi.
     change (N.to_nat (lget_regN regs0 i) < 2 ^ 32).
