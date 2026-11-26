@@ -101,6 +101,14 @@ GitHub Actions run does not make them interchangeable.
    `literal_tail_compose` with `literal_tail_pass`; it no longer reduces
    the 21,025-instruction run in one VM call, and it compiles in the
    same CI job.
+8. **Literal executor static memory bridge:** `MinskyNaN16LiteralBridge.v`
+   proves that the literal executor's actual reset memory, read through
+   `mem_get`, realizes the Coq VM's 184x8 table for every K-window and
+   source configuration (`literal_table_matches_nan16_addr_mem`), and
+   that the tape-base and control cells agree. This is the
+   input-independent half of the literal-image -> Coq-VM bridge. The
+   general executor simulation, loader/assembler semantics, and the
+   finite-memory/unbounded-tape bridge remain open.
 
 The Coq theorems are formal results about the Coq models. The general
 zipper-to-signed-address simulation bridges these two formal representations,
