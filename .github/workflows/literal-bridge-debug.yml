@@ -43,7 +43,7 @@ jobs:
       - name: Restore cached .vo files
         run: |
           set -euo pipefail
-          cp artifacts/formal/utm/*.vo formal/utm/
+          cp artifacts/*.vo formal/utm/
           test -f formal/utm/MinskyNaN16LiteralMachine.vo
           test -f formal/utm/MinskyNaN16Universality.vo
           echo "restored $(ls formal/utm/*.vo | wc -l) .vo files"
