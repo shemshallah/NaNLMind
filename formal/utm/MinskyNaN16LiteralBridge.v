@@ -24,6 +24,7 @@ Open Scope nat_scope.
 
 From NaNLM Require Import MinskyNaN16VM MinskyNaN16LiteralMachine
   MinskyNaN16LiteralDecode MinskyNaN16LiteralImage
+  MinskyNaN16Action MinskyNaN16Prelude
   MinskyNaN16RunConcrete MinskyNaN16Universality.
 
 (** [lp_reset]'s memory is the concrete reset memory, definitionally. *)
