@@ -39,7 +39,8 @@ Proof.
   - destruct m as [|m]; [lia|].
     simpl. replace (start + 0) with start by lia. reflexivity.
   - destruct m as [|m]; [lia|].
-    simpl. apply IH. lia.
+    simpl. replace (start + S n) with (S start + n) by lia.
+    apply IH. lia.
 Qed.
 
 (** Row [i] of the literal table slice, extracted from the computed
