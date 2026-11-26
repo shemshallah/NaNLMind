@@ -234,8 +234,15 @@ Lemma R_of_core_mem :
     R (lp_to_LState L) vm.
 Proof.
   intros L vm Hcore Hmem.
-  destruct Hcore as
-    (Hpc & Hregs & Hreg15 & Hlink & Hzf & Hlf & Hk & Hhalt & Hbound).
+  pose proof (rc_pc L vm Hcore) as Hpc.
+  pose proof (rc_regs L vm Hcore) as Hregs.
+  pose proof (rc_reg15 L vm Hcore) as Hreg15.
+  pose proof (rc_link L vm Hcore) as Hlink.
+  pose proof (rc_zf L vm Hcore) as Hzf.
+  pose proof (rc_lf L vm Hcore) as Hlf.
+  pose proof (rc_k L vm Hcore) as Hk.
+  pose proof (rc_halted L vm Hcore) as Hhalt.
+  pose proof (rc_bound L vm Hcore) as Hbound.
   unfold R, lp_to_LState.
   split_conj_core.
   - exact Hpc.
